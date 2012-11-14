@@ -35,7 +35,7 @@ typedef struct {
 } MYSQL_SHA1_CTX;
 
 void MYSQL_SHA1Init(MYSQL_SHA1_CTX *);
-void MYSQL_SHA1Update(MYSQL_SHA1_CTX *, const unsigned char *, unsigned int);
+void MYSQL_SHA1Update(MYSQL_SHA1_CTX *, const unsigned char *, size_t);
 void MYSQL_SHA1Final(unsigned char[20], MYSQL_SHA1_CTX *);
 
 #endif

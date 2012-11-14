@@ -32,19 +32,21 @@
 #define NAME_CHAR_LEN   64
 #define NAME_LEN	256		/* Field/table name length */
 #define HOSTNAME_LENGTH 60
+#define SYSTEM_MB_MAX_CHAR_LENGTH 3
 #define USERNAME_CHAR_LENGTH 16
-#define USERNAME_LENGTH 64
+#define USERNAME_LENGTH USERNAME_CHAR_LENGTH * SYSTEM_MB_MAX_CHAR_LENGTH
 #define SERVER_VERSION_LENGTH 60
 #define SQLSTATE_LENGTH 5
 #define SCRAMBLE_LENGTH 20
+#define SCRAMBLE_LENGTH_323 8
 
 #define LOCAL_HOST	"localhost"
 #define LOCAL_HOST_NAMEDPIPE "."
 
-#if defined(__WIN__) && !defined( _CUSTOMCONFIG_)
+#if defined(_WIN32) && !defined( _CUSTOMCONFIG_)
 #define MYSQL_NAMEDPIPE "MySQL"
 #define MYSQL_SERVICENAME "MySql"
-#endif /* __WIN__ */
+#endif /* _WIN32 */
 
 
 enum enum_server_command
@@ -96,6 +98,10 @@ enum enum_server_command
 #define AUTO_INCREMENT_FLAG 512		/* field is a autoincrement field */
 #define TIMESTAMP_FLAG	1024		/* Field is a timestamp */
 #define SET_FLAG	2048		/* field is a set */
+/* new since 3.23.58 */
+#define NO_DEFAULT_VALUE_FLAG 4096	/* Field doesn't have default value */
+#define ON_UPDATE_NOW_FLAG 8192         /* Field is set to NOW on UPDATE */
+/* end new */
 #define NUM_FLAG	32768		/* Field is num (for clients) */
 #define PART_KEY_FLAG	16384		/* Intern; Part of some key */
 #define GROUP_FLAG	32768		/* Intern: Group field */
@@ -136,6 +142,7 @@ enum enum_server_command
 #define CLIENT_MULTI_STATEMENTS  (1UL << 16)
 #define CLIENT_MULTI_RESULTS     (1UL << 17)
 #define CLIENT_PS_MULTI_RESULTS  (1UL << 18)
+#define CLIENT_PLUGIN_AUTH       (1UL << 19)
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_LONG_PASSWORD | \
@@ -158,6 +165,15 @@ enum enum_server_command
                                  CLIENT_MULTI_STATEMENTS |\
                                  CLIENT_MULTI_RESULTS |\
                                  CLIENT_PROGRESS)
+
+#define CLIENT_CAPABILITIES	(CLIENT_LONG_PASSWORD |\
+                                 CLIENT_LONG_FLAG |\
+                                 CLIENT_TRANSACTIONS |\
+                                 CLIENT_SECURE_CONNECTION |\
+                                 CLIENT_MULTI_RESULTS | \
+                                 CLIENT_PS_MULTI_RESULTS |\
+                                 CLIENT_PROTOCOL_41 |\
+                                 CLIENT_PLUGIN_AUTH)
 
 #define CLIENT_DEFAULT_FLAGS ((CLIENT_SUPPORTED_FLAGS & ~CLIENT_COMPRESS)\
                                                       & ~CLIENT_SSL)
@@ -222,6 +238,13 @@ typedef struct st_net {
 
 #define packet_error ((unsigned int) -1)
 
+/* used by mysql_set_server_option */
+enum enum_mysql_set_option
+{
+  MYSQL_OPTION_MULTI_STATEMENTS_ON,
+  MYSQL_OPTION_MULTI_STATEMENTS_OFF
+};
+
 enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
                         MYSQL_TYPE_SHORT,  MYSQL_TYPE_LONG,
                         MYSQL_TYPE_FLOAT,  MYSQL_TYPE_DOUBLE,
@@ -245,6 +268,32 @@ enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
 
 #define FIELD_TYPE_CHAR FIELD_TYPE_TINY		/* For compability */
 #define FIELD_TYPE_INTERVAL FIELD_TYPE_ENUM	/* For compability */
+#define FIELD_TYPE_DECIMAL MYSQL_TYPE_DECIMAL
+#define FIELD_TYPE_NEWDECIMAL MYSQL_TYPE_NEWDECIMAL
+#define FIELD_TYPE_TINY MYSQL_TYPE_TINY
+#define FIELD_TYPE_SHORT MYSQL_TYPE_SHORT
+#define FIELD_TYPE_LONG MYSQL_TYPE_LONG
+#define FIELD_TYPE_FLOAT MYSQL_TYPE_FLOAT
+#define FIELD_TYPE_DOUBLE MYSQL_TYPE_DOUBLE
+#define FIELD_TYPE_NULL MYSQL_TYPE_NULL
+#define FIELD_TYPE_TIMESTAMP MYSQL_TYPE_TIMESTAMP
+#define FIELD_TYPE_LONGLONG MYSQL_TYPE_LONGLONG
+#define FIELD_TYPE_INT24 MYSQL_TYPE_INT24
+#define FIELD_TYPE_DATE MYSQL_TYPE_DATE
+#define FIELD_TYPE_TIME MYSQL_TYPE_TIME
+#define FIELD_TYPE_DATETIME MYSQL_TYPE_DATETIME
+#define FIELD_TYPE_YEAR MYSQL_TYPE_YEAR
+#define FIELD_TYPE_NEWDATE MYSQL_TYPE_NEWDATE
+#define FIELD_TYPE_ENUM MYSQL_TYPE_ENUM
+#define FIELD_TYPE_SET MYSQL_TYPE_SET
+#define FIELD_TYPE_TINY_BLOB MYSQL_TYPE_TINY_BLOB
+#define FIELD_TYPE_MEDIUM_BLOB MYSQL_TYPE_MEDIUM_BLOB
+#define FIELD_TYPE_LONG_BLOB MYSQL_TYPE_LONG_BLOB
+#define FIELD_TYPE_BLOB MYSQL_TYPE_BLOB
+#define FIELD_TYPE_VAR_STRING MYSQL_TYPE_VAR_STRING
+#define FIELD_TYPE_STRING MYSQL_TYPE_STRING
+#define FIELD_TYPE_GEOMETRY MYSQL_TYPE_GEOMETRY
+#define FIELD_TYPE_BIT MYSQL_TYPE_BIT
 
 extern unsigned long max_allowed_packet;
 extern unsigned long net_buffer_length;
@@ -255,11 +304,11 @@ int	my_net_init(NET *net, Vio *vio);
 void	net_end(NET *net);
 void	net_clear(NET *net);
 int	net_flush(NET *net);
-int	my_net_write(NET *net,const char *packet,unsigned long len);
+int	my_net_write(NET *net,const char *packet, size_t len);
 int	net_write_command(NET *net,unsigned char command,const char *packet,
-			  unsigned long len);
+			  size_t len);
 int	net_real_write(NET *net,const char *packet,unsigned long len);
-ulong	my_net_read(NET *net);
+unsigned long	my_net_read(NET *net);
 
 struct rand_struct {
   unsigned long seed1,seed2,max_value;
@@ -295,6 +344,8 @@ typedef struct st_udf_init
 #define COMP_HEADER_SIZE 3		/* compression header extra size */
 
   /* Prototypes to password functions */
+#define native_password_plugin_name "mysql_native_password"
+#define old_password_plugin_name    "mysql_old_password"
 
 #ifdef __cplusplus
 extern "C" {
@@ -306,13 +357,12 @@ double rnd(struct rand_struct *);
 void make_scrambled_password(char *to,const char *password);
 void get_salt_from_password(unsigned long *res,const char *password);
 void make_password_from_salt(char *to, unsigned long *hash_res);
-char *scramble(char *to,const char *message,const char *password,
-	       my_bool old_ver);
+char *scramble_323(char *to,const char *message,const char *password);
 void my_scramble_41(const unsigned char *buffer, const char *scramble, const char *password);
 my_bool check_scramble(const char *, const char *message,
 		       unsigned long *salt,my_bool old_ver);
 char *get_tty_password(char *opt_message);
-void hash_password(unsigned long *result, const char *password);
+void hash_password(unsigned long *result, const char *password, size_t len);
 
 /* Some other useful functions */
 

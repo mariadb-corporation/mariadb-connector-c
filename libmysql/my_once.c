@@ -30,7 +30,7 @@
 
 gptr my_once_alloc(unsigned int Size, myf MyFlags)
 {
-  uint get_size,max_left;
+  size_t get_size,max_left;
   gptr point;
   reg1 USED_MEM *next;
   reg2 USED_MEM **prev;

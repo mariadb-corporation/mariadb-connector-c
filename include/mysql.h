@@ -20,14 +20,6 @@
 #ifndef _mysql_h
 #define _mysql_h
 
-#ifdef __CYGWIN__     /* CYGWIN implements a UNIX API */
-#undef WIN
-#undef _WIN
-#undef _WIN32
-#undef _WIN64
-#undef __WIN__
-#endif
-
 #ifndef MYSQL_SERVER
 #ifdef	__cplusplus
 extern "C" {
@@ -38,25 +30,39 @@ extern "C" {
 #ifndef _global_h				/* If not standard header */
 #include <sys/types.h>
 #ifdef __LCC__
-#include <winsock.h>				/* For windows */
+#include <winsock2.h>				/* For windows */
 #endif
 typedef char my_bool;
-#if (defined(_WIN32) || defined(_WIN64)) && !defined(__WIN__)
-#define __WIN__
-#endif
-#if !defined(__WIN__)
+
+#if !defined(_WIN32)
 #define STDCALL
 #else
+#include <WinSock2.h>
 #define STDCALL __stdcall
 #endif
 typedef char * gptr;
 
+
+
+#ifndef my_socket_defined
+#define my_socket_defined
+#ifdef _WIN32
+#define my_socket SOCKET
+#else
+typedef int my_socket;
+#endif
+#endif
+#endif
+#include "mysql_com.h"
+#include "mysql_version.h"
+#include "my_list.h"
+
 #ifndef ST_USED_MEM_DEFINED
 #define ST_USED_MEM_DEFINED
-typedef struct st_used_mem {			/* struct for once_alloc */
-  struct st_used_mem *next;			/* Next block in use */
-  unsigned int left;				/* memory left in block  */
-  unsigned int size;				/* size of block */
+typedef struct st_used_mem {   /* struct for once_alloc */
+  struct st_used_mem *next;    /* Next block in use */
+  size_t left;                 /* memory left in block  */
+  size_t size;                 /* Size of block */
 } USED_MEM;
 
 typedef struct st_mem_root {
@@ -70,19 +76,6 @@ typedef struct st_mem_root {
   void (*error_handler)(void);
 } MEM_ROOT;
 #endif
-
-#ifndef my_socket_defined
-#ifdef __WIN__
-#define my_socket SOCKET
-#else
-typedef int my_socket;
-#endif
-#endif
-#endif
-#include "mysql_com.h"
-#include "mysql_version.h"
-#include "my_list.h"
-
 
 extern unsigned int mysql_port;
 extern char *mysql_unix_port;
@@ -125,11 +118,12 @@ typedef unsigned int MYSQL_FIELD_OFFSET; /* offset to current field */
 
 #if defined(NO_CLIENT_LONG_LONG)
 typedef unsigned long my_ulonglong;
-#elif defined (__WIN__)
+#elif defined (_WIN32)
 typedef unsigned __int64 my_ulonglong;
 #else
 typedef unsigned long long my_ulonglong;
 #endif
+
 
 #define SET_CLIENT_ERROR(a, b, c, d) \
 { \
@@ -202,12 +196,18 @@ enum mysql_status { MYSQL_STATUS_READY,
                     MYSQL_STATUS_QUIT_SENT, /* object is "destroyed" at this stage */
 };
 
+enum mysql_protocol_type
+{
+  MYSQL_PROTOCOL_DEFAULT, MYSQL_PROTOCOL_TCP, MYSQL_PROTOCOL_SOCKET,
+  MYSQL_PROTOCOL_PIPE, MYSQL_PROTOCOL_MEMORY
+};
+
 struct st_mysql_options {
   unsigned int connect_timeout, read_timeout, write_timeout;
   unsigned int port, protocol;
   unsigned long client_flag;
   char *host,*user,*password,*unix_socket,*db;
-  struct st_dynamic_array *init_commands;
+  char *init_command;
   char *my_cnf_file,*my_cnf_group, *charset_dir, *charset_name;
   char *ssl_key;				/* PEM key file */
   char *ssl_cert;				/* PEM cert file */
@@ -222,14 +222,14 @@ struct st_mysql_options {
   enum mysql_option methods_to_use;
   char *client_ip;
   my_bool secure_auth;
-  
+  my_bool report_data_truncation; 
   /* function pointers for local infile support */
   int (*local_infile_init)(void **, const char *, void *);
   int (*local_infile_read)(void *, char *, unsigned int);
   void (*local_infile_end)(void *);
   int (*local_infile_error)(void *, char *, unsigned int);
   void *local_infile_userdata;
-  struct st_mysql_options_extension *extension;
+  struct st_mysql_options_extention *extension;
 };
 
 typedef struct st_mysql {
@@ -237,9 +237,9 @@ typedef struct st_mysql {
   unsigned char *connector_fd;		/* ConnectorFd for SSL */
   char		*host,*user,*passwd,*unix_socket,*server_version,*host_info;
   char		*info,*db;
-  struct charset_info_st *charset;      /* character set */
-  MYSQL_FIELD	*fields;
-  MEM_ROOT	field_alloc;
+  const struct charset_info_st *charset;      /* character set */
+  MYSQL_FIELD  *fields;
+  MEM_ROOT     field_alloc;
   my_ulonglong affected_rows;
   my_ulonglong insert_id;		/* id if insert on table with NEXTNR */
   my_ulonglong extra_info;		/* Used by mysqlshow */
@@ -268,6 +268,17 @@ typedef struct st_mysql {
   void          *extension;
 } MYSQL;
 
+
+struct st_mysql_options_extention {
+  char *plugin_dir;
+  char *default_auth;
+  void (*report_progress)(const MYSQL *mysql,
+                          unsigned int stage,
+                          unsigned int max_stage,
+                          double progress,
+                          const char *proc_info,
+                          unsigned int proc_info_length);
+};
 
 typedef struct st_mysql_res {
   my_ulonglong  row_count;
@@ -310,7 +321,20 @@ typedef struct character_set
   unsigned int      mbmaxlen;   /* max. length for multibyte strings */
 } MY_CHARSET_INFO;
 
+/* Local infile support functions */
+#define LOCAL_INFILE_ERROR_LEN 512
 
+void STDCALL mysql_set_local_infile_handler(MYSQL *mysql,
+        int (*local_infile_init)(void **, const char *, void *),
+        int (*local_infile_read)(void *, char *, unsigned int),
+        void (*local_infile_end)(void *),
+        int (*local_infile_error)(void *, char*, unsigned int),
+        void *);
+
+void mysql_set_local_infile_default(MYSQL *mysql);
+
+void my_set_error(MYSQL *mysql, unsigned int error_nr, 
+                  const char *sqlstate, const char *format, ...);
 /* Functions to get information from the MYSQL and MYSQL_RES structures */
 /* Should definitely be used if one uses shared libraries */
 
@@ -377,7 +401,6 @@ int		STDCALL mysql_ping(MYSQL *mysql);
 char *		STDCALL mysql_stat(MYSQL *mysql);
 char *		STDCALL mysql_get_server_info(MYSQL *mysql);
 unsigned long   STDCALL mysql_get_server_version(MYSQL *mysql);
-char *		STDCALL mysql_get_client_info(void);
 char *		STDCALL mysql_get_host_info(MYSQL *mysql);
 unsigned int	STDCALL mysql_get_proto_info(MYSQL *mysql);
 MYSQL_RES *	STDCALL mysql_list_dbs(MYSQL *mysql,const char *wild);
@@ -404,28 +427,22 @@ unsigned long STDCALL mysql_real_escape_string(MYSQL *mysql,
 					       char *to,const char *from,
 					       unsigned long length);
 void		STDCALL mysql_debug(const char *debug);
-char *		STDCALL mysql_odbc_escape_string(MYSQL *mysql,
-						 char *to,
-						 unsigned long to_length,
-						 const char *from,
-						 unsigned long from_length,
-						 void *param,
-						 char *
-						 (*extend_buffer)
-						 (void *, char *to,
-						  unsigned long *length));
+#define mysql_debug_init(A) mysql_debug((A));
+void            STDCALL mysql_debug_end();
 void 		STDCALL myodbc_remove_escape(MYSQL *mysql,char *name);
 unsigned int	STDCALL mysql_thread_safe(void);
 unsigned int STDCALL mysql_warning_count(MYSQL *mysql);
 const char * STDCALL mysql_sqlstate(MYSQL *mysql);
-int STDCALL mysql_server_init(int argc __attribute__((unused)),
-			      char **argv __attribute__((unused)),
-			      char **groups __attribute__((unused)));
+int STDCALL mysql_server_init(int argc, char **argv, char **groups);
 void STDCALL mysql_server_end(void);
 void STDCALL mysql_thread_end(void);
 my_bool STDCALL mysql_thread_init(void);
+int STDCALL mysql_set_server_option(MYSQL *mysql, 
+                                    enum enum_mysql_set_option option);
+const char * STDCALL mysql_get_client_info(void);
+unsigned long STDCALL mysql_get_client_version(void);
 
-#include <mysql_stmt.h>
+#include <my_stmt.h>
   
 #define mysql_reload(mysql) mysql_refresh((mysql),REFRESH_GRANT)
 

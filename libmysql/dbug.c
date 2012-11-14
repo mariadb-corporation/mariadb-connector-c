@@ -72,7 +72,7 @@
 #include <my_global.h>
 #include <m_string.h>
 #include <errno.h>
-#if defined(MSDOS) || defined(__WIN__)
+#if defined(MSDOS) || defined(_WIN32)
 #include <process.h>
 #endif
 
@@ -123,7 +123,7 @@
  *	Typedefs to make things more obvious.
  */
 
-#ifndef __WIN__
+#ifndef _WIN32
 typedef int BOOLEAN;
 #else
 #define BOOLEAN BOOL
@@ -275,10 +275,8 @@ static BOOLEAN DoTrace(CODE_STATE *state);
 	/* Test to see if file is writable */
 #if !(!defined(HAVE_ACCESS) || defined(MSDOS))
 static BOOLEAN Writable(char *pathname);
-	/* Change file owner and group */
-static void ChangeOwner(char *pathname);
-	/* Allocate memory for runtime support */
 #endif
+	/* Allocate memory for runtime support */
 static char *DbugMalloc(int size);
 	/* Remove leading pathname components */
 static char *BaseName(const char *pathname);
@@ -317,6 +315,8 @@ static char *static_strtok(char *s1,pchar chr);
 #endif
 #ifndef MSDOS
 #define ChangeOwner(name)
+#else
+static void ChangeOwner(char *pathname);
 #endif
 
 /*
@@ -1923,7 +1923,7 @@ static void dbug_flush(CODE_STATE *state)
   if (stack->flags & FLUSH_ON_WRITE)
 #endif
   {
-#if defined(MSDOS) || defined(__WIN__)
+#if defined(MSDOS) || defined(_WIN32)
     if (_db_fp_ != stdout && _db_fp_ != stderr)
     {
       if (!(freopen(stack->name,"a",_db_fp_)))
@@ -1990,7 +1990,7 @@ static unsigned long Clock ()
     return ((ru.ru_utime.tv_sec * 1000) + (ru.ru_utime.tv_usec / 1000));
 }
 
-#elif defined(MSDOS) || defined(__WIN__) || defined(OS2)
+#elif defined(MSDOS) || defined(_WIN32) || defined(OS2)
 
 static ulong Clock()
 {

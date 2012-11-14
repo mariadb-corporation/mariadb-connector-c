@@ -40,7 +40,7 @@
 # if defined(HAVE_NDIR_H)
 #  include <ndir.h>
 # endif
-# if defined(MSDOS) || defined(__WIN__)
+# if defined(MSDOS) || defined(_WIN32)
 # include <dos.h>
 # ifdef __BORLANDC__
 # include <dir.h>
@@ -88,7 +88,7 @@ static int comp_names(struct fileinfo *a, struct fileinfo *b)
 } /* comp_names */
 
 
-#if !defined(MSDOS) && !defined(__WIN__)
+#if !defined(MSDOS) && !defined(_WIN32)
 
 MY_DIR	*my_dir(const char *path, myf MyFlags)
 {
@@ -336,7 +336,7 @@ my_string directory_file_name (my_string dst, const char *src)
 #endif	/* VMS */
 } /* directory_file_name */
 
-#elif defined(__WIN__)
+#elif defined(_WIN32)
 
 /*
 *****************************************************************************

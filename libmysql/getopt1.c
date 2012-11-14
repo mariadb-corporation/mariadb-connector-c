@@ -47,9 +47,9 @@ Cambridge, MA 02139, USA.  */
 
 #if defined (_LIBC) || !defined (__GNU_LIBRARY__)
 
-#ifndef __WIN__
+#ifndef _WIN32
 #include <stdlib.h>
-#endif	/* __WIN__ */
+#endif	/* _WIN32 */
 
 #ifndef NULL
 #define NULL 0

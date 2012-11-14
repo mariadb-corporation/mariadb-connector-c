@@ -33,7 +33,7 @@
 
 int find_type(my_string x, TYPELIB *typelib, uint full_name)
 {
-  int find,pos,findpos;
+  int find,pos,findpos= 0;
   reg1 my_string i;
   reg2 const char *j;
   DBUG_ENTER("find_type");

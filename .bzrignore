@@ -1,0 +1,13 @@
+CMakeCache.txt
+CMakeFiles/*
+*.cmake
+Makefile
+include/my_config.h
+include/mysql_version.h
+CMakeFiles
+mysql_config/mysql_config.c
+examples/mysql_affected_rows
+examples/mysql_debug
+examples/test_output
+libmysql.so.*
+mysql_config/mysql_config

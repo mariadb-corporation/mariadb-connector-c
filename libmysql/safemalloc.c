@@ -121,7 +121,7 @@ static int _checkchunk(struct remember *pRec, const char *sFile, uint uLine);
  *	Allocate some memory.
  */
 
-gptr _mymalloc (uint uSize, const char *sFile, uint uLine, myf MyFlags)
+gptr _mymalloc (size_t uSize, const char *sFile, uint uLine, myf MyFlags)
 {
     struct remember *pTmp;
     DBUG_ENTER("_mymalloc");
@@ -154,9 +154,9 @@ gptr _mymalloc (uint uSize, const char *sFile, uint uLine, myf MyFlags)
 	my_errno=errno;
 	sprintf(buff,"Out of memory at line %d, '%s'", uLine, sFile);
 	my_message(EE_OUTOFMEMORY,buff,MYF(ME_BELL+ME_WAITTANG));
-	sprintf(buff,"needed %d byte (%ldk), memory in use: %ld bytes (%ldk)",
-		uSize, (uSize + 1023L) / 1024L,
-		lMaxMemory, (lMaxMemory + 1023L) / 1024L);
+	sprintf(buff,"needed %ld byte (%ldk), memory in use: %lu bytes (%ldk)",
+		(long) uSize, (long) ((uSize + 1023L) / 1024L),
+		(long) lMaxMemory, (long) (lMaxMemory + 1023L) / 1024L);
 	my_message(EE_OUTOFMEMORY,buff,MYF(ME_BELL+ME_WAITTANG));
       }
       DBUG_PRINT("error",("Out of memory, in use: %ld at line %d, '%s'",
@@ -211,7 +211,7 @@ gptr _mymalloc (uint uSize, const char *sFile, uint uLine, myf MyFlags)
  *  Free then old memoryblock
  */
 
-gptr _myrealloc (register gptr pPtr, register uint uSize,
+gptr _myrealloc (register gptr pPtr, register size_t uSize,
 		 const char *sFile, uint uLine, myf MyFlags)
 {
   struct remember *pRec;
@@ -242,7 +242,7 @@ gptr _myrealloc (register gptr pPtr, register uint uSize,
 
   if ((ptr=_mymalloc(uSize,sFile,uLine,MyFlags)))	/* Allocate new area */
   {
-    uSize=min(uSize,pRec-> uDataSize);		/* Move as much as possibly */
+    uSize=min(uSize,pRec->uDataSize);		/* Move as much as possibly */
     memcpy((byte*) ptr,pPtr,(size_t) uSize);	/* Copy old data */
     _myfree(pPtr,sFile,uLine,0);		/* Free not needed area */
   }
@@ -393,10 +393,10 @@ void TERMINATE (FILE *file)
   {
     if (file)
     {
-      fprintf(file, "Memory that was not free'ed (%ld bytes):\n",lCurMemory);
+      fprintf(file, "Memory that was not free'ed (%zu bytes):\n",lCurMemory);
       (void) fflush(file);
     }
-    DBUG_PRINT("safe",("Memory that was not free'ed (%ld bytes):",lCurMemory));
+    DBUG_PRINT("safe",("Memory that was not free'ed (%zu bytes):",lCurMemory));
     while (pPtr)
     {
       if (file)
@@ -418,7 +418,7 @@ void TERMINATE (FILE *file)
   /* Report the memory usage statistics */
   if (file)
   {
-    fprintf (file, "Maximum memory usage: %ld bytes (%ldk)\n",
+    fprintf (file, "Maximum memory usage: %zu bytes (%ldk)\n",
 	     lMaxMemory, (lMaxMemory + 1023L) / 1024L);
     (void) fflush(file);
   }
@@ -434,7 +434,7 @@ void TERMINATE (FILE *file)
 static int _checkchunk (register struct remember *pRec, const char *sFile,
 			uint uLine)
 {
-  reg1 uint uSize;
+  reg1 size_t uSize;
   reg2 my_string magicp;
   reg3 int flag=0;
 
@@ -454,7 +454,7 @@ static int _checkchunk (register struct remember *pRec, const char *sFile,
   }
 
   /* Check for a possible overrun */
-  uSize = pRec -> uDataSize;
+  uSize = pRec->uDataSize;
   magicp = &(pRec -> aData[uSize+sf_malloc_prehunc]);
   if (*magicp++ != MAGICEND0 ||
       *magicp++ != MAGICEND1 ||
@@ -502,12 +502,12 @@ int _sanity (const char *sFile, uint uLine)
 
 	/* malloc and copy */
 
-gptr _my_memdup(const byte *from, uint length, const char *sFile, uint uLine,
+gptr _my_memdup(const byte *from, size_t length, const char *sFile, uint uLine,
 		myf MyFlags)
 {
   gptr ptr;
   if ((ptr=_mymalloc(length,sFile,uLine,MyFlags)) != 0)
-    memcpy((byte*) ptr, (byte*) from,(size_t) length);
+    memcpy((byte*) ptr, (byte*) from, length);
   return(ptr);
 } /*_my_memdup */
 
@@ -516,7 +516,7 @@ my_string _my_strdup(const char *from, const char *sFile, uint uLine,
 		     myf MyFlags)
 {
   gptr ptr;
-  uint length=(uint) strlen(from)+1;
+  size_t length= strlen(from)+1;
   if ((ptr=_mymalloc(length,sFile,uLine,MyFlags)) != 0)
     memcpy((byte*) ptr, (byte*) from,(size_t) length);
   return((my_string) ptr);

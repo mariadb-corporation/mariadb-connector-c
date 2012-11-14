@@ -22,7 +22,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#if !defined(MSDOS) && !defined(__WIN__) && !defined(__BEOS__)
+#if !defined(MSDOS) && !defined(_WIN32) && !defined(__BEOS__)
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
@@ -32,7 +32,7 @@ extern "C" {
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-#endif /* !defined(MSDOS) && !defined(__WIN__) */
+#endif /* !defined(MSDOS) && !defined(_WIN32) */
 
 void my_inet_ntoa(struct in_addr in, char *buf);
 

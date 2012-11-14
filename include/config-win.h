@@ -17,19 +17,21 @@
 
 /* Defines for Win32 to make it compatible for MySQL */
 
+#ifndef _config_win_h_
+#define _config_win_h_
+
 #include <sys/locking.h>
-#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <math.h>			/* Because of rint() */
 #include <fcntl.h>
 #include <io.h>
 #include <malloc.h>
+#include <sys/stat.h>
+#include <process.h>
 
-#if defined(__NT__)
-#define	SYSTEM_TYPE	"NT"
-#elif defined(__WIN2000__)
-#define	SYSTEM_TYPE	"WIN2000"
-#else
-#define	SYSTEM_TYPE	"Win95/Win98"
+#ifndef THREAD
+  #define THREAD
 #endif
 
 #ifdef _WIN64
@@ -37,9 +39,6 @@
 #else
 #define MACHINE_TYPE	"i32"		/* Define to machine type name */
 #endif /* _WIN64 */
-#ifndef __WIN__
-#define __WIN__                       /* To make it easier in VC++ */
-#endif
 
 /* File and lock constants */
 #define O_SHARE         0x1000 		/* Open file in sharing mode */
@@ -97,7 +96,6 @@ typedef __int64 os_off_t;
 #ifdef _WIN64
 typedef UINT_PTR rf_SetTimer;
 #else
-typedef unsigned int size_t;
 typedef uint rf_SetTimer;
 #endif
 
@@ -115,9 +113,6 @@ typedef uint rf_SetTimer;
 #define HUGE_PTR
 #define STDCALL __stdcall           /* Used by libmysql.dll */
 
-#ifndef UNDEF_THREAD_HACK
-#define THREAD
-#endif
 #define VOID_SIGHANDLER
 #define SIZEOF_CHAR		1
 #define SIZEOF_LONG		4
@@ -170,6 +165,8 @@ inline double ulonglong2double(ulonglong value)
 #define inline __inline
 #endif /* __cplusplus */
 
+#define __attribute(A)
+
 #if SIZEOF_OFF_T > 4
 #define lseek(A,B,C) _lseeki64((A),(longlong) (B),(C))
 #define tell(A) _telli64(A)
@@ -177,49 +174,17 @@ inline double ulonglong2double(ulonglong value)
 
 #define STACK_DIRECTION -1
 
-/* Optimized store functions for Intel x86 */
-
-#define sint2korr(A)	(*((int16 *) (A)))
-#define sint3korr(A)	((int32) ((((uchar) (A)[2]) & 128) ? \
-				  (((uint32) 255L << 24) | \
-				   (((uint32) (uchar) (A)[2]) << 16) |\
-				   (((uint32) (uchar) (A)[1]) << 8) | \
-				   ((uint32) (uchar) (A)[0])) : \
-				  (((uint32) (uchar) (A)[2]) << 16) |\
-				  (((uint32) (uchar) (A)[1]) << 8) | \
-				  ((uint32) (uchar) (A)[0])))
-#define sint4korr(A)	(*((long *) (A)))
-#define uint2korr(A)	(*((uint16 *) (A)))
-#define uint3korr(A)	(long) (*((unsigned long *) (A)) & 0xFFFFFF)
-#define uint4korr(A)	(*((unsigned long *) (A)))
-#define uint5korr(A)	((ulonglong)(((uint32) ((uchar) (A)[0])) +\
-				    (((uint32) ((uchar) (A)[1])) << 8) +\
-				    (((uint32) ((uchar) (A)[2])) << 16) +\
-				    (((uint32) ((uchar) (A)[3])) << 24)) +\
-			 	    (((ulonglong) ((uchar) (A)[4])) << 32))
-#define uint8korr(A)	(*((ulonglong *) (A)))
-#define sint8korr(A)	(*((longlong *) (A)))
-#define int2store(T,A)	*((uint16*) (T))= (uint16) (A)
-#define int3store(T,A)		{ *(T)=  (uchar) ((A));\
-				  *(T+1)=(uchar) (((uint) (A) >> 8));\
-				  *(T+2)=(uchar) (((A) >> 16)); }
-#define int4store(T,A)	*((long *) (T))= (long) (A)
-#define int5store(T,A)	{ *(T)= (uchar)((A));\
-			  *((T)+1)=(uchar) (((A) >> 8));\
-			  *((T)+2)=(uchar) (((A) >> 16));\
-			  *((T)+3)=(uchar) (((A) >> 24)); \
-			  *((T)+4)=(uchar) (((A) >> 32)); }
-#define int8store(T,A)	*((ulonglong *) (T))= (ulonglong) (A)
-
-#define doubleget(V,M)	{ *((long *) &V) = *((long*) M); \
-			  *(((long *) &V)+1) = *(((long*) M)+1); }
-#define doublestore(T,V) { *((long *) T) = *((long*) &V); \
-			   *(((long *) T)+1) = *(((long*) &V)+1); }
-#define float4get(V,M) { *((long *) &(V)) = *((long*) (M)); }
-#define float8get(V,M) doubleget((V),(M))
-#define float4store(V,M) memcpy((byte*) V,(byte*) (&M),sizeof(float))
-#define float8store(V,M) doublestore((V),(M))
-
+/* redefine deprecated functions 
+#define sprintf sprintf_s
+#define strcpy strcpy_s
+#define strcat strcat_s
+#define fopen fopen_r
+#define freopen freopen_r
+#define getenv _dupenv_s
+*/
+#ifdef _WIN32
+#include <stdio.h>
+#endif
 
 #define HAVE_PERROR
 #define HAVE_VFPRINT
@@ -247,7 +212,6 @@ inline double ulonglong2double(ulonglong value)
 #define HAVE_ALLOCA
 #define HAVE_STRPBRK
 #define HAVE_STRSTR
-#define HAVE_COMPRESS
 
 #ifdef NOT_USED
 #define HAVE_SNPRINTF		/* Gave link error */
@@ -298,3 +262,6 @@ inline double ulonglong2double(ulonglong value)
 #define statistic_add(V,C,L)     (V)+=(C)
 #endif
 #define statistic_increment(V,L) thread_safe_increment((V),(L))
+#define strcasecmp(A,B) _stricmp((A),(B))
+
+#endif

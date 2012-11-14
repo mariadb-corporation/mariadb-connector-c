@@ -82,7 +82,7 @@
 # define bmove_allign(A,B,C)    memcpy((A),(B),(C))
 #endif
 
-#if defined(__cplusplus) && !defined(OS2)
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -108,14 +108,6 @@ extern char NEAR _dig_vec[];		/* Declared in int2str() */
 #define memcpy_fixed(A,B,C) memcpy((A),(B),(C))
 #endif
 
-#ifdef MSDOS
-#undef bmove_allign
-#define bmove512(A,B,C) bmove_allign(A,B,C)
-#define my_itoa(A,B,C) itoa(A,B,C)
-#define my_ltoa(A,B,C) ltoa(A,B,C)
-extern	void bmove_allign(gptr dst,const gptr src,uint len);
-#endif
-
 #if (!defined(USE_BMOVE512) || defined(HAVE_purify)) && !defined(bmove512)
 #define bmove512(A,B,C) memcpy(A,B,C)
 #endif
@@ -123,44 +115,44 @@ extern	void bmove_allign(gptr dst,const gptr src,uint len);
 	/* Prototypes for string functions */
 
 #if !defined(bfill) && !defined(HAVE_BFILL)
-extern	void bfill(gptr dst,uint len,pchar fill);
+extern	void bfill(gptr dst, size_t len, pchar fill);
 #endif
 
 #if !defined(bzero) && !defined(HAVE_BZERO)
-extern	void bzero(gptr dst,uint len);
+extern	void bzero(gptr dst, size_t len);
 #endif
 
 #if !defined(bcmp) && !defined(HAVE_BCMP)
-extern	int bcmp(const char *s1,const char *s2,uint len);
+extern	int bcmp(const char *s1,const char *s2, size_t len);
 #ifdef HAVE_purify
-extern	int my_bcmp(const char *s1,const char *s2,uint len);
+extern	int my_bcmp(const char *s1,const char *s2, size_t len);
 #define bcmp(A,B,C) my_bcmp((A),(B),(C))
 #endif
 #endif
 
 #ifndef bmove512
-extern	void bmove512(gptr dst,const gptr src,uint len);
+extern	void bmove512(gptr dst,const gptr src, size_t len);
 #endif
 
 #if !defined(HAVE_BMOVE) && !defined(bmove)
-extern	void bmove(char *dst, const char *src,uint len);
+extern	void bmove(char *dst, const char *src, size_t len);
 #endif
 
-extern	void bmove_upp(char *dst,const char *src,uint len);
-extern	void bchange(char *dst,uint old_len,const char *src,
-		     uint new_len,uint tot_len);
-extern	void strappend(char *s,uint len,pchar fill);
+extern	void bmove_upp(char *dst,const char *src, size_t len);
+extern	void bchange(char *dst, size_t old_len, const char *src,
+		     size_t new_len, size_t tot_len);
+extern	void strappend(char *s,size_t len,pchar fill);
 extern	char *strend(const char *s);
-extern  char *strcend(const char *, pchar);
+extern  char *strcend(const char *, char);
 extern	char *strfield(char *src,int fields,int chars,int blanks,
 			   int tabch);
-extern	char *strfill(my_string s,uint len,pchar fill);
+extern	char *strfill(my_string s, size_t len, pchar fill);
 extern	uint strinstr(const char *str,const char *search);
 extern  uint r_strinstr(reg1 my_string str,int from, reg4 my_string search);
 extern	char *strkey(char *dst,char *head,char *tail,char *flags);
-extern	char *strmake(char *dst,const char *src,uint length);
+extern	char *strmake(char *dst,const char *src, size_t length);
 #ifndef strmake_overlapp
-extern	char *strmake_overlapp(char *dst,const char *src, uint length);
+extern	char *strmake_overlapp(char *dst,const char *src, size_t length);
 #endif
 
 #ifndef strmov
@@ -172,9 +164,9 @@ extern	char *strcont(const char *src,const char *set);
 extern	char *strxcat _VARARGS((char *dst,const char *src, ...));
 extern	char *strxmov _VARARGS((char *dst,const char *src, ...));
 extern	char *strxcpy _VARARGS((char *dst,const char *src, ...));
-extern	char *strxncat _VARARGS((char *dst,uint len, const char *src, ...));
-extern	char *strxnmov _VARARGS((char *dst,uint len, const char *src, ...));
-extern	char *strxncpy _VARARGS((char *dst,uint len, const char *src, ...));
+extern	char *strxncat _VARARGS((char *dst, size_t len, const char *src, ...));
+extern	char *strxnmov _VARARGS((char *dst, size_t len, const char *src, ...));
+extern	char *strxncpy _VARARGS((char *dst, size_t len, const char *src, ...));
 
 /* Prototypes of normal stringfunctions (with may ours) */
 
@@ -187,9 +179,6 @@ extern int strcmp(const char *, const char *);
 #ifndef __GNUC__
 extern size_t strlen(const char *);
 #endif
-#endif
-#ifndef HAVE_STRNLEN 
-extern uint strnlen(const char *s, uint n);
 #endif
 
 #if !defined(__cplusplus)
@@ -238,7 +227,7 @@ extern ulonglong strtoull(const char *str, char **ptr, int base);
 #endif
 #endif
 
-#if defined(__cplusplus) && !defined(OS2)
+#if defined(__cplusplus)
 }
 #endif
 #endif

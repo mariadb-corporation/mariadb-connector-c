@@ -21,30 +21,9 @@
 #ifndef _global_h
 #define _global_h
 
-#if defined( __EMX__) && !defined( MYSQL_SERVER)
-/* moved here to use below VOID macro redefinition */
-#define INCL_BASE
-#define INCL_NOPMAPI
-#include <os2.h>
-#endif /* __EMX__ */
 
-#ifdef __CYGWIN__
-/* We use a Unix API, so pretend it's not Windows */
-#undef WIN
-#undef WIN32
-#undef _WIN
-#undef _WIN32
-#undef _WIN64
-#undef __WIN__
-#undef __WIN32__
-#define HAVE_ERRNO_AS_DEFINE
-#endif /* __CYGWIN__ */
-
-
-#ifdef __WIN__
+#ifdef _WIN32
 #include <config-win.h>
-#elif defined(OS2)
-#include <config-os2.h>
 #else
 #include <my_config.h>
 #if defined(__cplusplus) && defined(inline)
@@ -76,7 +55,7 @@
 #define __STDC_EXT__ 1          /* To get large file support on hpux */
 #endif
 
-#if defined(THREAD) && !defined(__WIN__) && !defined(OS2)
+#if defined(THREAD) && !defined(_WIN32)
 #ifndef _POSIX_PTHREAD_SEMANTICS
 #define _POSIX_PTHREAD_SEMANTICS /* We want posix threads */
 #endif
@@ -224,6 +203,7 @@ double my_ulonglong2double(unsigned long long A);
 #include <asm/atomic.h>
 #endif
 #include <errno.h>				/* Recommended by debian */
+#include <assert.h>
 
 /* Go around some bugs in different OS and compilers */
 #if defined(_HPUX_SOURCE) && defined(HAVE_SYS_STREAM_H)
@@ -247,9 +227,7 @@ double my_ulonglong2double(unsigned long long A);
 #define POSIX_MISTAKE 1		/* regexp: Fix stupid spec error */
 #define USE_REGEX 1		/* We want the use the regex library */
 /* Do not define for ultra sparcs */
-#ifndef OS2
 #define USE_BMOVE512 1		/* Use this unless the system bmove is faster */
-#endif
 
 /* Paranoid settings. Define I_AM_PARANOID if you are paranoid */
 #ifdef I_AM_PARANOID
@@ -279,8 +257,10 @@ int	__void__;
 
 #if defined(_lint) || defined(FORCE_INIT_OF_VARS)
 #define LINT_INIT(var)	var=0			/* No uninitialize-warning */
+#define LINT_INIT_STRUCT(var) bzero(&var, sizeof(var)) /* No uninitialize-warning */
 #else
 #define LINT_INIT(var)
+#define LINT_INIT_STRUCT(var)
 #endif
 
 /* Define some useful general macros */
@@ -360,8 +340,9 @@ typedef unsigned short ushort;
 /* Some types that is different between systems */
 
 typedef int	File;		/* File descriptor */
-#ifndef Socket_defined
+#ifndef my_socket_defined
 typedef int	my_socket;	/* File descriptor for sockets */
+#define my_socket_defined
 #define INVALID_SOCKET -1
 #endif
 /* Type for fuctions that handles signals */
@@ -394,7 +375,7 @@ typedef int	(*qsort_cmp)(const void *,const void *);
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
-/* typedef SOCKET_SIZE_TYPE size_socket; */
+
 #endif
 
 #ifndef SOCKOPT_OPTLEN_TYPE
@@ -483,7 +464,7 @@ typedef int	(*qsort_cmp)(const void *,const void *);
 #define NO_PISAM		/* Not needed anymore */
 #define NO_MISAM		/* Not needed anymore */
 #define NO_HASH			/* Not needed anymore */
-#ifdef __WIN__
+#ifdef _WIN32
 #define NO_DIR_LIBRARY		/* Not standar dir-library */
 #define USE_MY_STAT_STRUCT	/* For my_lib */
 #endif
@@ -505,17 +486,14 @@ extern void		init_my_atof(void);
 extern double		my_atof(const char*);
 #endif
 #undef remove		/* Crashes MySQL on SCO 5.0.0 */
-#ifndef __WIN__
-#ifdef OS2
-#define closesocket(A)	soclose(A)
-#else
+#ifndef _WIN32
 #define closesocket(A)	close(A)
 #endif
 #ifndef ulonglong2double
 #define ulonglong2double(A) ((double) (A))
 #define my_off_t2double(A)  ((double) (A))
 #endif
-#endif
+
 
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
@@ -684,24 +662,17 @@ typedef ulonglong my_off_t;
 typedef unsigned long my_off_t;
 #endif
 #define MY_FILEPOS_ERROR	(~(my_off_t) 0)
-#if !defined(__WIN__) && !defined(OS2)
+#ifndef _WIN32
 typedef off_t os_off_t;
 #endif
 
-#if defined(__WIN__)
+#if defined(_WIN32)
 #define socket_errno	WSAGetLastError()
 #define SOCKET_EINTR	WSAEINTR 
 #define SOCKET_EAGAIN	WSAEINPROGRESS
 #define SOCKET_ENFILE	ENFILE
 #define SOCKET_EMFILE	EMFILE
-#elif defined(OS2)
-#define socket_errno	sock_errno()
-#define SOCKET_EINTR	SOCEINTR 
-#define SOCKET_EAGAIN	SOCEINPROGRESS
-#define SOCKET_EWOULDBLOCK SOCEWOULDBLOCK
-#define SOCKET_ENFILE	SOCENFILE
-#define SOCKET_EMFILE	SOCEMFILE
-#define closesocket(A)	soclose(A)
+#define SOCKET_EWOULDBLOCK WSAEWOULDBLOCK
 #else /* Unix */
 #define socket_errno	errno
 #define closesocket(A)	close(A)
@@ -761,7 +732,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 
 #define NOT_FIXED_DEC 31
 
-#ifdef __WIN__
+#ifdef _WIN32
 #define MYSQLND_LLU_SPEC "%I64u"
 #define MYSQLND_LL_SPEC "%I64d"
 #ifndef L64
@@ -773,7 +744,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 #ifndef L64
 #define L64(x) x##LL
 #endif /* L64 */
-#endif /* __WIN__ */
+#endif /* _WIN32 */
 /*
 ** Define-funktions for reading and storing in machine independent format
 **  (low byte first)
@@ -782,7 +753,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 /* Optimized store functions for Intel x86 */
 #define int1store(T,A) *((int8*) (T)) = (A)
 #define uint1korr(A)   (*(((uint8*)(A))))
-#if defined(__i386__) || defined(__WIN__)
+#if defined(__i386__) || defined(_WIN32)
 #define sint2korr(A)	(*((int16 *) (A)))
 #define sint3korr(A)	((int32) ((((uchar) (A)[2]) & 128) ? \
 				  (((uint32) 255L << 24) | \
@@ -794,7 +765,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 				  ((uint32) (uchar) (A)[0])))
 #define sint4korr(A)	(*((long *) (A)))
 #define uint2korr(A)	(*((uint16 *) (A)))
-#if defined(HAVE_purify) && !defined(__WIN__)
+#if defined(HAVE_purify) && !defined(_WIN32)
 #define uint3korr(A)	(uint32) (((uint32) ((uchar) (A)[0])) +\
 				  (((uint32) ((uchar) (A)[1])) << 8) +\
 				  (((uint32) ((uchar) (A)[2])) << 16))
@@ -1073,6 +1044,31 @@ do { doubleget_union _tmp; \
 #define thread_safe_sub(V,C,L)     (V)-=(C)
 #define statistic_increment(V,L)   (V)++
 #define statistic_add(V,C,L)       (V)+=(C)
+#endif
+
+#ifdef _WIN32
+#define SO_EXT ".dll"
+#elif defined(__APPLE__)
+#define SO_EXT ".dylib"
+#else
+#define SO_EXT ".so"
+#endif
+
+#ifdef HAVE_DLOPEN
+#ifdef _WIN32
+#define dlsym(lib, name) GetProcAddress((HMODULE)lib, name)
+#define dlopen(libname, unused) LoadLibraryEx(libname, NULL, 0)
+#define dlclose(lib) FreeLibrary((HMODULE)lib)
+#elif defined(HAVE_DLFCN_H)
+#include <dlfcn.h>
+#endif
+#if HAVE_DLERROR
+#define dlerror() ""
+#endif
+#endif
+
+#ifndef RTLD_NOW
+#define RTLD_NOW 1
 #endif
 
 #endif /* _global_h */

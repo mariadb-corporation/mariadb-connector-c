@@ -68,11 +68,12 @@ double rnd(struct rand_struct *rand_st)
   return (((double) rand_st->seed1)/rand_st->max_value_dbl);
 }
 
-void hash_password(ulong *result, const char *password)
+void hash_password(ulong *result, const char *password, size_t len)
 {
   register ulong nr=1345345333L, add=7, nr2=0x12345671L;
   ulong tmp;
-  for (; *password ; password++)
+  const char *password_end= password + len;
+  for (; password < password_end; password++)
   {
     if (*password == ' ' || *password == '\t')
       continue;			/* skipp space in password */
@@ -86,13 +87,6 @@ void hash_password(ulong *result, const char *password)
   return;
 }
 
-void make_scrambled_password(char *to,const char *password)
-{
-  ulong hash_res[2];
-  hash_password(hash_res,password);
-  sprintf(to,"%08lx%08lx",hash_res[0],hash_res[1]);
-}
-
 static inline unsigned int char_val(char X)
 {
   return (uint) (X >= '0' && X <= '9' ? X-'0' :
@@ -101,65 +95,9 @@ static inline unsigned int char_val(char X)
 }
 
 /*
-** This code assumes that len(password) is divideable with 8 and that
-** res is big enough (2 in mysql)
-*/
-
-void get_salt_from_password(ulong *res,const char *password)
-{
-  res[0]=res[1]=0;
-  if (password)
-  {
-    while (*password)
-    {
-      ulong val=0;
-      uint i;
-      for (i=0 ; i < 8 ; i++)
-	val=(val << 4)+char_val(*password++);
-      *res++=val;
-    }
-  }
-  return;
-}
-
-void make_password_from_salt(char *to, ulong *hash_res)
-{
-  sprintf(to,"%08lx%08lx",hash_res[0],hash_res[1]);
-}
-
-
-/*
  * Genererate a new message based on message and password
  * The same thing is done in client and server and the results are checked.
  */
-
-char *scramble(char *to,const char *message,const char *password,
-	       my_bool old_ver)
-{
-  struct rand_struct rand_st;
-  ulong hash_pass[2],hash_message[2];
-  if (password && password[0])
-  {
-    char *to_start=to;
-    hash_password(hash_pass,password);
-    hash_password(hash_message,message);
-    if (old_ver)
-      old_randominit(&rand_st,hash_pass[0] ^ hash_message[0]);
-    else
-      randominit(&rand_st,hash_pass[0] ^ hash_message[0],
-		 hash_pass[1] ^ hash_message[1]);
-    while (*message++)
-      *to++= (char) (floor(rnd(&rand_st)*31)+64);
-    if (!old_ver)
-    {						/* Make it harder to break */
-      char extra=(char) (floor(rnd(&rand_st)*31));
-      while (to_start != to)
-	*(to_start++)^=extra;
-    }
-  }
-  *to=0;
-  return to;
-}
 
 /* scramble for 4.1 servers
  * Code based on php_nysqlnd_scramble function from PHP's mysqlnd extension,
@@ -202,6 +140,68 @@ void my_scramble_41(const unsigned char *buffer, const char *scramble, const cha
 }
 /* }}} */
 
+void make_scrambled_password(char *to,const char *password)
+{
+  ulong hash_res[2];
+  hash_password(hash_res,password, strlen(password));
+  sprintf(to,"%08lx%08lx",hash_res[0],hash_res[1]);
+}
+
+/*
+** This code assumes that len(password) is divideable with 8 and that
+** res is big enough (2 in mysql)
+*/
+
+void get_salt_from_password(ulong *res,const char *password)
+{
+  res[0]=res[1]=0;
+  if (password)
+  {
+    while (*password)
+    {
+      ulong val=0;
+      uint i;
+      for (i=0 ; i < 8 ; i++)
+	val=(val << 4)+char_val(*password++);
+      *res++=val;
+    }
+  }
+  return;
+}
+
+void make_password_from_salt(char *to, ulong *hash_res)
+{
+  sprintf(to,"%08lx%08lx",hash_res[0],hash_res[1]);
+}
+
+
+/*
+ * Genererate a new message based on message and password
+ * The same thing is done in client and server and the results are checked.
+ */
+
+char *scramble_323(char *to,const char *message,const char *password)
+{
+  struct rand_struct rand_st;
+  ulong hash_pass[2],hash_message[2];
+  if (password && password[0])
+  {
+    char *to_start=to;
+    hash_password(hash_pass, password, strlen(password));
+    hash_password(hash_message, message, strlen(message));
+    randominit(&rand_st,hash_pass[0] ^ hash_message[0],
+	 hash_pass[1] ^ hash_message[1]);
+    while (*message++)
+      *to++= (char) (floor(rnd(&rand_st)*31)+64);
+    {						/* Make it harder to break */
+      char extra=(char) (floor(rnd(&rand_st)*31));
+      while (to_start != to)
+	*(to_start++)^=extra;
+    }
+  }
+  *to=0;
+  return to;
+}
 
 
 my_bool check_scramble(const char *scrambled, const char *message,
@@ -212,7 +212,7 @@ my_bool check_scramble(const char *scrambled, const char *message,
   char buff[16],*to,extra;			/* Big enough for check */
   const char *pos;
 
-  hash_password(hash_message,message);
+  hash_password(hash_message,message, strlen(message));
   if (old_ver)
     old_randominit(&rand_st,hash_pass[0] ^ hash_message[0]);
   else

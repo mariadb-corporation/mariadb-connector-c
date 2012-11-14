@@ -21,6 +21,7 @@
 #include <my_global.h>
 #include <my_sys.h>
 #include "errmsg.h"
+#include <stdarg.h>
 
 #ifdef GERMAN
 const char *client_errors[]=
@@ -39,7 +40,7 @@ const char *client_errors[]=
   "%-.64s via TCP/IP",
   "Error in server handshake",
   "Lost connection to MySQL server during query",
-  "Commands out of sync; You can't run this command now",
+  "Commands out of sync; you can't run this command now",
   "Verbindung ueber Named Pipe; Host: %-.64s",
   "Kann nicht auf Named Pipe warten. Host: %-.64s  pipe: %-.32s (%lu)",
   "Kann Named Pipe nicht oeffnen. Host: %-.64s  pipe: %-.32s (%lu)",
@@ -93,7 +94,7 @@ const char *client_errors[]=
 /* 2011 */  "%-.64s via TCP/IP",
 /* 2012 */  "Error in server handshake",
 /* 2013 */  "Lost connection to MySQL server during query",
-/* 2014 */  "Commands out of sync;  You can't run this command now",
+/* 2014 */  "Commands out of sync; you can't run this command now",
 /* 2015 */  "%-.64s via named pipe",
 /* 2016 */  "Can't wait for named pipe to host: %-.64s  pipe: %-.32s (%lu)",
 /* 2017 */  "Can't open named pipe to host: %-.64s  pipe: %-.32s (%lu)",
@@ -106,7 +107,7 @@ const char *client_errors[]=
 /* 2024 */  "",
 /* 2025 */  "",
 /* 2026 */  "",
-/* 2027 */  "",
+/* 2027 */  "received malformed packet",
 /* 2028 */  "",
 /* 2029 */  "",
 /* 2030 */  "",
@@ -137,7 +138,9 @@ const char *client_errors[]=
 /* 2055 */  "",
 /* 2056 */  "",
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
-/* 2058 */  "Can't connect twice. Already connected"
+/* 2058 */  "Can't connect twice. Already connected",
+/* 2059 */  "Plugin %s could not be loaded: %s",
+            ""
 };
 #endif
 

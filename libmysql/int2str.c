@@ -104,25 +104,23 @@ char *int2str(register long int val, register char *dst, register int radix)
    radix 10 / -10
 */
 
-char *int10_to_str(long int val,char *dst,int radix)
+char *int10_to_str(long int val, char *dst, int radix)
 {
   char buffer[65];
   register char *p;
   long int new_val;
+  unsigned long int uval= (unsigned long int)val;
 
-  if (radix < 0)				/* -10 */
+  if (radix < 0 && val < 0)				/* -10 */
   {
-    if (val < 0)
-    {
-      *dst++ = '-';
-      val = -val;
-    }
+    *dst++ = '-';
+    uval = (unsigned long int)0-uval;
   }
 
   p = &buffer[sizeof(buffer)-1];
   *p = '\0';
-  new_val= (long) ((unsigned long int) val / 10);
-  *--p = '0'+ (char) ((unsigned long int) val - (unsigned long) new_val * 10);
+  new_val= (long)(uval / 10);
+  *--p = '0'+ (char)(uval - (unsigned long)new_val * 10);
   val = new_val;
 
   while (val != 0)

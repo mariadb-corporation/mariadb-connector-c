@@ -135,11 +135,11 @@ extern ulonglong safemalloc_mem_limit;
 #define TERMINATE(A) {}
 #define QUICK_SAFEMALLOC
 #define NORMAL_SAFEMALLOC
-extern gptr my_malloc(uint Size,myf MyFlags);
+extern gptr my_malloc(size_t Size,myf MyFlags);
 #define my_malloc_ci(SZ,FLAG) my_malloc( SZ, FLAG )
-extern gptr my_realloc(gptr oldpoint,uint Size,myf MyFlags);
+extern gptr my_realloc(gptr oldpoint, size_t Size,myf MyFlags);
 extern void my_no_flags_free(gptr ptr);
-extern gptr my_memdup(const byte *from,uint length,myf MyFlags);
+extern gptr my_memdup(const byte *from, size_t length,myf MyFlags);
 extern my_string my_strdup(const char *from,myf MyFlags);
 extern my_string my_strndup(const char *from, size_t length, myf MyFlags);
 #define my_free(PTR,FG) my_no_flags_free(PTR)
@@ -197,7 +197,8 @@ extern uint get_charset_number(const char *cs_name);
 extern const char *get_charset_name(uint cs_number);
 extern CHARSET_INFO *get_charset(uint cs_number, myf flags);
 extern my_bool set_default_charset(uint cs, myf flags);
-extern CHARSET_INFO *get_charset_by_name(const char *cs_name, myf flags);
+extern CHARSET_INFO *get_charset_by_name(const char *cs_name);
+extern CHARSET_INFO *get_charset_by_nr(uint cs_number);
 extern my_bool set_default_charset_by_name(const char *cs_name, myf flags);
 extern void free_charsets(void);
 extern char *list_charsets(myf want_flags); /* my_free() this string... */
@@ -223,7 +224,7 @@ extern int NEAR my_umask,		/* Default creation mask  */
 	   NEAR my_safe_to_handle_signal, /* Set when allowed to SIGTSTP */
 	   NEAR my_dont_interrupt;	/* call remember_intr when set */
 extern my_bool NEAR mysys_uses_curses, my_use_symdir;
-extern long lCurMemory,lMaxMemory;	/* from safemalloc */
+extern size_t lCurMemory,lMaxMemory;	/* from safemalloc */
 
 extern ulong	my_default_record_cache_size;
 extern my_bool NEAR my_disable_locking,NEAR my_disable_async_io,
@@ -238,6 +239,11 @@ typedef struct wild_file_pack	/* Struct to hold info when selecting files */
   uint		not_pos;	/* Start of not-theese-files */
   my_string	*wild;		/* Pointer to wildcards */
 } WF_PACK;
+
+struct my_rnd_struct {
+  unsigned long seed1,seed2,max_value;
+  double max_value_dbl;
+};
 
 typedef struct st_typelib {	/* Different types saved here */
   uint count;			/* How many types */
@@ -285,7 +291,7 @@ typedef struct st_dynamic_array {
 
 typedef struct st_dynamic_string {
   char *str;
-  uint length,max_length,alloc_increment;
+  size_t length,max_length,alloc_increment;
 } DYNAMIC_STRING;
 
 
@@ -363,10 +369,10 @@ typedef struct st_changeable_var {
 
 #ifndef ST_USED_MEM_DEFINED
 #define ST_USED_MEM_DEFINED
-typedef struct st_used_mem {			/* struct for once_alloc */
-  struct st_used_mem *next;			/* Next block in use */
-  unsigned int left;				/* memory left in block  */
-  unsigned int size;				/* Size of block */
+typedef struct st_used_mem {   /* struct for once_alloc */
+  struct st_used_mem *next;    /* Next block in use */
+  size_t left;                 /* memory left in block  */
+  size_t size;                 /* Size of block */
 } USED_MEM;
 
 typedef struct st_mem_root {
@@ -423,14 +429,14 @@ extern uint my_fwrite(FILE *stream,const byte *Buffer,uint Count,
 		      myf MyFlags);
 extern my_off_t my_fseek(FILE *stream,my_off_t pos,int whence,myf MyFlags);
 extern my_off_t my_ftell(FILE *stream,myf MyFlags);
-extern gptr _mymalloc(uint uSize,const char *sFile,
+extern gptr _mymalloc(size_t uSize,const char *sFile,
 		      uint uLine, myf MyFlag);
-extern gptr _myrealloc(gptr pPtr,uint uSize,const char *sFile,
+extern gptr _myrealloc(gptr pPtr,size_t uSize,const char *sFile,
 		       uint uLine, myf MyFlag);
 extern gptr my_multi_malloc _VARARGS((myf MyFlags, ...));
 extern void _myfree(gptr pPtr,const char *sFile,uint uLine, myf MyFlag);
 extern int _sanity(const char *sFile,unsigned int uLine);
-extern gptr _my_memdup(const byte *from,uint length,
+extern gptr _my_memdup(const byte *from, size_t length,
 		       const char *sFile, uint uLine,myf MyFlag);
 extern my_string _my_strdup(const char *from, const char *sFile, uint uLine,
 			    myf MyFlag);
@@ -580,10 +586,10 @@ extern int find_type(my_string x,TYPELIB *typelib,uint full_name);
 extern void make_type(my_string to,uint nr,TYPELIB *typelib);
 extern const char *get_type(TYPELIB *typelib,uint nr);
 extern my_bool init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
-				   uint init_alloc,uint alloc_increment);
+				   size_t init_alloc, size_t alloc_increment);
 extern my_bool dynstr_append(DYNAMIC_STRING *str, const char *append);
 my_bool dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
-			  uint length);
+			  size_t length);
 extern my_bool dynstr_set(DYNAMIC_STRING *str, const char *init_str);
 extern my_bool dynstr_realloc(DYNAMIC_STRING *str, ulong additional_size);
 extern void dynstr_free(DYNAMIC_STRING *str);
@@ -592,18 +598,18 @@ my_bool set_changeable_var(my_string str,CHANGEABLE_VAR *vars);
 my_bool set_changeable_varval(const char *var, ulong val,
 			      CHANGEABLE_VAR *vars);
 #ifdef HAVE_MLOCK
-extern byte *my_malloc_lock(uint length,myf flags);
+extern byte *my_malloc_lock(size_t length,myf flags);
 extern void my_free_lock(byte *ptr,myf flags);
 #else
 #define my_malloc_lock(A,B) my_malloc((A),(B))
 #define my_free_lock(A,B) my_free((A),(B))
 #endif
 #define alloc_root_inited(A) ((A)->min_malloc != 0)
-void init_alloc_root(MEM_ROOT *mem_root, uint block_size, uint pre_alloc_size);
-gptr alloc_root(MEM_ROOT *mem_root,unsigned int Size);
+void init_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size);
+gptr alloc_root(MEM_ROOT *mem_root, size_t Size);
 void free_root(MEM_ROOT *root, myf MyFLAGS);
 char *strdup_root(MEM_ROOT *root,const char *str);
-char *memdup_root(MEM_ROOT *root,const char *str,uint len);
+char *memdup_root(MEM_ROOT *root,const char *str, size_t len);
 void load_defaults(const char *conf_file, const char **groups,
 		   int *argc, char ***argv);
 void free_defaults(char **argv);
@@ -613,10 +619,10 @@ my_bool my_uncompress(byte *, ulong *, ulong *);
 byte *my_compress_alloc(const byte *packet, ulong *len, ulong *complen);
 ulong checksum(const byte *mem, uint count);
 
-#if defined(_MSC_VER) && !defined(__WIN__)
+#if defined(_MSC_VER) && !defined(_WIN32)
 extern void sleep(int sec);
 #endif
-#ifdef __WIN__
+#ifdef _WIN32
 extern my_bool have_tcpip;		/* Is set if tcpip is used */
 #endif
 

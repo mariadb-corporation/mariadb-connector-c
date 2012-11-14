@@ -19,7 +19,7 @@
 
 #include "mysys_priv.h"
 #include <assert.h>
-#if !defined(MSDOS) && !defined(__WIN__)
+#if !defined(MSDOS) && !defined(_WIN32)
 #include <netdb.h>
 #endif
 #include <my_net.h>

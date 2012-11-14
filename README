@@ -8,8 +8,8 @@ The following are the main known limitations:
 
   - float to string conversion for prepared statements
     doesn't work correctly
-  - It doesn't compile on windows (should not be hard to fix; It's mainly
-    the compiler environment files that is missing)
+  - SSL support
+  - Win64 support not yet ready
 
 If you want to be part of this development effort, you can discuss this at
 maria-developers@lists.launchpad.org.

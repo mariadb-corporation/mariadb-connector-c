@@ -25,7 +25,7 @@
 #include <m_string.h>
 
 my_bool init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
-			    uint init_alloc, uint alloc_increment)
+			    size_t init_alloc, size_t alloc_increment)
 {
   uint length;
   DBUG_ENTER("init_dynamic_string");
@@ -97,12 +97,12 @@ my_bool dynstr_append(DYNAMIC_STRING *str, const char *append)
 
 
 my_bool dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
-			  uint length)
+			  size_t length)
 {
   char *new_ptr;
   if (str->length+length >= str->max_length)
   {
-    uint new_length=(str->length+length+str->alloc_increment)/
+    size_t new_length=(str->length+length+str->alloc_increment)/
       str->alloc_increment;
     new_length*=str->alloc_increment;
     if (!(new_ptr=(char*) my_realloc(str->str,new_length,MYF(MY_WME))))

@@ -30,7 +30,7 @@
 #if defined(MC68000) && defined(DS90)
 
 /* 0 <= len <= 65535 */
-void bmove_upp(byte *dst, const byte *src,uint len)
+void bmove_upp(byte *dst, const byte *src, size_t len)
 {
 asm("		movl	12(a7),d0	");
 asm("		subql	#1,d0		");
@@ -43,7 +43,7 @@ asm(".L5:				");
 }
 #else
 
-void bmove_upp(register char *dst, register const char *src, register uint len)
+void bmove_upp(register char *dst, register const char *src, register size_t len)
 {
   while (len-- != 0) *--dst = *--src;
 }

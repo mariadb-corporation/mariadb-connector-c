@@ -102,7 +102,7 @@ void MYSQL_SHA1Init(MYSQL_SHA1_CTX * context)
    context.
  */
 void MYSQL_SHA1Update(MYSQL_SHA1_CTX * context, const unsigned char *input,
-			   unsigned int inputLen)
+			   size_t inputLen)
 {
 	unsigned int i, index, partLen;
 

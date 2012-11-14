@@ -75,8 +75,8 @@ my_bool my_thread_global_init(void)
   pthread_mutex_init(&THR_LOCK_heap,MY_MUTEX_INIT_FAST);
   pthread_mutex_init(&THR_LOCK_net,MY_MUTEX_INIT_FAST);
   pthread_mutex_init(&THR_LOCK_charset,MY_MUTEX_INIT_FAST);
-#if defined( __WIN__) || defined(OS2)
-  win_pthread_init();
+#ifdef _WIN32
+  /* win_pthread_init(); */
 #endif
 #ifndef HAVE_LOCALTIME_R
   pthread_mutex_init(&LOCK_localtime_r,MY_MUTEX_INIT_SLOW);
@@ -115,10 +115,10 @@ static long thread_id=0;
 my_bool my_thread_init(void)
 {
   struct st_my_thread_var *tmp;
-#if !defined(__WIN__) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
+#if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
   pthread_mutex_lock(&THR_LOCK_lock);
 #endif
-#if !defined(__WIN__) || defined(USE_TLS)
+#if !defined(_WIN32) || defined(USE_TLS)
   if (my_pthread_getspecific(struct st_my_thread_var *,THR_KEY_mysys))
   {
     pthread_mutex_unlock(&THR_LOCK_lock);
@@ -137,7 +137,7 @@ my_bool my_thread_init(void)
 #else
   if (THR_KEY_mysys.id)   /* Already initialized */
   {
-#if !defined(__WIN__) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
+#if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
     pthread_mutex_unlock(&THR_LOCK_lock);
 #endif
     return 0;
@@ -147,7 +147,7 @@ my_bool my_thread_init(void)
   tmp->id= ++thread_id;
   pthread_mutex_init(&tmp->mutex,MY_MUTEX_INIT_FAST);
   pthread_cond_init(&tmp->suspend, NULL);
-#if !defined(__WIN__) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
+#if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
   pthread_mutex_unlock(&THR_LOCK_lock);
 #endif
   return 0;
@@ -169,11 +169,11 @@ void my_thread_end(void)
     pthread_cond_destroy(&tmp->suspend);
 #endif
     pthread_mutex_destroy(&tmp->mutex);
-#if (!defined(__WIN__) && !defined(OS2)) || defined(USE_TLS)
+#if (!defined(_WIN32) && !defined(OS2)) || defined(USE_TLS)
     free(tmp);
 #endif
   }
-#if (!defined(__WIN__) && !defined(OS2)) || defined(USE_TLS)
+#if (!defined(_WIN32) && !defined(OS2)) || defined(USE_TLS)
   pthread_setspecific(THR_KEY_mysys,0);
 #endif
 }

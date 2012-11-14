@@ -35,7 +35,7 @@ static my_string NEAR_F expand_tilde(my_string *path);
 void pack_dirname(my_string to, const char *from)
 {
   int cwd_err;
-  uint d_length,length,buff_length;
+  uint d_length,length,buff_length= 0;
   my_string start;
   char buff[FN_REFLEN];
   DBUG_ENTER("pack_dirname");

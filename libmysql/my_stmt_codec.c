@@ -17,8 +17,28 @@
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 *****************************************************************************/
 
-/* The implementation for preoared statements was ported from PHP's mysqlnd
-   extension, written by Andrey Hristov, Georg Richter and Ulf Wendel */
+/* The implementation for prepared statements was ported from PHP's mysqlnd
+   extension, written by Andrey Hristov, Georg Richter and Ulf Wendel 
+
+   Original file header:
+  +----------------------------------------------------------------------+
+  | PHP Version 5                                                        |
+  +----------------------------------------------------------------------+
+  | Copyright (c) 2006-2011 The PHP Group                                |
+  +----------------------------------------------------------------------+
+  | This source file is subject to version 3.01 of the PHP license,      |
+  | that is bundled with this package in the file LICENSE, and is        |
+  | available through the world-wide-web at the following url:           |
+  | http://www.php.net/license/3_01.txt                                  |
+  | If you did not receive a copy of the PHP license and are unable to   |
+  | obtain it through the world-wide-web, please send a note to          |
+  | license@php.net so we can mail you a copy immediately.               |
+  +----------------------------------------------------------------------+
+  | Authors: Georg Richter <georg@mysql.com>                             |
+  |          Andrey Hristov <andrey@mysql.com>                           |
+  |          Ulf Wendel <uwendel@mysql.com>                              |
+  +----------------------------------------------------------------------+
+*/
 
 #include "my_global.h"
 #include <my_sys.h>
@@ -33,8 +53,10 @@
 #define UINT_MAX32      0xFFFFFFFFL
 #define UINT_MAX24      0x00FFFFFF
 #define UINT_MAX16      0xFFFF
+#ifndef INT_MIN8
 #define INT_MIN8        (~0x7F)
 #define INT_MAX8        0x7F
+#endif
 #define UINT_MAX8       0xFF
 
 #if defined(HAVE_LONG_LONG) && !defined(LONGLONG_MIN)
@@ -101,7 +123,7 @@ static longlong my_atoll(const char *number, const char *end, int *error)
 {
   char buffer[255];
   longlong llval= 0;
-  int i;
+  size_t i;
   /* set error at the following conditions:
      - string contains invalid character(s)
      - length > 254
@@ -155,7 +177,7 @@ double my_atod(const char *number, const char *end, int *error)
   return val;
 }
 
-my_bool str_to_TIME(const char *str, uint length, MYSQL_TIME *tm)
+my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
 {
   my_bool is_time=0, is_date=0, has_time_frac=0;
   char *p= (char *)str;
@@ -197,7 +219,7 @@ my_bool str_to_TIME(const char *str, uint length, MYSQL_TIME *tm)
 }
 
 
-static void convert_from_string(MYSQL_BIND *r_param, char *buffer, uint len)
+static void convert_from_string(MYSQL_BIND *r_param, char *buffer, size_t len)
 {
   int error= 0;
   switch (r_param->buffer_type)
@@ -230,7 +252,7 @@ static void convert_from_string(MYSQL_BIND *r_param, char *buffer, uint len)
     case MYSQL_TYPE_LONGLONG:
     {
       longlong val= my_atoll(buffer, buffer + len, &error);
-      *r_param->error= error > 0;
+      *r_param->error= error > 0; /* no need to check for truncation */
       longlongstore(r_param->buffer, val);
       r_param->buffer_length= sizeof(longlong);
     } 
@@ -238,18 +260,16 @@ static void convert_from_string(MYSQL_BIND *r_param, char *buffer, uint len)
     case MYSQL_TYPE_DOUBLE:
     {
       double val= my_atod(buffer, buffer + len, &error);
-      *r_param->error= error > 0;
+      *r_param->error= error > 0; /* no need to check for truncation */
       float8store(r_param->buffer, val);
-      //*(double *)r_param->buffer= r_param->is_unsigned ? (ulonglong)val : (double)val;
       r_param->buffer_length= sizeof(double);
     } 
     break;
     case MYSQL_TYPE_FLOAT:
     {
-      float val= my_atod(buffer, buffer + len, &error);
-      *r_param->error= error > 0;
+      float val= (float)my_atod(buffer, buffer + len, &error);
+      *r_param->error= error > 0; /* no need to check for truncation */
       float4store(r_param->buffer, val);
-//      *(float *)r_param->buffer= r_param->is_unsigned ? (ulonglong)val : (float)val;
       r_param->buffer_length= sizeof(float);
     } 
     break;
@@ -285,7 +305,7 @@ static void convert_from_string(MYSQL_BIND *r_param, char *buffer, uint len)
         ((char *)r_param->buffer)[copylen]= '\0';
       *r_param->error= (copylen > r_param->buffer_length);
 
-      *r_param->length= len; 
+      *r_param->length= (ulong)len; 
     }
     break;
   }
@@ -340,7 +360,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       char *endptr;
       uint len;
 
-      endptr= int10_to_str(val, buffer, is_unsigned ? 10 : -10);
+      endptr= longlong10_to_str(val, buffer, is_unsigned ? 10 : -10);
       len= (uint)(endptr - buffer);
 
       /* check if field flag is zerofill */
@@ -485,31 +505,52 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
     case MYSQL_TYPE_SHORT:
     case MYSQL_TYPE_YEAR:
     {
-      ushort sval= (r_param->is_unsigned) ? (ushort)val : (short)val;
-      shortstore(buf, sval);
-      *r_param->error= check_trunc_val != (r_param->is_unsigned ? *(ushort *)buf : *(short *)buf);
+      if (r_param->is_unsigned)
+      {
+        ushort sval= (ushort)val;
+        shortstore(buf, sval);
+        *r_param->error= check_trunc_val != (double)sval;
+      } else { 
+        short sval= (short)val;
+        shortstore(buf, sval);
+        *r_param->error= check_trunc_val != (double)sval;
+      } 
       r_param->buffer_length= 2;
     }
     break; 
     case MYSQL_TYPE_LONG:
     {
-      ulong lval= (r_param->is_unsigned) ? (ulong)val : (long)val;
-      longstore(buf, lval);
-      *r_param->error= check_trunc_val != (r_param->is_unsigned ? (double)(*(uint32 *)buf) : (double)(*(uint32 *)buf));
+      if (r_param->is_unsigned)
+      {
+        uint32 lval= (uint32)val;
+        longstore(buf, lval);
+        *r_param->error= (check_trunc_val != (double)lval);
+      } else {
+        int32 lval= (int32)val;
+        longstore(buf, lval);
+        *r_param->error= (check_trunc_val != (double)lval);
+      }
       r_param->buffer_length= 4;
     }
     break; 
     case MYSQL_TYPE_LONGLONG:
     {
-      ulong llval= (r_param->is_unsigned) ? (ulonglong)val : (ulonglong)val;
-      longlongstore(buf, llval);
-      *r_param->error= check_trunc_val != (r_param->is_unsigned ? *(ulonglong *)buf : *(longlong *)buf);
+      if (r_param->is_unsigned)
+      {
+        ulonglong llval= (ulonglong)val;
+        longlongstore(buf, llval);
+        *r_param->error= (check_trunc_val != (double)llval);
+      } else {
+        longlong llval= (longlong)val;
+        longlongstore(buf, llval);
+        *r_param->error= (check_trunc_val != (double)llval);
+      }
       r_param->buffer_length= 8;
     }
     break; 
     case MYSQL_TYPE_FLOAT:
     {
-      float fval= (double)val;
+      float fval= (float)val;
       memcpy(buf, &fval, sizeof(float));
       *r_param->error= (*(float*)buf != fval);
       r_param->buffer_length= 4;
@@ -526,14 +567,14 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
  #define MAX_DOUBLE_STRING_REP_LENGTH 300
      char buff[MAX_DOUBLE_STRING_REP_LENGTH];
      char *end;
-     int length;
+     size_t length;
 
      length= MIN(MAX_DOUBLE_STRING_REP_LENGTH - 1, r_param->buffer_length);
 
      /* TODO: move this to a header shared between client and server. */
      if (field->decimals >= NOT_FIXED_DEC)
      {
-       sprintf(buff, "%-*.*g", length-1, DBL_DIG, val);
+       sprintf(buff, "%-*.*g", (int) length-1, DBL_DIG, val);
        length= strlen(buff);
      }
      else
@@ -630,7 +671,7 @@ static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, en
   {
     unsigned char *to= *row;
     int has_date= 0, has_time= 0;
-    int offset= 7;
+    uint offset= 7;
     
     if (type == MYSQL_TYPE_TIME)
     {
@@ -740,28 +781,13 @@ static
 void ps_fetch_string(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
              unsigned char **row)
 {
+  /* C-API differs from PHP. While PHP just converts string to string,
+     C-API needs to convert the string to the defined type with in 
+     the result bind buffer.
+   */
   ulong field_length= net_field_length(row);
+
   convert_from_string(r_param, (char *)*row, field_length);
-/*  switch (r_param->buffer_type)
-  {
-    case MYSQL_TYPE_STRING:
-    case MYSQL_TYPE_VAR_STRING:
-    case MYSQL_TYPE_DECIMAL:
-    {
-      ulong c= MIN(r_param->buffer_length, field_length);
-
-      memcpy(r_param->buffer, (char *)*row, c);
-
-      if (c < r_param->buffer_length)
-        ((char *)r_param->buffer)[c]= 0;
-      r_param->buffer_length= field_length;
-      *r_param->error= c < field_length;
-    }
-    break;
-    default:
-      convert_from_string(r_param, (char *)*row, field_length);
-      break;
-  } */
   (*row) += field_length;
 }
 /* }}} */
@@ -831,7 +857,7 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_DATE].pack_len  = 5;
   mysql_ps_fetch_functions[MYSQL_TYPE_DATE].max_len  = 10;
 
-  mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].func    = ps_fetch_datetime;
+  mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].func    = ps_fetch_string;
   mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].pack_len  = MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].max_len  = -1;
   

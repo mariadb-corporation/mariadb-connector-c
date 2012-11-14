@@ -70,8 +70,8 @@ uint sf_malloc_prehunc=0,		/* If you have problem with core- */
      sf_malloc_endhunc=0,		/* dump when malloc-message.... */
 					/* set theese to 64 or 128  */
      sf_malloc_quick=0;			/* set if no calls to sanity */
-long lCurMemory = 0L;			/* Current memory usage */
-long lMaxMemory = 0L;			/* Maximum memory usage */
+size_t lCurMemory = 0L;			/* Current memory usage */
+size_t lMaxMemory = 0L;			/* Maximum memory usage */
 uint cNewCount = 0;			/* Number of times NEW() was called */
 byte *sf_min_adress= (byte*) ~(unsigned long) 0L,
      *sf_max_adress= (byte*) 0L;

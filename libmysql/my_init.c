@@ -30,7 +30,7 @@
 #include <my_static.c>
 #include <m_ctype.h>
 #endif
-#ifdef __WIN__
+#ifdef _WIN32
 #ifdef _MSC_VER
 #include <locale.h>
 #include <crtdbg.h>
@@ -72,7 +72,7 @@ void my_init(void)
   pthread_init();			/* Must be called before DBUG_ENTER */
 #endif
   my_thread_global_init();
-#if !defined( __WIN__) && !defined(OS2)
+#ifndef _WIN32
   sigfillset(&my_signals);		/* signals blocked by mf_brkhant */
 #endif
 #endif /* THREAD */
@@ -100,7 +100,7 @@ void my_init(void)
 #endif
       DBUG_PRINT("exit",("home: '%s'",home_dir));
     }
-#ifdef __WIN__
+#ifdef _WIN32
     win32_init_tcp_ip();
 #endif
     DBUG_VOID_RETURN;
@@ -145,12 +145,12 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
 	      rus.ru_msgsnd, rus.ru_msgrcv, rus.ru_nsignals,
 	      rus.ru_nvcsw, rus.ru_nivcsw);
 #endif
-#if defined(MSDOS) && !defined(__WIN__)
+#if defined(MSDOS) && !defined(_WIN32)
     fprintf(info_file,"\nRun time: %.1f\n",(double) clock()/CLOCKS_PER_SEC);
 #endif
 #if defined(SAFEMALLOC)
     TERMINATE(stderr);		/* Give statistic on screen */
-#elif defined(__WIN__) && defined(_MSC_VER)
+#elif defined(_WIN32) && defined(_MSC_VER)
    _CrtSetReportMode( _CRT_WARN, _CRTDBG_MODE_FILE );
    _CrtSetReportFile( _CRT_WARN, _CRTDBG_FILE_STDERR );
    _CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_FILE );
@@ -169,14 +169,14 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
   my_thread_end();
   my_thread_global_end();
 #endif
-#ifdef __WIN__
+#ifdef _WIN32
   if (have_tcpip);
     WSACleanup( );
-#endif /* __WIN__ */
+#endif /* _WIN32 */
     my_init_done=0;
 } /* my_end */
 
-#ifdef __WIN__
+#ifdef _WIN32
 
 /*
   This code is specially for running MySQL, but it should work in

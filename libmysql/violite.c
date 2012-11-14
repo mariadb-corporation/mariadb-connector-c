@@ -22,10 +22,9 @@
   the file descriptior.
 */
 
-#include <my_global.h>
-
 #ifndef HAVE_VIO /* is Vio suppored by the Vio lib ? */
 
+#include <my_global.h>
 #include <errno.h>
 #include <assert.h>
 #include <violite.h>
@@ -42,7 +41,12 @@
 #include <fcntl.h>
 #endif
 
-#if !defined(MSDOS) && !defined(__WIN__) && !defined(HAVE_BROKEN_NETINET_INCLUDES) && !defined(__BEOS__) && !defined(__FreeBSD__)
+#ifdef _WIN32
+#define socklen_t int
+#pragma comment (lib, "ws2_32")
+#endif
+
+#if !defined(MSDOS) && !defined(_WIN32) && !defined(HAVE_BROKEN_NETINET_INCLUDES) && !defined(__BEOS__) && !defined(__FreeBSD__)
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #if !defined(alpha_linux_port)
@@ -54,28 +58,13 @@
 #define ioctlsocket ioctl
 #endif /* defined(__EMX__) */
 
-#if defined(MSDOS) || defined(__WIN__)
+#if defined(MSDOS) || defined(_WIN32)
 #define O_NONBLOCK 1    /* For emulation of fcntl() */
 #endif
 #ifndef EWOULDBLOCK
 #define SOCKET_EWOULDBLOCK SOCKET_EAGAIN
 #endif
 
-#ifndef __WIN__
-#define HANDLE void *
-#endif
-
-struct st_vio
-{
-  my_socket sd; /* my_socket - real or imaginary */
-  HANDLE hPipe;
-  my_bool localhost; /* Are we from localhost? */
-  int fcntl_mode; /* Buffered fcntl(sd,F_GETFL) */
-  struct sockaddr_in local; /* Local internet address */
-  struct sockaddr_in remote; /* Remote internet address */
-  enum enum_vio_type type; /* Type of connection */
-  char desc[30]; /* String description */
-};
 
 typedef void *vio_ptr;
 typedef char *vio_cstring;
@@ -95,6 +84,38 @@ static void vio_reset(Vio* vio, enum enum_vio_type type,
   vio->localhost= localhost;
 }
 
+void vio_timeout(Vio *vio, int type, uint seconds)
+{
+#ifdef _WIN32
+  uint timeout= seconds * 1000; /* milli secs */
+#else
+  struct timeval timeout;
+  timeout.tv_sec= seconds;
+  timeout.tv_usec= 0;
+#endif
+
+  if (setsockopt(vio->sd, SOL_SOCKET, type,
+#ifdef _WIN32
+                (const char *)&timeout,
+#else
+                (const void *)&timeout,
+#endif
+                sizeof(timeout)))
+  {
+    DBUG_PRINT("error", ("setsockopt failed. Errno: %d", errno));
+  }
+}
+
+void vio_read_timeout(Vio *vio, uint seconds)
+{
+  vio_timeout(vio, SO_RCVTIMEO, seconds);
+}
+
+void vio_write_timeout(Vio *vio, uint seconds)
+{
+  vio_timeout(vio, SO_SNDTIMEO, seconds);
+}
+
 /* Open the socket or TCP/IP connection and read the fnctl() status */
 
 Vio *vio_new(my_socket sd, enum enum_vio_type type, my_bool localhost)
@@ -108,14 +129,14 @@ Vio *vio_new(my_socket sd, enum enum_vio_type type, my_bool localhost)
     sprintf(vio->desc,
             (vio->type == VIO_TYPE_SOCKET ? "socket (%d)" : "TCP/IP (%d)"),
              vio->sd);
-#if !defined(___WIN__) && !defined(__EMX__) && !defined(OS2)
+#if !defined(__WIN32) && !defined(__EMX__) && !defined(OS2)
 #if !defined(NO_FCNTL_NONBLOCK)
     vio->fcntl_mode = fcntl(sd, F_GETFL);
 #elif defined(HAVE_SYS_IOCTL_H) /* hpux */
     /* Non blocking sockets doesn't work good on HPUX 11.0 */
     (void) ioctl(sd,FIOSNBIO,0);
 #endif
-#else /* !defined(__WIN__) && !defined(__EMX__) */
+#else /* !defined(_WIN32) && !defined(__EMX__) */
     {
       /* set to blocking mode by default */
       ulong arg=0, r;
@@ -127,7 +148,7 @@ Vio *vio_new(my_socket sd, enum enum_vio_type type, my_bool localhost)
 }
 
 
-#ifdef __WIN__
+#ifdef _WIN32
 
 Vio *vio_new_win32pipe(HANDLE hPipe)
 {
@@ -166,7 +187,7 @@ int vio_read(Vio * vio, gptr buf, int size)
   int r;
   DBUG_ENTER("vio_read");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
-#if defined( __WIN__) || defined(OS2)
+#if defined( _WIN32) || defined(OS2)
   if (vio->type == VIO_TYPE_NAMEDPIPE)
   {
     DWORD length;
@@ -183,7 +204,7 @@ int vio_read(Vio * vio, gptr buf, int size)
 #else
   errno=0; /* For linux */
   r = read(vio->sd, buf, size);
-#endif /* __WIN__ */
+#endif /* _WIN32 */
 #ifndef DBUG_OFF
   if (r < 0)
   {
@@ -200,7 +221,7 @@ int vio_write(Vio * vio, const gptr buf, int size)
   int r;
   DBUG_ENTER("vio_write");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
-#if defined( __WIN__) || defined(OS2)
+#if defined( _WIN32) || defined(OS2)
   if ( vio->type == VIO_TYPE_NAMEDPIPE)
   {
     DWORD length;
@@ -216,7 +237,7 @@ int vio_write(Vio * vio, const gptr buf, int size)
   r = send(vio->sd, buf, size,0);
 #else
   r = write(vio->sd, buf, size);
-#endif /* __WIN__ */
+#endif /* _WIN32 */
 #ifndef DBUG_OFF
   if (r < 0)
   {
@@ -234,7 +255,7 @@ int vio_blocking(Vio * vio, my_bool set_blocking_mode)
   DBUG_ENTER("vio_blocking");
   DBUG_PRINT("enter", ("set_blocking_mode: %d", (int) set_blocking_mode));
 
-#if !defined(___WIN__) && !defined(__EMX__) && !defined(OS2)
+#if !defined(__WIN32) && !defined(__EMX__) && !defined(OS2)
 #if !defined(NO_FCNTL_NONBLOCK)
 
   if (vio->sd >= 0)
@@ -248,7 +269,7 @@ int vio_blocking(Vio * vio, my_bool set_blocking_mode)
       r = fcntl(vio->sd, F_SETFL, vio->fcntl_mode);
   }
 #endif /* !defined(NO_FCNTL_NONBLOCK) */
-#else /* !defined(__WIN__) && !defined(__EMX__) */
+#else /* !defined(_WIN32) && !defined(__EMX__) */
 #ifndef __EMX__
   if (vio->type != VIO_TYPE_NAMEDPIPE)  
 #endif
@@ -268,7 +289,7 @@ int vio_blocking(Vio * vio, my_bool set_blocking_mode)
     if (old_fcntl != vio->fcntl_mode)
       r = ioctlsocket(vio->sd,FIONBIO,(void*) &arg, sizeof(arg));
   }
-#endif /* !defined(__WIN__) && !defined(__EMX__) */
+#endif /* !defined(_WIN32) && !defined(__EMX__) */
   DBUG_RETURN(r);
 }
 
@@ -339,7 +360,7 @@ int vio_close(Vio * vio)
 {
   int r;
   DBUG_ENTER("vio_close");
-#ifdef __WIN__
+#ifdef _WIN32
   if (vio->type == VIO_TYPE_NAMEDPIPE)
   {
 #if defined(__NT__) && defined(MYSQL_SERVER)
@@ -349,7 +370,7 @@ int vio_close(Vio * vio)
     r=CloseHandle(vio->hPipe);
   }
   else if (vio->type != VIO_CLOSED)
-#endif /* __WIN__ */
+#endif /* _WIN32 */
   {
     r=0;
     if (shutdown(vio->sd,2))

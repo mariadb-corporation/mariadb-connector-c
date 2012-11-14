@@ -21,16 +21,16 @@
 #include <m_string.h>
 #include <my_dir.h>
 
+CHARSET_INFO *default_charset_info = (CHARSET_INFO *)&compiled_charsets[5];
 
-
-CHARSET_INFO *get_charset(uint cs_number, myf flags)
+CHARSET_INFO *get_charset_by_nr(uint cs_number)
 {
   int i= 0;
 
   while (compiled_charsets[i].nr && cs_number != compiled_charsets[i].nr)
     i++;
   
-  return (compiled_charsets[i].nr) ? &compiled_charsets[i] : NULL;
+  return (compiled_charsets[i].nr) ? (CHARSET_INFO *)&compiled_charsets[i] : NULL;
 }
 
 my_bool set_default_charset(uint cs, myf flags)
@@ -38,7 +38,7 @@ my_bool set_default_charset(uint cs, myf flags)
   CHARSET_INFO *new_charset;
   DBUG_ENTER("set_default_charset");
   DBUG_PRINT("enter",("character set: %d",(int) cs));
-  new_charset = get_charset(cs, flags);
+  new_charset = get_charset_by_nr(cs);
   if (!new_charset)
   {
     DBUG_PRINT("error",("Couldn't set default character set"));
@@ -48,14 +48,14 @@ my_bool set_default_charset(uint cs, myf flags)
   DBUG_RETURN(FALSE);
 }
 
-CHARSET_INFO *get_charset_by_name(const char *cs_name, myf flags)
+CHARSET_INFO *get_charset_by_name(const char *cs_name)
 {
   int i= 0;
 
-  while (compiled_charsets[i].nr && strcmp(cs_name, compiled_charsets[i].name) != NULL)
+  while (compiled_charsets[i].nr && strcmp(cs_name, compiled_charsets[i].name) != 0)
     i++;
  
-  return (compiled_charsets[i].nr) ? &compiled_charsets[i] : NULL;
+  return (compiled_charsets[i].nr) ? (CHARSET_INFO *)&compiled_charsets[i] : NULL;
 }
 
 my_bool set_default_charset_by_name(const char *cs_name, myf flags)
@@ -63,7 +63,7 @@ my_bool set_default_charset_by_name(const char *cs_name, myf flags)
   CHARSET_INFO *new_charset;
   DBUG_ENTER("set_default_charset_by_name");
   DBUG_PRINT("enter",("character set: %s", cs_name));
-  new_charset = get_charset_by_name(cs_name, flags);
+  new_charset = get_charset_by_name(cs_name);
   if (!new_charset)
   {
     DBUG_PRINT("error",("Couldn't set default character set"));

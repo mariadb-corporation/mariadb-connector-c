@@ -27,6 +27,7 @@ extern const char *client_errors[];	/* Error messages */
 }
 #endif
 
+
 #define CR_MIN_ERROR		2000	/* For easier client code */
 #define CR_MAX_ERROR		2999
 #if defined(OS2) && defined( MYSQL_SERVER)
@@ -57,6 +58,7 @@ extern const char *client_errors[];	/* Error messages */
 #define CR_NAMEDPIPESETSTATE_ERROR 2018
 #define CR_CANT_READ_CHARSET	2019
 #define CR_NET_PACKET_TOO_LARGE 2020
+#define CR_MALFORMED_PACKET     2027
 #define CR_NO_PREPARE_STMT      2030
 #define CR_PARAMS_NOT_BOUND     2031
 #define CR_INVALID_PARAMETER_NO  2034
@@ -64,7 +66,9 @@ extern const char *client_errors[];	/* Error messages */
 #define CR_NO_DATA              2051
 #define CR_NO_STMT_METADATA     2052
 #define CR_NOT_IMPLEMENTED      2054
+#define CR_SERVER_LOST_EXTENDED 2055
 #define CR_NEW_STMT_METADATA    2057
-#define CR_ALREADY_CONNECTED    2058
+#define CR_AUTH_PLUGIN_CANNOT_LOAD 2058
+#define CR_ALREADY_CONNECTED    2059
 
 #define SQLSTATE_UNKNOWN "HY000"

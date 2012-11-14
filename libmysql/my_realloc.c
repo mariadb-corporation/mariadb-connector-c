@@ -24,7 +24,7 @@
 
 	/* My memory re allocator */
 
-gptr my_realloc(gptr oldpoint, uint Size, myf MyFlags)
+gptr my_realloc(gptr oldpoint, size_t Size, myf MyFlags)
 {
   gptr point;
   DBUG_ENTER("my_realloc");

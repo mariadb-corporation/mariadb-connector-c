@@ -23,21 +23,21 @@
 
 #define MYSQL_NO_DATA 100
 #define MYSQL_DATA_TRUNCATED 101
-#define MYSQL_DEFAULT_PREFETCH_ROWS (ulong) 1
+#define MYSQL_DEFAULT_PREFETCH_ROWS (unsigned long) 1
 
 
 #define SET_CLIENT_STMT_ERROR(a, b, c, d) \
 { \
-  (a).error_no= (b);\
-  strncpy((a).sqlstate, (c), sizeof((a).sqlstate));\
-  strncpy((a).error, (d) ? (d) : ER((b)), sizeof((a).error));\
+  (a)->last_errno= (b);\
+  strncpy((a)->sqlstate, (c), sizeof((a)->sqlstate));\
+  strncpy((a)->last_error, (d) ? (d) : ER((b)), sizeof((a)->last_error));\
 }
 
 #define CLEAR_CLIENT_STMT_ERROR(a) \
 { \
-  (a).error_no= 0;\
-  strcpy((a).sqlstate, "00000");\
-  (a).error[0]= 0;\
+  (a)->last_errno= 0;\
+  strcpy((a)->sqlstate, "00000");\
+  (a)->last_error[0]= 0;\
 }
 
 #define MYSQL_PS_SKIP_RESULT_W_LEN  -1
@@ -48,13 +48,7 @@
 typedef struct st_mysql_stmt MYSQL_STMT;
 
 typedef MYSQL_RES* (*mysql_stmt_use_or_store_func)(MYSQL_STMT *);
-/*
-enum enum_mysql_stmt_state
-{
-  MYSQL_STMT_INIT_DONE= 1, MYSQL_STMT_PREPARE_DONE, MYSQL_STMT_EXECUTE_DONE,
-  MYSQL_STMT_FETCH_DONE
-};
-*/
+
 enum enum_stmt_attr_type
 {
   STMT_ATTR_UPDATE_MAX_LENGTH,
@@ -142,7 +136,7 @@ struct st_mysqlnd_stmt_methods
   MYSQL_RES * (*store_result)(const MYSQL_STMT * stmt);
   MYSQL_RES * (*get_result)(const MYSQL_STMT * stmt);
   my_bool (*free_result)(const MYSQL_STMT * stmt);
-  my_bool (*seek_data)(const const MYSQL_STMT * stmt, my_ulonglong row);
+  my_bool (*seek_data)(const MYSQL_STMT * stmt, my_ulonglong row);
   my_bool (*reset)(const MYSQL_STMT * stmt);
   my_bool (*close)(const MYSQL_STMT * stmt); /* private */
   my_bool (*dtor)(const MYSQL_STMT * stmt); /* use this for mysqlnd_stmt_close */
@@ -156,17 +150,17 @@ struct st_mysqlnd_stmt_methods
                             const char * const data, unsigned long length);
   MYSQL_RES *(*get_parameter_metadata)(const MYSQL_STMT * stmt);
   MYSQL_RES *(*get_result_metadata)(const MYSQL_STMT * stmt);
-  my_ulonglong (*get_last_insert_id)(const const MYSQL_STMT * stmt);
-  my_ulonglong (*get_affected_rows)(const const MYSQL_STMT * stmt);
-  my_ulonglong (*get_num_rows)(const const MYSQL_STMT * stmt);
+  my_ulonglong (*get_last_insert_id)(const MYSQL_STMT * stmt);
+  my_ulonglong (*get_affected_rows)(const MYSQL_STMT * stmt);
+  my_ulonglong (*get_num_rows)(const MYSQL_STMT * stmt);
 
-  unsigned int (*get_param_count)(const const MYSQL_STMT * stmt);
-  unsigned int (*get_field_count)(const const MYSQL_STMT * stmt);
-  unsigned int (*get_warning_count)(const const MYSQL_STMT * stmt);
+  unsigned int (*get_param_count)(const MYSQL_STMT * stmt);
+  unsigned int (*get_field_count)(const MYSQL_STMT * stmt);
+  unsigned int (*get_warning_count)(const MYSQL_STMT * stmt);
 
-  unsigned int (*get_error_no)(const const MYSQL_STMT * stmt);
-  const char * (*get_error_str)(const const MYSQL_STMT * stmt);
-  const char * (*get_sqlstate)(const const MYSQL_STMT * stmt);
+  unsigned int (*get_error_no)(const MYSQL_STMT * stmt);
+  const char * (*get_error_str)(const MYSQL_STMT * stmt);
+  const char * (*get_sqlstate)(const MYSQL_STMT * stmt);
 
   my_bool (*get_attribute)(const MYSQL_STMT * stmt, enum enum_stmt_attr_type attr_type, const void * value);
   my_bool (*set_attribute)(const MYSQL_STMT * stmt, enum enum_stmt_attr_type attr_type, const void * value);
@@ -177,7 +171,7 @@ typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row)
 struct st_mysql_stmt
 {
   MEM_ROOT                 mem_root;
-  MYSQL                    *conn;
+  MYSQL                    *mysql;
   unsigned long            stmt_id;
   unsigned long            flags;/* cursor is set here */
   enum_mysqlnd_stmt_state  state;
@@ -185,15 +179,18 @@ struct st_mysql_stmt
   unsigned int             field_count;
   unsigned int             param_count;
   unsigned char            send_types_to_server;
-  MYSQL_BIND               *param_bind;
-  MYSQL_BIND               *result_bind;
+  MYSQL_BIND               *params;
+  MYSQL_BIND               *bind;
   MYSQL_DATA               result;  /* we don't use mysqlnd's result set logic */
   MYSQL_ROWS               *result_cursor;
   my_bool                  bind_result_done;
+  my_bool                  bind_param_done;
 
   mysql_upsert_status      upsert_status;
 
-  mysql_error_info         error_info;
+  unsigned int last_errno;
+  char last_error[MYSQL_ERRMSG_SIZE+1];
+  char sqlstate[SQLSTATE_LENGTH + 1];
 
   my_bool                  update_max_length;
   unsigned long            prefetch_rows;
@@ -213,14 +210,14 @@ struct st_mysql_perm_bind {
   ps_field_fetch_func func;
   /* should be signed int */
   int pack_len;
-  ulong max_len;
+  unsigned long max_len;
 };
 
 extern struct st_mysql_perm_bind mysql_ps_fetch_functions[MYSQL_TYPE_GEOMETRY + 1];
-ulong net_safe_read(MYSQL *mysql);
+unsigned long net_safe_read(MYSQL *mysql);
 void mysql_init_ps_subsystem(void);
-ulong net_field_length(unsigned char **packet);
-int simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg, uint length, my_bool skipp_check);
+unsigned long net_field_length(unsigned char **packet);
+int simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg, size_t length, my_bool skipp_check);
 /*
  *  function prototypes
  */
@@ -255,4 +252,6 @@ my_bool STDCALL mysql_stmt_reset(MYSQL_STMT *stmt);
 MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_tell(MYSQL_STMT *stmt);
 MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_seek(MYSQL_STMT *stmt, MYSQL_ROW_OFFSET new_row);
 unsigned long STDCALL mysql_stmt_param_count(MYSQL_STMT *stmt);
-my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number, const char *data, ulong length);
+my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, unsigned int param_number, const char *data, unsigned long length);
+my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt);
+my_ulonglong STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt);

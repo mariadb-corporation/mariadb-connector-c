@@ -17,7 +17,7 @@
 
 /* Handling of arrays that can grow dynamicly. */
 
-#ifdef __WIN__)
+#ifdef _WIN32
 #undef SAFEMALLOC /* Problems with threads */
 #endif
 

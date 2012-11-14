@@ -23,6 +23,8 @@
 #ifndef vio_violite_h_
 #define	vio_violite_h_
 
+
+
 #include "my_net.h"			/* needed because of struct in_addr */
 
 #ifdef HAVE_VIO
@@ -47,7 +49,7 @@ enum enum_vio_type { VIO_CLOSED, VIO_TYPE_TCPIP, VIO_TYPE_SOCKET,
 Vio*		vio_new(my_socket	sd,
 			enum enum_vio_type type,
 			my_bool		localhost);
-#ifdef __WIN__
+#ifdef _WIN32
 Vio*		vio_new_win32pipe(HANDLE hPipe);
 #endif
 void		vio_delete(Vio* vio);
@@ -92,6 +94,10 @@ const char*	vio_description(	Vio*		vio);
 /* Return the type of the connection */
  enum enum_vio_type vio_type(Vio* vio);
 
+/* set timeout */
+void vio_read_timeout(Vio *vio, uint seconds);
+void vio_write_timeout(Vio *vio, uint seconds);
+
 /* Return last error number */
 int vio_errno(Vio *vio);
 
@@ -109,6 +115,23 @@ void vio_in_addr(Vio *vio, struct in_addr *in);
 
   /* Return 1 if there is data to be read */
 my_bool vio_poll_read(Vio *vio,uint timeout);
+
+
+#ifndef _WIN32
+#define HANDLE void *
+#endif
+
+struct st_vio
+{
+  my_socket sd; /* my_socket - real or imaginary */
+  HANDLE hPipe;
+  my_bool localhost; /* Are we from localhost? */
+  int fcntl_mode; /* Buffered fcntl(sd,F_GETFL) */
+  struct sockaddr_in local; /* Local internet address */
+  struct sockaddr_in remote; /* Remote internet address */
+  enum enum_vio_type type; /* Type of connection */
+  char desc[30]; /* String description */
+};
 
 #ifdef	__cplusplus
 }

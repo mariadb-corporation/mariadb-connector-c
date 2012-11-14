@@ -21,30 +21,8 @@
 #ifndef _global_h
 #define _global_h
 
-#if defined( __EMX__) && !defined( MYSQL_SERVER)
-/* moved here to use below VOID macro redefinition */
-#define INCL_BASE
-#define INCL_NOPMAPI
-#include <os2.h>
-#endif /* __EMX__ */
-
-#ifdef __CYGWIN__
-/* We use a Unix API, so pretend it's not Windows */
-#undef WIN
-#undef WIN32
-#undef _WIN
-#undef _WIN32
-#undef _WIN64
-#undef __WIN__
-#undef __WIN32__
-#define HAVE_ERRNO_AS_DEFINE
-#endif /* __CYGWIN__ */
-
-
-#if defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(WIN32)
+#ifdef _WIN32
 #include <config-win.h>
-#elif defined(OS2)
-#include <config-os2.h>
 #else
 #include <my_config.h>
 #if defined(__cplusplus) && defined(inline)
@@ -76,7 +54,7 @@
 #define __STDC_EXT__ 1          /* To get large file support on hpux */
 #endif
 
-#if defined(THREAD) && !defined(__WIN__) && !defined(OS2)
+#if defined(THREAD) && !defined(_WIN32)
 #ifndef _POSIX_PTHREAD_SEMANTICS
 #define _POSIX_PTHREAD_SEMANTICS /* We want posix threads */
 #endif
@@ -225,9 +203,7 @@
 #define POSIX_MISTAKE 1		/* regexp: Fix stupid spec error */
 #define USE_REGEX 1		/* We want the use the regex library */
 /* Do not define for ultra sparcs */
-#ifndef OS2
 #define USE_BMOVE512 1		/* Use this unless the system bmove is faster */
-#endif
 
 /* Paranoid settings. Define I_AM_PARANOID if you are paranoid */
 #ifdef I_AM_PARANOID
@@ -268,11 +244,6 @@ int	__void__;
 #elif !defined(max)
 #define max(a, b)	((a) > (b) ? (a) : (b))
 #define min(a, b)	((a) < (b) ? (a) : (b))
-#endif
-
-#if defined(__EMX__) || !defined(HAVE_UINT)
-typedef unsigned int uint;
-typedef unsigned short ushort;
 #endif
 
 #define sgn(a)		(((a) < 0) ? -1 : ((a) > 0) ? 1 : 0)
@@ -416,13 +387,8 @@ typedef SOCKET_SIZE_TYPE size_socket;
 #define FN_DEVCHAR	':'
 
 #ifndef FN_LIBCHAR
-#ifdef __EMX__
-#define FN_LIBCHAR	'\\'
-#define FN_ROOTDIR	"\\"
-#else
 #define FN_LIBCHAR	'/'
 #define FN_ROOTDIR	"/"
-#endif
 #define MY_NFILE	1024	/* This is only used to save filenames */
 #endif
 
@@ -454,7 +420,7 @@ typedef SOCKET_SIZE_TYPE size_socket;
 #define NO_PISAM		/* Not needed anymore */
 #define NO_MISAM		/* Not needed anymore */
 #define NO_HASH			/* Not needed anymore */
-#ifdef __WIN__
+#ifdef _WIN32
 #define NO_DIR_LIBRARY		/* Not standar dir-library */
 #define USE_MY_STAT_STRUCT	/* For my_lib */
 #endif
@@ -476,7 +442,7 @@ extern void		init_my_atof(void);
 extern double		my_atof(const char*);
 #endif
 #undef remove		/* Crashes MySQL on SCO 5.0.0 */
-#ifndef __WIN__
+#ifndef _WIN32
 #ifdef OS2
 #define closesocket(A)	soclose(A)
 #else
@@ -644,11 +610,11 @@ typedef ulonglong my_off_t;
 typedef unsigned long my_off_t;
 #endif
 #define MY_FILEPOS_ERROR	(~(my_off_t) 0)
-#if !defined(__WIN__) && !defined(OS2)
+#if !defined(_WIN32) && !defined(OS2)
 typedef off_t os_off_t;
 #endif
 
-#if defined(__WIN__)
+#if defined(_WIN32)
 #define socket_errno	WSAGetLastError()
 #define SOCKET_EINTR	WSAEINTR 
 #define SOCKET_EAGAIN	WSAEINPROGRESS

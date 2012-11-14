@@ -176,10 +176,6 @@ static char *posixly_correct;
 /* Avoid depending on library functions or files
    whose names are inconsistent.  */
 
-#ifndef OS2
-char *getenv (const char *);
-#endif
-
 static char *
 my_index (const char *str, int chr)
 {

@@ -26,6 +26,49 @@
 #include <thr_alarm.h>
 #include <assert.h>
 
+#ifdef _WIN32
+
+int 
+pthread_cond_init (pthread_cond_t *cv, const pthread_condattr_t *attr)
+{
+  DBUG_ENTER("pthread_cond_init");
+  /* Initialize the count to 0 */
+  cv->waiting = 0;
+
+  /* Create an auto-reset and manual-reset event */
+  if (!(cv->events[SIGNAL] = CreateEvent (NULL, FALSE, FALSE, NULL)) ||
+     !(cv->events[BROADCAST] = CreateEvent (NULL, TRUE, FALSE, NULL)))
+  {
+    DBUG_RETURN(GetLastError());
+  }
+  DBUG_RETURN(0);
+}
+
+int pthread_cond_timedwait(pthread_cond_t *cond, 
+	                       pthread_mutex_t *mutex,
+                           struct timespec *abstime)
+{
+  int result= 0;
+  return result == WAIT_TIMEOUT ? ETIMEDOUT : 0;
+}
+
+int pthread_cond_wait(pthread_cond_t *cv, pthread_mutex_t *mutex)
+{
+  return pthread_cond_timedwait(cv,mutex,NULL);
+}
+
+int pthread_cond_destroy(pthread_cond_t *cv)
+{
+  DeleteCriticalSection(&cv->waiters_count_lock);
+
+  if (CloseHandle(cv->events[SIGNAL]) == 0 ||
+      CloseHandle(cv->events[BROADCAST]) == 0)
+    return EINVAL;
+  return 0;
+}
+
+#endif
+
 #if (defined(__BSD__) || defined(_BSDI_VERSION)) && !defined(HAVE_mit_thread)
 #define SCHED_POLICY SCHED_RR
 #else
@@ -144,7 +187,7 @@ struct tm *localtime_r(const time_t *clock, struct tm *res)
 ** Author: Gary Wisniewski <garyw@spidereye.com.au>, much modified by Monty
 ****************************************************************************/
 
-#if !defined(HAVE_SIGWAIT) && !defined(HAVE_mit_thread) && !defined(sigwait) && !defined(__WIN__) && !defined(HAVE_rts_threads) && !defined(HAVE_NONPOSIX_SIGWAIT) && !defined(HAVE_DEC_3_2_THREADS) && !defined(OS2)
+#if !defined(HAVE_SIGWAIT) && !defined(HAVE_mit_thread) && !defined(sigwait) && !defined(_WIN32) && !defined(HAVE_rts_threads) && !defined(HAVE_NONPOSIX_SIGWAIT) && !defined(HAVE_DEC_3_2_THREADS) && !defined(OS2)
 
 #if !defined(DONT_USE_SIGSUSPEND)
 

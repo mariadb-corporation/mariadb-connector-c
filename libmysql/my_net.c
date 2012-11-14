@@ -21,7 +21,7 @@
 #include <m_string.h>
 
 /* for thread safe my_inet_ntoa */
-#if !defined(MSDOS) && !defined(__WIN__)
+#if !defined(MSDOS) && !defined(_WIN32)
 #include <netdb.h>
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
@@ -32,7 +32,7 @@
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
-#endif /* !defined(MSDOS) && !defined(__WIN__) */
+#endif /* !defined(MSDOS) && !defined(_WIN32) */
 
 void my_inet_ntoa(struct in_addr in, char *buf)
 {

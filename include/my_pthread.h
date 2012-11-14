@@ -29,7 +29,7 @@
 extern "C" {
 #endif /* __cplusplus */ 
 
-#if defined(__WIN__) || defined(OS2)
+#if defined(_WIN32) || defined(OS2)
 
 #ifdef OS2
 typedef ULONG     HANDLE;
@@ -60,20 +60,20 @@ typedef struct st_pthread_link {
 
 typedef struct {
   uint32 waiting;
-#ifdef OS2
-  HEV    semaphore;
-#else
-  HANDLE semaphore;
-#endif
+
+  enum {
+    SIGNAL = 0,
+    BROADCAST = 1,
+    MAX_EVENTS = 2
+  } EVENTS;
+  HANDLE events[MAX_EVENTS];
+  CRITICAL_SECTION waiters_count_lock;
 } pthread_cond_t;
 
-
-#ifndef OS2
 struct timespec {		/* For pthread_cond_timedwait() */
     time_t tv_sec;
     long tv_nsec;
 };
-#endif
 
 typedef int pthread_mutexattr_t;
 #define win_pthread_self my_thread_var->pthread_self
@@ -104,7 +104,6 @@ struct tm *localtime_r(const time_t *timep,struct tm *tmp);
 void pthread_exit(void *a);	 /* was #define pthread_exit(A) ExitThread(A)*/
 
 #ifndef OS2
-#define ETIMEDOUT 145		    /* Win32 doesn't have this */
 #define getpid() GetCurrentThreadId()
 #endif
 #define pthread_self() win_pthread_self
@@ -132,15 +131,7 @@ void pthread_exit(void *a);	 /* was #define pthread_exit(A) ExitThread(A)*/
 #endif /* USE_TLS */
 
 #define pthread_equal(A,B) ((A) == (B))
-#ifdef OS2
-extern int pthread_mutex_init (pthread_mutex_t *, const pthread_mutexattr_t *);
-extern int pthread_mutex_lock (pthread_mutex_t *);
-extern int pthread_mutex_unlock (pthread_mutex_t *);
-extern int pthread_mutex_destroy (pthread_mutex_t *);
-#define my_pthread_setprio(A,B)  DosSetPriority(PRTYS_THREAD,PRTYC_NOCHANGE, B, A)
-#define pthread_kill(A,B) raise(B)
-#define pthread_exit(A) pthread_dummy()
-#else
+#ifdef _WIN32
 #define pthread_mutex_init(A,B)  InitializeCriticalSection(A)
 #define pthread_mutex_lock(A)	 (EnterCriticalSection(A),0)
 #define pthread_mutex_trylock(A) (WaitForSingleObject((A), 0) == WAIT_TIMEOUT)
@@ -148,7 +139,7 @@ extern int pthread_mutex_destroy (pthread_mutex_t *);
 #define pthread_mutex_destroy(A) DeleteCriticalSection(A)
 #define my_pthread_setprio(A,B)  SetThreadPriority(GetCurrentThread(), (B))
 #define pthread_kill(A,B) pthread_dummy(0)
-#endif /* OS2 */
+#endif /* _WIN32 */
 
 /* Dummy defines for easier code */
 #define pthread_attr_setdetachstate(A,B) pthread_dummy(0)
@@ -427,7 +418,7 @@ struct tm *localtime_r(const time_t *clock, struct tm *res);
 #define HAVE_PTHREAD_KILL
 #endif
 
-#endif /* defined(__WIN__) */
+#endif /* defined(_WIN32) */
 
 #if defined(HPUX) && !defined(DONT_REMAP_PTHREAD_FUNCTIONS)
 #undef pthread_cond_timedwait

@@ -264,6 +264,8 @@
 # define HAVE_SOCKLEN_T 1
 #endif
 
+#cmakedefine SOCKET_SIZE_TYPE @SOCKET_SIZE_TYPE@
+
 #cmakedefine RETSIGTYPE @RETSIGTYPE@
 #cmakedefine RETQSORTTYPE @RETQSORTTYPE@ 
 

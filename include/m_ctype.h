@@ -37,14 +37,15 @@ extern "C" {
 typedef struct charset_info_st
 {
   uint	nr; /* so far only 1 byte for charset */
+  uint  state;
+  char	*csname;
   char	*name;
-  char	*collation;
+  char  *comment;
+  char  *dir;
   uint	char_minlen;
   uint	char_maxlen;
   uint 	(*mb_charlen)(uint c);
   uint 	(*mb_valid)(const char *start, const char *end);
-  uchar *ctype;
-  uint  mbmaxlen;
 } CHARSET_INFO;
 
 extern const CHARSET_INFO  compiled_charsets[];
@@ -53,6 +54,6 @@ extern CHARSET_INFO *default_charset_info;
 CHARSET_INFO *find_compiled_charset(uint cs_number);
 CHARSET_INFO *find_compiled_charset_by_name(const char *name);
 
-unsigned long mysql_cset_escape_quotes(const CHARSET_INFO *cset, char *newstr,  const char *escapestr, size_t escapestr_len);
-unsigned long mysql_cset_escape_slashes(const CHARSET_INFO *cset, char *newstr, const char *escapestr, size_t escapestr_len);
+size_t mysql_cset_escape_quotes(const CHARSET_INFO *cset, char *newstr,  const char *escapestr, size_t escapestr_len);
+size_t mysql_cset_escape_slashes(const CHARSET_INFO *cset, char *newstr, const char *escapestr, size_t escapestr_len);
 #endif

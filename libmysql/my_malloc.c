@@ -25,7 +25,7 @@
 
 	/* My memory allocator */
 
-gptr my_malloc(unsigned int Size, myf MyFlags)
+gptr my_malloc(size_t Size, myf MyFlags)
 {
   gptr point;
   DBUG_ENTER("my_malloc");
@@ -65,7 +65,7 @@ void my_no_flags_free(gptr ptr)
 
 	/* malloc and copy */
 
-gptr my_memdup(const byte *from, uint length, myf MyFlags)
+gptr my_memdup(const byte *from, size_t length, myf MyFlags)
 {
   gptr ptr;
   if ((ptr=my_malloc(length,MyFlags)) != 0)

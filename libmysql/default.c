@@ -47,7 +47,7 @@ char *defaults_extra_file=0;
 /* Which directories are searched for options (and in which order) */
 
 const char *default_directories[]= {
-#ifdef __WIN__
+#ifdef _WIN32
 "C:/",
 #else
 "/etc/",
@@ -56,14 +56,14 @@ const char *default_directories[]= {
 DATADIR,
 #endif
 "",					/* Place for defaults_extra_dir */
-#ifndef __WIN__
+#ifndef _WIN32
 "~/",
 #endif
 NullS,
 };
 
 #define default_ext	".cnf"		/* extension for config file */
-#ifdef __WIN__
+#ifdef _WIN32
 #include <winbase.h>
 #define windows_ext	".ini"
 #endif
@@ -141,7 +141,7 @@ void load_defaults(const char *conf_file, const char **groups,
   }
   else
   {
-#ifdef __WIN__
+#ifdef _WIN32
     char system_dir[FN_REFLEN];
     GetWindowsDirectory(system_dir,sizeof(system_dir));
     if (search_default_file(&args, &alloc, system_dir, conf_file, windows_ext,
@@ -244,7 +244,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
     strmov(name,config_file);
   }
   fn_format(name,name,"","",4);
-#if !defined(__WIN__) && !defined(OS2)
+#if !defined(_WIN32) && !defined(OS2)
   {
     MY_STAT stat_info;
     if (!my_stat(name,&stat_info,MYF(0)))
@@ -364,7 +364,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
 
 void print_defaults(const char *conf_file, const char **groups)
 {
-#ifdef __WIN__
+#ifdef _WIN32
   bool have_ext=fn_ext(conf_file)[0] != 0;
 #endif
   char name[FN_REFLEN];
@@ -375,7 +375,7 @@ void print_defaults(const char *conf_file, const char **groups)
     fputs(conf_file,stdout);
   else
   {
-#ifdef __WIN__
+#ifdef _WIN32
     GetWindowsDirectory(name,sizeof(name));
     printf("%s\\%s%s ",name,conf_file,have_ext ? "" : windows_ext);
 #endif
