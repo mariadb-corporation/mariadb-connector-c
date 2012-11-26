@@ -32,6 +32,9 @@ pthread_key(struct st_my_thread_var, THR_KEY_mysys);
 pthread_mutex_t THR_LOCK_malloc,THR_LOCK_open,THR_LOCK_keycache,
 	        THR_LOCK_lock,THR_LOCK_isam,THR_LOCK_myisam,THR_LOCK_heap,
 	        THR_LOCK_net, THR_LOCK_charset; 
+#ifdef HAVE_OPENSSL
+pthread_mutex_t LOCK_ssl_config;
+#endif
 #ifndef HAVE_LOCALTIME_R
 pthread_mutex_t LOCK_localtime_r;
 #endif
@@ -65,7 +68,9 @@ my_bool my_thread_global_init(void)
   pthread_mutexattr_setkind_np(&my_errchk_mutexattr,
 			       PTHREAD_MUTEX_ERRORCHECK_NP);
 #endif
-
+#ifdef HAVE_OPENSSL
+  pthread_mutex_init(&LOCK_ssl_config,MY_MUTEX_INIT_FAST);
+#endif
   pthread_mutex_init(&THR_LOCK_malloc,MY_MUTEX_INIT_FAST);
   pthread_mutex_init(&THR_LOCK_open,MY_MUTEX_INIT_FAST);
   pthread_mutex_init(&THR_LOCK_keycache,MY_MUTEX_INIT_FAST);
@@ -97,6 +102,9 @@ void my_thread_global_end(void)
 #endif
 #ifdef PPTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP
   pthread_mutexattr_destroy(&my_errchk_mutexattr);
+#endif
+#ifdef HAVE_OPENSSL
+  pthread_mutex_destroy(&LOCK_ssl_config);
 #endif
 #ifndef HAVE_GETHOSTBYNAME_R
   pthread_mutex_destroy(&LOCK_gethostbyname_r);

@@ -58,6 +58,7 @@ extern const char *client_errors[];	/* Error messages */
 #define CR_NAMEDPIPESETSTATE_ERROR 2018
 #define CR_CANT_READ_CHARSET	2019
 #define CR_NET_PACKET_TOO_LARGE 2020
+#define CR_SSL_CONNECTION_ERROR 2026
 #define CR_MALFORMED_PACKET     2027
 #define CR_NO_PREPARE_STMT      2030
 #define CR_PARAMS_NOT_BOUND     2031

@@ -41,6 +41,10 @@
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_OPENSSL
+#include <my_secure.h>
+#endif
+
 #ifdef _WIN32
 #define socklen_t int
 #pragma comment (lib, "ws2_32")
@@ -73,9 +77,9 @@ typedef char *vio_cstring;
  * Helper to fill most of the Vio* with defaults.
  */
 
-static void vio_reset(Vio* vio, enum enum_vio_type type,
-                      my_socket sd, HANDLE hPipe,
-                      my_bool localhost)
+void vio_reset(Vio* vio, enum enum_vio_type type,
+               my_socket sd, HANDLE hPipe,
+               my_bool localhost)
 {
   bzero((char*) vio, sizeof(*vio));
   vio->type= type;
@@ -187,6 +191,15 @@ int vio_read(Vio * vio, gptr buf, int size)
   int r;
   DBUG_ENTER("vio_read");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
+
+#ifdef HAVE_OPENSSL
+  if (vio->type == VIO_TYPE_SSL)
+  {
+    r= my_ssl_read(vio, (uchar *)buf, size);
+    DBUG_RETURN(r); 
+  }
+#endif
+
 #if defined( _WIN32) || defined(OS2)
   if (vio->type == VIO_TYPE_NAMEDPIPE)
   {
@@ -221,6 +234,13 @@ int vio_write(Vio * vio, const gptr buf, int size)
   int r;
   DBUG_ENTER("vio_write");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
+#ifdef HAVE_OPENSSL
+  if (vio->type == VIO_TYPE_SSL)
+  {
+    r= my_ssl_write(vio, (uchar *)buf, size);
+    DBUG_RETURN(r); 
+  }
+#endif
 #if defined( _WIN32) || defined(OS2)
   if ( vio->type == VIO_TYPE_NAMEDPIPE)
   {
@@ -360,6 +380,10 @@ int vio_close(Vio * vio)
 {
   int r;
   DBUG_ENTER("vio_close");
+  if (vio->type == VIO_TYPE_SSL)
+  {
+    r = my_ssl_close(vio);
+  }
 #ifdef _WIN32
   if (vio->type == VIO_TYPE_NAMEDPIPE)
   {

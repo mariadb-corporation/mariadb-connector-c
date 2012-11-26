@@ -1,6 +1,7 @@
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include 
                     ${CMAKE_SOURCE_DIR}/zlib 
-                    ${CMAKE_SOURCE_DIR}/libmysql)
+                    ${CMAKE_SOURCE_DIR}/libmysql
+                    ${OPENSSL_INCLUDE_DIR})
 
 SET(LIBMYSQL_VERSION "16.0.0")
 
@@ -26,28 +27,21 @@ SET(LIBMYSQL_SOURCES array.c bchange.c bmove.c bmove_upp.c my_charset.c
                      strend.c strfill.c string.c strinstr.c strmake.c
                      strmov.c strnmov.c strtoll.c strtoull.c 
                      strxmov.c strxnmov.c thr_mutex.c typelib.c sha1.c my_stmt.c
-                     my_loaddata.c my_stmt_codec.c client_plugin.c my_auth.c)
-
+                     my_loaddata.c my_stmt_codec.c client_plugin.c my_auth.c my_secure.c)
 
 ADD_LIBRARY(mysqlclient STATIC ${LIBMYSQL_SOURCES})
-TARGET_LINK_LIBRARIES(mysqlclient ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} zlib)
-
+TARGET_LINK_LIBRARIES(mysqlclient ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} ${OPENSSL_LIBRARIES} zlib)
 IF(UNIX)
   TARGET_LINK_LIBRARIES(mysqlclient m)
 ENDIF(UNIX)
 
 ADD_LIBRARY(libmysql SHARED ${LIBMYSQL_SOURCES})
-TARGET_LINK_LIBRARIES(libmysql ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} zlib)
+TARGET_LINK_LIBRARIES(libmysql ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} ${OPENSSL_LIBRARIES} zlib)
   
 IF(WIN32)
   TARGET_LINK_LIBRARIES(libmysql ws2_32)
   TARGET_LINK_LIBRARIES(mysqlclient ws2_32)
 ENDIF(WIN32)
-
-IF(OPENSSL_LIBRARIES)
-  TARGET_LINK_LIBRARIES(mysqlclient ${SSL_LIBRARIES})
-  TARGET_LINK_LIBRARIES(libmysql ${SSL_LIBRARIES})
-ENDIF(OPENSSL_LIBRARIES)
 
 IF(NOT WIN32)
   # we don't want a liblibmysql

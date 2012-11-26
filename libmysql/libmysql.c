@@ -60,6 +60,9 @@
 #endif
 #include <sha1.h>
 #include <violite.h>
+#ifdef HAVE_OPENSSL
+#include <my_secure.h>
+#endif
 
 static my_bool mysql_client_init=0;
 extern my_bool  my_init_done;
@@ -1321,13 +1324,17 @@ mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
 /**************************************************************************
 **************************************************************************/
 
-char * STDCALL
-mysql_ssl_cipher(MYSQL *mysql)
+const char * STDCALL
+mysql_get_ssl_cipher(MYSQL *mysql)
 {
-//  return (char *)mysql->net.vio->cipher_description();
-  return NULL;
+#ifdef HAVE_OPENSSL
+  if (mysql->net.vio && mysql->net.vio->ssl)
+  {
+    return SSL_get_cipher_name(mysql->net.vio->ssl);
+  }
+#endif
+  return(NULL);
 }
-
 
 /**************************************************************************
 ** Free strings in the SSL structure and clear 'use_ssl' flag.
@@ -1914,13 +1921,37 @@ mysql_select_db(MYSQL *mysql, const char *db)
 ** If handle is alloced by mysql connect free it.
 *************************************************************************/
 
+static void mysql_close_options(MYSQL *mysql)
+{
+/* todo
+  my_free(mysql->options.init_command,MYF(MY_ALLOW_ZERO_PTR));
+*/
+  my_free(mysql->options.user,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.host,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.password,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.unix_socket,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.db,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.my_cnf_file,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.my_cnf_group,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.charset_dir,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.charset_name,MYF(MY_ALLOW_ZERO_PTR));
+#ifdef HAVE_OPENSSL
+  my_free(mysql->options.ssl_key, MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
+#endif /* HAVE_OPENSSL */
+}
+
 static void mysql_close_memory(MYSQL *mysql)
 {
+  my_free(mysql->host_info, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->user,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->passwd,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->db,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->server_version,MYF(MY_ALLOW_ZERO_PTR));
   mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
+  mysql_close_options(mysql);
 }
 
 
@@ -1970,32 +2001,11 @@ mysql_close(MYSQL *mysql)
       SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     }
     mysql_close_memory(mysql);
-    //my_free(mysql->host_info,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->user,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->passwd,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->db,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->server_version,MYF(MY_ALLOW_ZERO_PTR));
     mysql->host_info=mysql->user=mysql->passwd=mysql->db=0;
    
-/* todo
-    my_free(mysql->options.init_command,MYF(MY_ALLOW_ZERO_PTR));
-*/
-    my_free(mysql->options.user,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.host,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.password,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.unix_socket,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.db,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.my_cnf_file,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.my_cnf_group,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.charset_dir,MYF(MY_ALLOW_ZERO_PTR));
-    my_free(mysql->options.charset_name,MYF(MY_ALLOW_ZERO_PTR));
     /* Clear pointers for better safety */
     bzero((char*) &mysql->options,sizeof(mysql->options));
     mysql->net.vio= 0;
-#ifdef HAVE_OPENSSL
-    ((VioConnectorFd*)(mysql->connector_fd))->delete();
-    mysql->connector_fd = 0;
-#endif /* HAVE_OPENSSL */
     if (mysql->free_me)
       my_free((gptr) mysql,MYF(0));
   }
@@ -2916,6 +2926,9 @@ void STDCALL mysql_server_end()
 {
   if (!mysql_client_init)
     return;
+#ifdef HAVE_OPENSSL
+  my_ssl_end();
+#endif  
 
   mysql_client_plugin_deinit();
 

@@ -5,6 +5,9 @@
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <violite.h>
+#ifdef HAVE_OPENSSL
+#include <my_secure.h>
+#endif
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
@@ -316,11 +319,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 #ifdef HAVE_OPENSSL
   if (mysql->client_flag & CLIENT_SSL)
   {
-    /* Do the SSL layering. */
-    struct st_mysql_options *options= &mysql->options;
-    struct st_VioSSLFd *ssl_fd;
-    char error_string[1024];
-
+    SSL *ssl;
     /*
       Send mysql->client_flag, max_packet_size - unencrypted otherwise
       the server does not know we want to do SSL
@@ -334,39 +333,17 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       goto error;
     }
 
-    /* Create the VioSSLConnectorFd - init SSL and load certs */
-    if (!(ssl_fd= new_VioSSLConnectorFd(options->ssl_key,
-                                        options->ssl_cert,
-                                        options->ssl_ca,
-                                        options->ssl_capath,
-                                        options->ssl_cipher)))
-    {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0);
-      goto error;
-    }
-    mysql->connector_fd= (void*)ssl_fd;
+    /* Create SSL */
+    if (!(ssl= my_ssl_init(mysql)))
+      goto error; 
 
     /* Connect to the server */
-    DBUG_PRINT("info", ("IO layer change in progress..."));
-    if (sslconnect(ssl_fd, net->vio,
-                   (long) (mysql->options.connect_timeout),
-                   error_string))
+    if (my_ssl_connect(ssl))
     {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR,
-                          SQLSTATE_UNKNOWN, "SSL error: %s",
-                          error_string[0] ? error_string :
-                          ER(CR_SSL_CONNECTION_ERROR));
+      SSL_free(ssl);
       goto error;
     }
-    DBUG_PRINT("info", ("IO layer change done!"));
-
-    /* Verify server cert */
-    if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
-        ssl_verify_server_cert(net->vio, mysql->host))
-    {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0);
-      goto error;
-    }
+    /* todo: server certification verification */
   }
 #endif /* HAVE_OPENSSL */
 

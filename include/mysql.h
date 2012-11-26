@@ -234,7 +234,7 @@ struct st_mysql_options {
 
 typedef struct st_mysql {
   NET		net;			/* Communication parameters */
-  unsigned char *connector_fd;		/* ConnectorFd for SSL */
+  unsigned char *unused;
   char		*host,*user,*passwd,*unix_socket,*server_version,*host_info;
   char		*info,*db;
   const struct charset_info_st *charset;      /* character set */
@@ -368,7 +368,7 @@ MYSQL *		STDCALL mysql_init(MYSQL *mysql);
 int		STDCALL mysql_ssl_set(MYSQL *mysql, const char *key,
 				      const char *cert, const char *ca,
 				      const char *capath);
-char *		STDCALL mysql_ssl_cipher(MYSQL *mysql);
+const char *	STDCALL mysql_get_ssl_cipher(MYSQL *mysql);
 int		STDCALL mysql_ssl_clear(MYSQL *mysql);
 #endif /* HAVE_OPENSSL */
 MYSQL *		STDCALL mysql_connect(MYSQL *mysql, const char *host,

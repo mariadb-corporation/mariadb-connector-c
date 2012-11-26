@@ -31,6 +31,10 @@
 #include <Vio.h>				/* Full VIO interface */
 #else
 
+#ifdef HAVE_OPENSSL
+#include <openssl/ssl.h>
+#endif
+
 /* Simple vio interface in C;  The functions are implemented in violite.c */
 
 #ifdef	__cplusplus
@@ -43,6 +47,10 @@ struct st_vio;					/* Only C */
 typedef struct st_vio Vio;
 #endif
 
+#ifndef _WIN32
+#define HANDLE void *
+#endif
+
 enum enum_vio_type { VIO_CLOSED, VIO_TYPE_TCPIP, VIO_TYPE_SOCKET,
 		     VIO_TYPE_NAMEDPIPE, VIO_TYPE_SSL};
 
@@ -53,6 +61,9 @@ Vio*		vio_new(my_socket	sd,
 Vio*		vio_new_win32pipe(HANDLE hPipe);
 #endif
 void		vio_delete(Vio* vio);
+void vio_reset(Vio* vio, enum enum_vio_type type,
+               my_socket sd, HANDLE hPipe,
+               my_bool localhost);
 
 /*
  * vio_read and vio_write should have the same semantics
@@ -117,10 +128,6 @@ void vio_in_addr(Vio *vio, struct in_addr *in);
 my_bool vio_poll_read(Vio *vio,uint timeout);
 
 
-#ifndef _WIN32
-#define HANDLE void *
-#endif
-
 struct st_vio
 {
   my_socket sd; /* my_socket - real or imaginary */
@@ -131,6 +138,9 @@ struct st_vio
   struct sockaddr_in remote; /* Remote internet address */
   enum enum_vio_type type; /* Type of connection */
   char desc[30]; /* String description */
+#ifdef HAVE_OPENSSL
+  SSL *ssl;
+#endif
 };
 
 #ifdef	__cplusplus

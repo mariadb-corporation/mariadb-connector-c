@@ -144,6 +144,7 @@ enum enum_server_command
 #define CLIENT_PS_MULTI_RESULTS  (1UL << 18)
 #define CLIENT_PLUGIN_AUTH       (1UL << 19)
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
+#define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_LONG_PASSWORD | \
                                  CLIENT_LONG_PASSWORD |\
@@ -164,7 +165,8 @@ enum enum_server_command
                                  CLIENT_SECURE_CONNECTION |\
                                  CLIENT_MULTI_STATEMENTS |\
                                  CLIENT_MULTI_RESULTS |\
-                                 CLIENT_PROGRESS)
+                                 CLIENT_PROGRESS |\
+		                 CLIENT_SSL_VERIFY_SERVER_CERT)
 
 #define CLIENT_CAPABILITIES	(CLIENT_LONG_PASSWORD |\
                                  CLIENT_LONG_FLAG |\
