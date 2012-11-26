@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_commit" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_commit</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_commit</refname>
+        <refpurpose>Commits the currenct transaction</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_commit</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Commits the current transaction for the specified database connection.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter> mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Executing <function>mysql_commit()</function> will not affected the behaviour of autocommit. This means, any upsert statements following <function>mysql_commit()</function> will be rolled back, when the connection gets closed</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_rollback()</function></para>
+      </refsect1>
+    </refentry>

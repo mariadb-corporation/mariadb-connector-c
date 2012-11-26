@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_affected_rows" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_affected_rows</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_affected_rows</refname>
+        <refpurpose>Returns the number of affected rows from previous executed prepared statement</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_ulonglong</type>
+          <methodname>mysql_stmt_affected_rows</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns the number of affected rows by the last prepared statement associated with <parameter>mysql</parameter>, if the operation was an "upsert" (INSERT, UPDATE, DELETE or REPLACE) statement. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns the number of affected rows on success, or -1 if the last prepared statement failed.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>When using UPDATE, MariaDB will not update columns where the new value is the same as the old value. This creates the possibility that <function>mysql_stmt_affected_rows()</function> may not actually equal the number of rows matched, only the number of rows that were literally affected by the query.</para>
+          <para>The REPLACE statement first deletes the record with the same primary key and then inserts the new record. This function returns the number of deleted records in addition to the number of inserted records. </para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_insert_id()</function></para>
+      </refsect1>
+    </refentry>

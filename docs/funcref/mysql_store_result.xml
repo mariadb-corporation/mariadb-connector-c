@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_store_result" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_store_result</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_store_result</refname>
+        <refpurpose>Returns a buffered resultset from the last executed query</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_RES *</type>
+          <methodname>mysql_store_result</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Transfers a buffered result set from the last query on the database connection</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A buffered result set or NULL if an error occured.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para><function>mysql_store_result()</function> returns NULL in case an error occured or if the query didn't return data (e.g. when executing an <command>INSERT</command> or <command>UPDATE</command> query.</para>
+          <para><function>mysql_field_count()</function> indicates if there will be a result set available.</para>
+          <para>The memory allocated by <function>mysql_store_result()</function> needs to be relased by calling the function <function>mysql_free_result()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_use_result()</function>, <function>mysql_real_query()</function>, <function>mysql_field_count()</function></para>
+      </refsect1>
+    </refentry>

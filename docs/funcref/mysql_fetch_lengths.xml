@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_fetch_lengths" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_fetch_lengths</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_fetch_lengths</refname>
+        <refpurpose>Returns the length of the columns of the current row</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned long *</type>
+          <methodname>mysql_fetch_lengths</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>result</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>The <function>mysql_fetch_lengths()</function> function returns an array containing the lengths of every column of the current row within the result set.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>result</parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>An array of unsigned long integers representing the size of each column (not including terminating zero character) or <parameter>NULL</parameter> if an error occured.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para><function>mysql_fetch_lengths()</function> is valid only for the current row of the result set. It returns NULL if you call it before calling <function>mysql_fetch_row()</function> or after retrieving all rows in the result. </para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para>
+          <function>mysql_fetch_row()</function>
+        </para>
+      </refsect1>
+    </refentry>

@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_send_long_data" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_send_long_data</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_send_long_data</refname>
+        <refpurpose>Send data in chunks</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_stmt_send_long_data</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>int</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>data</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>long</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Allows to send parameter data to the server in pieces (or chunks), e.g. if the size of a blob exceeds the size of max_allowed_packet. This function can be called multiple times to send the parts of a character or binary data value for a column, which must be one of the <parameter>TEXT</parameter> or <parameter>BLOB</parameter> datatypes.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>param_no</parameter></term><listitem><para>Indicates which parameter to associate the data with. Parameters are numbered beginning with 0.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>data</parameter></term><listitem><para>A buffer containing the data to send.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>long</parameter></term><listitem><para>size of the <parameter>data</parameter> buffer.</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>todo: !!</para> 
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

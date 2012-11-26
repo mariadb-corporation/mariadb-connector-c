@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_get_proto_info" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_get_proto_info</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_get_proto_info</refname>
+        <refpurpose>Returns the protocol version number</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned int</type>
+          <methodname>mysql_get_proto_info</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns the protocol version number for the specified connection</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The protocol version for the used connection.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The client library doesn't support protocol version 9 and prior.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_get_host_info()</function></para>
+      </refsect1>
+    </refentry>

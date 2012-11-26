@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_real_connect" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_real_connect</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_real_connect</refname>
+        <refpurpose>Establish a connection to database server</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL *</type>
+          <methodname>mysql_real_connect</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>host</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>user</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>passwd</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>db</parameter></methodparam>
+           <methodparam><type>unsigned int</type><parameter>port</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>unix_socket</parameter></methodparam>
+           <methodparam><type>unsigned long</type><parameter>flags</parameter></methodparam>
+        </methodsynopsis>
+        <para>Establishes a connection to a database server.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>host</parameter></term><listitem><para>Can be either a host name or an IP address. Passing the NULL value or the string "localhost" to this parameter, the local host is assumed. When possible, pipes will be used instead of the TCP/IP protoco</para></listitem></varlistentry>
+           <varlistentry><term><parameter>user</parameter></term><listitem><para>The user name</para></listitem></varlistentry>
+           <varlistentry><term><parameter>passwd</parameter></term><listitem><para>If provided or NULL, the server will attempt to authenticate the user against those user records which have no password only. This allows one username to be used with different permissions (depending on if a password as provided or not).</para></listitem></varlistentry>
+           <varlistentry><term><parameter>db</parameter></term><listitem><para>If provided will specify the default database to be used when performing queries.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>port</parameter></term><listitem><para>Specifies the port number to attempt to connect to the server.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>unix_socket</parameter></term><listitem><para>Specifies the socket or named pipe that should be used.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>flags</parameter></term><listitem><para>The <parameter>flags</parameter> allows to set various connection options:</para>
+           <variablelist>
+             <varlistentry>
+               <term><parameter>CLIENT_FOUND_ROWS</parameter></term>
+               <listitem><para>Return the number of matched rows instead of number of changed rows.</para></listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>CLIENT_NO_SCHEMA</parameter></term>
+               <listitem><para>Forbids the use of database.tablename.column syntax and forces the SQL parser to generate an error.</para></listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>CLIENT_COMPRESS</parameter></term>
+               <listitem><para>Use compression protocol</para></listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>CLIENT_IGNORE_SPACE</parameter></term>
+               <listitem><para>This option makes all function names reserved words.</para></listitem>
+             </varlistentry>
+             <varlistentry>
+             <varlistentry>
+               <term><parameter>CLIENT_INTERACTIVE</parameter></term>
+               <listitem><para>Forces the server to close a connection after <parameter>interactive_timeout</parameter> seconds (instead of <parameter>wait_timeout</parameter> seconds).</para></listitem>
+             </varlistentry>
+               <term><parameter>CLIENT_LOCAL_FILES</parameter></term>
+               <listitem><para>Use compression protocol</para></listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>CLIENT_MULTI_STATEMENTS</parameter></term>
+               <listitem><para>Allows the client to send multiple statements in one command. Statements will be divided by a semicolon.</para></listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>CLIENT_MULTI_RESULTS</parameter></term>
+               <listitem><para>Indicates that the client is able to handle multiple result sets from stored procedures or multi statements. This option will be automatically set if <parameter>CLIENT_MULTIO_STATEMENTS</parameter> is set.</para></listitem>
+             </varlistentry>
+           </variablelist>
+          </listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A <parameter>MYSQL *</parameter> handle or NULL if an error occured.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The password doesn't need to be encrypted before executing <function>mysql_real_connect()</function> this will be handled in the client server protocol.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_init()</function>, <function>mysql_options()</function></para>
+      </refsect1>
+    </refentry>

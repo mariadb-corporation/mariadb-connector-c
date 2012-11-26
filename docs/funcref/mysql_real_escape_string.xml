@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_real_escape_string" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_real_escape_string</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_real_escape_string</refname>
+        <refpurpose>Escapes special characters in a string</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned long</type>
+          <methodname>mysql_real_escape_string</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>char *</type><parameter>to</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>from</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>long</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>This function is used to create a legal SQL string that you can use in an SQL statement. The given string is encoded to an escaped SQL string, taking into account the current character set of the connection.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>to</parameter></term><listitem><para>buffer for the encoded string. The size of this buffer must be length * 2 + 1 bytes: in worst case every character of the from stirng needs to be escaped. Additionally a trailing 0 character will be appended.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>from</parameter></term><listitem><para>An string which will be encoded by <function>mysql_real_escape_string()</function>.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>long</parameter></term><listitem><para>The length of <parameter>from</parameter> string.</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns the length of the encoded (<parameter>to</parameter>) string.</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>todo!</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

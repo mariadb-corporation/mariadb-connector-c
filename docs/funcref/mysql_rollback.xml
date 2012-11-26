@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_rollback" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_rollback</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_rollback</refname>
+        <refpurpose>Rolls back current transaction</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_rollback</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Rolls back the current transaction for the database.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para><function>mysql_rollback()</function> will not work as expected if autocommit mode was set or the storage engine does not support transactions.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_commit()</function>, <function>mysql_autocommit()</function></para>
+      </refsect1>
+    </refentry>

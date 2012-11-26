@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "global.ent">
+%global_ents;
+<!ENTITY myodbc_remove_escape "funcref/myodbc_remove_escape.xml">
+<!ENTITY mysql_affected_rows "funcref/mysql_affected_rows.xml">
+<!ENTITY mysql_autocommit "funcref/mysql_autocommit.xml">
+<!ENTITY mysql_change_user "funcref/mysql_change_user.xml">
+<!ENTITY mysql_character_set_name "funcref/mysql_character_set_name.xml">
+<!ENTITY mysql_close "funcref/mysql_close.xml">
+<!ENTITY mysql_commit "funcref/mysql_commit.xml">
+<!ENTITY mysql_data_seek "funcref/mysql_data_seek.xml">
+<!ENTITY mysql_debug "funcref/mysql_debug.xml">
+<!ENTITY mysql_dump_debug_info "funcref/mysql_dump_debug_info.xml">
+<!ENTITY mysql_embedded "funcref/mysql_embedded.xml">
+<!ENTITY mysql_eof "funcref/mysql_eof.xml">
+<!ENTITY mysql_errno "funcref/mysql_errno.xml">
+<!ENTITY mysql_error "funcref/mysql_error.xml">
+<!ENTITY mysql_escape_string "funcref/mysql_escape_string.xml">
+<!ENTITY mysql_fetch_field "funcref/mysql_fetch_field.xml">
+<!ENTITY mysql_fetch_field_direct "funcref/mysql_fetch_field_direct.xml">
+<!ENTITY mysql_fetch_fields "funcref/mysql_fetch_fields.xml">
+<!ENTITY mysql_fetch_lengths "funcref/mysql_fetch_lengths.xml">
+<!ENTITY mysql_fetch_row "funcref/mysql_fetch_row.xml">
+<!ENTITY mysql_field_count "funcref/mysql_field_count.xml">
+<!ENTITY mysql_field_seek "funcref/mysql_field_seek.xml">
+<!ENTITY mysql_field_tell "funcref/mysql_field_tell.xml">
+<!ENTITY mysql_free_result "funcref/mysql_free_result.xml">
+<!ENTITY mysql_get_character_set_info "funcref/mysql_get_character_set_info.xml">
+<!ENTITY mysql_get_client_info "funcref/mysql_get_client_info.xml">
+<!ENTITY mysql_get_client_version "funcref/mysql_get_client_version.xml">
+<!ENTITY mysql_get_host_info "funcref/mysql_get_host_info.xml">
+<!ENTITY mysql_get_proto_info "funcref/mysql_get_proto_info.xml">
+<!ENTITY mysql_get_server_info "funcref/mysql_get_server_info.xml">
+<!ENTITY mysql_get_server_version "funcref/mysql_get_server_version.xml">
+<!ENTITY mysql_get_ssl_cipher "funcref/mysql_get_ssl_cipher.xml">
+<!ENTITY mysql_hex_string "funcref/mysql_hex_string.xml">
+<!ENTITY mysql_info "funcref/mysql_info.xml">
+<!ENTITY mysql_init "funcref/mysql_init.xml">
+<!ENTITY mysql_insert_id "funcref/mysql_insert_id.xml">
+<!ENTITY mysql_kill "funcref/mysql_kill.xml">
+<!ENTITY mysql_more_results "funcref/mysql_more_results.xml">
+<!ENTITY mysql_next_result "funcref/mysql_next_result.xml">
+<!ENTITY mysql_num_fields "funcref/mysql_num_fields.xml">
+<!ENTITY mysql_num_rows "funcref/mysql_num_rows.xml">
+<!ENTITY mysql_options "funcref/mysql_options.xml">
+<!ENTITY mysql_ping "funcref/mysql_ping.xml">
+<!ENTITY mysql_query "funcref/mysql_query.xml">
+<!ENTITY mysql_read_query_result "funcref/mysql_read_query_result.xml">
+<!ENTITY mysql_real_connect "funcref/mysql_real_connect.xml">
+<!ENTITY mysql_real_escape_string "funcref/mysql_real_escape_string.xml">
+<!ENTITY mysql_real_query "funcref/mysql_real_query.xml">
+<!ENTITY mysql_refresh "funcref/mysql_refresh.xml">
+<!ENTITY mysql_rollback "funcref/mysql_rollback.xml">
+<!ENTITY mysql_row_seek "funcref/mysql_row_seek.xml">
+<!ENTITY mysql_row_tell "funcref/mysql_row_tell.xml">
+<!ENTITY mysql_select_db "funcref/mysql_select_db.xml">
+<!ENTITY mysql_send_query "funcref/mysql_send_query.xml">
+<!ENTITY mysql_server_end "funcref/mysql_server_end.xml">
+<!ENTITY mysql_server_init "funcref/mysql_server_init.xml">
+<!ENTITY mysql_set_character_set "funcref/mysql_set_character_set.xml">
+<!ENTITY mysql_set_server_option "funcref/mysql_set_server_option.xml">
+<!ENTITY mysql_shutdown "funcref/mysql_shutdown.xml">
+<!ENTITY mysql_sqlstate "funcref/mysql_sqlstate.xml">
+<!ENTITY mysql_ssl_set "funcref/mysql_ssl_set.xml">
+<!ENTITY mysql_stat "funcref/mysql_stat.xml">
+<!ENTITY mysql_stmt_affected_rows "funcref/mysql_stmt_affected_rows.xml">
+<!ENTITY mysql_stmt_attr_get "funcref/mysql_stmt_attr_get.xml">
+<!ENTITY mysql_stmt_attr_set "funcref/mysql_stmt_attr_set.xml">
+<!ENTITY mysql_stmt_bind_param "funcref/mysql_stmt_bind_param.xml">
+<!ENTITY mysql_stmt_bind_result "funcref/mysql_stmt_bind_result.xml">
+<!ENTITY mysql_stmt_close "funcref/mysql_stmt_close.xml">
+<!ENTITY mysql_stmt_data_seek "funcref/mysql_stmt_data_seek.xml">
+<!ENTITY mysql_stmt_errno "funcref/mysql_stmt_errno.xml">
+<!ENTITY mysql_stmt_error "funcref/mysql_stmt_error.xml">
+<!ENTITY mysql_stmt_execute "funcref/mysql_stmt_execute.xml">
+<!ENTITY mysql_stmt_fetch "funcref/mysql_stmt_fetch.xml">
+<!ENTITY mysql_stmt_fetch_column "funcref/mysql_stmt_fetch_column.xml">
+<!ENTITY mysql_stmt_field_count "funcref/mysql_stmt_field_count.xml">
+<!ENTITY mysql_stmt_free_result "funcref/mysql_stmt_free_result.xml">
+<!ENTITY mysql_stmt_init "funcref/mysql_stmt_init.xml">
+<!ENTITY mysql_stmt_insert_id "funcref/mysql_stmt_insert_id.xml">
+<!ENTITY mysql_stmt_next_result "funcref/mysql_stmt_next_result.xml">
+<!ENTITY mysql_stmt_num_rows "funcref/mysql_stmt_num_rows.xml">
+<!ENTITY mysql_stmt_param_count "funcref/mysql_stmt_param_count.xml">
+<!ENTITY mysql_stmt_param_metadata "funcref/mysql_stmt_param_metadata.xml">
+<!ENTITY mysql_stmt_prepare "funcref/mysql_stmt_prepare.xml">
+<!ENTITY mysql_stmt_reset "funcref/mysql_stmt_reset.xml">
+<!ENTITY mysql_stmt_result_metadata "funcref/mysql_stmt_result_metadata.xml">
+<!ENTITY mysql_stmt_row_seek "funcref/mysql_stmt_row_seek.xml">
+<!ENTITY mysql_stmt_row_tell "funcref/mysql_stmt_row_tell.xml">
+<!ENTITY mysql_stmt_send_long_data "funcref/mysql_stmt_send_long_data.xml">
+<!ENTITY mysql_stmt_sqlstate "funcref/mysql_stmt_sqlstate.xml">
+<!ENTITY mysql_stmt_store_result "funcref/mysql_stmt_store_result.xml">
+<!ENTITY mysql_store_result "funcref/mysql_store_result.xml">
+<!ENTITY mysql_thread_end "funcref/mysql_thread_end.xml">
+<!ENTITY mysql_thread_id "funcref/mysql_thread_id.xml">
+<!ENTITY mysql_thread_init "funcref/mysql_thread_init.xml">
+<!ENTITY mysql_thread_safe "funcref/mysql_thread_safe.xml">
+<!ENTITY mysql_use_result "funcref/mysql_use_result.xml">
+<!ENTITY mysql_warning_count "funcref/mysql_warning_count.xml">
+]>
+<article>
+  <title>MariaDB client API</title>
+  <section>
+    <title>Data types</title>
+  </section>
+  <section>
+    <title>Functions</title>
+      <xi:include href="&myodbc_remove_escape;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_affected_rows;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_autocommit;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_change_user;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_character_set_name;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_close;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_commit;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_data_seek;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_debug;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_dump_debug_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_embedded;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_eof;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_errno;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_error;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_escape_string;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_fetch_field;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_fetch_field_direct;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_fetch_fields;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_fetch_lengths;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_fetch_row;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_field_count;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_field_seek;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_field_tell;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_free_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_character_set_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_client_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_client_version;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_host_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_proto_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_server_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_server_version;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_ssl_cipher;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_hex_string;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_init;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_insert_id;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_kill;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_more_results;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_next_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_num_fields;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_num_rows;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_options;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_ping;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_query;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_read_query_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_real_connect;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_real_escape_string;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_real_query;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_refresh;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_rollback;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_row_seek;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_row_tell;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_select_db;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_send_query;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_server_end;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_server_init;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_set_character_set;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_set_server_option;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_shutdown;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_sqlstate;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_ssl_set;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stat;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_affected_rows;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_attr_get;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_attr_set;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_bind_param;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_bind_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_close;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_data_seek;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_errno;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_error;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_execute;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_fetch;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_fetch_column;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_field_count;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_free_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_init;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_insert_id;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_next_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_num_rows;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_param_count;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_param_metadata;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_prepare;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_reset;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_result_metadata;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_row_seek;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_row_tell;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_send_long_data;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_sqlstate;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_stmt_store_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_store_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_thread_end;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_thread_id;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_thread_init;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_thread_safe;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_use_result;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_warning_count;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+  </section>
+</article>

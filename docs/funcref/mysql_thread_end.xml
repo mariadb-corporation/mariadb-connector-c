@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_thread_end" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_thread_end</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_thread_end</refname>
+        <refpurpose>release thread specific memory for multi threaded client application</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>void</type>
+          <methodname>mysql_thread_end</methodname>
+           <methodparam><type>void</type><parameter></parameter></methodparam>
+
+        </methodsynopsis>
+        <para>The <function>mysql_thread_end()</function> function needs to be called before a client thread ends. It will release thread specific memory, which was allocated by a previous <function>mysql_thread_init()</function> call.</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>void</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Unlike <function>mysql_thread_init()</function> <function>mysql_thread_end()</function> will not be invoked automatically if the thread ends. To avoid memory leaks <function>mysql_thread_end()</function> must be called explicitly.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_thread_init()</function>, <function>mysql_thread_safe()</function></para>
+      </refsect1>
+    </refentry>

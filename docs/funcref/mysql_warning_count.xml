@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_warning_count" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_warning_count</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_warning_count</refname>
+        <refpurpose>Returns the number of warnings from the last executed query</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned int</type>
+          <methodname>mysql_warning_count</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns the number of warnings from the last executed query</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The number of warnings or zero if there are no warnings</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>For retrieving warning messages you should use the SQL command <command>SHOW WARNINGS</command></para>
+          <para>If sqlmode <parameter>TRADITIONAL</parameter> is enabled an error instead of warning will be returned. For detailed information check the server documentation.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_affected_rows()</function></para>
+      </refsect1>
+    </refentry>

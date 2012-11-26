@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_get_server_version" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_get_server_version</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_get_server_version</refname>
+        <refpurpose>Get numeric server version</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned long</type>
+          <methodname>mysql_get_server_version</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+        </methodsynopsis>
+        <para>Returns an integer representing the version of connected server</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A long integer containting the version of the connected server.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The form of the version number is <parameter>VERSION_MAJOR</parameter> * 10000 + <parameter>VERSION_MINOR</parameter> * 100 + <parameter>VERSION_PATCH</parameter> </para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_get_server_info()</function></para>
+      </refsect1>
+    </refentry>

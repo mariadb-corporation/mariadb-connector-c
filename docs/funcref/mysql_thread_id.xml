@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_thread_id" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_thread_id</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_thread_id</refname>
+        <refpurpose>Returns the thread id for the current connection</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned long</type>
+          <methodname>mysql_thread_id</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>The <function>mysql_thread_id()</function> function returns the thread id for the current connection.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The thread id for the current connection.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The current connection can be killed with <function>mysql_kill()</function></para>
+          <para>If <option>reconnect</option> option is enabled the thread id might change if the client reconnects to the server.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_kill()</function>, <function>mysql_options()</function></para>
+      </refsect1>
+    </refentry>

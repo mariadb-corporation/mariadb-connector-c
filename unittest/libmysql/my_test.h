@@ -151,11 +151,11 @@ int do_verify_prepare_field(MYSQL_RES *result,
                             const char *file, int line)
 {
   MYSQL_FIELD *field;
-  CHARSET_INFO *cs;
+/*  CHARSET_INFO *cs; */
 
   FAIL_IF(!(field= mysql_fetch_field_direct(result, no)), "FAILED to get result");
-  cs= mysql_find_charset_nr(field->charsetnr);
-  FAIL_UNLESS(cs, "Couldn't get character set");
+/*  cs= mysql_find_charset_nr(field->charsetnr);
+  FAIL_UNLESS(cs, "Couldn't get character set"); */
   FAIL_UNLESS(strcmp(field->name, name) == 0, "field->name differs");
   FAIL_UNLESS(strcmp(field->org_name, org_name) == 0, "field->org_name differs");
 /*

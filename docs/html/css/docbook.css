@@ -1,0 +1,63 @@
+body {
+         font-family: sans-serif;
+}
+
+.screen {
+        font-family: monospace;
+        font-size: 1em;
+        display: block;
+        padding: 10px;
+        border: 1px solid #eee;
+        background-color: #efe;
+        color: #000;   
+        overflow: auto;
+        border-radius: 2.5px;
+        -moz-border-radius: 2.5px;
+        margin: 0.5em 2em;
+}
+
+.note {
+   border: 1px solid #000;
+}
+
+.refentry {
+  background-color: #eef;
+  border: 2px solid: #000;
+  padding: 20px;
+}
+
+.refenty.h3 {
+  font-size: 1em;
+}
+
+.methodsynopsis {
+  font-size: 1em;
+  padding: 10px;
+  border: 1px solid #aaa;
+  background-color: #fff;
+  display: block;
+}
+
+.methodname {
+  font-weight: bold;
+}
+
+.function {
+  font-weight: bold;
+}
+
+.programlisting {
+        font-family: monospace;
+        font-size: 1em;
+        display: block;
+        padding: 10px;
+        border: 1px solid #bbb;
+        background-color: #ddd;
+        color: #000;   
+        overflow: auto;
+        border-radius: 2.5px;
+        -moz-border-radius: 2.5px;
+        margin: 0.5em 2em;
+}
+
+

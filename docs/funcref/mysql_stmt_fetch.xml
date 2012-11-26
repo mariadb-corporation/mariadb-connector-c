@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_fetch" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_fetch</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_fetch</refname>
+        <refpurpose>Fetches result buffer into bound buffer</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_stmt_fetch</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+        </methodsynopsis>
+        <para>Fetch the result from a prepared statement into the buffer bound by <function>mysql_stmt_bind_result()</function>.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+          <para>Returns one of the following values</para>
+            <variablelist>
+               <varlistentry><term>0</term><listitem><para>Success</para></listitem></varlistentry>
+               <varlistentry><term>MYSQL_NO_DATA</term><listitem><para>End of result set reached</para></listitem></varlistentry>
+               <varlistentry><term>MYSQL_DATA_TRUNCATION</term><listitem><para>One or more values are truncated</para></listitem></varlistentry>
+            </variablelist>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Note that all columns must be bound by the application before calling <function>mysql_stmt_fetch()</function>.</para>
+          <para>Data are transferred unbuffered without calling <function>mysql_stmt_store_result()</function> which can decrease performance (but reduces memory cost).</para> 
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_prepare()</function>, <function>mysql_stmt_bind_result()</function>, <function>mysql_stmt_execute()</function></para>
+      </refsect1>
+    </refentry>

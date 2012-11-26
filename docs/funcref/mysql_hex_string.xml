@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_hex_string" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_hex_string</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_hex_string</refname>
+        <refpurpose>Converts a string into hexadecimal format</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned long</type>
+          <methodname>mysql_hex_string</methodname>
+           <methodparam><type>char *</type><parameter>to</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>from</parameter></methodparam>
+           <methodparam><type>unsigned long</type><parameter>len</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>This function is used to create a hexadecimal string which can be used in SQL statements. e.g. <command>INSERT INTO my_blob VALUES(X'A0E1CD')</command></para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>to</parameter></term><listitem><para>Result buffer</para></listitem></varlistentry>
+           <varlistentry><term><parameter>from</parameter></term><listitem><para>The string which will be encodeded</para></listitem></varlistentry>
+           <varlistentry><term><parameter>long</parameter></term><listitem><para>Length of the string (from)</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The length of the encoded string without the trailing null character.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The size of the buffer for the encoded string bust be 2 * length + 1.</para>
+          <para>The encoded string does not contain a leading X'.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="notes">
+        <title>See also</title>
+        <para><function>mysql_real_escape_string()</function></para>
+      </refsect1>
+    </refentry>

@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stat" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stat</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stat</refname>
+        <refpurpose>returns system status</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>const char *</type>
+          <methodname>mysql_stat</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+        </methodsynopsis>
+        <para><function>mysql_stat()</function> returns the current server status.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns a string with the status for uptime, threads, queries, open tables, flush tables and queries per second.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>For a complete list of other status variables, you have to use the <command>SHOW STATUS</command> SQL command</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_get_server_info()</function></para>
+      </refsect1>
+    </refentry>

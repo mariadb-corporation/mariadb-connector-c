@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_read_query_result" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_read_query_result</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_read_query_result</refname>
+        <refpurpose>@function_short_description@</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_read_query_result</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>@long_description@</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>@return_value@</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

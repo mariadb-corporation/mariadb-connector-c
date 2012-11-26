@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<!ENTITY example_path "~/work/mariadb/mariadb-client//examples">
+<!ENTITY param.mysql "A mysql handle, which was previously allocated by <function>mysql_init()</function> or <function>mysql_real_connect()</function>.">
+<!ENTITY param.result "A result set identifier returned by <function>mysql_store_result()</function> or <function>mysql_use_result()</function>.">
+<!ENTITY param.result_store "A result set identifier returned by <function>mysql_store_result()</function>.">
+<!ENTITY param.stmt "A statement handle, which was previously allocated by <function>mysql_stmt_init()</function>.">
+<!ENTITY return.my_bool "Zero on success, nonzero if an error occured.">
+<!ENTITY deprecated.function "This function is deprecated and will be discontinued.">
+

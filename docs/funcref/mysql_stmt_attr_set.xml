@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_attr_set" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_attr_set</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_attr_set</refname>
+        <refpurpose>Modifies the behavior of a prepared statement</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_stmt_attr_set</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>enum</type><parameter>enum_stmt_attr_type</parameter></methodparam>
+           <methodparam><type>const void *</type><parameter>attr</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Used to modify the behavior of a prepared statement. This function may be called multiple times to set several attributes.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+            <variablelist>
+             <varlistentry><term>STMT_ATTR_UPDATE_MAX_LENGTH</term><listitem><para>Indicates if <function>mysql_stmt_store_result()</function> will update the <parameter>max_length</parameter> value of <parameter>MYSQL_FIELD</parameter> structures.</para></listitem></varlistentry>
+             <varlistentry><term>STMT_ATTR_CURSOR_TYPE</term><listitem><para>Cursor type. Possible values are <parameter>CURSOR_TYPE_READ_ONLY</parameter> or default value <parameter>CURSOR_TYPE_NO_CURSOR</parameter>.</para></listitem></varlistentry>
+             <varlistentry><term>STMT_ATTR_PREFETCH_ROWS</term><listitem><para>Number of rows which will be prefetched. The default value is 1.</para></listitem></varlistentry>
+           </variablelist>
+          <varlistentry><term><parameter>enum_stmt_attr_type</parameter></term><listitem><para>The attribute that you want to set. It can have one of the following values:</para>
+</listitem></varlistentry>
+           <varlistentry><term><parameter>attr</parameter></term><listitem><para>The value to assign to the attribute</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Tero on success, non-zero on failure</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>If you use the <parameter>MYSQL_STMT_ATTR_CURSOR_TYPE</parameter> option with <parameter>MYSQL_CURSOR_TYPE_READ_ONLY</parameter>, a cursor is opened for the statement when you invoke <function>mysql_stmt_execute()</function>. If there is already an open cursor from a previous <function>mysql_stmt_execute()</function> call, it closes the cursor before opening a new one. <function>mysql_stmt_reset()</function> also closes any open cursor before preparing the statement for re-execution. <function>mysql_stmt_free_result()</function> closes any open cursor. </para>
+          <para>If you open a cursor for a prepared statement it is unnecessary to call <function>mysql_stmt_store_result()</function>.</para> 
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_attr_set()</function></para>
+      </refsect1>
+    </refentry>

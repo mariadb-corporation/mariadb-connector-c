@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_free_result" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_free_result</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_free_result</refname>
+        <refpurpose>Frees the memory associated to a result set</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>void</type>
+          <methodname>mysql_free_result</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>result</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Frees the memory associated to the specified result set.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>result</parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>void</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>You should always free your result set with <function>mysql_free_result()</function> as soon it's not needed anymore</para>
+          <para>Row values obtained by a prior <function>mysql_fetch_row()</function> call will become invalid after calling <function>mysql_free_result()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para>
+          <function>mysql_store_result()</function>,
+          <function>mysql_use_result()</function>
+        </para>
+      </refsect1>
+    </refentry>

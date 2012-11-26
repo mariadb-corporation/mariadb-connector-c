@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_set_character_set" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_set_character_set</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_set_character_set</refname>
+        <refpurpose>Sets the default client character set@</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_set_character_set</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>csname</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Sets the default character set for the current connection</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>csname</parameter></term><listitem><para>Character set name</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns zero on success, non-zero on failure.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>It's strongly recommended to use <function>mysql_set_character_set()</function> instead of <command>SET NAMES ...</command> since <function>mysql_real_escape_string()</function> might fail or deliver unexpected results.</para>
+          <para>The client library supports the following character sets:</para>
+          <simplelist type="horiz" columns="2">
+            <member>armscii8</member><member>8 bit character set for Armenian</member>
+            <member>ascii</member><member>US ASCII character set</member>
+            <member>big5</member><member>2 byte character set for traditional Chinese, Hongkong, Macau and Taiwan</member>
+            <member>binary</member><member>8 bit binary character set</member>
+            <member>cp1250</member><member>Windows code page 1250 character set</member>
+            <member>cp1251</member><member>Windows code page 1251 character set</member>
+            <member>cp1256</member><member>Windows code page 1256 character set</member>
+            <member>cp1257</member><member>Windows code page 1257 character set</member>
+            <member>cp850</member><member>MS-DOS Codepage 850 (Western Europe)</member>
+            <member>cp852</member><member>MS-DOS Codepage 852 (Middle Europe)</member>
+            <member>cp866</member><member>MS-DOS Codepage 866 (Russian)</member>
+            <member>cp932</member><member>Microsoft Codepage 932 (Extension to sjis)</member>
+            <member>dec8</member><member>DEC West European</member>
+            <member>eucjpms</member><member>UJIS for Windows Japanese</member>
+            <member>euckr</member><member>EUC KR-Korean</member>
+            <member>filename</member><member></member>
+            <member>gb2312</member><member>GB-2312 simplified Chinese</member>
+            <member>gbk</member><member>GBK simplified Chinese</member>
+            <member>geostd8</member><member>GEOSTD8 Georgian</member>
+            <member>greek</member><member>ISO 8859-7 Greek</member>
+            <member>hebrew</member><member>ISO 8859-8 Hebrew</member>
+            <member>hp8</member><member>HP West European</member>
+            <member>keybcs2</member><member>DOS Kamenicky Czech-Slovak</member>
+            <member>koi8r</member><member>KOI8-R Relcom Russian</member>
+            <member>koi8u</member><member>KOI8-U Ukrainian</member>
+            <member>latin1</member><member>CP1252 Western European</member>
+            <member>latin2</member><member>ISO 8859-2 Central Europe</member>
+            <member>latin5</member><member>ISO 8859-9 Turkish</member>
+            <member>latin7</member><member>ISO 8859-13 Baltic</member>
+            <member>macce</member><member>MAC Central European</member>
+            <member>macroman</member><member>MAC Western European</member>
+            <member>sjis</member><member>SJIS for Windows Japanese</member>
+            <member>swe7</member><member>7-bit Swedish</member>
+            <member>tis620</member><member>TIS620 Thai</member>
+            <member>ucs2</member><member>UCS-2 Unicode</member>
+            <member>ujis</member><member>EUC-JP Japanese</member>
+            <member>utf8</member><member>UTF-8 Unicode</member>
+            <member>utf16</member><member>UTF-16 Unicode</member>
+            <member>utf32</member><member>UTF-32 Unicode</member>
+          </simplelist>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_real_escape_string()</function></para>
+      </refsect1>
+    </refentry>

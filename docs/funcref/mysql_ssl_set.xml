@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_ssl_set" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_ssl_set</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_ssl_set</refname>
+        <refpurpose>@function_short_description@</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_ssl_set</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>key</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>cert</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>ca</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>capath</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>cipher</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>@long_description@</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+           <varlistentry><term><parameter>key</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+           <varlistentry><term><parameter>cert</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+           <varlistentry><term><parameter>ca</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+           <varlistentry><term><parameter>capath</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+           <varlistentry><term><parameter>cipher</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>@return_value@</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

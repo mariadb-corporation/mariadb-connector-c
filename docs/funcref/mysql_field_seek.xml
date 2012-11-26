@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_field_seek" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_field_seek</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_field_seek</refname>
+        <refpurpose>Sets field cursor to a specified field offset</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_FIELD_OFFSET</type>
+          <methodname>mysql_field_seek</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>result</parameter></methodparam>
+           <methodparam><type>MYSQL_FIELD_OFFSET</type><parameter>offset</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Sets the field cursor to the given offset. The next call to <function>mysql_fetch_field()</function> will retrieve the field definition of the column associated with that offset.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>result</parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>offset</parameter></term><listitem><para>The field number. This number must be in the range from <parameter>0..number of fields - 1</parameter></para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The previous value of the field cursor</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The number of fields can be obtained from <function>mysql_field_count()</function></para>.
+          <para>To move the field cursor to the first field <parameter>offset</parameter> parameter should be null.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_field_tell()</function></para>
+      </refsect1>
+    </refentry>

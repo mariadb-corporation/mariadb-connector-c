@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_error" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_error</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_error</refname>
+        <refpurpose>Returns a string description of the last error</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>const char *</type>
+          <methodname>mysql_error</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns the last error message for the most recent function call that can succeed or fail.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A string that describes the error. If no error occured an emtry string is returned.</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_errno()</function>, <function>mysql_sqlstate()</function>.</para>
+      </refsect1>
+    </refentry>

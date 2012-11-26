@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_row_seek" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_row_seek</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_row_seek</refname>
+        <refpurpose>Positions row cursors</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_ROW_OFFSET</type>
+          <methodname>mysql_stmt_row_seek</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>MYSQL_ROW_OFFSET</type><parameter>offset</parameter></methodparam>
+        </methodsynopsis>
+        <para>Positions the row cursor to an aribtrary row in a result set which was obtaimed by <function>mysql_stmt_store_result()</function>.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>offset</parameter></term><listitem><para>Row offset. This value can be obtained either by <function>mysql_stmt_row_seek()</function> or <function>mysql_stmt_row_tell()</function></para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The previous row offset.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The result set must be obtained by <function>mysql_use_result()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_row_tell()</function>, <function>mysql_stmt_store_result</function></para>
+      </refsect1>
+    </refentry>

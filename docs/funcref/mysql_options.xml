@@ -1,0 +1,225 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_options" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_options</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_options</refname>
+        <refpurpose>Set options</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_options</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>enum</type><parameter>mysql_option</parameter></methodparam>
+           <methodparam><type>const void *</type><parameter>arg</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Used to set extra connect options and affect behavior for a connection.</para>
+        <para>This function may be called multiple times to set several options. <function>mysql_options()</function> should be called after <function>mysql_init()</function> and before <function>mysql_real_connect()</function>. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>mysql_option</parameter></term><listitem><para>The option you want to set.</para>          
+           <variablelist>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_CONNECT_TIMEOUT</parameter></term>
+               <listitem>
+                 <para>Connect time out in seconds.</para>
+                 <informalexample>
+                   <programlisting>
+unsigned int timeout= 5;
+mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (void *)&amp;timeout);                   
+                   </programlisting>
+                 </informalexample>
+<para>This value will be passed as an <parameter>unsigned int *</parameter> parameter</para>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_COMPRESS</parameter></term>
+               <listitem>
+                 <para>Use the compressed protocol for client server communication. If the server doesn't support compressed protocol, the default protocol will be used.</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_OPT_COMPRESS, NULL);                   
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+                <term><parameter>MYSQL_OPT_NAMED_PIPE</parameter></term>
+               <listitem>
+                 <para>For Windows operating systems only: Use named pipes for client/server communication.</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_OPT_NAMED_PIPE, NULL);                   
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+                <term><parameter>MYSQL_OPT_LOCAL_INFILE</parameter></term>
+               <listitem>
+                 <para>Enable or disable use of <command>LOAD DATA LOCAL INFILE</command></para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_OPT_LOCAL_INFILE, NULL);        /* disable */                  
+mysql_options(mysql, MYSQL_OPT_LOCAL_INFILE, (void *)"1"); /* enable */                  
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_INIT_COMMAND</parameter></term>
+               <listitem>
+                 <para>Command(s) which will be executed when connecting and reconnecting to the server</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_INIT_COMMAND, (void *)"CREATE TABLE ...");
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_READ_DEFAULT_FILE</parameter></term>
+               <listitem>
+                 <para>Read options from named option file instead of <filename>my.cnf</filename></para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, (void *)"./my_conf.cnf");
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_READ_DEFAULT_GROUP</parameter></term>
+               <listitem>
+                 <para>Read options from the named group from my.cnf or the file specified with <parameter>MYSQL_READ_DEFAULT_FILE</parameter>.</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, (void *)"my_section");
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_SET_CHARSET_NAME</parameter></term>
+               <listitem>
+                 <para>Specify the default character set for the connection.</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_SET_CHARSET_NAME, (void *)"utf8");
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_RECONNECT</parameter></term>
+               <listitem>
+                 <para>Enable or disable automatic reconnect.</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_OPT_RECONNECT, NULL);        /* disable */                  
+mysql_options(mysql, MYSQL_OPT_RECONNECT, (void *)"1"); /* enable */                  
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_PROTOCOL</parameter></term>
+               <listitem>
+                 <para>Specify the type of client/server protocol. Possible values are:
+<parameter>MYSQL_PROTOCOL_TCP</parameter>, <parameter>MYSQL_PROTOCOL_SOCKET</parameter>,
+<parameter>MYSQL_PROTOCOL_PIPE</parameter>.  </para>
+                 <informalexample>
+                   <programlisting>
+enum mysql_protocol_type prot_type= MYSQL_PROTOCOL_SOCKET;
+mysql_options(mysql, MYSQL_OPT_PROTOCOL, (void *)&amp;prot_type);
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_READ_TIMEOUT</parameter></term>
+               <listitem>
+                 <para>Specifies the timeout in seconds for reading packets from server.</para>
+                 <informalexample>
+                   <programlisting>
+unsigned int timeout= 5;
+mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, (void *)&amp;timeout);                   
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_WRITE_TIMEOUT</parameter></term>
+               <listitem>
+                 <para>Specifies the timeout in seconds for sending packets to server.</para>
+                 <informalexample>
+                   <programlisting>
+unsigned int timeout= 5;
+mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (void *)&amp;timeout);                   
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_REPORT_DATA_TRUNCATION</parameter></term>
+               <listitem>
+                 <para>Enable or disable reporting data truncation errors for prepared statement.</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, NULL);        /* disable */                  
+mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, (void *)"1"); /* enable */                  
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_PROGRESS_CALLBACK</parameter></term>
+               <listitem>
+                 <para>Specifies a callback function which will be able to visualize the progress of certain long running statements (i.e. <command>LOAD DATA LOCAL INFILE</command> or <command>ALTER TABLE</command></para>
+                 <informalexample>
+                   <programlisting>
+static void report_progress(const MYSQL *mysql __attribute__((unused)),
+                            uint stage, uint max_stage,
+                            double progress __attribute__((unused)),
+                            const char *proc_info __attribute__((unused)),
+                            uint proc_info_length __attribute__((unused)))
+{
+  ...
+}
+mysql_options(mysql, MYSQL_OPT_PROGRESS_CALLBACK, (void *)report_progress);                  
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+            </variablelist>
+</listitem></varlistentry>
+            <varlistentry><term><parameter>arg</parameter></term><listitem><para>The value for the option</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non zero if an error occured (invalid option or value)</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>If <parameter>MYSQL_READ_DEFAULT_FILE</parameter> is specified the <parameter>[client]</parameter> section will be always processed.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_init()</function>, <function>mysql_real_connect()</function></para>
+      </refsect1>
+    </refentry>

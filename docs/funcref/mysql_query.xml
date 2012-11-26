@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_query" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_query</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_query</refname>
+        <refpurpose>performs a query on the database</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_query</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>query</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Performs a statement pointed to by the null terminate string <parameter>query</parameter> against the database. Contrary to <function>mysql_real_query()</function> <function>mysql_query()</function> is not binary safe. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>query</parameter></term><listitem><para>A null terminated string containing the statement to be performed.</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non zero on failure</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>For executing multi statements the statements within the null terminated string statements must be separated by a semicolon.</para>
+          <para>If your statement contains binary data you should use <function>mysql_real_query</function> or escape your data with <function>mysql_hex_string()</function></para>
+          <para>To determine if a statement returned a result set use the function <function>mysql_num_fields()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_real_query()</function>, <function>mysql_num_fields()</function>, <function>mysql_hex_string()</function>, <function>mysql_use_result()</function> <function>mysql_store_result()</function></para>
+      </refsect1>
+    </refentry>

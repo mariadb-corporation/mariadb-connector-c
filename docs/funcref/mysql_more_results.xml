@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_more_results" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_more_results</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_more_results</refname>
+        <refpurpose>Check if there are any more query results from a multi query</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_more_results</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Indicates if one or more result sets are available from a previous call to <function>mysql_real_query()</function>.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns 1 if more result sets are available, otherwise zero.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The function <function>mysql_set_server_option()</function> enables or disables multi statement support.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_real_query()</function>, <function>mysql_use_result()</function>, <function>mysql_store_result()</function>, <function>mysql_next_result()</function></para>
+      </refsect1>
+    </refentry>

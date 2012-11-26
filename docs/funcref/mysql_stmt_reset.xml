@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_reset" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_reset</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_reset</refname>
+        <refpurpose>Resets a prepared statement.</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_stmt_reset</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Resets a prepared statement on client and server to state after prepare.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para><function>mysql_stmt_reset()</function> resets the statement on the server, unbuffered result sets and errors. Bindings and stored result sets will not be cleared. The latter one will be cleared when reexecuting or closing the prepared statement.</para>
+          <para>To reprepare a prepared statement with another SQL statement use <function>mysql_stmt_prepare()</function>. </para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para>
+          <function>mysql_stmt_close()</function>,
+          <function>mysql_stmt_prepare()</function>,
+          <function>mysql_stmt_execute()</function>
+        </para>
+      </refsect1>
+    </refentry>

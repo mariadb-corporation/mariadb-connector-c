@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_data_seek" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_data_seek</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_data_seek</refname>
+        <refpurpose>Adjusts the result pointer to an arbitrary row in the result</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>void</type>
+          <methodname>mysql_data_seek</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>result</parameter></methodparam>
+           <methodparam><type>my_ulonglong</type><parameter>offset</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>The <function>mysql_data_seek</function> function seeks to an aribitrary function result pointer specified by the <parameter>offset</parameter> in the result set.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>result</parameter></term><listitem><para>&param.result_store;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>offset</parameter></term><listitem><para>The field offset. Must be between zero and the total number of rows minus one (0..<function>mysql_num_rows</function> - 1). </para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="note">
+        <note>
+          <title>Notes</title>
+          <para>This function can only be used with buffered result sets obtained from the use of <function>mysql_store_result</function> function.
+          </para>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

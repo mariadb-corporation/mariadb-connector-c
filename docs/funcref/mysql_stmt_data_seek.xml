@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_data_seek" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_data_seek</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_data_seek</refname>
+        <refpurpose>Seeks to an arbitrary row in statement result set</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>void</type>
+          <methodname>mysql_stmt_data_seek</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>my_ulonglong</type><parameter>offset</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Seeks to an arbitrary row in statement result set obtained by a previous call to <function>mysql_stmt_store_result</function>.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>offset</parameter></term><listitem><para>Row offset. This value must between 0 and number of rows - 1.</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>void</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The number of rows can be obtained by function <function>mysql_stmt_num_rows()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_row_tell()</function>, <function>mysql_stmt_store_result()</function>, <function>mysql_stmt_num_rows()</function></para>
+      </refsect1>
+    </refentry>

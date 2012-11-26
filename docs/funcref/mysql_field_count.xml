@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_field_count" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_field_count</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_field_count</refname>
+        <refpurpose>Returns the number of fields for the most recent query</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned int</type>
+          <methodname>mysql_field_count</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns the number of columns for the most recent query on the connection represented by the link parameter. This function can be useful when using the <function>mysql_store_result</function> function to determine if the query should have produced a non-empty result set or not without knowing the nature of the query. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>An unsigned integer representing the number of fields in a result set.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Function <function>mysql_field_count()</function> should be used to determine if there is a result set available.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_store_result()</function><function>mysql_stmt_use_result()</function></para>
+      </refsect1>
+    </refentry>

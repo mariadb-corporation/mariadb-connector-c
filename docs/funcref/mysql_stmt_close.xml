@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_close" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_close</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_close</refname>
+        <refpurpose>Closes a prepared statement</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_stmt_close</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Closes a prepared statement. <function>mysql_stmt_close()</function> also deallocates the statement handle. If the current statement has pending or unread results, this function cancels them so that the next query can be executed. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>If you want to reuse the statement handle with a different SQL command, use <function>mysql_stmt_reset()</function>.</para>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_init()</function><function>mysql_stmt_reset()</function></para>
+      </refsect1>
+    </refentry>

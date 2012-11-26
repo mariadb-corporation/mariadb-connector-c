@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_fetch_row" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_fetch_row</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_fetch_row</refname>
+        <refpurpose>Get a row from result set</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_ROW</type>
+          <methodname>mysql_fetch_row</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>result</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Fetches one row of data from the result set and returns it as an array of char pointers (<parameter>MYSQL_ROW</parameter>), where each column is stored in an offset starting from 0 (zero). Each subsequent call to this function will return the next row within the result set, or <parameter>NULL</parameter> if there are no more rows. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>result</parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns an array of strings that corresponds to the fetched row or NULL if there are no more rows in result set.</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>Im case a column contains a <parameter>NULL</parameter> value the corresponding char pointer will be set to <parameter>NULL</parameter></para>
+          <para>Memory associated to MYSQL_ROW will be freed when calling <function>mysql_free_result()</function> function.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para>
+          <function>mysql_use_result()</function>, <function>mysql_store_result()</function>
+        </para>
+      </refsect1>
+    </refentry>

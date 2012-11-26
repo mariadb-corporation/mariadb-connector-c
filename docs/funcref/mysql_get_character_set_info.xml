@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_get_character_set_info" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_get_character_set_info</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_get_character_set_info</refname>
+        <refpurpose>Returns information about the current active character set.</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>void</type>
+          <methodname>mysql_get_character_set_info</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>MY_CHARSET_INFO *</type><parameter>charset</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns information about the current default character set for the specified connection.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>charset</parameter></term><listitem><para>A pointer to a MY_CHARSET_INFO structure, in which the information will be copied.</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>void</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>A complete list of supported character sets in the client library is listed in the function description for <function>mysql_set_character_set_info()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

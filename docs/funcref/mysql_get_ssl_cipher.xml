@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_get_ssl_cipher" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_get_ssl_cipher</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_get_ssl_cipher</refname>
+        <refpurpose>Returns the name of the currently used cipher</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>const char *</type>
+          <methodname>mysql_get_ssl_cipher</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns the name of the currently used cipher of the ssl connection.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+        <variablelist>
+          <varlistentry><term><parameter>mysql</parameter></term><listitem><para>Connection identifier, which was previously allocated by <function>mysql_init</function> or <function>mysql_real_connect</function></para></listitem></varlistentry>
+        </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns the name of the currently used cipher or NULL for non ssl connections.</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <function>mysql_get_ssl_cipher</function> can be used to detect if the current connection is a ssl connection.
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <function>mysq1_ssl_set</function>
+      </refsect1>
+    </refentry>

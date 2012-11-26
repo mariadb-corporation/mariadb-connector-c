@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_result_metadata" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_result_metadata</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_result_metadata</refname>
+        <refpurpose>Returns result set metadata from a prepared statement</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_RES *</type>
+          <methodname>mysql_stmt_result_metadata</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>If a statement passed to <function>mysql_stmt_prepare()</function> is one that produces a result set, <function>mysql_stmt_result_metadata()</function> returns the result set that can be used to process the meta information such as total number of fields and individual field information.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A result set containing field information for a result set</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The result set returned by <function>mysql_stmt_result_metadata()</function> contains only metadata. It does not contain any row results. The rows are obtained by <function>mysql_stmt_fetch()</function>.</para>
+          <para>This result set pointer can be passed as an argument to any of the field-based functions that process result set metadata, such as:
+<function>mysql_num_fields()</function>, <function>mysql_fetch_field()</function>, <function>mysql_fetch_field_direct()</function>, <function>mysql_fetch_fields()</function>, <function>mysql_field_count()</function>, <function>mysql_field_seek()</function>, <function>mysql_field_tell()</function>, <function>mysql_free_result()</function></para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_free_result()</function>, <function>mysql_stmt_prepare()</function></para>
+      </refsect1>
+    </refentry>

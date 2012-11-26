@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_get_client_info" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_get_client_info</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_get_client_info</refname>
+        <refpurpose>Get client library info</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>const char *</type>
+          <methodname>mysql_get_client_info</methodname>
+           <methodparam><type>void</type><parameter></parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns a string representing the client library version.</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A string representing the version of the client library</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>To obtain the numeric value of the client library version use <function>mysql_get_client_version()</function></para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para>
+         <function>mysql_get_client_version()</function>,
+         <function>mysql_get_host_info()</function>,
+         <function>mysql_get_proto_info()</function>
+        </para>
+      </refsect1>
+    </refentry>

@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_thread_safe" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_thread_safe</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_thread_safe</refname>
+        <refpurpose>Returns whether thread safety is given or not</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned int</type>
+          <methodname>mysql_thread_safe</methodname>
+           <methodparam><type>void</type><parameter></parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Tells whether the client library is compiled as thread safe.</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>1 if the client library was compiled as thread safe otherwise zero</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>By default the mariadb client library is compiled as thread safe.</para>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_thread_init()</function>, <function>mysql_thread_end()</function></para>
+      </refsect1>
+    </refentry>

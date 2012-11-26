@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_use_result" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_use_result</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_use_result</refname>
+        <refpurpose>Initiate an unbuffered result set retrieval</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_RES *</type>
+          <methodname>mysql_use_result</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Used to initiate the retrieval of a result set from the last query executed using the <function>mysql_real_query()</function> function on the database connection.
+
+Either this or the <function>mysql_store_result()</function> function must be called before the results of a query can be retrieved, and one or the other must be called to prevent the next query on that database connection from failing. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns an unbuffered result set or NULL if an error occured.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The <function>mysql_use_result()</function> function does not transfer the entire result set. Hence several functions like <function>mysql_num_rows()</function> or <function>mysql_data_seek()</function> cannot be used.</para>
+          <para><function>mysql_use_result()</function> will block the current connection until all result sets are retrieved or result set was released by<function>mysql_free_result()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_store_result()</function>, <function>mysql_free_result()</function></para>
+      </refsect1>
+    </refentry>

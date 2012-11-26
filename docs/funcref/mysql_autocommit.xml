@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_autocommit" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_autocommit</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_autocommit</refname>
+        <refpurpose>Toggles autocommit mode on or off</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_autocommit</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>my_bool</type><parameter>auto_mode</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Toggles autocommit mode on or off for the current
+         database connection. Autocommit mode will be set if 
+         <parameter>mode</parameter>=1 or unset if 
+         <parameter>mode</parameter>=0.
+        </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter> mysql</parameter></term><listitem>
+              <para>&param.mysql;</para>
+</listitem></varlistentry>
+           <varlistentry><term><parameter>auto_mode</parameter></term><listitem><para>Whether to turn autocommit on or not.</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns zero on success, or nonzero if an error
+         occured.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note valign="center">
+          <title></title>  
+          <itemizedlist>
+            <listitem>
+              <para>
+                 Autocommit mode only affects operations on 
+                 transactional table types
+              </para>
+            </listitem>
+            <listitem>
+              <para>
+                 To determine the current state of autocommit mode 
+                 use the SQL command <command>SELECT @@autocommit</command>
+              </para>
+            </listitem>
+            <listitem>
+              <para>
+                Be aware: <function>mysql_rollback</function> function will
+                not work if autocommit mode is switched on.
+              </para>
+            </listitem>
+          </itemizedlist>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

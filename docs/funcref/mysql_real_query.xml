@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_real_query" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_real_query</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_real_query</refname>
+        <refpurpose>performs a query on the database</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_real_query</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>q</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>long</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>The <function>mysql_real_query()</function> is the binary safe function for performing a statement on the database server.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>query</parameter></term><listitem><para>A string containing the statement to be performed.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>long</parameter></term><listitem><para>Length of the string.</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, otherwise non zero</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>Contrary to <function>mysql_query()</function> function <function>mysql_real_query</function> is binary safe.</para>
+          <para>To determine if <function>mysql_real_query</function> returns a result set use the <function>mysql_num_fields()</function> function.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_query()</function>, <function>mysql_num_fields()</function>, <function>mysql_use_result()</function>, <function>mysql_store_result()</function></para>
+      </refsect1>
+    </refentry>

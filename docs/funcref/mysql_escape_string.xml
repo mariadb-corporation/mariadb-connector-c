@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_escape_string" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_escape_string</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_escape_string</refname>
+        <refpurpose>escapes a string using the default character set</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned long</type>
+          <methodname>mysql_escape_string</methodname>
+           <methodparam><type>char *</type><parameter>to</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>from</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>long</parameter></methodparam>
+
+        </methodsynopsis>
+        <warning>
+          <title></title>
+          <para>&deprecated.function;</para>
+          <para>Please use <function>mysql_real_escape_string()</function> instead.</para>
+        </warning>
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_real_escape_string()</function></para>
+      </refsect1>
+    </refentry>

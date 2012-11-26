@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_debug" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_debug</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_debug</refname>
+        <refpurpose>Enables debug logging</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>void</type>
+          <methodname>mysql_debug</methodname>
+           <methodparam><type>const char *</type><parameter>debug</parameter></methodparam>
+        </methodsynopsis>
+        <para>Enables debug output for development and debug purposes by using Fred Fish's dbug library. For using this function the mariadb-client library must be compiled with debug support</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>debug</parameter></term>
+              <listitem>
+                <para>A string representing the debug operation to perform</para>
+                <para>The debug control string is a sequence of colon separated fields as follows:</para>
+                <para><parameter>field_1</parameter>:<parameter>field_2</parameter>:<parameter>field_n</parameter></para>
+                <para>Each field consists of a mandatory flag character followed by an optional "," and comma separated list of modifiers:</para>
+                <para><parameter>flag[,modifier,modifier,...,modifier]</parameter></para>
+                <para>The currently recognized flag characters are:</para>
+                <variablelist>
+                  <varlistentry><term>d</term><listitem><para>Enable output from DBUG_ macros for for the current state. May be followed by a list of keywords which selects output only for the DBUG macros with that keyword. A null list of keywords implies output for all macros.</para></listitem></varlistentry>
+                  <varlistentry><term>D</term><listitem><para>Delay after each debugger output line. The argument is the number of tenths of seconds to delay, subject to machine capabilities. I.E. -#D,20 is delay two seconds.</para></listitem></varlistentry>
+                  <varlistentry><term>f</term><listitem><para>Limit debugging and/or tracing, and profiling to the list of named functions. Note that a null list will disable all functions. The appropriate "d" or "t" flags must still be given, this flag only limits their actions if they are enabled.</para></listitem></varlistentry>
+                  <varlistentry><term>F</term><listitem><para>Identify the source file name for each line of debug or trace output.</para></listitem></varlistentry>
+                  <varlistentry><term>i</term><listitem><para>Identify the process with the pid for each line of debug or trace output.</para></listitem></varlistentry>
+                  <varlistentry><term>g</term><listitem><para>Enable profiling. Create a file called 'dbugmon.out' containing information that can be used to profile the program. May be followed by a list of keywords that select profiling only for the functions in that list. A null list implies that all functions are considered.</para></listitem></varlistentry>
+                  <varlistentry><term>L</term><listitem><para>L Identify the source file line number for each line of debug or trace output.</para></listitem></varlistentry>
+                  <varlistentry><term>n</term><listitem><para>n Print the current function nesting depth for each line of debug or trace output.</para></listitem></varlistentry>
+                  <varlistentry><term>N</term><listitem><para>N Number each line of dbug output.</para></listitem></varlistentry>
+                  <varlistentry><term>o</term><listitem><para>Redirect the debugger output stream to the specified file. The default output is stderr.</para></listitem></varlistentry>
+                  <varlistentry><term>O</term><listitem><para>As O but the file is really flushed between each write. When needed the file is closed and reopened between each write.</para></listitem></varlistentry>
+                  <varlistentry><term>p</term><listitem><para>Limit debugger actions to specified processes. A process must be identified with the DBUG_PROCESS macro and match one in the list for debugger actions to occur.</para></listitem></varlistentry>
+                  <varlistentry><term>P</term><listitem><para>Print the current process name for each line of debug or trace output.</para></listitem></varlistentry>
+                  <varlistentry><term>r</term><listitem><para>When pushing a new state, do not inherit the previous state's function nesting level. Useful when the output is to start at the left margin.</para></listitem></varlistentry>
+                  <varlistentry><term>S</term><listitem><para>Do function _sanity(_file_,_line_) at each debugged function until _sanity() returns something that differs from 0. (Mostly used with safemalloc)</para></listitem></varlistentry>
+                  <varlistentry><term>t</term><listitem><para>Enable function call/exit trace lines. May be followed by a list (containing only one modifier) giving a numeric maximum trace level, beyond which no output will occur for either debugging or tracing macros. The default is a compile time option.</para></listitem></varlistentry>
+                </variablelist>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>void</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>Instead of using the <function>mysql_debug()</function> you also can set the environment variable <parameter>MYSQL_DEBUG</parameter></para>
+          <para>Enabling generation of debug information slows down the overall performance and generate huge files. In case you need debug information only for special places you can disable the generation of debug information by using <function>mysql_debug_end()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_debug_end()</function>,<function>mysql_dump_debug_info()</function></para>
+</refsect1>
+<!--
+      <refsect1 role="example">
+        <title>Example</title>
+        <programlisting role="xml">
+<xi:include href="&example_path;/mysql_debug.c.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+        </programlisting>
+        The above example will output:
+        <programlisting><xi:include href="&example_path;/mysql_debug.out" parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting>
+</refsect1> -->
+    </refentry>

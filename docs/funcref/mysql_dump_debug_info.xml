@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_dump_debug_info" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_dump_debug_info</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_dump_debug_info</refname>
+        <refpurpose>Dump server status information</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_dump_debug_info</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>This function is designed to be executed by an user with the SUPER privilege and is used to dump server status information into the log for the MariaDB Server relating to the connection.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The server status information will be dumped into the error log file, which can be found in the data directory of your server installation.</para>
+        </note>
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_debug()</function>, <function>mysql_debug_end()</function></para>
+      </refsect1>
+    </refentry>

@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_shutdown" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_shutdown</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_shutdown</refname>
+        <refpurpose>Shutdowns the database server</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_shutdown</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>enum</type><parameter>mysql_enum_shutdown_level</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Sends a shutdown message to the server.
+</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>mysql_enum_shutdown_level</parameter></term><listitem><para>Currently only one shutdown level, <parameter>SHUTDOWN_DEFAULT</parameter> is supported.</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non-zero on failure.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>To shutdown the database server, the user for the current connection must have <parameter>SHUTDOWN</parameter> privileges</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_kill()</function></para>
+      </refsect1>
+    </refentry>

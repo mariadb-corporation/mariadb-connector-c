@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_stmt_param_metadata" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_param_metadata</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_param_metadata</refname>
+        <refpurpose>@function_short_description@</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_RES *</type>
+          <methodname>mysql_stmt_param_metadata</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>@long_description@</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>@return_value@</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

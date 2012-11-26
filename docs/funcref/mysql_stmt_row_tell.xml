@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_row_tell" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_row_tell</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_row_tell</refname>
+        <refpurpose>Returns position of result cursor</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_ROW_OFFSET</type>
+          <methodname>mysql_stmt_row_tell</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns the row offset of a result cursor. The returned offset value can be used to
+        reposition the result cursor by calling <function>mysql_stmt_row_seek()</function></para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The row offset of the result cursor</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>This function can be used for buffered result sets only, which can be obtained
+          by executing <function>mysql_stmt_store_result()</function> function.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_row_seek()</function>, <function>mysql_stmt_store_result()</function></para>
+      </refsect1>
+    </refentry>

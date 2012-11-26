@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_bind_param" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_bind_param</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_bind_param</refname>
+        <refpurpose>Binds parameter variables to a prepared statement</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_stmt_bind_param</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>MYSQL_BIND *</type><parameter>bnd</parameter></methodparam>
+        </methodsynopsis>
+        <para>Binds variables for parameter markers in the prepared statement that was passed to <function>mysql_prepare()</function>. Variabl</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>bind</parameter></term><listitem><para>An array of <parameter>MYSQL_BIND</parameter> structures. The size of this array must be equal to the number of parameters.</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non-zero on failure.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The number of parameters can be obtained by <function>mysql_stmt_param_count()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_prepare()</function>, <function>mysql_stmt_bind_result()</function>, <function>mysql_stmt_execute()</function>, <function>mysql_stmt_param_count()</function>, <function>mysql_stmt_send_long_data</function></para>
+      </refsect1>
+    </refentry>

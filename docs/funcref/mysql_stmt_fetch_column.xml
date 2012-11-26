@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_fetch_column" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_fetch_column</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_fetch_column</refname>
+        <refpurpose>Fetches a single column in to a bind buffer</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_stmt_fetch_column</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>MYSQL_BIND *</type><parameter>bind_arg</parameter></methodparam>
+           <methodparam><type>unsigned int</type><parameter>column</parameter></methodparam>
+           <methodparam><type>unsigned long</type><parameter>offset</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>This function can be used to fetch large data of a single column in pieces.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>bind_arg</parameter></term><listitem><para>A pointer to a <parameter>MYSQL_BIND</parameter> structure</para></listitem></varlistentry>
+           <varlistentry><term><parameter>column</parameter></term><listitem><para>number of column, first column is numbered zero.</para></listitem></varlistentry>
+           <varlistentry><term><parameter>offset</parameter></term><listitem><para>Offset at which to begin retrieving data.</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non-zero on failure</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The size of the buffer is specified within <parameter>MYSQL_BIND</parameter> structure.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_fetch()</function>, <function>mysql_stmt_send_long_data()</function></para>
+      </refsect1>
+    </refentry>

@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_info" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_info</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_info</refname>
+        <refpurpose>retrieves information about the most recently executed query</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>const char *</type>
+          <methodname>mysql_info</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>The <function>mysql_info()</function> function returns a string providing information about the last query executed. The nature of this string is provided below:
+        <table border="0">
+          <title>Possible mysql_info return values</title>
+          <tgroup cols="2" border="0">
+          <thead>
+            <row>
+              <entry align="center">Query type</entry>
+              <entry align="center">Example result string</entry>
+            </row>
+          </thead>
+          <tbody>
+            <row>
+              <entry>INSERT INTO...SELECT...</entry><entry>Records: 100 Duplicates: 0 Warnings: 0</entry>
+            </row>
+            <row>
+              <entry>INSERT INTO...VALUES (...),(...),(...)</entry><entry>Records: 3 Duplicates: 0 Warnings: 0</entry>
+            </row>
+            <row>
+              <entry>LOAD DATA INFILE ...</entry><entry>Records: 1 Deleted: 0 Skipped: 0 Warnings: 0</entry>
+            </row>
+            <row>
+              <entry>ALTER TABLE ...</entry><entry>Records: 3 Duplicates: 0 Warnings: 0</entry>
+            </row>
+            <row>
+              <entry>UPDATE ...</entry><entry>Rows matched: 40 Changed: 40 Warnings: 0</entry>
+            </row>
+            </tbody>
+          </tgroup>
+        </table>
+        </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A character string representing additional information about the most recently executed query</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Queries which do not fall into one of the preceding formats are not supported (e.g. <command>SELECT ..</command>). In these situations <function>mysql_info()</function> will return an empty string.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+         <para><function>mysql_affected_rows()</function>, <function>mysql_warning_count()</function></para>
+      </refsect1>
+    </refentry>

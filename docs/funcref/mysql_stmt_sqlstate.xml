@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_sqlstate" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_sqlstate</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_sqlstate</refname>
+        <refpurpose>returns SQLSTATE error from previous statement operation</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>const char *</type>
+          <methodname>mysql_stmt_sqlstate</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns a string containing the SQLSTATE error code for the most recently invoked prepared statement function that can succeed or fail. The error code consists of five characters. '00000' means no error. The values are specified by ANSI SQL and ODBC.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter> stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns a string containing the SQLSTATE error code for the last error. The error code consists of five characters. '<parameter>00000'</parameter> means no error.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Please note that not all client library error codes are mapped to SQLSTATE errors. Errors which can't be mapped will returned as value <parameter>HY000</parameter>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_errno()</function>, <function>mysql_error()</function></para>
+      </refsect1>
+    </refentry>

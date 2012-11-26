@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_prepare" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_prepare</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_prepare</refname>
+        <refpurpose>Prepares a SQL statement for execution</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_stmt_prepare</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>query</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>long</parameter></methodparam>
+        </methodsynopsis>
+        <para>Prepares the SQL query pointed to by the null-terminated string query.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>query</parameter></term><listitem><para>SQL statement</para></listitem></varlistentry>
+           <varlistentry><term><parameter>long</parameter></term><listitem><para>Length of SQL statement</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non-zero on failure</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>  
+          <para>The parameter markers must be bound to application variables using <function>mysql_stmt_bind_param().</function></para>
+          <para>The markers are legal only in certain places in SQL statements. For example, they are allowed in the VALUES() list of an INSERT statement (to specify column values for a row), or in a comparison with a column in a WHERE clause to specify a comparison value.</para>
+          <para>However, they are not allowed for identifiers (such as table or column names), in the select list that names the columns to be returned by a SELECT statement), or to specify both operands of a binary operator such as the = equal sign. The latter restriction is necessary because it would be impossible to determine the parameter type. In general, parameters are legal only in Data Manipulation Language (DML) statements, and not in Data Definition Language (DDL) statements.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para>
+          <function>mysql_stmt_init()</function>,
+          <function>mysql_stmt_param_count()</function>,
+          <function>mysql_stmt_execute()</function>
+        </para>
+      </refsect1>
+    </refentry>

@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_num_fields" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_num_fields</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_num_fields</refname>
+        <refpurpose>returns number of fields in a result set</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>unsigned int</type>
+          <methodname>mysql_num_fields</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter></parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns number of fields in a specified result set.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter></parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>The number of fields in a result set.</para>
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_fetch_field()</function></para>
+      </refsect1>
+    </refentry>

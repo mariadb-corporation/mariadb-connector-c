@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_ping" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_ping</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_ping</refname>
+        <refpurpose>Pings a server connection</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_ping</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Checks whether the connection to the server is working. If it has gone down, and global option <option>reconnect</option> is enabled an automatic reconnection is attempted.</para>
+<para>This function can be used by clients that remain idle for a long while, to check whether the server has closed the connection and reconnect if necessary. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>&return.my_bool;</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>If a reconnect occured the <parameter>thread_id</parameter> will change. Also resources bundled to the connection (prepared statements, locks, temporary tables, ...) will be released.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_options()</function>, <function>mysql_kill()</function></para>
+      </refsect1>
+    </refentry>

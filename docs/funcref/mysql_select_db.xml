@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_select_db" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_select_db</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_select_db</refname>
+        <refpurpose>Selects a database as default</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_select_db</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>db</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Sets the current active database on the server that's associated with the specified link identifier. Every subsequent api call will be made on the active database.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>db</parameter></term><listitem><para>The default database name</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non-zero on failure</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>The SQL command <command>SELECT DATABASE()</command> will return the name of the default database.</para>
+          <para>The default database can also be set by the <parameter>db</parameter> parameter in <function>mysql_real_connect()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_real_connect()</function></para>
+      </refsect1>
+    </refentry>

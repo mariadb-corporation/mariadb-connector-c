@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_fetch_field_direct" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_fetch_field_direct</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_fetch_field_direct</refname>
+        <refpurpose>Fetch meta data for a single field</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_FIELD *</type>
+          <methodname>mysql_fetch_field_direct</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>res</parameter></methodparam>
+           <methodparam><type>unsigned int</type><parameter>fieldnr</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Returns a pointer to a <parameter>MYSQL_FIELD</parameter> structure which contains field information from the specified result set.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>res</parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>fieldnr</parameter></term><listitem><para>The field number. This value must be within the range from 0 to number of fields - 1</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A pointer to a <type>MYSQL_FIELD</type> structure</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>
+          <para>The total number of fields can be obtained by <function>mysql_field_count()</function></para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_fetch_field()</function>, <function>mysql_field_count()</function></para>
+      </refsect1>
+    </refentry>

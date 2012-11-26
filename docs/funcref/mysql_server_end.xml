@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_server_end" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_server_end</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_server_end</refname>
+        <refpurpose>An alias for <function>mysql_library_end()</function></refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>void</type>
+          <methodname>mysql_server_end</methodname>
+           <methodparam><type>void</type><parameter></parameter></methodparam>
+
+        </methodsynopsis>
+        <para>An alias for <function>mysql_library_end()</function></para>
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_server_end()</function>, <function>mysql_library_init()</function>, <function>mysql_library_end()</function></para>
+      </refsect1>
+    </refentry>

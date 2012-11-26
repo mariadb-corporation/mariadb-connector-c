@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_field_tell" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_field_tell</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_field_tell</refname>
+        <refpurpose>Get current offset of the field cursor</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_FIELD_OFFSET</type>
+          <methodname>mysql_field_tell</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>result</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Return the offset of the field cursor used for the last <function>mysql_fetch_field()</function> call. This value can be used as a parameter for the function <function>mysql_field_seek()</function>.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>result</parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returms the current offset of the field cursor</para>
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+          <para><function>mysql_field_seek()</function></para>
+      </refsect1>
+    </refentry>

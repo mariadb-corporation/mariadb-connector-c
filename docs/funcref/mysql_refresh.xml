@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_refresh" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_refresh</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_refresh</refname>
+        <refpurpose>flush server information</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_refresh</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>unsigned int</type><parameter>options</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>The <function>mysql_refresh()</function> flushes different types of information stored on server side. The bit-masked parameter <parameter>options</parameter> specifies which kind of information will be flushed.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>options</parameter></term><listitem><para>A bit masked composed integer which can be one or the combination of the following values:</para>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_GRANT</parameter></term>
+              <listitem><para>Refresh grant tables.</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_LOG</parameter></term>
+              <listitem><para>Flush logs.</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_TABLES</parameter></term>
+              <listitem><para>Flush table cache.</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_HOSTS</parameter></term>
+              <listitem><para>Flush host cache.</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_STATUS</parameter></term>
+              <listitem><para>Reset status variables.</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_THREADS</parameter></term>
+              <listitem><para>Flush thread cache</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_SLAVE</parameter></term>
+              <listitem><para>Reset master server information and restart slaves.</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_MASTER</parameter></term>
+              <listitem><para>Remove binary log files.</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_READ_LOCK</parameter></term>
+              <listitem><para>todo!!!</para></listitem>
+            </varlistentry>
+          </variablelist>
+          <variablelist>
+            <varlistentry>
+              <term><parameter>REFRESH_FAST</parameter></term>
+              <listitem><para></para></listitem>
+            </varlistentry>
+          </variablelist>
+          </listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, otherweise non zero.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>To combine different values in the options parameter use the OR operator '|'.</para>
+          <para>The function <function>mysql_reload()</function> is an alias for <function>mysql_refresh()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

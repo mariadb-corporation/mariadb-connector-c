@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='UTF-8'?>
+    <refentry id="functions.mysql_send_query" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_send_query</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_send_query</refname>
+        <refpurpose>@function_short_description@</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_send_query</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>const char *</type><parameter>q</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>long</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>@long_description@</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+           <varlistentry><term><parameter>q</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+           <varlistentry><term><parameter>long</parameter></term><listitem><para>! todo !</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>@return_value@</para>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <note>
+          <title></title>  
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+      </refsect1>
+    </refentry>

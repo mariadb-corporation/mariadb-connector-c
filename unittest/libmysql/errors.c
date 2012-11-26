@@ -135,12 +135,13 @@ static int test_server_errors(MYSQL *mysql)
   int        rc;
   MYSQL_RES  *result;
 
-  mysql_query(mysql, "DROP TABLE if exists test_non_exists");
+  rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
   check_mysql_rc(rc, mysql); 
 
   rc= mysql_query(mysql, "DROP TABLE test_non_exists");
+  check_mysql_rc(rc, mysql); 
 
-  mysql_query(mysql, "SHOW ERRORS");
+  rc= mysql_query(mysql, "SHOW ERRORS");
   check_mysql_rc(rc, mysql); 
 
   result= mysql_store_result(mysql);

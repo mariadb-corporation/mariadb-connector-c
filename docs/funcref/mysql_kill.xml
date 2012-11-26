@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_kill" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_kill</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_kill</refname>
+        <refpurpose>Asks the server to kill a connection thread.</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_kill</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>unsigned</type><parameter>long</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>This function is used to ask the server to kill a MariaDB thread specified by the processid parameter. This value must be retrieved by <command>SHOW PROCESSLIST</command> or if the own connection should be killed by <function>mysql_thread_id()</function>.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>long</parameter></term><listitem><para>process id</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns 0 on success, otherwise nonzero.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>To stop a running command without killing the connection use <command>KILL QUERY</command>.</para>
+          <para><function>mysql_kill()</function> function only kills a connection, it doesn't free any memory - this must be done explicitly by calling <function>mysql_close()</function></para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_thread_id()</function>, <function>mysql_close()</function></para>
+      </refsect1>
+    </refentry>

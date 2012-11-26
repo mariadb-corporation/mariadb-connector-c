@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_init" display-name="0"> <refmeta>
+        <refentrytitle>mysql_init</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_init</refname>
+        <refpurpose>Initialize a connection</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL *</type>
+          <methodname>mysql_init</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Prepares and initializes a MYSQL structure to be used with <function>mysql_real_connect()</function>.</para>
+        <para>If <function>mysql_thread_init()</function> was not called before, <function>mysql_init()</function> will also initialize the thread subsystem for the current thread.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>A pointer to MYSQL or NULL. In case of passing a NULL pointer <function>mysql_init()</function> will allocate memory and return a pointer to a MYSQL structure.</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A pointer to a MYSQL structure or NULL if an error occured.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Any subsequent calls to any mysql function (except <function>mysql_options()</function>) will fail until <function>mysql_real_connect()</function> was called.</para>
+          <para>Memory allocated by <function>mysql_init()</function> must be freed with <function>mysql_close()</function>.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para>
+         <function>mysql_real_connect()</function>, <function>mysql_options()</function>, <function>mysql_thread_init()</function>, <function>mysql_close()</function>,
+        </para>
+      </refsect1>
+    </refentry>

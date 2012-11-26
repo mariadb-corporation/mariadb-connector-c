@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_fetch_fields" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_fetch_fields</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_fetch_fields</refname>
+        <refpurpose>Returns an array of fields representing the fields in a result set</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_FIELD *</type>
+          <methodname>mysql_fetch_fields</methodname>
+           <methodparam><type>MYSQL_RES *</type><parameter>res</parameter></methodparam>
+        </methodsynopsis>
+        <para>This function serves an identical purpose to the <function>mysql_fetch_field()</function> function with the single difference that instead of returning one field at a time for each field, the fields are returned as an array. Each field contains the definition for a column of the result set.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>res</parameter></term><listitem><para>&param.result;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>An array of fields.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title> 
+          <para>The total number of fields can be obtained by <function>mysql_field_count()</function></para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_fetch_field()</function>, <function>mysql_fetch_field_direct()</function><function>mysql_field_count()</function></para>
+      </refsect1>
+    </refentry>

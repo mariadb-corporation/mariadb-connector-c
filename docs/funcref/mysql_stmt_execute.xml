@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_execute" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_execute</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_execute</refname>
+        <refpurpose>Executes a prepared statement</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_stmt_execute</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+        </methodsynopsis>
+        <para>Executes a prepared statement which was previously prepared by <function>mysql_stmt_prepare()</function>. When executed any parameter markers which exist will automatically be replaced with the appropriate data.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non-zero on failure.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>If the statement is UPDATE, DELETE, or INSERT, the total number of affected rows can be determined by using the <function>mysql_stmt_affected_rows()</function> function. Likewise, if the query yields a result set the <function>mysql_stmt_fetch()</function> function is used.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_prepare()</function>, <function>mysql_bind_param()</function></para>
+      </refsect1>
+    </refentry>

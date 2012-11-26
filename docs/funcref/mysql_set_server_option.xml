@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_set_server_option" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_set_server_option</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_set_server_option</refname>
+        <refpurpose>Enables or disables server option</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>int</type>
+          <methodname>mysql_set_server_option</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+           <methodparam><type>enum</type><parameter>enum_mysql_set_option</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Enables or disables a server option for the connection.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>enum_mysql_set_option</parameter></term><listitem><para>Server option, which can be one of the following values:</para>
+              <variablelist>
+                <varlistentry><term><parameter>MYSQL_OPTION_MULTI_STATEMENTS_OFF</parameter></term><listitem><para>Disables multi statement support</para></listitem></varlistentry>
+                <varlistentry><term><parameter>MYSQL_OPTION_MULTI_STATEMENTS_ON</parameter></term><listitem><para>Enable multi statement support</para></listitem></varlistentry>
+              </variablelist>
+           </listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non-zero on failure</para>
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_real_connect()</function></para>
+      </refsect1>
+    </refentry>

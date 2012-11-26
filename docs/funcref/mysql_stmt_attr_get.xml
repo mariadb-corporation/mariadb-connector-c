@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_attr_get" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_attr_get</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_attr_get</refname>
+        <refpurpose>Used to get the current value of a statement attribute</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>my_bool</type>
+          <methodname>mysql_stmt_attr_get</methodname>
+           <methodparam><type>MYSQL_STMT *</type><parameter>stmt</parameter></methodparam>
+           <methodparam><type>enum</type><parameter>enum_stmt_attr_type</parameter></methodparam>
+           <methodparam><type>void *</type><parameter>attr</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Gets the current value of a statement attribute. </para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>stmt</parameter></term><listitem><para>&param.stmt;</para></listitem></varlistentry>
+           <varlistentry><term><parameter>enum_stmt_attr_type</parameter></term><listitem><para>The attribute you want to get. Possible values are:</para>
+           <variablelist>
+             <varlistentry><term>STMT_ATTR_UPDATE_MAX_LENGTH</term><listitem><para>Indicates if <function>mysql_stmt_store_result()</function> will update the <parameter>max_length</parameter> value of <parameter>MYSQL_FIELD</parameter> structures.</para></listitem></varlistentry>
+             <varlistentry><term>STMT_ATTR_CURSOR_TYPE</term><listitem><para>Cursor type. Possible values are <parameter>CURSOR_TYPE_READ_ONLY</parameter> or default value <parameter>CURSOR_TYPE_NO_CURSOR</parameter>.</para></listitem></varlistentry>
+             <varlistentry><term>STMT_ATTR_PREFETCH_ROWS</term><listitem><para>Number of rows which will be prefetched. The default value is 1.</para></listitem></varlistentry>
+           </variablelist>
+           </listitem></varlistentry>
+           <varlistentry><term><parameter>attr</parameter></term><listitem><para>Pointer to a variable, which will contain the attribute value.</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Zero on success, non zero on failure.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>Setting the number of prefetched rows will work only for read only cursors.</para>
+        </note>
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_attr_set()</function></para>
+      </refsect1>
+    </refentry>

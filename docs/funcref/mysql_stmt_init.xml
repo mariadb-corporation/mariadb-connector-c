@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_stmt_init" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_stmt_init</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_stmt_init</refname>
+        <refpurpose>Initializes a prepared statement</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>MYSQL_STMT *</type>
+          <methodname>mysql_stmt_init</methodname>
+           <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+
+        </methodsynopsis>
+        <para>Initializes and allocates memory for a prepared statement.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>A pointer to a MYSQL_STMT structure or NULL if an error occured.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>A statement handle which was allocated by <function>mysql_stmt_init()</function> needs to be freed with <function>mysql_stmt_close()</function>.</para>
+          <para>Any subsequent calls to any mysql_stmt function will fail until <function>mysql_stmt_prepare()</function> was called.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_stmt_close()</function>, <function>mysql_stmt_prepare()</function></para>
+      </refsect1>
+    </refentry>
