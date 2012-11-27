@@ -268,6 +268,10 @@ typedef struct st_mysql {
   void          *extension;
 } MYSQL;
 
+typedef struct st_mysql_lex_string {
+  char *str;
+  size_t length;
+} MYSQL_LEX_STRING;
 
 struct st_mysql_options_extention {
   char *plugin_dir;

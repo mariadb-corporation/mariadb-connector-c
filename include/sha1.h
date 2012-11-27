@@ -1,5 +1,5 @@
 /****************************************************************************
-   Copyright (C) 2011 Monty Program AB
+   Copyright (C) 2012 Monty Program AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public

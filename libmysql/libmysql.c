@@ -1950,7 +1950,7 @@ static void mysql_close_memory(MYSQL *mysql)
   my_free(mysql->passwd,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->db,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->server_version,MYF(MY_ALLOW_ZERO_PTR));
-  mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
+  mysql->host_info= mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
   mysql_close_options(mysql);
 }
 
