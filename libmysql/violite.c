@@ -380,17 +380,15 @@ int vio_close(Vio * vio)
 {
   int r;
   DBUG_ENTER("vio_close");
+#ifdef HAVE_OPENSSL
   if (vio->type == VIO_TYPE_SSL)
   {
     r = my_ssl_close(vio);
   }
+#endif
 #ifdef _WIN32
   if (vio->type == VIO_TYPE_NAMEDPIPE)
   {
-#if defined(__NT__) && defined(MYSQL_SERVER)
-    CancelIo(vio->hPipe);
-    DisconnectNamedPipe(vio->hPipe);
-#endif
     r=CloseHandle(vio->hPipe);
   }
   else if (vio->type != VIO_CLOSED)

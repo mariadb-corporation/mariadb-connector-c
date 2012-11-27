@@ -368,13 +368,11 @@ void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs);
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname);
 
 MYSQL *		STDCALL mysql_init(MYSQL *mysql);
-#ifdef HAVE_OPENSSL
 int		STDCALL mysql_ssl_set(MYSQL *mysql, const char *key,
 				      const char *cert, const char *ca,
 				      const char *capath);
 const char *	STDCALL mysql_get_ssl_cipher(MYSQL *mysql);
 int		STDCALL mysql_ssl_clear(MYSQL *mysql);
-#endif /* HAVE_OPENSSL */
 MYSQL *		STDCALL mysql_connect(MYSQL *mysql, const char *host,
 				      const char *user, const char *passwd);
 my_bool		STDCALL mysql_change_user(MYSQL *mysql, const char *user, 
