@@ -3,7 +3,6 @@
 # You will find the appropiate defines in 
 # include/my_config.h.in
 INCLUDE (CheckTypeSize)
-INCLUDE (CheckCXXSourceCompiles)
 
 SET(CMAKE_EXTRA_INCLUDE_FILES signal.h)
 CHECK_TYPE_SIZE(sigset_t SIZEOF_SIGSET_T)
@@ -91,7 +90,7 @@ IF(WIN32)
 ELSE(WIN32)
   FOREACH(CHECK_TYPE "socklen_t" "size_t" "int")
     IF (NOT SOCKET_SIZE_TYPE)
-      CHECK_CXX_SOURCE_COMPILES("
+      CHECK_C_SOURCE_COMPILES("
         #include <sys/socket.h>
         int main()
         {

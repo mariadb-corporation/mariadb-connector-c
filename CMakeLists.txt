@@ -2,7 +2,7 @@
 
 
 # This is the libmysql-lgpl project.
-PROJECT(mariadb-client)
+PROJECT(mariadb-client C)
 
 # Minimum required version is Cmake 2.6.x
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
@@ -16,8 +16,7 @@ IF(WIN32)
 ENDIF()
 
 IF(UNIX)
-  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DSAFEMALLOC -DSAFE_MUTEX")
-  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DSAFEMALLOC -DSAFE_MUTEX")
+  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DSAFEMALLOC -DSAFE_MUTEX")
 ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
@@ -25,12 +24,6 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE "Relwithdebinfo")
 ENDIF()
 
-# Generic compiler flags for GNU C/C++ compiler
-IF(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fno-rtti -fno-exceptions")
-  SET(CMAKE_CXX_COMPILER "${CMAKE_C_COMPILER}" CACHE INTERNAL "C++ Compiler" FORCE)
-ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 # various defines for generating include/mysql_version.h
 SET(PROTOCOL_VERSION 10) # we adapted new password option from PHP's mysqlnd !
