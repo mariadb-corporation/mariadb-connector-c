@@ -93,6 +93,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/include/my_config.h)
 
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
 ADD_SUBDIRECTORY(libmysql)
 ADD_SUBDIRECTORY(examples)
