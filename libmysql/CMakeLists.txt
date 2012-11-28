@@ -46,7 +46,7 @@ TARGET_LINK_LIBRARIES(libmysql ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} zlib)
 IF(OPENSSL_FOUND)
   TARGET_LINK_LIBRARIES(libmysql ${OPENSSL_LIBRARIES})
   IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  TARGET_LINK_LIBRARIES (libmysql "-Wl,--no-undefined --Wl,--as-needed")
+  TARGET_LINK_LIBRARIES (libmysql "-Wl,--no-undefined")
   ENDIF()
 ENDIF()
   
