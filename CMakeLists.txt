@@ -82,21 +82,13 @@ IF(OPENSSL_FOUND)
   ADD_DEFINITIONS(-DHAVE_OPENSSL)
 ENDIF()
 
-MESSAGE(STATUS "writing configuration files")
+FIND_PACKAGE(ZLIB QUIET)
+
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
                ${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
                ${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h)
 
-FIND_PACKAGE(ZLIB QUIET)
-IF(ZLIB_FOUND)
-  SET(ZLIB_LIB ${ZLIB_LIBRARY})
-  SET(ZLIB_INC ${ZLIB_INCLUDE_DIR})
-ELSE()
-  ADD_SUBDIRECTORY(zlib)
-  SET(ZLIB_LIB zlib)
-  SET(ZLIB_INC ${CMAKE_SOURCE_DIR}/zlib)
-ENDIF()
 
 ADD_SUBDIRECTORY(libmysql)
 ADD_SUBDIRECTORY(examples)
@@ -105,7 +97,6 @@ IF(NOT WIN32)
 ENDIF()
 
 IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
-  MESSAGE(STATUS "found unittests")
   ADD_SUBDIRECTORY(unittest/mytap)
   ADD_SUBDIRECTORY(unittest/libmysql)
 ENDIF()
