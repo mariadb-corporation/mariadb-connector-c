@@ -4,6 +4,10 @@
 # This is the libmysql-lgpl project.
 PROJECT(mariadb-client C)
 
+SET(CPACK_PACKAGE_VERSION_MAJOR 1)
+SET(CPACK_PACKAGE_VERSION_MINOR 0)
+SET(CPACK_PACKAGE_VERSION_PATCH 0)
+
 # Minimum required version is Cmake 2.6.x
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
 IF(COMMAND CMAKE_POLICY)
@@ -85,9 +89,9 @@ ENDIF()
 FIND_PACKAGE(ZLIB QUIET)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h)
+               ${CMAKE_CURRENT_BINARY_DIR}/include/mysql_version.h)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h)
+               ${CMAKE_CURRENT_BINARY_DIR}/include/my_config.h)
 
 
 ADD_SUBDIRECTORY(libmysql)
@@ -111,9 +115,6 @@ IF(WIN32)
 ENDIF()
 
 
-SET(CPACK_VERSION_MAJOR ${MYSQL_CLIENT_VERSION_MAJOR})
-SET(CPACK_VERSION_MINOR ${MYSQL_CLIENT_VERSION_MINOR})
-SET(CPACK_VERSION_PATCH ${MYSQL_CLIENT_VERSION_PATCH})
 
 SET(CPACK_PACKAGE_VENDOR "Monty Program AB")
 SET(CPACK_PACKAGE_DESCRIPTION "MariaDB client library. A library for connecting to MariaDB and MySQL servers")

@@ -1,6 +1,6 @@
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include)
 
-# Figure out additional libraries for use with -lmysql
+# Figure out additional libraries for use with 
 
 FOREACH (dep ${libmysql_LIB_DEPENDS})
   STRING(REGEX MATCH "^-.*$" out "${dep}")
@@ -24,10 +24,10 @@ ENDIF(UNIX)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mysql_config.c.in
                ${CMAKE_CURRENT_BINARY_DIR}/mysql_config.c @ONLY)
 
-ADD_EXECUTABLE(mysql_config ${CMAKE_CURRENT_BINARY_DIR}/mysql_config.c)
-TARGET_LINK_LIBRARIES(mysql_config mysqlclient)
+ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mysql_config.c)
+TARGET_LINK_LIBRARIES(mariadb_config mariadbclient)
 
 # Installation
 #
-INSTALL(TARGETS mysql_config
+INSTALL(TARGETS mariadb_config
         DESTINATION "bin")

@@ -6,7 +6,6 @@ IF(OPENSSL_FOUND)
  INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
 ENDIF()
 
-SET(LIBMYSQL_VERSION "16.0.0")
 
 ADD_DEFINITIONS(-D ENABLED_LOCAL_INFILE)
 ADD_DEFINITIONS(-D HAVE_COMPRESS)
@@ -128,76 +127,53 @@ ELSE()
 ENDIF()
 
 
-ADD_LIBRARY(mysqlclient STATIC ${LIBMYSQL_SOURCES})
-TARGET_LINK_LIBRARIES(mysqlclient ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
+ADD_LIBRARY(mariadbclient STATIC ${LIBMYSQL_SOURCES})
+TARGET_LINK_LIBRARIES(mariadbclient ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
 IF(OPENSSL_FOUND)
-  TARGET_LINK_LIBRARIES(mysqlclient ${OPENSSL_LIBRARIES})
+  TARGET_LINK_LIBRARIES(mariadbclient ${OPENSSL_LIBRARIES})
 ENDIF()
 
-ADD_LIBRARY(libmysql SHARED ${LIBMYSQL_SOURCES})
-TARGET_LINK_LIBRARIES(libmysql ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
+ADD_LIBRARY(libmariadb SHARED ${LIBMYSQL_SOURCES})
+TARGET_LINK_LIBRARIES(libmariadb ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
 
 IF(OPENSSL_FOUND)
-  TARGET_LINK_LIBRARIES(libmysql ${OPENSSL_LIBRARIES})
+  TARGET_LINK_LIBRARIES(libmariadb ${OPENSSL_LIBRARIES})
 ENDIF()
 
 
 IF(WIN32)
-  TARGET_LINK_LIBRARIES(libmysql ws2_32)
-  TARGET_LINK_LIBRARIES(mysqlclient ws2_32)
+  TARGET_LINK_LIBRARIES(libmariadb ws2_32)
+  TARGET_LINK_LIBRARIES(mariadbclient ws2_32)
 ELSE()
-  TARGET_LINK_LIBRARIES(libmysql m)
-  TARGET_LINK_LIBRARIES(mysqlclient m)
+  TARGET_LINK_LIBRARIES(libmariadb m)
+  TARGET_LINK_LIBRARIES(mariadbclient m)
 ENDIF()
 
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  TARGET_LINK_LIBRARIES (libmysql "-Wl,--no-undefined")
+  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
+  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/version_script.txt")
 ENDIF()
 
-IF(NOT WIN32)
-  # we don't want a liblibmysql
-  SET_TARGET_PROPERTIES(libmysql PROPERTIES PREFIX "")
-ENDIF(NOT WIN32)
+SET_TARGET_PROPERTIES(libmariadb PROPERTIES PREFIX "")
 
-# remove decimal points
-STRING(REGEX REPLACE "\\..+" "" LIBMYSQL_SO_VERSION ${LIBMYSQL_VERSION})
-SET_TARGET_PROPERTIES(libmysql PROPERTIES VERSION ${LIBMYSQL_VERSION}
-                                        SOVERSION ${LIBMYSQL_SO_VERSION})
-
-IF(UNIX)
-  ADD_CUSTOM_COMMAND(OUTPUT "libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                            "libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                    COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
-                    COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmysql${CMAKE_SHARED_LIBRARY_SUFFIX} libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
-                    COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}
-                    COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmysql${CMAKE_SHARED_LIBRARY_SUFFIX} libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}
-                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libmysql
-                    DEPENDS libmysql)
-
-  ADD_CUSTOM_TARGET(LIBMYSQL_SYMLINKS
-                    ALL
-                    DEPENDS "libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                            "libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}")
-ENDIF()
+SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION 
+   ${CPACK_PACKAGE_MAJOR_VERSION}
+   SOVERSION ${CPACK_PACKAGE_MAJOR_VERSION})
 
 #
 # Installation
 #
 
 INSTALL(TARGETS
-          libmysql mysqlclient
+          libmariadb mariadbclient
           RUNTIME DESTINATION "lib"
           LIBRARY DESTINATION "lib"
           ARCHIVE DESTINATION "lib")
-IF(UNIX)
-  INSTALL(TARGETS
-            libmysql mysqlclient
-          LIBRARY DESTINATION "lib"
-          ARCHIVE DESTINATION "lib")
-  INSTALL(FILES ${CMAKE_BINARY_DIR}/libmysql/libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
-                ${CMAKE_BINARY_DIR}/libmysql/libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}
-          DESTINATION "lib")
-ENDIF()
 
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include
-        DESTINATION .)
+        DESTINATION mariadbclient)
+INSTALL(FILES 
+   ${CMAKE_BINARY_DIR}/include/my_config.h
+   ${CMAKE_BINARY_DIR}/include/mysql_version.h
+   DESTINATION mariadbclient/include
+)
