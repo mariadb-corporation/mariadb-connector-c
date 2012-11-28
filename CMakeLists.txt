@@ -16,7 +16,7 @@ IF(WIN32)
 ENDIF()
 
 IF(UNIX)
-  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DSAFEMALLOC -DSAFE_MUTEX")
+  SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DSAFEMALLOC -DSAFE_MUTEX")
 ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
