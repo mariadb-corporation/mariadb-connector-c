@@ -30,7 +30,8 @@ SET(LIBMYSQL_SOURCES array.c bchange.c bmove.c bmove_upp.c my_charset.c
                      strend.c strfill.c string.c strinstr.c strmake.c
                      strmov.c strnmov.c strtoll.c strtoull.c 
                      strxmov.c strxnmov.c thr_mutex.c typelib.c sha1.c my_stmt.c
-                     my_loaddata.c my_stmt_codec.c client_plugin.c my_auth.c my_secure.c)
+                     my_loaddata.c my_stmt_codec.c client_plugin.c my_auth.c my_secure.c
+					 libmysql_exports.def)
 
 ADD_LIBRARY(mysqlclient STATIC ${LIBMYSQL_SOURCES})
 TARGET_LINK_LIBRARIES(mysqlclient ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} zlib)
