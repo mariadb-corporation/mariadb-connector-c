@@ -2434,14 +2434,15 @@ mysql_drop_db(MYSQL *mysql, const char *db)
   DBUG_RETURN(simple_command(mysql,MYSQL_COM_DROP_DB,db,(uint) strlen(db),0));
 }
 
-
+/* In 5.0 this version became an additional parameter shutdown_level */
 int STDCALL
-mysql_shutdown(MYSQL *mysql)
+mysql_shutdown(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level)
 {
+  uchar s_level[2];
   DBUG_ENTER("mysql_shutdown");
-  DBUG_RETURN(simple_command(mysql,MYSQL_COM_SHUTDOWN,0,0,0));
+  s_level[0]= (uchar)shutdown_level;
+  DBUG_RETURN(simple_command(mysql, MYSQL_COM_SHUTDOWN, (char *)s_level, 1, 0));
 }
-
 
 int STDCALL
 mysql_refresh(MYSQL *mysql,uint options)

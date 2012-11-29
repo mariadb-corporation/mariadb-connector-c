@@ -255,3 +255,5 @@ unsigned long STDCALL mysql_stmt_param_count(MYSQL_STMT *stmt);
 my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, unsigned int param_number, const char *data, unsigned long length);
 my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt);
 my_ulonglong STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt);
+MYSQL_RES* STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt);
+int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt);
