@@ -58,8 +58,6 @@
 static my_bool is_not_null= 0;
 static my_bool is_null= 1;
 
-const char * const mysql_stmt_not_prepared = "Statement not prepared";
-
 my_bool is_supported_buffer_type(enum enum_field_types type)
 {
   switch (type) {
@@ -477,7 +475,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
           break;
         default:
                                         /* unsupported parameter type */
-          SET_CLIENT_STMT_ERROR(stmt, CR_UNSUPPORTED_PARAM_TYPE, SQLSTATE_UNKNOWN, "");
+          SET_CLIENT_STMT_ERROR(stmt, CR_UNSUPPORTED_PARAM_TYPE, SQLSTATE_UNKNOWN, 0);
           DBUG_RETURN(1);
       }
    DBUG_RETURN(0);
@@ -637,7 +635,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
 mem_error:
   SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-  my_free((gptr)start, MYF(ALLOW_ZERO_PTR));
+  my_free((gptr)start, MYF(MY_ALLOW_ZERO_PTR));
   *request_len= 0;
   DBUG_RETURN(NULL);
 }
@@ -689,7 +687,7 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     case STMT_ATTR_CURSOR_TYPE: {
       if (*(ulong *)value > (unsigned long) CURSOR_TYPE_READ_ONLY)
       {
-        SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, "Not implemented");
+        SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
         DBUG_RETURN(1);
       }
       stmt->flags = *(ulong *)value;
@@ -703,7 +701,7 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       break;
     }
     default:
-      SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, "Not implemented");
+      SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
       DBUG_RETURN(1);
   }
   DBUG_RETURN(0);
@@ -714,7 +712,7 @@ my_bool STDCALL mysql_stmt_bind_param(MYSQL_STMT *stmt, MYSQL_BIND *bind)
   DBUG_ENTER("mysql_stmt_bind_param");
 
   if (stmt->state < MYSQL_STMT_PREPARED) {
-    SET_CLIENT_STMT_ERROR(stmt, CR_NO_PREPARE_STMT, SQLSTATE_UNKNOWN, mysql_stmt_not_prepared);
+    SET_CLIENT_STMT_ERROR(stmt, CR_NO_PREPARE_STMT, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
 
@@ -794,18 +792,30 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
 
   if (stmt->state < MYSQL_STMT_PREPARED)
   {
-    SET_CLIENT_STMT_ERROR(stmt, CR_NO_PREPARE_STMT, SQLSTATE_UNKNOWN, mysql_stmt_not_prepared);
+    SET_CLIENT_STMT_ERROR(stmt, CR_NO_PREPARE_STMT, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
 
   if (!stmt->field_count)
   {
-    SET_CLIENT_STMT_ERROR(stmt, CR_NO_STMT_METADATA, SQLSTATE_UNKNOWN, "todo: metadata error");
+    SET_CLIENT_STMT_ERROR(stmt, CR_NO_STMT_METADATA, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1); 
   }
 
   if (!bind)
     DBUG_RETURN(1);
+
+  /* In case of a stored procedure we don't allocate memory for bind 
+     in mysql_stmt_prepare
+  */
+  if (stmt->field_count && !stmt->bind)
+  {
+    if (!(stmt->bind= (MYSQL_BIND *)alloc_root(&stmt->mem_root, stmt->field_count * sizeof(MYSQL_BIND))))
+    {
+      SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      DBUG_RETURN(1); 
+    }
+  }
 
   memcpy(stmt->bind, bind, sizeof(MYSQL_BIND) * stmt->field_count);
 
@@ -813,7 +823,7 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
   {
     if (!is_supported_buffer_type(bind[i].buffer_type))
     {
-      SET_CLIENT_STMT_ERROR(stmt, CR_UNSUPPORTED_PARAM_TYPE, SQLSTATE_UNKNOWN, "");
+      SET_CLIENT_STMT_ERROR(stmt, CR_UNSUPPORTED_PARAM_TYPE, SQLSTATE_UNKNOWN, 0);
       DBUG_RETURN(1);
     }
 
@@ -1279,8 +1289,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
 
   if (stmt->param_count && !stmt->bind_param_done)
   {
-    SET_CLIENT_STMT_ERROR(stmt, CR_PARAMS_NOT_BOUND, SQLSTATE_UNKNOWN,
-                            "No data supplied for parameters in prepared statement");
+    SET_CLIENT_STMT_ERROR(stmt, CR_PARAMS_NOT_BOUND, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
 
@@ -1529,7 +1538,7 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
  
   if (stmt->state < MYSQL_STMT_PREPARED || !stmt->params)
   {
-    SET_CLIENT_STMT_ERROR(stmt, CR_NO_PREPARE_STMT, SQLSTATE_UNKNOWN, mysql_stmt_not_prepared);
+    SET_CLIENT_STMT_ERROR(stmt, CR_NO_PREPARE_STMT, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
 
@@ -1565,3 +1574,47 @@ my_ulonglong STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt)
   return stmt->result.rows;
 }
 
+MYSQL_RES* STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt)
+{
+  DBUG_ENTER("mysql_stmt_param_metadata");
+  /* server doesn't deliver any information yet,
+     so we just return NULL
+  */
+  DBUG_RETURN(NULL);
+}
+
+int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
+{
+  DBUG_ENTER("mysql_stmt_next_result");
+
+  if (!stmt->mysql)
+  {
+    SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+    DBUG_RETURN(1);
+  }
+
+  /* test_pure_coverage requires checking of error_no */
+  if (stmt->last_errno)
+    DBUG_RETURN(1);
+
+  if (stmt->state < MYSQL_STMT_EXECUTED)
+  {
+    SET_CLIENT_ERROR(stmt->mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
+    SET_CLIENT_STMT_ERROR(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
+    DBUG_RETURN(1);
+  }
+
+  if (!mysql_more_results(stmt->mysql))
+    DBUG_RETURN(-1);
+
+  mysql_stmt_reset(stmt);
+  stmt->state= MYSQL_STMT_WAITING_USE_OR_STORE;
+
+  if (mysql_next_result(stmt->mysql))
+  {
+    SET_CLIENT_STMT_ERROR(stmt, stmt->mysql->net.last_errno, stmt->mysql->net.sqlstate,
+                          stmt->mysql->net.last_error);
+    DBUG_RETURN(1);
+  }
+  DBUG_RETURN(0);
+}

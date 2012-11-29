@@ -324,7 +324,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       Send mysql->client_flag, max_packet_size - unencrypted otherwise
       the server does not know we want to do SSL
     */
-    if (my_net_write(net, (uchar*)buff, (size_t) (end-buff)) || net_flush(net))
+    if (my_net_write(net, (char*)buff, (size_t) (end-buff)) || net_flush(net))
     {
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                           ER(CR_SERVER_LOST_EXTENDED),
