@@ -1310,12 +1310,13 @@ mysql_init(MYSQL *mysql)
 
 int STDCALL
 mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
-        const char *ca, const char *capath)
+        const char *ca, const char *capath, const char *cipher)
 {
   mysql->options.ssl_key = key==0 ? 0 : my_strdup(key,MYF(0));
   mysql->options.ssl_cert = cert==0 ? 0 : my_strdup(cert,MYF(0));
   mysql->options.ssl_ca = ca==0 ? 0 : my_strdup(ca,MYF(0));
   mysql->options.ssl_capath = capath==0 ? 0 : my_strdup(capath,MYF(0));
+  mysql->options.ssl_cipher = cipher==0 ? 0 : my_strdup(cipher,MYF(0));
   mysql->options.use_ssl = 1;
   //mysql->connector_fd = new_VioSSLConnectorFd(key, cert, ca, capath);
   return 0;
@@ -1940,6 +1941,7 @@ static void mysql_close_options(MYSQL *mysql)
   my_free(mysql->options.ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
+  my_free(mysql->options.ssl_cipher, MYF(MY_ALLOW_ZERO_PTR));
 #endif /* HAVE_OPENSSL */
 }
 

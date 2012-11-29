@@ -950,6 +950,7 @@ int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt)
 
   if (stmt->state <= MYSQL_STMT_EXECUTED) 
   {
+    SET_CLIENT_STMT_ERROR(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
 
@@ -1593,10 +1594,6 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
     DBUG_RETURN(1);
   }
 
-  /* test_pure_coverage requires checking of error_no */
-  if (stmt->last_errno)
-    DBUG_RETURN(1);
-
   if (stmt->state < MYSQL_STMT_EXECUTED)
   {
     SET_CLIENT_ERROR(stmt->mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
@@ -1616,5 +1613,13 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
                           stmt->mysql->net.last_error);
     DBUG_RETURN(1);
   }
+
+  if (stmt->field_count != stmt->mysql->field_count)
+  {
+    if (stmt->bind)
+      stmt->bind= NULL;
+    stmt->field_count= stmt->mysql->field_count;
+  }
+
   DBUG_RETURN(0);
 }

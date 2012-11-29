@@ -74,7 +74,7 @@ static int test_ssl_cipher(MYSQL *unused)
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
-  mysql_ssl_set(my,0, 0, "./ca.pem", 0);
+  mysql_ssl_set(my,0, 0, "./ca.pem", 0, 0);
 
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
@@ -115,7 +115,7 @@ static int test_multi_ssl_connections(MYSQL *unused)
     mysql[i]= mysql_init(NULL);
     FAIL_IF(!mysql[i],"mysql_init() failed");
 
-    mysql_ssl_set(mysql[i], 0, 0, "./ca.pem", 0);
+    mysql_ssl_set(mysql[i], 0, 0, "./ca.pem", 0, 0);
 
     FAIL_IF(!mysql_real_connect(mysql[i], hostname, username, password, schema,
                          port, socketname, 0), mysql_error(mysql[i]));
@@ -154,7 +154,7 @@ static void ssl_thread(void)
     mysql_thread_end();
     pthread_exit(-1);
   }
-  mysql_ssl_set(mysql, 0, 0, "./ca.pem", 0);
+  mysql_ssl_set(mysql, 0, 0, "./ca.pem", 0, 0);
 
   if(!mysql_real_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))

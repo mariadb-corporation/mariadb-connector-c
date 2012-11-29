@@ -439,10 +439,10 @@ struct my_tests_st my_tests[] = {
 
 int main(int argc, char **argv)
 {
-/*
+
   if (argc > 1)
-    get_options(&argc, &argv);
-*/
+    get_options(argc, argv);
+
   get_envvars();
 
   run_tests(my_tests);

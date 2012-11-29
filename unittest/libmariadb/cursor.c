@@ -1645,7 +1645,11 @@ static int test_bug9478(MYSQL *mysql)
     rc= mysql_stmt_reset(stmt);
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_fetch(stmt);
+
+    /* mariadb client supports GEOMETRY, so no error will
+       be returned 
     FAIL_UNLESS(rc && mysql_stmt_errno(stmt), "Error expected");
+    */
   }
   rc= mysql_stmt_close(stmt);
   check_stmt_rc(rc, stmt);
@@ -1831,8 +1835,8 @@ struct my_tests_st my_tests[] = {
 
 int main(int argc, char **argv)
 {
-//  if (argc > 1)
-//    get_options(&argc, &argv);
+  if (argc > 1)
+    get_options(argc, argv);
 
   get_envvars();
 
