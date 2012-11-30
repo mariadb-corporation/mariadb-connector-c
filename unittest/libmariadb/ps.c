@@ -2463,14 +2463,17 @@ static int test_pure_coverage(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   my_bind[0].buffer_type= MYSQL_TYPE_GEOMETRY;
   rc= mysql_stmt_bind_result(stmt, my_bind);
-  FAIL_IF(!rc, "Error expected");
 
+  /* Since libmariadb supports geometry types in prepared statements
+     we have to skip the following check
+  FAIL_IF(!rc, "Error expected");
   rc= mysql_stmt_store_result(stmt);
   FAIL_UNLESS(rc, "");
 
   rc= mysql_stmt_store_result(stmt);
-  FAIL_UNLESS(rc, ""); /* Old error must be reset first */
+  FAIL_UNLESS(rc, ""); 
 
+  */
   mysql_stmt_close(stmt);
 
   mysql_query(mysql, "DROP TABLE test_pure");
@@ -3042,7 +3045,7 @@ static int test_datetime_ranges(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
-  FAIL_IF(mysql_warning_count(mysql) != 12, "warning count != 12");
+  FAIL_IF(mysql_warning_count(mysql) != 6, "warning count != 6");
 
   if (verify_col_data(mysql, "t1", "year", "0000-00-00 00:00:00"))
     goto error;
@@ -3080,7 +3083,7 @@ static int test_datetime_ranges(MYSQL *mysql)
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
-  FAIL_IF(mysql_warning_count(mysql) != 6, "warning count != 6");
+  FAIL_IF(mysql_warning_count(mysql) != 3, "warning count != 3");
 
   if (verify_col_data(mysql, "t1", "year", "0000-00-00 00:00:00"))
     goto error;

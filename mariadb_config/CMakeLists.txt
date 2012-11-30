@@ -2,8 +2,8 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include)
 
 # Figure out additional libraries for use with 
 
-FOREACH (dep ${libmysql_LIB_DEPENDS})
-  STRING(REGEX MATCH "^-.*$" out "${dep}")
+FOREACH (dep ${libmariadb_LIB_DEPENDS})
+  STRING(REGEX MATCH "^-l.*$" out "${dep}")
   IF(out)
     SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${dep}")
   ENDIF(out)
@@ -21,10 +21,10 @@ IF(UNIX)
   ENDIF(MATH_LIBRARY)
 ENDIF(UNIX)
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mysql_config.c.in
-               ${CMAKE_CURRENT_BINARY_DIR}/mysql_config.c @ONLY)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
+               ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
 
-ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mysql_config.c)
+ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
 TARGET_LINK_LIBRARIES(mariadb_config mariadbclient)
 
 # Installation

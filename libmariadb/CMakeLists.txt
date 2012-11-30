@@ -1,6 +1,6 @@
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include 
                     ${ZLIB_INC}
-                    ${CMAKE_SOURCE_DIR}/libmysql)
+                    ${CMAKE_SOURCE_DIR}/libmariadb)
 					
 IF(OPENSSL_FOUND)
  INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
@@ -11,7 +11,7 @@ ADD_DEFINITIONS(-D ENABLED_LOCAL_INFILE)
 ADD_DEFINITIONS(-D HAVE_COMPRESS)
 ADD_DEFINITIONS(-D THREAD)
 
-SET(LIBMYSQL_SOURCES 
+SET(LIBMARIADB_SOURCES 
 array.c 
 bchange.c 
 bmove.c 
@@ -30,7 +30,7 @@ getopt.c
 get_password.c
 int2str.c
 is_prefix.c
-libmysql.c
+libmariadb.c
 list.c
 llstr.c
 longlong2str.c 
@@ -95,7 +95,7 @@ my_stmt_codec.c
 client_plugin.c
 my_auth.c
 my_secure.c
-libmysql_exports.def
+libmariadb_exports.def
 )
 
 
@@ -122,18 +122,18 @@ ELSE()
     ../zlib/uncompr.c
     ../zlib/zutil.c
   )
-  SET(LIBMYSQL_SOURCES ${LIBMYSQL_SOURCES} ${ZLIB_SOURCES})
+SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/zlib)
 ENDIF()
 
 
-ADD_LIBRARY(mariadbclient STATIC ${LIBMYSQL_SOURCES})
+ADD_LIBRARY(mariadbclient STATIC ${LIBMARIADB_SOURCES})
 TARGET_LINK_LIBRARIES(mariadbclient ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
 IF(OPENSSL_FOUND)
   TARGET_LINK_LIBRARIES(mariadbclient ${OPENSSL_LIBRARIES})
 ENDIF()
 
-ADD_LIBRARY(libmariadb SHARED ${LIBMYSQL_SOURCES})
+ADD_LIBRARY(libmariadb SHARED ${LIBMARIADB_SOURCES})
 TARGET_LINK_LIBRARIES(libmariadb ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
 
 IF(OPENSSL_FOUND)

@@ -1,7 +1,7 @@
 # CMakeLists.txt
 
 
-# This is the libmysql-lgpl project.
+# This is the LGPL libmariadb project.
 PROJECT(mariadb-client C)
 
 SET(CPACK_PACKAGE_VERSION_MAJOR 1)
@@ -95,10 +95,10 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
-ADD_SUBDIRECTORY(libmysql)
+ADD_SUBDIRECTORY(libmariadb)
 ADD_SUBDIRECTORY(examples)
 IF(NOT WIN32)
-  ADD_SUBDIRECTORY(mysql_config)
+  ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
 
 IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)

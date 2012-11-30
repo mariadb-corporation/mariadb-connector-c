@@ -571,7 +571,6 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
 
      length= MIN(MAX_DOUBLE_STRING_REP_LENGTH - 1, r_param->buffer_length);
 
-     /* TODO: move this to a header shared between client and server. */
      if (field->decimals >= NOT_FIXED_DEC)
      {
        sprintf(buff, "%-*.*g", (int) length-1, DBL_DIG, val);
