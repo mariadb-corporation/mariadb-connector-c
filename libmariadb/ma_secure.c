@@ -21,7 +21,7 @@
 
 #include <my_global.h>
 #include <my_sys.h>
-#include <my_secure.h>
+#include <ma_secure.h>
 #include <errmsg.h>
 #include <violite.h>
 
@@ -53,11 +53,13 @@ static void my_SSL_error(MYSQL *mysql)
   }
   if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
   {
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ssl_error_reason);
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+                 ER(CR_SSL_CONNECTION_ERROR), ssl_error_reason);
     DBUG_VOID_RETURN;
   }
   my_snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
-  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ssl_error);
+  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+               ER(CR_SSL_CONNECTION_ERROR), ssl_error);
   DBUG_VOID_RETURN;
 }
 
@@ -226,8 +228,9 @@ static int my_ssl_set_certs(SSL *ssl)
   /* set cert */
   if (mysql->options.ssl_cert && mysql->options.ssl_cert[0] != 0)  
   {
-    if ((SSL_CTX_use_certificate_chain_file(SSL_context, mysql->options.ssl_cert) != 1) &&
-        (SSL_use_certificate_file(ssl, mysql->options.ssl_cert, SSL_FILETYPE_PEM) != 1))
+    if (SSL_CTX_use_certificate_chain_file(SSL_context, mysql->options.ssl_cert) != 1) 
+      goto error;
+    if (SSL_use_certificate_file(ssl, mysql->options.ssl_cert, SSL_FILETYPE_PEM) != 1)
       goto error;
     have_cert= 1;
   }
@@ -250,6 +253,26 @@ static int my_ssl_set_certs(SSL *ssl)
     if (SSL_CTX_set_default_verify_paths(SSL_context) == 0)
       goto error;
   }
+
+  if (mysql->options.ssl_ca || mysql->options.ssl_capath)
+  {
+    X509_STORE *certstore;
+
+    if ((certstore= SSL_CTX_get_cert_store(SSL_context)))
+    {
+      if (X509_STORE_load_locations(certstore, mysql->options.ssl_ca,
+                                     mysql->options.ssl_capath) == 1)
+      {
+#ifdef X509_V_FLAG_CRL_CHECK
+				X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+#else
+        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "OpenSSL library doesn't support CRL certificates");
+        DBUG_RETURN(1);
+#endif        
+      }
+    }
+  }
+
   DBUG_RETURN(0);
 
 error:
@@ -259,8 +282,21 @@ error:
 
 static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
 {
-  /* since we don't have access to the mysql structure, we just return */
-  return ok;
+  X509 *check_cert;
+  DBUG_ENTER("my_verify_callback");
+
+  if (!ok)
+  {
+    uint depth;
+    if (!(check_cert= X509_STORE_CTX_get_current_cert(ctx)))
+      DBUG_RETURN(0);
+    depth= X509_STORE_CTX_get_error_depth(ctx);
+    DBUG_PRINT("info", ("error_depth=%d", depth));
+    if (depth == 0)
+      DBUG_RETURN(1);
+  }
+  DBUG_PRINT("info", ("ctx->error= %d", ctx->error));
+  DBUG_RETURN(1);
 }
 
 /*
@@ -291,7 +327,6 @@ SSL *my_ssl_init(MYSQL *mysql)
 
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
-
   if (my_ssl_set_certs(ssl))
     goto error;
 
@@ -340,6 +375,7 @@ int my_ssl_connect(SSL *ssl)
 
   if (SSL_connect(ssl) != 1)
   {
+    printf("connect failed\n");
     my_SSL_error(mysql);
     /* restore blocking mode */
     if (!blocking)

@@ -6,7 +6,7 @@
 #include <mysql/client_plugin.h>
 #include <violite.h>
 #ifdef HAVE_OPENSSL
-#include <my_secure.h>
+#include <ma_secure.h>
 #endif
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;

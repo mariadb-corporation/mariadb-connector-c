@@ -74,7 +74,7 @@ static int test_ssl_cipher(MYSQL *unused)
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
-  mysql_ssl_set(my,0, 0, "./ca.pem", 0, 0);
+  mysql_ssl_set(my,0, 0, "./certs/ca.pem", 0, 0);
 
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
@@ -115,7 +115,7 @@ static int test_multi_ssl_connections(MYSQL *unused)
     mysql[i]= mysql_init(NULL);
     FAIL_IF(!mysql[i],"mysql_init() failed");
 
-    mysql_ssl_set(mysql[i], 0, 0, "./ca.pem", 0, 0);
+    mysql_ssl_set(mysql[i], 0, 0, "./certs/ca.pem", 0, 0);
 
     FAIL_IF(!mysql_real_connect(mysql[i], hostname, username, password, schema,
                          port, socketname, 0), mysql_error(mysql[i]));
@@ -154,7 +154,7 @@ static void ssl_thread(void)
     mysql_thread_end();
     pthread_exit(-1);
   }
-  mysql_ssl_set(mysql, 0, 0, "./ca.pem", 0, 0);
+  mysql_ssl_set(mysql, 0, 0, "./certs/ca.pem", 0, 0);
 
   if(!mysql_real_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))
@@ -213,8 +213,31 @@ static int test_ssl_threads(MYSQL *mysql)
 }
 #endif
 
+static int test_phpbug51647(MYSQL *my)
+{
+  int rc;
+  MYSQL* mysql;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, "certs/client-key.pem", "certs/client-cert.pem", "certs/ca-cert.pem", 0, 0);
+
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0), mysql_error(mysql));
+  diag("%s", mysql_get_ssl_cipher(mysql));
+  mysql_close(mysql);
+
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_phpbug51647", test_phpbug51647, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_ssl_cipher", test_ssl_cipher, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_multi_ssl_connections", test_multi_ssl_connections, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
 #ifndef WIN32

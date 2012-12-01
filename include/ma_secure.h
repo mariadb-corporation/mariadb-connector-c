@@ -19,8 +19,8 @@
    Part of this code includes code from the PHP project which
    is freely available from http://www.php.net
 *************************************************************************************/
-#ifndef _my_secure_h_
-#define _my_secure_h_
+#ifndef _ma_secure_h_
+#define _ma_secure_h_
 
 #ifdef HAVE_OPENSSL
 #include <mysql.h>
@@ -40,4 +40,4 @@ int my_ssl_start(MYSQL *mysql);
 void my_ssl_end();
 
 #endif /* HAVE_OPENSSL */
-#endif /* _my_secure_h_ */
+#endif /* _ma_secure_h_ */

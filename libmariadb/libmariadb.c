@@ -61,7 +61,7 @@
 #include <sha1.h>
 #include <violite.h>
 #ifdef HAVE_OPENSSL
-#include <my_secure.h>
+#include <ma_secure.h>
 #endif
 
 static my_bool mysql_client_init=0;

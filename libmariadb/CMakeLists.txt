@@ -94,7 +94,7 @@ my_loaddata.c
 my_stmt_codec.c
 client_plugin.c
 my_auth.c
-my_secure.c
+ma_secure.c
 libmariadb_exports.def
 )
 

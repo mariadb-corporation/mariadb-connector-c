@@ -42,7 +42,7 @@
 #endif
 
 #ifdef HAVE_OPENSSL
-#include <my_secure.h>
+#include <ma_secure.h>
 #endif
 
 #ifdef _WIN32
