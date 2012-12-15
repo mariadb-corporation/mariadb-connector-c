@@ -465,7 +465,10 @@ void run_tests(struct my_tests_st *test) {
   plan(total);
 
   if ((mysql_default= test_connect(NULL)))
+  {
     diag("Testing against MySQL Server %s", mysql_get_server_info(mysql_default));
+    diag("Host %s", mysql_get_host_info(mysql_default));
+  }
   else
   {
     diag("Can't connect to a server. Aborting....");

@@ -1383,8 +1383,6 @@ mysql_real_connect(MYSQL *mysql,const char *host, const char *user,
   my_socket	sock;
   char          *scramble_data;
   const char *  scramble_plugin;
-  uint32	ip_addr;
-  struct	sockaddr_in sock_addr;
   uint		pkt_length, scramble_len, pkt_scramble_len= 0;
   NET		*net= &mysql->net;
 #ifdef _WIN32
@@ -1505,65 +1503,80 @@ mysql_real_connect(MYSQL *mysql,const char *host, const char *user,
       }
       else
       {
-	net->vio=vio_new_win32pipe(hPipe);
-	sprintf(host_info=buff, ER(CR_NAMEDPIPE_CONNECTION), host,
-		unix_socket);
+        net->vio=vio_new_win32pipe(hPipe);
+        sprintf(host_info=buff, ER(CR_NAMEDPIPE_CONNECTION), host,
+                unix_socket);
       }
     }
   }
   if (hPipe == INVALID_HANDLE_VALUE)
 #endif
   {
+    struct addrinfo hints, *save_res, *res= 0;
+    char server_port[NI_MAXSERV];
+    int rc;
+
     unix_socket=0;				/* This is not used */
     if (!port)
       port=mysql_port;
     if (!host)
       host=LOCAL_HOST;
     sprintf(host_info=buff,ER(CR_TCP_CONNECTION),host);
+
     DBUG_PRINT("info",("Server name: '%s'.  TCP sock: %d", host,port));
-    /* _WIN64 ;  Assume that the (int) range is enough for socket() */
-    if ((sock = (my_socket) socket(AF_INET,SOCK_STREAM,0)) == SOCKET_ERROR)
+
+    my_snprintf(server_port, NI_MAXSERV, "%d", port);
+
+    /* set hints for getaddrinfo */
+    bzero(&hints, sizeof(hints));
+    hints.ai_protocol= IPPROTO_TCP; /* TCP connections only */
+    hints.ai_family= AF_UNSPEC;     /* includes: IPv4, IPv6 or hostname */
+    hints.ai_socktype= SOCK_STREAM;
+
+    /* Get the address information for the server using getaddrinfo() */
+    if ((rc= getaddrinfo(host, server_port, &hints, &res)))
+    {
+      my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
+                   ER(CR_UNKNOWN_HOST), host, rc);
+      goto error;
+    }
+
+    /* res is a linked list of addresses. If connect to an address fails we will not return
+       an error, instead we will try the next address */
+    for (save_res= res; save_res; save_res= save_res->ai_next)
+     {
+      if ((sock= (my_socket)socket(save_res->ai_family, 
+                                   save_res->ai_socktype, 
+                                   save_res->ai_protocol)) == SOCKET_ERROR)
+        /* we do error handling after for loop only for last call */
+        continue;
+      if (!(net->vio= vio_new(sock, VIO_TYPE_TCPIP, FALSE)))
+      {
+        my_set_error(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+        freeaddrinfo(res);
+        goto error;
+      }
+      if (!(rc= connect2(sock, save_res->ai_addr, save_res->ai_addrlen, 
+		               mysql->options.connect_timeout)))
+        break; /* success! */
+
+      vio_delete(mysql->net.vio);
+      mysql->net.vio= NULL;
+    }
+ 
+    freeaddrinfo(res);
+
+    if (sock == SOCKET_ERROR)
     {
       my_set_error(mysql, CR_IPSOCK_ERROR, SQLSTATE_UNKNOWN, ER(CR_IPSOCK_ERROR),
                    socket_errno);
       goto error;
     }
-    net->vio = vio_new(sock,VIO_TYPE_TCPIP,FALSE);
-    bzero((char*) &sock_addr,sizeof(sock_addr));
-    sock_addr.sin_family = AF_INET;
 
-    /*
-    ** The server name may be a host name or IP address
-    */
-
-    if ((int) (ip_addr = inet_addr(host)) != (int) INADDR_NONE)
+    if (rc)
     {
-      memcpy_fixed(&sock_addr.sin_addr,&ip_addr,sizeof(ip_addr));
-    }
-    else
-    {
-      int tmp_errno;
-      struct hostent tmp_hostent,*hp;
-      char buff2[GETHOSTBYNAME_BUFF_SIZE];
-      hp = my_gethostbyname_r(host,&tmp_hostent,buff2,sizeof(buff2),
-			      &tmp_errno);
-      if (!hp)
-      {
-        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, ER(CR_UNKNOWN_HOST),
-                     host, tmp_errno);
-	my_gethostbyname_r_free();
-	goto error;
-      }
-      memcpy(&sock_addr.sin_addr,hp->h_addr, (size_t) hp->h_length);
-      my_gethostbyname_r_free();
-    }
-    sock_addr.sin_port = (ushort) htons((ushort) port);
-    if (connect2(sock,(struct sockaddr *) &sock_addr, sizeof(sock_addr),
-		 mysql->options.connect_timeout) <0)
-    {
-      DBUG_PRINT("error",("Got error %d on connect to '%s'",socket_errno,host));
-      my_set_error(mysql, CR_CONN_HOST_ERROR, SQLSTATE_UNKNOWN,
-                   ER(CR_CONN_HOST_ERROR), host, socket_errno);
+      my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONNECTION_ERROR),
+                          unix_socket, socket_errno);
       goto error;
     }
   }
@@ -2894,7 +2907,7 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
       struct servent *serv_ptr;
       char *env;
 
-	  mysql_port = MYSQL_PORT;
+	    mysql_port = MYSQL_PORT;
       if ((serv_ptr = getservbyname("mysql", "tcp")))
         mysql_port = (uint) ntohs((ushort) serv_ptr->s_port);
       if ((env = getenv("MYSQL_TCP_PORT")))
@@ -2909,7 +2922,7 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
       mysql_unix_port = (char*) MYSQL_UNIX_ADDR;
 #endif
       if ((env = getenv("MYSQL_UNIX_PORT")))
-	mysql_unix_port = env;
+        mysql_unix_port = env;
     }
     mysql_debug(NullS);
 #if defined(SIGPIPE) && !defined(THREAD) && !defined(_WIN32)
