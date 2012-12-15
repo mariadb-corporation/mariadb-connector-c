@@ -138,8 +138,8 @@ const char *client_errors[]=
 /* 2055 */  "",
 /* 2056 */  "",
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
-/* 2058 */  "Can't connect twice. Already connected",
-/* 2059 */  "Plugin %s could not be loaded: %s",
+/* 2058 */  "Plugin %s could not be loaded: %s",
+/* 2059 */  "Can't connect twice. Already connected",
             ""
 };
 #endif

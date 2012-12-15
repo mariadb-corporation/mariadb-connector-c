@@ -179,30 +179,29 @@ void make_password_from_salt(char *to, ulong *hash_res)
  * Genererate a new message based on message and password
  * The same thing is done in client and server and the results are checked.
  */
-
-char *scramble_323(char *to,const char *message,const char *password)
+char *scramble_323(char *to, const char *message, const char *password)
 {
   struct rand_struct rand_st;
-  ulong hash_pass[2],hash_message[2];
+  ulong hash_pass[2], hash_message[2];
+
   if (password && password[0])
   {
-    char *to_start=to;
-    hash_password(hash_pass, password, strlen(password));
-    hash_password(hash_message, message, strlen(message));
-    randominit(&rand_st,hash_pass[0] ^ hash_message[0],
-	 hash_pass[1] ^ hash_message[1]);
-    while (*message++)
-      *to++= (char) (floor(rnd(&rand_st)*31)+64);
-    {						/* Make it harder to break */
-      char extra=(char) (floor(rnd(&rand_st)*31));
-      while (to_start != to)
-	*(to_start++)^=extra;
-    }
+    char extra, *to_start=to;
+    const char *end_scramble323= message + SCRAMBLE_LENGTH_323;
+    hash_password(hash_pass,password, (uint) strlen(password));
+    /* Don't use strlen, could be > SCRAMBLE_LENGTH_323 ! */
+    hash_password(hash_message, message, SCRAMBLE_LENGTH_323);
+    randominit(&rand_st, hash_pass[0] ^ hash_message[0],
+               hash_pass[1] ^ hash_message[1]);
+    for (; message < end_scramble323; message++)
+      *to++= (char) (floor(rnd(&rand_st) * 31) + 64);
+    extra=(char) (floor(rnd(&rand_st) * 31));
+    while (to_start != to)
+      *(to_start++)^= extra;
   }
-  *to=0;
+  *to= 0;
   return to;
 }
-
 
 my_bool check_scramble(const char *scrambled, const char *message,
 		       ulong *hash_pass, my_bool old_ver)

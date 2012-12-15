@@ -48,6 +48,7 @@ static auth_plugin_t old_password_client_plugin=
 
 struct st_mysql_client_plugin *mysql_client_builtins[]=
 {
+  (struct st_mysql_client_plugin *)&old_password_client_plugin,
   (struct st_mysql_client_plugin *)&native_password_client_plugin,
   0
 };

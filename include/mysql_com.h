@@ -153,7 +153,6 @@ enum enum_server_command
 #define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_LONG_PASSWORD | \
-                                 CLIENT_LONG_PASSWORD |\
                                  CLIENT_FOUND_ROWS |\
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_CONNECT_WITH_DB |\

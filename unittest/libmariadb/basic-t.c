@@ -424,6 +424,19 @@ static int test_status(MYSQL *mysql)
   return OK;
 }
 
+static int bug_conc1(MYSQL *mysql)
+{
+  mysql_real_connect(mysql, hostname, username, password, schema,
+                     port, socketname, 0);
+  FAIL_IF(mysql_errno(mysql) != CR_ALREADY_CONNECTED,
+          "Expected errno=CR_ALREADY_CONNECTED");
+  FAIL_IF(strcmp(mysql_error(mysql), ER(CR_ALREADY_CONNECTED)) != 0,
+          "Wrong error message");
+  FAIL_IF(strcmp(ER(CR_ALREADY_CONNECTED), "Can't connect twice. Already connected") != 0,
+          "wrong error message");
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"basic_connect", basic_connect, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"use_utf8", use_utf8, TEST_CONNECTION_NEW, 0,  opt_utf8,  NULL},
@@ -433,6 +446,7 @@ struct my_tests_st my_tests[] = {
   {"test_mysql_insert_id", test_mysql_insert_id, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_bug12001", test_bug12001, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS,  NULL,  NULL},
   {"test_status", test_status, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS,  NULL,  NULL},
+  {"bug_conc1", bug_conc1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
