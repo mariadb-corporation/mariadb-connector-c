@@ -18,7 +18,7 @@
 /**
   @file
   
-  Support code for the client side (libmysql) plugins
+  Support code for the client side (libmariadb) plugins
 
   Client plugins are somewhat different from server plugins, they are simpler.
 
@@ -230,7 +230,7 @@ static void load_env_plugins(MYSQL *mysql)
   my_free(free_env, MYF(0));
 }
 
-/********** extern functions to be used by libmysql *********************/
+/********** extern functions to be used by libmariadb *********************/
 
 /**
   Initializes the client plugin layer.

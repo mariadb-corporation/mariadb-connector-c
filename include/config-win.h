@@ -111,7 +111,7 @@ typedef uint rf_SetTimer;
 #define bool_defined
 #define byte_defined
 #define HUGE_PTR
-#define STDCALL __stdcall           /* Used by libmysql.dll */
+#define STDCALL __stdcall           /* Used by libmariadb.dll */
 
 #define VOID_SIGHANDLER
 #define SIZEOF_CHAR		1

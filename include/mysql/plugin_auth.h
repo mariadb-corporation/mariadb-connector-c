@@ -33,7 +33,7 @@
 
 /**
   Authentication failed. Additionally, all other CR_xxx values
-  (libmysql error code) can be used too.
+  (libmariadb error code) can be used too.
 
   The client plugin may set the error code and the error message directly
   in the MYSQL structure and return CR_ERROR. If a CR_xxx specific error
@@ -46,7 +46,7 @@
   Authentication (client part) was successful. It does not mean that the
   authentication as a whole was successful, usually it only means
   that the client was able to send the user name and the password to the
-  server. If CR_OK is returned, the libmysql reads the next packet expecting
+  server. If CR_OK is returned, the libmariadb reads the next packet expecting
   it to be one of OK, ERROR, or CHANGE_PLUGIN packets.
 */
 #define CR_OK -1
@@ -54,7 +54,7 @@
   Authentication was successful.
   It means that the client has done its part successfully and also that
   a plugin has read the last packet (one of OK, ERROR, CHANGE_PLUGIN).
-  In this case, libmysql will not read a packet from the server,
+  In this case, libmariadb will not read a packet from the server,
   but it will use the data at mysql->net.read_pos.
 
   A plugin may return this value if the number of roundtrips in the

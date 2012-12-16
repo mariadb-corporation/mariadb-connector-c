@@ -711,13 +711,13 @@ mysql_debug(const char *debug __attribute__((unused)))
     DBUG_PUSH(env);
 #if !defined(_WINVER) && !defined(WINVER)
     puts("\n-------------------------------------------------------");
-    puts("MYSQL_DEBUG found. libmysql started with the following:");
+    puts("MYSQL_DEBUG found. libmariadb started with the following:");
     puts(env);
     puts("-------------------------------------------------------\n");
 #else
     {
       char buff[80];
-      strmov(strmov(buff,"libmysql: "),env);
+      strmov(strmov(buff,"libmariadb: "),env);
       MessageBox((HWND) 0,"Debugging variable MYSQL_DEBUG used",buff,MB_OK);
     }
 #endif

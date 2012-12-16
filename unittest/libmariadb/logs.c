@@ -23,6 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 #include "my_test.h"
 
+#ifdef ENABLE_IF_IN_USE
 static int enable_general_log(MYSQL *mysql, int truncate)
 {
   int rc;
@@ -51,7 +52,7 @@ static int restore_general_log(MYSQL *mysql)
 
   return OK;
 }
-
+#endif
 
 /* Test update/binary logs */
 

@@ -1,5 +1,6 @@
 /* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
-   
+                 2012 by MontyProgram AB
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
    License as published by the Free Software Foundation; either
@@ -15,7 +16,7 @@
    Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
    MA 02111-1307, USA */
 
-/* defines for the libmysql library */
+/* defines for the libmariadb library */
 
 #ifndef _mysql_h
 #define _mysql_h

@@ -12,15 +12,19 @@ SET(CPACK_PACKAGE_VERSION_PATCH 0)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0 FATAL_ERROR)
 IF(COMMAND CMAKE_POLICY)
   CMAKE_POLICY(SET CMP0003 NEW)
-ENDIF(COMMAND CMAKE_POLICY)
+ENDIF()
 
 IF(WIN32)
   # Speedup system tests
-  INCLUDE(${CMAKE_SOURCE_DIR}/WindowsCache.cmake)
+  INCLUDE(${CMAKE_SOURCE_DIR}/cmake/WindowsCache.cmake)
 ENDIF()
 
 IF(UNIX)
   SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DSAFEMALLOC -DSAFE_MUTEX")
+ENDIF()
+
+IF(CMAKE_COMPILER_IS_GNUCC)
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wno-uninitialized")
 ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
@@ -40,10 +44,10 @@ MATH(EXPR MYSQL_VERSION_ID "${MYSQL_CLIENT_VERSION_MAJOR} * 10000 +
                             ${MYSQL_CLIENT_VERSION_PATCH}")
 IF (NOT MYSQL_PORT)
   SET(MYSQL_PORT 3306)
-ENDIF (NOT MYSQL_PORT)
+ENDIF ()
 IF(NOT MYSQL_UNIX_ADDR)
   SET(MYSQL_UNIX_ADDR "/tmp/mysql.sock")
-ENDIF(NOT MYSQL_UNIX_ADDR)
+ENDIF()
 
 # todo: we don't character sets in share - all is compiled in
 SET(SHAREDIR "share")
@@ -59,7 +63,7 @@ IF(WIN32)
   SET(HAVE_THREADS 1)
   ADD_DEFINITIONS(-DHAVE_DLOPEN)
   ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996" )
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4996 /W4 /Wall" )
 ELSEIF()
   SET(HAVE_THREADS ${CMAKE_USE_PTHREADS})
 ENDIF()
@@ -72,13 +76,11 @@ ENDIF()
 ENDIF()
 
 # check for various include files
-INCLUDE(LibmysqlIncludeFiles.cmake)
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
 # check for various functions
-INCLUDE(LibmysqlFunctions.cmake)
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 # check for various types
-INCLUDE(LibmysqlTypes.cmake)
-
-
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
 # Check for OpenSSL
 FIND_PACKAGE(OpenSSL)
