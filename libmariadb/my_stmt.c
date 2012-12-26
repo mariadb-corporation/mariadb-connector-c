@@ -1369,6 +1369,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
         stmt->fields[i].org_table= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].org_table);
         stmt->fields[i].name= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].name);
         stmt->fields[i].org_name= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].org_name);
+        stmt->fields[i].catalog= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].catalog);
         stmt->fields[i].def= stmt->mysql->fields[i].def ? strdup_root(&stmt->mem_root, stmt->mysql->fields[i].def) : NULL;
       }
     }

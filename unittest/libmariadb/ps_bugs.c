@@ -3710,7 +3710,43 @@ static int test_bug53311(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc_5(MYSQL *mysql)
+{
+  char *query= "SELECT a FROM t1";
+  MYSQL_RES *res;
+  MYSQL_STMT *stmt;
+  MYSQL_FIELD *fields;
+  int rc;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1)");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  FAIL_IF(!stmt, "couldn't allocate memory");
+
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  res= mysql_stmt_result_metadata(stmt);
+  FAIL_IF(!res, "Can't obtain resultset");
+
+  fields= mysql_fetch_fields(res);
+  FAIL_IF(!fields, "Can't obtain fields");
+
+  FAIL_IF(strcmp("def", fields[0].catalog), "unexpected value for field->catalog");
+
+  mysql_free_result(res);
+  mysql_stmt_close(stmt);
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc_5", test_conc_5, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1115", test_bug1115, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1180", test_bug1180, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1644", test_bug1644, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
@@ -3768,8 +3804,8 @@ struct my_tests_st my_tests[] = {
 
 int main(int argc, char **argv)
 {
-//  if (argc > 1)
-//    get_options(&argc, &argv);
+  if (argc > 1)
+    get_options(argc, argv);
 
   get_envvars();
 
