@@ -4,6 +4,9 @@ or MariaDB.
 This code is based on the LGPL libmysql client library from MySQL 3.23
 and PHP's mysqlnd extension.
 
+This product includes PHP software, freely available from
+<http://www.php.net/software/>
+
 The following are the main known limitations:
 
 - double to string conversion for prepared statements

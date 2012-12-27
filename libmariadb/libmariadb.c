@@ -1,5 +1,5 @@
 /************************************************************************************
-    Copyright (C) 2000, 2011 MySQL AB & MySQL Finland AB & TCX DataKonsult AB,
+    Copyright (C) 2000, 2012 MySQL AB & MySQL Finland AB & TCX DataKonsult AB,
                  Monty Program AB
    
    This library is free software; you can redistribute it and/or
