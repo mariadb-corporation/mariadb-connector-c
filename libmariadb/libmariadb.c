@@ -3002,3 +3002,15 @@ ulong STDCALL mysql_hex_string(char *to, const char *from,
   *to= 0;
   return (to - start);
 }
+
+my_bool STDCALL mariadb_connection(MYSQL *mysql)
+{
+  return (strstr(mysql->server_version, "MariaDB") ||
+          strstr(mysql->server_version, "-maria-"));
+}
+
+const char * STDCALL
+mysql_get_server_name(MYSQL *mysql)
+{
+  return mariadb_connection(mysql) ? "MariaDB" : "MySQL";
+}

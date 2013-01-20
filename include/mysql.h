@@ -444,10 +444,15 @@ int STDCALL mysql_set_server_option(MYSQL *mysql,
                                     enum enum_mysql_set_option option);
 const char * STDCALL mysql_get_client_info(void);
 unsigned long STDCALL mysql_get_client_version(void);
+my_bool STDCALL mariadb_connection(MYSQL *mysql);
+const char * STDCALL mysql_get_server_name(MYSQL *mysql);
 
 #include <my_stmt.h>
   
+/* synonyms, alternate functions */
 #define mysql_reload(mysql) mysql_refresh((mysql),REFRESH_GRANT)
+#define mysql_library_init mysql_server_init
+#define mysql_library_end mysql_server_end
 
 /* new api functions */
 
