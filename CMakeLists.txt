@@ -14,6 +14,12 @@ IF(COMMAND CMAKE_POLICY)
   CMAKE_POLICY(SET CMP0003 NEW)
 ENDIF()
 
+### Options ###
+IF(NOT WIN32)
+  OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
+ENDIF()
+###############
+
 IF(WIN32)
   # Speedup system tests
   INCLUDE(${CMAKE_SOURCE_DIR}/cmake/WindowsCache.cmake)

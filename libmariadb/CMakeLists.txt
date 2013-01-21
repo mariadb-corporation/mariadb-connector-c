@@ -168,16 +168,52 @@ SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
 # Installation
 #
 
+# There are still several projects which don't make use
+# of the config program. To make sure these programs can
+# use mariadb client library we provide libmysql symlinks
+IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
+  ADD_CUSTOM_COMMAND(OUTPUT "libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                            "libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                            "libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                            "libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}
+                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX} libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}
+                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}
+                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX} libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}
+                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
+                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX} libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
+                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}
+                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_STATIC_LIBRARY_SUFFIX} libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libmariadb
+                    DEPENDS libmariadb mariadbclient)
+
+ADD_CUSTOM_TARGET(LIBMYSQL_SYMLINKS
+                  ALL
+                  DEPENDS "libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                          "libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                          "libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                          "libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                  VERBATIM)
+ENDIF()
+
+
 INSTALL(TARGETS
           libmariadb mariadbclient
-          RUNTIME DESTINATION "lib"
-          LIBRARY DESTINATION "lib"
-          ARCHIVE DESTINATION "lib")
+          RUNTIME DESTINATION "lib/mariadb"
+          LIBRARY DESTINATION "lib/mariadb"
+          ARCHIVE DESTINATION "lib/mariadb")
+IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
+  INSTALL(FILES "libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                "libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                "libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                "libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                DESTINATION lib/mariadb)
+ENDIF()
 
-INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include
-        DESTINATION mariadbclient)
+INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+        DESTINATION include/mariadb)
 INSTALL(FILES 
    ${CMAKE_BINARY_DIR}/include/my_config.h
    ${CMAKE_BINARY_DIR}/include/mysql_version.h
-   DESTINATION mariadbclient/include
+   DESTINATION include/mariadb
 )

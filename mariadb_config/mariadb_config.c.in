@@ -3,8 +3,8 @@
 #include <getopt.h>
 #include <stdio.h>
 
-#define INCLUDE "-I@CMAKE_INSTALL_PREFIX@/mariadbclient/include"
-#define LIBS    "-L@CMAKE_INSTALL_PREFIX@/lib -lmariadb" \
+#define INCLUDE "-I@CMAKE_INSTALL_PREFIX@/include/mariadb"
+#define LIBS    "-L@CMAKE_INSTALL_PREFIX@/lib/mariadb -lmariadb" \
                 "@extra_dynamic_LDFLAGS@"
 #define CFLAGS  INCLUDE "@CMAKE_C_FLAGS@"
 #define VERSION "@MYSQL_CLIENT_VERSION@"
