@@ -823,25 +823,40 @@ enum option_val
   OPT_report_data_truncation, OPT_plugin_dir, OPT_default_auth
 };
 
+#define OPT_SET_EXTENDED_VALUE(OPTS, KEY, VAL, IS_STRING)       \
+    if (!(OPTS)->extension)                                     \
+      (OPTS)->extension= (struct st_mysql_options_extention *)  \
+        my_malloc(sizeof(struct st_mysql_options_extention),    \
+                  MYF(MY_WME | MY_ZEROFILL));                   \
+    if (IS_STRING) {                                            \
+      my_free((OPTS)->extension->KEY, MYF(MY_ALLOW_ZERO_PTR));  \
+      (OPTS)->extension->KEY= my_strdup((VAL), MYF(MY_WME));    \
+    } else                                                      \
+      (OPTS)->extension->KEY= (VAL);
+
 static TYPELIB option_types={array_elements(default_options)-1,
 			     "options",default_options};
-
-#define extension_set(OPTS, X, VAL)                              \
-    if (!(OPTS)->extension)                                      \
-      (OPTS)->extension= (struct st_mysql_options_extention *)   \
-        my_malloc(sizeof(struct st_mysql_options_extention),     \
-                  MYF(MY_WME | MY_ZEROFILL));                    \
-    (OPTS)->extension->X= VAL;
-
-#define extension_set_string(OPTS, X, STR)                       \
-    if ((OPTS)->extension)                                       \
-      my_free((OPTS)->extension->X, MYF(MY_ALLOW_ZERO_PTR));     \
-    extension_set(OPTS, X, my_strdup((STR), MYF(MY_WME)));
 
 const char *protocol_names[]= {"TCP", "SOCKED", "PIPE", "MEMORY", NULL};
 static TYPELIB protocol_types= {array_elements(protocol_names)-1,
                                 "protocol names", 
                                  protocol_names};
+
+static void options_add_initcommand(struct st_mysql_options *options,
+                                     const char *init_cmd)
+{
+  char *insert= my_strdup(init_cmd, MYF(MY_WME));
+  if (!options->init_command)
+  {
+    options->init_command= (DYNAMIC_ARRAY*)my_malloc(sizeof(DYNAMIC_ARRAY),
+						      MYF(MY_WME));
+    my_init_dynamic_array(options->init_command, sizeof(char*), 5, 5);
+  }
+
+  if (insert_dynamic(options->init_command, (uchar*)&insert))
+    my_free(insert, MYF(MY_ALLOW_ZERO_PTR));
+}
+
 
 static void mysql_read_default_options(struct st_mysql_options *options,
 				       const char *filename,const char *group)
@@ -864,132 +879,128 @@ static void mysql_read_default_options(struct st_mysql_options *options,
       /* DBUG_PRINT("info",("option: %s",option[0])); */
       if (option[0][0] == '-' && option[0][1] == '-')
       {
-	char *end=strcend(*option,'=');
-	char *opt_arg=0;
-	if (*end)
-	{
-	  opt_arg=end+1;
-	  *end=0;				/* Remove '=' */
-	}
-	/* Change all '_' in variable name to '-' */
-	for (end= *option ; *(end= strcend(end,'_')) ; )
-	  *end= '-';
-	switch (find_type(*option+2,&option_types,2)) {
-	case OPT_port:
-	  if (opt_arg)
-	    options->port=atoi(opt_arg);
-	  break;
-	case OPT_socket:
-	  if (opt_arg)
-	  {
-	    my_free(options->unix_socket,MYF(MY_ALLOW_ZERO_PTR));
-	    options->unix_socket=my_strdup(opt_arg,MYF(MY_WME));
-	  }
-	  break;
-	case OPT_compress:
-	  options->compress=1;
-	  break;
-	case OPT_password:
-	  if (opt_arg)
-	  {
-	    my_free(options->password,MYF(MY_ALLOW_ZERO_PTR));
-	    options->password=my_strdup(opt_arg,MYF(MY_WME));
-	  }
-	  break;
-	case OPT_pipe:
-	  options->named_pipe=1;	/* Force named pipe */
-	  break;
-	case OPT_connect_timeout:
-        case OPT_timeout:
-	  if (opt_arg)
-	    options->connect_timeout=atoi(opt_arg);
-	  break;
-	case OPT_user:
-	  if (opt_arg)
-	  {
-	    my_free(options->user,MYF(MY_ALLOW_ZERO_PTR));
-	    options->user=my_strdup(opt_arg,MYF(MY_WME));
-	  }
-	  break;
-	case OPT_init_command:
-	  if (opt_arg)
-	  {
-      /* todo
-	    my_free(options->init_command,MYF(MY_ALLOW_ZERO_PTR));
-	    options->init_command=my_strdup(opt_arg,MYF(MY_WME));
-      */
-	  }
-	  break;
-	case OPT_host:
-	  if (opt_arg)
-	  {
-	    my_free(options->host,MYF(MY_ALLOW_ZERO_PTR));
-	    options->host=my_strdup(opt_arg,MYF(MY_WME));
-	  }
-	  break;
-	case OPT_database:
-	  if (opt_arg)
-	  {
-	    my_free(options->db,MYF(MY_ALLOW_ZERO_PTR));
-	    options->db=my_strdup(opt_arg,MYF(MY_WME));
-	  }
-	  break;
-	case OPT_debug:
-	  mysql_debug(opt_arg ? opt_arg : "d:t:o,/tmp/client.trace");
-	  break;
-	case OPT_return_found_rows:
-	  options->client_flag|=CLIENT_FOUND_ROWS;
-	  break;
-#ifdef HAVE_OPENSSL
-	case OPT_ssl_key:
-	  my_free(options->ssl_key, MYF(MY_ALLOW_ZERO_PTR));
+	      char *end=strcend(*option,'=');
+	      char *opt_arg=0;
+	      if (*end)
+	      {
+	        opt_arg=end+1;
+	        *end=0;				/* Remove '=' */
+	      }
+	      /* Change all '_' in variable name to '-' */
+	      for (end= *option ; *(end= strcend(end,'_')) ; )
+	        *end= '-';
+	      switch (find_type(*option+2,&option_types,2)) {
+      	case OPT_port:
+      	  if (opt_arg)
+	          options->port=atoi(opt_arg);
+      	  break;
+      	case OPT_socket:
+      	  if (opt_arg)
+      	  {
+      	    my_free(options->unix_socket,MYF(MY_ALLOW_ZERO_PTR));
+      	    options->unix_socket=my_strdup(opt_arg,MYF(MY_WME));
+      	  }
+      	  break;
+      	case OPT_compress:
+      	  options->compress=1;
+      	  break;
+      	case OPT_password:
+      	  if (opt_arg)
+      	  {
+      	    my_free(options->password,MYF(MY_ALLOW_ZERO_PTR));
+      	    options->password=my_strdup(opt_arg,MYF(MY_WME));
+      	  }
+      	  break;
+      	case OPT_pipe:
+      	  options->named_pipe=1;	/* Force named pipe */
+      	  break;
+      	case OPT_connect_timeout:
+              case OPT_timeout:
+      	  if (opt_arg)
+      	    options->connect_timeout=atoi(opt_arg);
+      	  break;
+      	case OPT_user:
+      	  if (opt_arg)
+      	  {
+      	    my_free(options->user,MYF(MY_ALLOW_ZERO_PTR));
+      	    options->user=my_strdup(opt_arg,MYF(MY_WME));
+      	  }
+      	  break;
+      	case OPT_init_command:
+      	  if (opt_arg)
+            options_add_initcommand(options, opt_arg);
+      	  break;
+      	case OPT_host:
+      	  if (opt_arg)
+      	  {
+      	    my_free(options->host,MYF(MY_ALLOW_ZERO_PTR));
+      	    options->host=my_strdup(opt_arg,MYF(MY_WME));
+      	  }
+      	  break;
+      	case OPT_database:
+      	  if (opt_arg)
+      	  {
+      	    my_free(options->db,MYF(MY_ALLOW_ZERO_PTR));
+      	    options->db=my_strdup(opt_arg,MYF(MY_WME));
+      	  }
+      	  break;
+      	case OPT_debug:
+      	  mysql_debug(opt_arg ? opt_arg : "d:t:o,/tmp/client.trace");
+      	  break;
+      	case OPT_return_found_rows:
+      	  options->client_flag|=CLIENT_FOUND_ROWS;
+      	  break;
+      #ifdef HAVE_OPENSSL
+      	case OPT_ssl_key:
+      	  my_free(options->ssl_key, MYF(MY_ALLOW_ZERO_PTR));
           options->ssl_key = my_strdup(opt_arg, MYF(MY_WME));
         break;
-	case OPT_ssl_cert:
-	  my_free(options->ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
+      	case OPT_ssl_cert:
+      	  my_free(options->ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
           options->ssl_cert = my_strdup(opt_arg, MYF(MY_WME));
           break;
-	case OPT_ssl_ca:
-	  my_free(options->ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
+      	case OPT_ssl_ca:
+      	  my_free(options->ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
           options->ssl_ca = my_strdup(opt_arg, MYF(MY_WME));
           break;
-	case OPT_ssl_capath:
+      	case OPT_ssl_capath:
           my_free(options->ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
           options->ssl_capath = my_strdup(opt_arg, MYF(MY_WME));
           break;
         case OPT_ssl_cipher:
           break;
 #else
-	case OPT_ssl_key:
-	case OPT_ssl_cert:
-	case OPT_ssl_ca:
-	case OPT_ssl_capath:
+      	case OPT_ssl_key:
+      	case OPT_ssl_cert:
+      	case OPT_ssl_ca:
+      	case OPT_ssl_capath:
         case OPT_ssl_cipher:
           break;
 #endif /* HAVE_OPENSSL */
-	case OPT_charset_dir:
-	  my_free(options->charset_dir,MYF(MY_ALLOW_ZERO_PTR));
+      	case OPT_charset_dir:
+      	  my_free(options->charset_dir,MYF(MY_ALLOW_ZERO_PTR));
           options->charset_dir = my_strdup(opt_arg, MYF(MY_WME));
-	  break;
-	case OPT_charset_name:
-	  my_free(options->charset_name,MYF(MY_ALLOW_ZERO_PTR));
+      	  break;
+      	case OPT_charset_name:
+      	  my_free(options->charset_name,MYF(MY_ALLOW_ZERO_PTR));
           options->charset_name = my_strdup(opt_arg, MYF(MY_WME));
-	  break;
-	case OPT_interactive_timeout:
-	  options->client_flag|= CLIENT_INTERACTIVE;
-	  break;
-	case OPT_local_infile:
-	  if (!opt_arg || atoi(opt_arg) != 0)
-	    options->client_flag|= CLIENT_LOCAL_FILES;
-	  else
-	    options->client_flag&= ~CLIENT_LOCAL_FILES;
-	  break;
-	case OPT_disable_local_infile:
-	  options->client_flag&= CLIENT_LOCAL_FILES;
-	  break;
+      	  break;
+      	case OPT_interactive_timeout:
+      	  options->client_flag|= CLIENT_INTERACTIVE;
+      	  break;
+      	case OPT_local_infile:
+      	  if (!opt_arg || atoi(opt_arg) != 0)
+      	    options->client_flag|= CLIENT_LOCAL_FILES;
+      	  else
+      	    options->client_flag&= ~CLIENT_LOCAL_FILES;
+      	  break;
+      	case OPT_disable_local_infile:
+      	  options->client_flag&= CLIENT_LOCAL_FILES;
+      	  break;
         case OPT_max_allowed_packet:
           if(opt_arg)
             options->max_allowed_packet= atoi(opt_arg);
+          break;
         case OPT_protocol:
           options->protocol= find_type(opt_arg, &protocol_types, 0);
 #ifndef _WIN32
@@ -998,14 +1009,12 @@ static void mysql_read_default_options(struct st_mysql_options *options,
           if (options->protocol < 0)
 #endif
           {
-            fprintf(stderr, 
-                    "Unknown or unsupported protocol %s",
-                    opt_arg);
+            fprintf(stderr, "Unknown or unsupported protocol %s", opt_arg);
           }
           break;
         case OPT_shared_memory_base_name:
           /* todo */
-        break;
+          break;
         case OPT_multi_results:
           options->client_flag|= CLIENT_MULTI_RESULTS;
           break;
@@ -1018,15 +1027,25 @@ static void mysql_read_default_options(struct st_mysql_options *options,
             options->report_data_truncation= atoi(opt_arg);
           else
             options->report_data_truncation= 1;
-        break;
+          break;
         case OPT_secure_auth:
+          options->secure_auth= 1;
+          break;
         case OPT_plugin_dir:
+          {
+            char directory[FN_REFLEN];
+            if (strlen(opt_arg) >= FN_REFLEN)
+              opt_arg[FN_REFLEN]= 0;
+            if (!my_realpath(directory, opt_arg, 0))
+              OPT_SET_EXTENDED_VALUE(options, plugin_dir, convert_dirname(directory), 1);
+          }
+          break;
         case OPT_default_auth:
-          /* todo */
-        break;
-	default:
-	  DBUG_PRINT("warning",("unknown option: %s",option[0]));
-	}
+          OPT_SET_EXTENDED_VALUE(options, default_auth, opt_arg, 1);
+          break;
+        default:
+          DBUG_PRINT("warning",("unknown option: %s",option[0]));
+        }
       }
     }
   }
@@ -1763,22 +1782,25 @@ mysql_real_connect(MYSQL *mysql,const char *host, const char *user,
 
   if (mysql->options.init_command)
   {
-    MYSQL_RES *res;
-    int status;
+    char **begin= (char **)mysql->options.init_command->buffer;
+    char **end= begin + mysql->options.init_command->elements;
+
     /* Avoid reconnect in mysql_real_connect */
     my_bool save_reconnect= mysql->reconnect;
-    
     mysql->reconnect= 0;
 
-    if (mysql_query(mysql, mysql->options.init_command))
-      goto error;
+    for (;begin < end; begin++)
+    {  
+      if (mysql_real_query(mysql, *begin, strlen(*begin)))
+        goto error;
 
-    /* handle possible multi results */
-    do {
-      if ((res= mysql_use_result(mysql)))
-        mysql_free_result(res);
-      status= mysql_next_result(mysql);
-    } while (status == 0);
+    /* check if query produced a result set */
+      do {
+        MYSQL_RES *res;
+        if ((res= mysql_use_result(mysql)))
+          mysql_free_result(res);
+      } while (!mysql_next_result(mysql));
+    }
     mysql->reconnect= save_reconnect;
   }
 
@@ -1937,9 +1959,16 @@ mysql_select_db(MYSQL *mysql, const char *db)
 
 static void mysql_close_options(MYSQL *mysql)
 {
-/* todo
-  my_free(mysql->options.init_command,MYF(MY_ALLOW_ZERO_PTR));
-*/
+  if (mysql->options.init_command)
+  {
+    char **begin= (char **)mysql->options.init_command->buffer;
+    char **end= begin + mysql->options.init_command->elements;
+
+    for (;begin < end; begin++)
+      my_free((gptr)*begin, MYF(MY_WME));
+    delete_dynamic(mysql->options.init_command);
+    my_free((gptr)mysql->options.init_command, MYF(MY_WME));
+  }
   my_free(mysql->options.user,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.host,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.password,MYF(MY_ALLOW_ZERO_PTR));
@@ -1956,6 +1985,11 @@ static void mysql_close_options(MYSQL *mysql)
   my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.ssl_cipher, MYF(MY_ALLOW_ZERO_PTR));
 #endif /* HAVE_OPENSSL */
+  if (mysql->options.extension)
+  {
+    my_free(mysql->options.extension->plugin_dir, MYF(MY_ALLOW_ZERO_PTR));
+    my_free(mysql->options.extension->default_auth, MYF(MY_ALLOW_ZERO_PTR));
+  }
 }
 
 static void mysql_close_memory(MYSQL *mysql)
@@ -2585,8 +2619,7 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const char *arg)
       mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
     break;
   case MYSQL_INIT_COMMAND:
-    my_free(mysql->options.init_command,MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.init_command=my_strdup(arg,MYF(MY_WME));
+    options_add_initcommand(&mysql->options, arg);
     break;
   case MYSQL_READ_DEFAULT_FILE:
     my_free(mysql->options.my_cnf_file,MYF(MY_ALLOW_ZERO_PTR));
@@ -2625,7 +2658,7 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const char *arg)
   case MYSQL_REPORT_DATA_TRUNCATION:
     mysql->options.report_data_truncation= *(uint *)arg;
     break;
-  case MYSQL_OPT_PROGRESS_CALLBACK:
+  case MYSQL_PROGRESS_CALLBACK:
     if (!mysql->options.extension)
       mysql->options.extension= (struct st_mysql_options_extention *)
         my_malloc(sizeof(struct st_mysql_options_extention),
@@ -2633,6 +2666,12 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const char *arg)
     if (mysql->options.extension)
       mysql->options.extension->report_progress=
         (void (*)(const MYSQL *, uint, uint, double, const char *, uint)) arg;
+    break;
+  case MYSQL_PLUGIN_DIR:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, plugin_dir, (char *)arg , 1);
+    break;
+  case MYSQL_DEFAULT_AUTH:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, default_auth, (char *)arg, 1);
     break;
   default:
     DBUG_RETURN(-1);

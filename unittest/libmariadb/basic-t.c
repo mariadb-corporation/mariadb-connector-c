@@ -437,6 +437,43 @@ static int bug_conc1(MYSQL *mysql)
   return OK;
 }
 
+static int test_options_initcmd(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *res;
+  int rc;
+
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "DROP TABLE IF EXISTS t1; CREATE TABLE t1 (a int)");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "INSERT INTO t1 VALUES (1),(2),(3)");
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                              port, socketname, 
+                              CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
+
+  rc= mysql_query(mysql, "SELECT a FROM t1");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  FAIL_IF(mysql_num_rows(res) != 3, "Expected 3 rows");
+
+  mysql_free_result(res);
+  mysql_close(mysql);
+  return OK;
+}
+
+static int test_extended_init_values(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  mysql_options(mysql, MYSQL_DEFAULT_AUTH, "unknown");
+  FAIL_IF(strcmp(mysql->options.extension->default_auth, "unknown"), "option not set");
+
+  mysql_options(mysql, MYSQL_PLUGIN_DIR, "/tmp/foo");
+  FAIL_IF(strcmp(mysql->options.extension->plugin_dir, "/tmp/foo"), "option not set");
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"basic_connect", basic_connect, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"use_utf8", use_utf8, TEST_CONNECTION_NEW, 0,  opt_utf8,  NULL},
@@ -447,6 +484,8 @@ struct my_tests_st my_tests[] = {
   {"test_bug12001", test_bug12001, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS,  NULL,  NULL},
   {"test_status", test_status, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS,  NULL,  NULL},
   {"bug_conc1", bug_conc1, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_options_initcmd", test_options_initcmd, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+  {"test_extended_init_values", test_extended_init_values, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

@@ -182,9 +182,9 @@ enum mysql_option
   MYSQL_REPORT_DATA_TRUNCATION,
   MYSQL_OPT_RECONNECT,
   MYSQL_OPT_SSL_VERIFY_SERVER_CERT,
-  MYSQL_OPT_PLUGIN_DIR,
-  MYSQL_OPT_DEFAULT_AUTH,
-  MYSQL_OPT_PROGRESS_CALLBACK
+  MYSQL_PLUGIN_DIR,
+  MYSQL_DEFAULT_AUTH,
+  MYSQL_PROGRESS_CALLBACK
 };
 
 enum mysql_status { MYSQL_STATUS_READY,
@@ -208,7 +208,7 @@ struct st_mysql_options {
   unsigned int port, protocol;
   unsigned long client_flag;
   char *host,*user,*password,*unix_socket,*db;
-  char *init_command;
+  struct st_dynamic_array *init_command;
   char *my_cnf_file,*my_cnf_group, *charset_dir, *charset_name;
   char *ssl_key;				/* PEM key file */
   char *ssl_cert;				/* PEM cert file */
