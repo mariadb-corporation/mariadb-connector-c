@@ -202,6 +202,19 @@ mysql_options(mysql, MYSQL_OPT_PROGRESS_CALLBACK, (void *)report_progress);
                  </informalexample>
                </listitem>
              </varlistentry>
+             <varlistentry>
+               <term><parameter>MYSQL_OPT_DATABASE_DRIVER</parameter></term>
+               <listitem>
+                 <para>Specifies to load an alternative database driver for communication with other databases than MariaDB, e.g. sqlite.
+                   Database drivers are implemented by plugins. Mariadb client library provides built-in support for Sqlite.</para>
+                 <informalexample>
+                   <programlisting>
+mysql_options(mysql, MYSQL_DATABASE_DRIVER, "sqlite");  
+                   </programlisting>
+                 </informalexample>
+               </listitem>
+             </varlistentry>
+             
             </variablelist>
 </listitem></varlistentry>
             <varlistentry><term><parameter>arg</parameter></term><listitem><para>The value for the option</para></listitem></varlistentry>

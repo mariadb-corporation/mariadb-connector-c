@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+               "docbook/dtd/xml/4.2/docbookx.dtd" [
+<!ENTITY % global_ents SYSTEM "../global.ent">
+%global_ents;
+]>
+    <refentry id="functions.mysql_get_server_name" display-name="0">
+      <refmeta>
+        <refentrytitle>mysql_get_server_name</refentrytitle>
+      </refmeta>
+      <refnamediv>
+        <refname>mysql_get_server_name</refname>
+        <refpurpose>Returns the name of the connected database server</refpurpose>
+      </refnamediv>
+      <refsect1 role="description">
+        <methodsynopsis>
+          <type>const char *</type>
+          <methodname>mysql_get_server_name</methodname>
+          <methodparam><type>MYSQL *</type><parameter>mysql</parameter></methodparam>
+        </methodsynopsis>
+        <para>Returns the name of the connected database server.</para>
+      </refsect1>
+      <refsect1 role="parameters">
+        <title>Parameters</title>
+          <variablelist>
+           <varlistentry><term><parameter>mysql</parameter></term><listitem><para>&param.mysql;</para></listitem></varlistentry>
+          </variablelist>
+      </refsect1>
+      <refsect1 role="returnvalue">
+        <title>Return value</title>
+        <para>Returns the name of the connected database server.</para>
+      </refsect1>
+      <refsect1 role="notes">
+        <note>
+          <title></title>
+          <para>In case the connection is using a plugin to connect to a database
+          the name of the plugin will be returned.</para>
+        </note> 
+      </refsect1>
+      <refsect1 role="seealso">
+        <title>See also</title>
+        <para><function>mysql_options()</function>, <function>mysql_real_connect()</function></para>
+      </refsect1>
+    </refentry>

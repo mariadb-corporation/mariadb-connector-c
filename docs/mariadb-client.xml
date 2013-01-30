@@ -3,7 +3,6 @@
                "docbook/dtd/xml/4.2/docbookx.dtd" [
 <!ENTITY % global_ents SYSTEM "global.ent">
 %global_ents;
-<!ENTITY myodbc_remove_escape "funcref/myodbc_remove_escape.xml">
 <!ENTITY mysql_affected_rows "funcref/mysql_affected_rows.xml">
 <!ENTITY mysql_autocommit "funcref/mysql_autocommit.xml">
 <!ENTITY mysql_change_user "funcref/mysql_change_user.xml">
@@ -28,11 +27,13 @@
 <!ENTITY mysql_field_tell "funcref/mysql_field_tell.xml">
 <!ENTITY mysql_free_result "funcref/mysql_free_result.xml">
 <!ENTITY mysql_get_character_set_info "funcref/mysql_get_character_set_info.xml">
+<!ENTITY mysql_get_character_set_info "funcref/mysql_get_server_name.xml">
 <!ENTITY mysql_get_client_info "funcref/mysql_get_client_info.xml">
 <!ENTITY mysql_get_client_version "funcref/mysql_get_client_version.xml">
 <!ENTITY mysql_get_host_info "funcref/mysql_get_host_info.xml">
 <!ENTITY mysql_get_proto_info "funcref/mysql_get_proto_info.xml">
 <!ENTITY mysql_get_server_info "funcref/mysql_get_server_info.xml">
+<!ENTITY mysql_get_server_name "funcref/mysql_get_server_name.xml">
 <!ENTITY mysql_get_server_version "funcref/mysql_get_server_version.xml">
 <!ENTITY mysql_get_ssl_cipher "funcref/mysql_get_ssl_cipher.xml">
 <!ENTITY mysql_hex_string "funcref/mysql_hex_string.xml">
@@ -108,7 +109,6 @@
   </section>
   <section>
     <title>Functions</title>
-      <xi:include href="&myodbc_remove_escape;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_affected_rows;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_autocommit;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_change_user;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
@@ -138,6 +138,7 @@
       <xi:include href="&mysql_get_host_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_get_proto_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_get_server_info;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+      <xi:include href="&mysql_get_server_name;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_get_server_version;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_get_ssl_cipher;" xmlns:xi="http://www.w3.org/2001/XInclude"/>
       <xi:include href="&mysql_hex_string;" xmlns:xi="http://www.w3.org/2001/XInclude"/>

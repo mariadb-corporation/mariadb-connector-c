@@ -39,6 +39,6 @@
       </refsect1>
       <refsect1 role="seealso">
         <title>See also</title>
-        <para><function>mysql_rollback()</function></para>
+        <para><function>mysql_rollback</function></para>
       </refsect1>
     </refentry>
