@@ -35,11 +35,12 @@
 #endif
 
 /* known plugin types */
-#define MYSQL_CLIENT_reserved1               0
-#define MYSQL_CLIENT_reserved2               1
+#define MYSQL_CLIENT_DB_PLUGIN               0
+#define MYSQL_CLIENT_reserved                1
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2
 
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0100
+#define MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION  0x0100
 
 #define MYSQL_CLIENT_MAX_PLUGINS             3
 
@@ -67,6 +68,32 @@ struct st_mysql_client_plugin
 };
 
 struct st_mysql;
+
+/********* database api plugin specific declarations **********/
+typedef struct st_mariadb_client_plugin_DB
+{
+  MYSQL_CLIENT_PLUGIN_HEADER
+  /* functions */
+  struct st_mysql_methods *methods;
+  /*
+  MYSQL * (*db_connect)(MYSQL *mysql,const char *host, const char *user,
+		                 const char *passwd, const char *db, uint port,
+                     const char *unix_socket,unsigned long client_flag);
+  void (*db_close)(MYSQL *mysql);
+  int (*db_query)(MYSQL *mysql, const char *query, size_t query_len);
+  int (*db_read_one_row)(MYSQL *mysql, uint fields, MYSQL_ROW row, 
+                         ulong *lengths);
+  MYSQL_DATA *(*db_read_all_rows)(MYSQL *mysql, 
+                                  MYSQL_FIELD *mysql_fields, uint fields);
+  void (*db_query_end)(MYSQL *mysql);
+  int (*db_stmt_prepare)(MYSQL_STMT *stmt, const char *stmt_str, ulong length);
+  my_bool (*db_stmt_close)(MYSQL_STMT *stmt);
+  my_bool (*is_supported_buffer_type)(enum enum_field_types type);
+  int (*db_stmt_fetch)(MYSQL_STMT *stmt);
+  int (*db_stmt_execute)(MYSQL_STMT *stmt); */
+} MARIADB_DB_PLUGIN;
+
+#define MARIADB_DB_DRIVER(a) ((a)->ext_db)
 
 /******** authentication plugin specific declarations *********/
 #include <mysql/plugin_auth_common.h>

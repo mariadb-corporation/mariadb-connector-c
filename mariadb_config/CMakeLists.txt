@@ -19,6 +19,9 @@ IF(UNIX)
   IF(MATH_LIBRARY)
     SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -lm")
   ENDIF(MATH_LIBRARY)
+  IF(WITH_SQLITE)
+    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -lsqlite")
+  ENDIF()  
 ENDIF(UNIX)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in

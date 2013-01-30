@@ -137,6 +137,7 @@
 #cmakedefine HAVE_SIGWAIT 1
 #cmakedefine HAVE_SLEEP 1
 #cmakedefine HAVE_SNPRINTF 1
+#cmakedefine HAVE_SQLITE 1
 #cmakedefine HAVE_STPCPY 1
 #cmakedefine HAVE_STRERROR 1
 #cmakedefine HAVE_STRLCPY 1
@@ -275,3 +276,4 @@
 #cmakedefine HAVE_THREADS 1
 #cmakedefine SHAREDIR "@SHAREDIR@"
 #cmakedefine DEFAULT_CHARSET_HOME "@DEFAULT_CHARSET_HOME@"
+#cmakedefine PLUGINDIR "@PLUGINDIR@"

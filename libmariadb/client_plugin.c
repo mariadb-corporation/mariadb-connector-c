@@ -60,7 +60,7 @@ static MEM_ROOT mem_root;
 
 static uint plugin_version[MYSQL_CLIENT_MAX_PLUGINS]=
 {
-  0, /* these two are taken by Connector/C */
+  MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION, /* these two are taken by Connector/C */
   0, /* these two are taken by Connector/C */
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION
 };
@@ -264,7 +264,6 @@ int mysql_client_plugin_init()
 
   for (builtin= mysql_client_builtins; *builtin; builtin++)
     add_plugin(&mysql, *builtin, 0, 0, unused);
-
   pthread_mutex_unlock(&LOCK_load_client_plugin);
 
   load_env_plugins(&mysql);

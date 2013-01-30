@@ -3709,6 +3709,55 @@ static int test_bug53311(MYSQL *mysql)
 
   return OK;
 }
+#define PREPARE_SQL "EXPLAIN SELECT t1.*, t2.* FROM test AS t1, test AS t2"
+static int test_metadata(MYSQL *mysql)
+{
+  int rc;
+
+	rc= mysql_query(mysql, "DROP TABLE IF EXISTS test");
+  check_mysql_rc(rc, mysql);
+	rc= mysql_query(mysql, "CREATE TABLE test(id INT, label CHAR(1), PRIMARY KEY(id)) ENGINE=MYISAM");
+  check_mysql_rc(rc, mysql);
+
+	rc= mysql_query(mysql, "INSERT INTO test(id, label) VALUES (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e'), (6, 'f')");
+  check_mysql_rc(rc, mysql);
+	printf("Client=%s\n", mysql_get_client_info());
+	printf("Server=%s\n", mysql_get_server_info(mysql));
+
+	{
+		MYSQL_STMT * stmt = mysql_stmt_init(mysql);
+		if (!stmt) {
+			fprintf(stderr, "Failed to init stmt: Error: %s\n", mysql_error(mysql));
+			goto end;
+		}
+		if (mysql_stmt_prepare(stmt, PREPARE_SQL, sizeof(PREPARE_SQL) - 1)) {
+			fprintf(stderr, "Failed to prepare stmt: Error: %s\n", mysql_stmt_error(stmt));
+			goto end2;
+		}
+		if (mysql_stmt_execute(stmt)) {
+			fprintf(stderr, "Failed to execute stmt: Error: %s\n", mysql_stmt_error(stmt));
+			goto end2;
+		}
+		{
+			MYSQL_FIELD * field = NULL;
+			MYSQL_RES * res = mysql_stmt_result_metadata(stmt);
+			if (!res) {
+				fprintf(stderr, "Failed to get metadata: Error: %s\n", mysql_stmt_error(stmt));
+				goto end2;
+			}
+			while ((field = mysql_fetch_field(res))) {
+				printf("name=%s\n", field->name);
+				printf("catalog=%s\n", field->catalog);
+			}
+			mysql_free_result(res);
+
+		}
+end2:
+		mysql_stmt_close(stmt);
+	}
+end:
+	return 0;
+}
 
 static int test_conc_5(MYSQL *mysql)
 {

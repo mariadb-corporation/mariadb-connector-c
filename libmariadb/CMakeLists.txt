@@ -102,7 +102,13 @@ ma_secure.c
 libmariadb_exports.def
 )
 
-
+IF(WITH_SQLITE)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
+                         ${CMAKE_SOURCE_DIR}/plugins/sqlite/sqlite3.c
+                         ${CMAKE_SOURCE_DIR}/plugins/sqlite/sqlite_client_plugin.c)
+  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/plugins/sqlite)
+  ADD_DEFINITIONS(-DSQLITE_ENABLE_COLUMN_METADATA=1)
+ENDIF()
 
 IF(ZLIB_FOUND)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
@@ -143,7 +149,6 @@ TARGET_LINK_LIBRARIES(libmariadb ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS})
 IF(OPENSSL_FOUND)
   TARGET_LINK_LIBRARIES(libmariadb ${SSL_LIBRARIES})
 ENDIF()
-
 
 IF(WIN32)
   TARGET_LINK_LIBRARIES(libmariadb ws2_32)

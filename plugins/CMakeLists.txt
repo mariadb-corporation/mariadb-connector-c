@@ -1,0 +1,6 @@
+FILE(GLOB plugin_dirs ${CMAKE_SOURCE_DIR}/plugins/*)
+FOREACH(dir ${plugin_dirs})
+  IF (EXISTS ${dir}/CMakeLists.txt)
+    ADD_SUBDIRECTORY(${dir})
+  ENDIF()
+ENDFOREACH()

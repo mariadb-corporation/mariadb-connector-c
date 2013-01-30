@@ -184,7 +184,8 @@ enum mysql_option
   MYSQL_OPT_SSL_VERIFY_SERVER_CERT,
   MYSQL_PLUGIN_DIR,
   MYSQL_DEFAULT_AUTH,
-  MYSQL_PROGRESS_CALLBACK
+  MYSQL_PROGRESS_CALLBACK,
+  MYSQL_DATABASE_DRIVER=255
 };
 
 enum mysql_status { MYSQL_STATUS_READY,
@@ -233,14 +234,21 @@ struct st_mysql_options {
   struct st_mysql_options_extention *extension;
 };
 
+typedef struct st_mariadb_db_driver
+{
+  struct st_mariadb_client_plugin_DB *plugin;
+  char *name;
+  void *buffer;
+} MARIADB_DB_DRIVER;
+
 typedef struct st_mysql {
   NET		net;			/* Communication parameters */
-  unsigned char *unused;
-  char		*host,*user,*passwd,*unix_socket,*server_version,*host_info;
-  char		*info,*db;
+  void  *unused_0;
+  char *host,*user,*passwd,*unix_socket,*server_version,*host_info;
+  char *info,*db;
   const struct charset_info_st *charset;      /* character set */
-  MYSQL_FIELD  *fields;
-  MEM_ROOT     field_alloc;
+  MYSQL_FIELD *fields;
+  MEM_ROOT field_alloc;
   my_ulonglong affected_rows;
   my_ulonglong insert_id;		/* id if insert on table with NEXTNR */
   my_ulonglong extra_info;		/* Used by mysqlshow */
@@ -283,6 +291,7 @@ struct st_mysql_options_extention {
                           double progress,
                           const char *proc_info,
                           unsigned int proc_info_length);
+  MARIADB_DB_DRIVER       *db_driver;
 };
 
 typedef struct st_mysql_res {
@@ -305,6 +314,7 @@ enum enum_mysql_timestamp_type
   MYSQL_TIMESTAMP_NONE= -2, MYSQL_TIMESTAMP_ERROR= -1,
   MYSQL_TIMESTAMP_DATE= 0, MYSQL_TIMESTAMP_DATETIME= 1, MYSQL_TIMESTAMP_TIME= 2
 };
+
 
 typedef struct st_mysql_time
 {
@@ -449,7 +459,30 @@ const char * STDCALL mysql_get_server_name(MYSQL *mysql);
 
 #include <my_stmt.h>
   
-/* synonyms, alternate functions */
+/* these methods can be overwritten by db plugins */
+struct st_mysql_methods {
+  MYSQL *(*db_connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd,
+					   const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
+  void (*db_close)(MYSQL *mysql);
+  int (*db_command)(MYSQL *mysql,enum enum_server_command command, const char *arg,
+                    size_t length, my_bool skipp_check, void *opt_arg);
+  void (*db_skip_result)(MYSQL *mysql);
+  int (*db_read_query_result)(MYSQL *mysql);
+  MYSQL_DATA *(*db_read_rows)(MYSQL *mysql,MYSQL_FIELD *fields, unsigned int field_count);
+  int (*db_read_one_row)(MYSQL *mysql,unsigned int fields,MYSQL_ROW row, unsigned long *lengths);
+  /* prepared statements */
+  my_bool (*db_supported_buffer_type)(enum enum_field_types type);
+  my_bool (*db_read_prepare_response)(MYSQL_STMT *stmt);
+  int (*db_read_stmt_result)(MYSQL *mysql);
+  my_bool (*db_stmt_get_result_metadata)(MYSQL_STMT *stmt);
+  my_bool (*db_stmt_get_param_metadata)(MYSQL_STMT *stmt);
+  int (*db_stmt_read_all_rows)(MYSQL_STMT *stmt);
+  int (*db_stmt_fetch)(MYSQL_STMT *stmt, unsigned char **row);
+  int (*db_stmt_fetch_to_bind)(MYSQL_STMT *stmt, unsigned char *row);
+  void (*db_stmt_flush_unbuffered)(MYSQL_STMT *stmt);
+};
+
+/* synonyms/aliases functions */
 #define mysql_reload(mysql) mysql_refresh((mysql),REFRESH_GRANT)
 #define mysql_library_init mysql_server_init
 #define mysql_library_end mysql_server_end

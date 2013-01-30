@@ -215,7 +215,6 @@ static int test_ssl_threads(MYSQL *mysql)
 
 static int test_phpbug51647(MYSQL *my)
 {
-  int rc;
   MYSQL* mysql;
 
   if (check_skip_ssl())

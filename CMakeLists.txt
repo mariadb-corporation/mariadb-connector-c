@@ -18,7 +18,10 @@ ENDIF()
 IF(NOT WIN32)
   OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
 ENDIF()
+
+OPTION(WITH_SQLITE "Enables Sqlite support" ON)
 ###############
+
 
 IF(WIN32)
   # Speedup system tests
@@ -47,8 +50,8 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE "Relwithdebinfo")
 ENDIF()
 
-
 # various defines for generating include/mysql_version.h
+
 SET(PROTOCOL_VERSION 10) # we adapted new password option from PHP's mysqlnd !
 SET(MYSQL_CLIENT_VERSION_MAJOR "5")
 SET(MYSQL_CLIENT_VERSION_MINOR "3")
@@ -67,6 +70,7 @@ ENDIF()
 # todo: we don't character sets in share - all is compiled in
 SET(SHAREDIR "share")
 SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
+SET(PLUGINDIR "${CMAKE_INSTALL_PREFIX}/lib/plugin")
 
 FIND_PACKAGE(Threads)
 
@@ -105,6 +109,10 @@ ENDIF()
 
 FIND_PACKAGE(ZLIB QUIET)
 
+IF(WITH_SQLITE)
+  ADD_DEFINITIONS(-DHAVE_SQLITE)
+ENDIF()
+
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/include/mysql_version.h)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
@@ -112,6 +120,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
+ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(libmariadb)
 ADD_SUBDIRECTORY(examples)
 IF(NOT WIN32)

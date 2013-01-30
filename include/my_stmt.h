@@ -198,7 +198,7 @@ struct st_mysql_stmt
 
   my_bool                  cursor_exists;
 
-  MYSQL_CMD_BUFFER         cmd_buffer;
+  void                     *ext_stmt;
   mysql_stmt_fetch_row_func fetch_row_func;
   unsigned int             execute_count;/* count how many times the stmt was executed */
   mysql_stmt_use_or_store_func default_rset_handler;
@@ -217,7 +217,6 @@ extern struct st_mysql_perm_bind mysql_ps_fetch_functions[MYSQL_TYPE_GEOMETRY + 
 unsigned long net_safe_read(MYSQL *mysql);
 void mysql_init_ps_subsystem(void);
 unsigned long net_field_length(unsigned char **packet);
-int simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg, size_t length, my_bool skipp_check);
 /*
  *  function prototypes
  */

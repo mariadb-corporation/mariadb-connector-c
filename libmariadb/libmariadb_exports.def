@@ -57,7 +57,6 @@ EXPORTS
  mysql_ping
  mysql_stmt_result_metadata
  mysql_query
- mysql_read_query_result
  mysql_real_connect
  mysql_real_escape_string
  mysql_real_query
@@ -105,4 +104,3 @@ EXPORTS
  mysql_stmt_next_result
  mariadb_connection
  mysql_get_server_name
-

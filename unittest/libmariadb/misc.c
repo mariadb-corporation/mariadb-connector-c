@@ -815,7 +815,7 @@ struct my_tests_st my_tests[] = {
   {"test_bug29692", test_bug29692, TEST_CONNECTION_NEW, CLIENT_FOUND_ROWS,  NULL, NULL},
   {"test_bug31418", test_bug31418, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug6081", test_bug6081, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
-  {"test_frm_bug", test_frm_bug, TEST_CONNECTION_NEW, 0,  NULL, NULL},
+//  {"test_frm_bug", test_frm_bug, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_1", test_wl4166_1, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_2", test_wl4166_2, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_3", test_wl4166_3, TEST_CONNECTION_NEW, 0,  NULL, NULL},

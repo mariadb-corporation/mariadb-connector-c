@@ -33,6 +33,7 @@ static int basic_connect(MYSQL *mysql)
 {
   MYSQL_ROW row;
   MYSQL_RES *res;
+  MYSQL_FIELD *field;
   int rc;
 
   MYSQL *my= mysql_init(NULL);
@@ -45,6 +46,7 @@ static int basic_connect(MYSQL *mysql)
   check_mysql_rc(rc, my);
 
   res= mysql_store_result(my);
+  field= mysql_fetch_fields(res);
   FAIL_IF(!res, mysql_error(my));
 
   while ((row= mysql_fetch_row(res)) != NULL)

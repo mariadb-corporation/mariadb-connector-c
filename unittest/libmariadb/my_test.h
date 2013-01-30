@@ -365,13 +365,14 @@ int check_variable(MYSQL *mysql, char *variable, char *value)
 MYSQL *test_connect(struct my_tests_st *test) {
   MYSQL *mysql;
   char query[255];
-
+  int i= 1;
   if (!(mysql = mysql_init(NULL))) {
     diag("%s", "mysql_init failed - exiting");
     return(NULL);
   }
 
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, "1");
+  mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (const char *)&i);
 
   /* option handling */
   if (test && test->options) {
@@ -388,9 +389,8 @@ MYSQL *test_connect(struct my_tests_st *test) {
       i++;
     }
   }
-
   if (!(mysql_real_connect(mysql, hostname, username, password,
-                           NULL, port, socketname, (test) ? test->connect_flags:0)))
+                           schema, port, socketname, (test) ? test->connect_flags:0)))
   {
     diag("Couldn't establish connection to server %s. Error (%d): %s", 
                    hostname, mysql_errno(mysql), mysql_error(mysql));
