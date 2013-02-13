@@ -2032,7 +2032,6 @@ static void mysql_close_memory(MYSQL *mysql)
   my_free(mysql->db,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->server_version,MYF(MY_ALLOW_ZERO_PTR));
   mysql->host_info= mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
-  mysql_close_options(mysql);
 }
 
 
@@ -2089,6 +2088,7 @@ mysql_close(MYSQL *mysql)
       SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     }
     mysql_close_memory(mysql);
+    mysql_close_options(mysql);
     mysql->host_info=mysql->user=mysql->passwd=mysql->db=0;
    
     /* Clear pointers for better safety */
