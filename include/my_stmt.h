@@ -206,14 +206,14 @@ struct st_mysql_stmt
 };
 
 typedef void (*ps_field_fetch_func)(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row);
-struct st_mysql_perm_bind {
+typedef struct st_mysql_perm_bind {
   ps_field_fetch_func func;
   /* should be signed int */
   int pack_len;
   unsigned long max_len;
-};
+} MYSQL_PS_CONVERSION;
 
-extern struct st_mysql_perm_bind mysql_ps_fetch_functions[MYSQL_TYPE_GEOMETRY + 1];
+extern MYSQL_PS_CONVERSION mysql_ps_fetch_functions[MYSQL_TYPE_GEOMETRY + 1];
 unsigned long net_safe_read(MYSQL *mysql);
 void mysql_init_ps_subsystem(void);
 unsigned long net_field_length(unsigned char **packet);

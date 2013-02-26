@@ -78,7 +78,7 @@
 
 #define YY_PART_YEAR 70
 
-struct st_mysql_perm_bind mysql_ps_fetch_functions[MYSQL_TYPE_GEOMETRY + 1];
+MYSQL_PS_CONVERSION mysql_ps_fetch_functions[MYSQL_TYPE_GEOMETRY + 1];
 my_bool mysql_ps_subsystem_initialized= 0;
 
 

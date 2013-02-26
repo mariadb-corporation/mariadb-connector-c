@@ -1,4 +1,5 @@
 EXPORTS
+ mysql_ps_fetch_functions DATA
  get_tty_password
  load_defaults
  mysql_thread_end
