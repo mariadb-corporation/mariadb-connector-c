@@ -3052,10 +3052,6 @@ void STDCALL mysql_server_end()
 
   if (my_init_done)
     my_end(0);
-#ifdef THREAD
-  else
-    mysql_thread_end();
-#endif
   mysql_client_init= 0;
   my_init_done= 0;
 }

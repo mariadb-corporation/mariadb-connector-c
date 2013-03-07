@@ -707,8 +707,8 @@ char ***_sframep_ __attribute__((unused)))
     int save_errno=errno;
     if (!init_done)
       _db_push_ (_DBUG_START_CONDITION_);
-    state=code_state();
-
+    if(!(state=code_state()))
+      return;
     *_sfunc_ = state->func;
     *_sfile_ = state->file;
     state->func =(char*)  _func_;
