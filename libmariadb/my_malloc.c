@@ -65,11 +65,11 @@ void my_no_flags_free(gptr ptr)
 
 	/* malloc and copy */
 
-gptr my_memdup(const byte *from, size_t length, myf MyFlags)
+gptr my_memdup(const unsigned char *from, size_t length, myf MyFlags)
 {
   gptr ptr;
   if ((ptr=my_malloc(length,MyFlags)) != 0)
-    memcpy((byte*) ptr, (byte*) from,(size_t) length);
+    memcpy((unsigned char*) ptr, (unsigned char*) from,(size_t) length);
   return(ptr);
 }
 
@@ -79,7 +79,7 @@ my_string my_strdup(const char *from, myf MyFlags)
   gptr ptr;
   uint length=(uint) strlen(from)+1;
   if ((ptr=my_malloc(length,MyFlags)) != 0)
-    memcpy((byte*) ptr, (byte*) from,(size_t) length);
+    memcpy((unsigned char*) ptr, (unsigned char*) from,(size_t) length);
   return((my_string) ptr);
 }
 

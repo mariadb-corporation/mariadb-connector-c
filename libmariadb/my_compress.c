@@ -29,13 +29,13 @@
 ** *complen is 0 if the packet wasn't compressed
 */
 
-my_bool my_compress(byte *packet, ulong *len, ulong *complen)
+my_bool my_compress(unsigned char *packet, ulong *len, ulong *complen)
 {
   if (*len < MIN_COMPRESS_LENGTH)
     *complen=0;
   else
   {
-    byte *compbuf=my_compress_alloc(packet,len,complen);
+    unsigned char *compbuf=my_compress_alloc(packet,len,complen);
     if (!compbuf)
       return *complen ? 0 : 1;
     memcpy(packet,compbuf,*len);
@@ -44,11 +44,11 @@ my_bool my_compress(byte *packet, ulong *len, ulong *complen)
 }
 
 
-byte *my_compress_alloc(const byte *packet, ulong *len, ulong *complen)
+unsigned char *my_compress_alloc(const unsigned char *packet, ulong *len, ulong *complen)
 {
-  byte *compbuf;
+  unsigned char *compbuf;
   *complen =  *len * 120 / 100 + 12;
-  if (!(compbuf = (byte *) my_malloc(*complen,MYF(MY_WME))))
+  if (!(compbuf = (unsigned char *) my_malloc(*complen,MYF(MY_WME))))
     return 0;					/* Not enough memory */
   if (compress((Bytef*) compbuf,(ulong *) complen, (Bytef*) packet,
 	       (uLong) *len ) != Z_OK)
@@ -67,11 +67,11 @@ byte *my_compress_alloc(const byte *packet, ulong *len, ulong *complen)
 }
 
 
-my_bool my_uncompress (byte *packet, ulong *len, ulong *complen)
+my_bool my_uncompress (unsigned char *packet, ulong *len, ulong *complen)
 {
   if (*complen)					/* If compressed */
   {
-    byte *compbuf = (byte *) my_malloc (*complen,MYF(MY_WME));
+    unsigned char *compbuf = (unsigned char *) my_malloc (*complen,MYF(MY_WME));
     if (!compbuf)
       return 1;					/* Not enough memory */
     if (uncompress((Bytef*) compbuf, complen, (Bytef*) packet, *len) != Z_OK)

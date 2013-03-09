@@ -341,7 +341,7 @@ net_real_write(NET *net,const char *packet,ulong len)
     }
     memcpy(b+header_length,packet,len);
 
-    if (my_compress((byte*) b+header_length,&len,&complen))
+    if (my_compress((unsigned char*) b+header_length,&len,&complen))
     {
       DBUG_PRINT("warning",
 		 ("Compression error; Continuing without compression"));
@@ -710,7 +710,7 @@ ulong my_net_read(NET *net)
 
     if ((len = my_real_read(net,(size_t *)&complen)) == packet_error)
       break;
-    if (my_uncompress((byte*) net->buff + net->where_b, &len, &complen))
+    if (my_uncompress((unsigned char*) net->buff + net->where_b, &len, &complen))
     {
       len= packet_error;
       net->error=2;			/* caller will close socket */

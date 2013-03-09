@@ -22,7 +22,7 @@
 
 	/* Read a chunk of bytes from a file  */
 
-uint my_read(File Filedes, byte *Buffer, uint Count, myf MyFlags)
+uint my_read(File Filedes, unsigned char *Buffer, uint Count, myf MyFlags)
 				/* File descriptor */
 				/* Buffer must be at least count bytes */
 				/* Max number of bytes returnd */

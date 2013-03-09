@@ -32,7 +32,7 @@
 	/* Read a chunk of bytes from a file  */
 	/* Returns (uint) -1 if error as my_read() */
 
-uint my_fread(FILE *stream, byte *Buffer, uint Count, myf MyFlags)
+uint my_fread(FILE *stream, unsigned char *Buffer, uint Count, myf MyFlags)
 			/* File descriptor */
 			/* Buffer must be at least count bytes */
 			/* Max number of bytes returnd */
@@ -73,7 +73,7 @@ uint my_fread(FILE *stream, byte *Buffer, uint Count, myf MyFlags)
 ** Does retries if interrupted
 */
 
-uint my_fwrite(FILE *stream, const byte *Buffer, uint Count, myf MyFlags)
+uint my_fwrite(FILE *stream, const unsigned char *Buffer, uint Count, myf MyFlags)
 {
   uint writenbytes=0;
   off_t seekptr;

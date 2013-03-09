@@ -581,8 +581,8 @@ typedef long		my_ptrdiff_t;
 #define ALIGN_PTR(A, t) ((t*) MY_ALIGN((A),sizeof(t)))
 			 /* Offset of filed f in structure t */
 #define OFFSET(t, f)	((size_t)(char *)&((t *)0)->f)
-#define ADD_TO_PTR(ptr,size,type) (type) ((byte*) (ptr)+size)
-#define PTR_BYTE_DIFF(A,B) (my_ptrdiff_t) ((byte*) (A) - (byte*) (B))
+#define ADD_TO_PTR(ptr,size,type) (type) ((unsigned char*) (ptr)+size)
+#define PTR_BYTE_DIFF(A,B) (my_ptrdiff_t) ((unsigned char*) (A) - (unsigned char*) (B))
 
 #define NullS		(char *) 0
 /* Nowdays we do not support MessyDos */
@@ -698,9 +698,6 @@ typedef short		int15;	/* Most effective integer 0 <= x <= 32767 */
 typedef char		*my_string; /* String of characters */
 typedef unsigned long	size_s; /* Size of strings (In string-funcs) */
 typedef int		myf;	/* Type of MyFlags in my_funcs */
-#ifndef byte_defined
-typedef char		byte;	/* Smallest addressable unit */
-#endif
 typedef char		my_bool; /* Small bool */
 #if !defined(bool) && !defined(bool_defined) && (!defined(HAVE_BOOL) || !defined(__cplusplus))
 typedef char		bool;	/* Ordinary boolean values 0 1 */

@@ -73,8 +73,8 @@ uint sf_malloc_prehunc=0,		/* If you have problem with core- */
 size_t lCurMemory = 0L;			/* Current memory usage */
 size_t lMaxMemory = 0L;			/* Maximum memory usage */
 uint cNewCount = 0;			/* Number of times NEW() was called */
-byte *sf_min_adress= (byte*) ~(unsigned long) 0L,
-     *sf_max_adress= (byte*) 0L;
+unsigned char *sf_min_adress= (unsigned char*) ~(unsigned long) 0L,
+     *sf_max_adress= (unsigned char*) 0L;
 
 /* Root of the linked list of remembers */
 struct remember *pRememberRoot = NULL;

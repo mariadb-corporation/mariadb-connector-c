@@ -84,7 +84,7 @@ ulonglong safemalloc_mem_limit = ~(ulonglong)0;
 
 	/* Static functions prototypes */
 
-static int check_ptr(const char *where, byte *ptr, const char *sFile,
+static int check_ptr(const char *where, unsigned char *ptr, const char *sFile,
 		     uint uLine);
 static int _checkchunk(struct remember *pRec, const char *sFile, uint uLine);
 
@@ -199,9 +199,9 @@ gptr _mymalloc (size_t uSize, const char *sFile, uint uLine, myf MyFlags)
 	    (char) (MyFlags & MY_ZEROFILL ? 0 : ALLOC_VAL));
     /* Return a pointer to the real data */
     DBUG_PRINT("exit",("ptr: %lx",&(pTmp -> aData[sf_malloc_prehunc])));
-    if (sf_min_adress > &(pTmp -> aData[sf_malloc_prehunc]))
+    if (sf_min_adress > (unsigned char *)&(pTmp -> aData[sf_malloc_prehunc]))
       sf_min_adress = &(pTmp -> aData[sf_malloc_prehunc]);
-    if (sf_max_adress < &(pTmp -> aData[sf_malloc_prehunc]))
+    if (sf_max_adress < (unsigned char *)&(pTmp -> aData[sf_malloc_prehunc]))
       sf_max_adress = &(pTmp -> aData[sf_malloc_prehunc]);
     DBUG_RETURN ((gptr) &(pTmp -> aData[sf_malloc_prehunc]));
 }
@@ -224,7 +224,7 @@ gptr _myrealloc (register gptr pPtr, register size_t uSize,
   if (!sf_malloc_quick)
     (void) _sanity (sFile, uLine);
 
-  if (check_ptr("Reallocating",(byte*) pPtr,sFile,uLine))
+  if (check_ptr("Reallocating",(unsigned char*) pPtr,sFile,uLine))
     DBUG_RETURN((gptr) NULL);
 
   pRec = (struct remember *) ((char*) pPtr - sizeof (struct irem)-
@@ -243,7 +243,7 @@ gptr _myrealloc (register gptr pPtr, register size_t uSize,
   if ((ptr=_mymalloc(uSize,sFile,uLine,MyFlags)))	/* Allocate new area */
   {
     uSize=min(uSize,pRec->uDataSize);		/* Move as much as possibly */
-    memcpy((byte*) ptr,pPtr,(size_t) uSize);	/* Copy old data */
+    memcpy((unsigned char*) ptr,pPtr,(size_t) uSize);	/* Copy old data */
     _myfree(pPtr,sFile,uLine,0);		/* Free not needed area */
   }
   else
@@ -272,11 +272,11 @@ void _myfree (gptr pPtr, const char *sFile, uint uLine, myf myflags)
     (void) _sanity (sFile, uLine);
 
   if ((!pPtr && (myflags & MY_ALLOW_ZERO_PTR)) ||
-      check_ptr("Freeing",(byte*) pPtr,sFile,uLine))
+      check_ptr("Freeing",(unsigned char*) pPtr,sFile,uLine))
     DBUG_VOID_RETURN;
 
   /* Calculate the address of the remember structure */
-  pRec = (struct remember *) ((byte*) pPtr-sizeof(struct irem)-
+  pRec = (struct remember *) ((unsigned char*) pPtr-sizeof(struct irem)-
 			      sf_malloc_prehunc);
 
   /* Check to make sure that we have a real remember structure	*/
@@ -325,7 +325,7 @@ void _myfree (gptr pPtr, const char *sFile, uint uLine, myf myflags)
 
 	/* Check if we have a wrong  pointer */
 
-static int check_ptr(const char *where, byte *ptr, const char *sFile,
+static int check_ptr(const char *where, unsigned char *ptr, const char *sFile,
 		     uint uLine)
 {
   if (!ptr)
@@ -502,12 +502,12 @@ int _sanity (const char *sFile, uint uLine)
 
 	/* malloc and copy */
 
-gptr _my_memdup(const byte *from, size_t length, const char *sFile, uint uLine,
+gptr _my_memdup(const unsigned char *from, size_t length, const char *sFile, uint uLine,
 		myf MyFlags)
 {
   gptr ptr;
   if ((ptr=_mymalloc(length,sFile,uLine,MyFlags)) != 0)
-    memcpy((byte*) ptr, (byte*) from, length);
+    memcpy((unsigned char*) ptr, (unsigned char*) from, length);
   return(ptr);
 } /*_my_memdup */
 
@@ -518,6 +518,6 @@ my_string _my_strdup(const char *from, const char *sFile, uint uLine,
   gptr ptr;
   size_t length= strlen(from)+1;
   if ((ptr=_mymalloc(length,sFile,uLine,MyFlags)) != 0)
-    memcpy((byte*) ptr, (byte*) from,(size_t) length);
+    memcpy((unsigned char*) ptr, (unsigned char*) from,(size_t) length);
   return((my_string) ptr);
 } /* _my_strdup */

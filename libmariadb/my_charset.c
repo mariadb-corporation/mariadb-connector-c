@@ -829,3 +829,287 @@ size_t mysql_cset_escape_slashes(const CHARSET_INFO * cset, char *newstr,
   DBUG_RETURN((size_t)(newstr - newstr_s));
 }
 /* }}} */
+
+/* {{{ MADB_OS_CHARSET */
+struct st_madb_os_charset {
+  char *identifier;
+  char *description;
+  char *charset;
+  unsigned char supported;
+};
+
+#define MADB_CS_UNSUPPORTED 0
+#define MADB_CS_APPROX 1
+#define MADB_CS_EXACT 2
+
+struct st_madb_os_charset MADB_OS_CHARSET[]=
+{
+#ifdef _WIN32
+  /* Windows code pages */
+  {"037", "IBM EBCDIC US-Canada", NULL, MADB_CS_UNSUPPORTED},
+  {"437", "OEM United States", "cp850", MADB_CS_APPROX},
+  {"500", "IBM EBCDIC International", NULL, MADB_CS_UNSUPPORTED},
+  {"708", "Arabic (ASMO 708)", NULL, MADB_CS_UNSUPPORTED},
+  {"709", "Arabic (ASMO-449+, BCON V4)", NULL, MADB_CS_UNSUPPORTED},
+  {"710", "Transparent Arabic", NULL, MADB_CS_UNSUPPORTED},
+  {"720", "Arabic (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"737", "Greek (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"775", "Baltic (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"850", "Western European (DOS)", "cp850", MADB_CS_EXACT},
+  {"852", "Central European (DOS)", "cp852", MADB_CS_EXACT},
+  {"855", "Cyrillic (primarily Russian)", NULL, MADB_CS_UNSUPPORTED},
+  {"857", "Turkish (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"858", "OEM Multilingual Latin 1 + Euro symbol", "cp850", MADB_CS_EXACT},
+  {"860", "Portuguese (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"861", "Icelandic (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"862", "Hebrew (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"863", "French Canadian (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"864", "Arabic (864)", NULL, MADB_CS_UNSUPPORTED},
+  {"865", "Nordic (DOS)", NULL, MADB_CS_UNSUPPORTED},
+  {"866", "Cyrillic (DOS)", "cp866", MADB_CS_EXACT},
+  {"869", "Greek, Modern (DOS)", NULL, MADB_CS_EXACT},
+  {"870", "IBM EBCDIC Multilingual Latin 2", NULL, MADB_CS_UNSUPPORTED},
+  {"874", "Thai (Windows)", "tis620", MADB_CS_UNSUPPORTED},
+  {"875", "Greek Modern", NULL, MADB_CS_UNSUPPORTED},
+  {"932", "Japanese (Shift-JIS)", "cp932", MADB_CS_EXACT},
+  {"936", "Chinese Simplified (GB2312)", "gbk", MADB_CS_EXACT},
+  {"949", "ANSI/OEM Korean (Unified Hangul Code)", "euckr", MADB_CS_EXACT},
+  {"950", "Chinese Traditional (Big5)", "big5", MADB_CS_EXACT},
+  {"1026", "EBCDIC Turkish (Latin 5)", NULL, MADB_CS_UNSUPPORTED},
+  {"1047", "EBCDIC Latin 1/Open System", NULL, MADB_CS_UNSUPPORTED},
+  {"1140", "IBM EBCDIC (US-Canada-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1141", "IBM EBCDIC (Germany-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1142", "IBM EBCDIC (Denmark-Norway-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1143", "IBM EBCDIC (Finland-Sweden-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1144", "IBM EBCDIC (Italy-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1145", "IBM EBCDIC (Spain-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1146", "IBM EBCDIC (UK-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1147", "IBM EBCDIC (France-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1148", "IBM EBCDIC (International-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1149", "IBM EBCDIC (Icelandic-Euro)", NULL, MADB_CS_UNSUPPORTED},
+  {"1200", "UTF-16, little endian byte order", NULL, MADB_CS_UNSUPPORTED},
+  {"1201", "UTF-16, big endian byte order", "utf16", MADB_CS_UNSUPPORTED},
+  {"1250", "Central European (Windows)", "cp1250", MADB_CS_EXACT},
+  {"1251", "Cyrillic (Windows)", "cp1251", MADB_CS_EXACT},
+  {"1252", "Western European (Windows)", "latin1", MADB_CS_EXACT},
+  {"1253", "Greek (Windows)", "greek", MADB_CS_EXACT},
+  {"1254", "Turkish (Windows)", "latin5", MADB_CS_EXACT},
+  {"1255", "Hebrew (Windows)", "hewbrew", MADB_CS_EXACT},
+  {"1256", "Arabic (Windows)", "cp1256", MADB_CS_EXACT},
+  {"1257", "Baltic (Windows)","cp1257", MADB_CS_EXACT},
+  {"1258", "Vietnamese (Windows)", NULL, MADB_CS_UNSUPPORTED},
+  {"1361", "Korean (Johab)", NULL, MADB_CS_UNSUPPORTED},
+  {"10000", "Western European (Mac)", "macroman", MADB_CS_EXACT},
+  {"10001", "Japanese (Mac)", "sjis", MADB_CS_EXACT},
+  {"10002", "Chinese Traditional (Mac)", "big5", MADB_CS_EXACT},
+  {"10003", "Korean (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10004", "Arabic (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10005", "Hebrew (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10006", "Greek (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10007", "Cyrillic (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10008", "Chinese Simplified (Mac)", "gb2312", MADB_CS_EXACT},
+  {"10010", "Romanian (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10017", "Ukrainian (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10021", "Thai (Mac)", "tis620", MADB_CS_EXACT},
+  {"10029", "Central European (Mac)", "macce", MADB_CS_EXACT},
+  {"10079", "Icelandic (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10081", "Turkish (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"10082", "Croatian (Mac)", NULL, MADB_CS_UNSUPPORTED},
+  {"12000", "Unicode UTF-32, little endian byte order", NULL, MADB_CS_UNSUPPORTED},
+  {"12001", "Unicode UTF-32, big endian byte order", "utf32", MADB_CS_UNSUPPORTED},
+  {"20000", "Chinese Traditional (CNS)", NULL, MADB_CS_UNSUPPORTED},
+  {"20001", "TCA Taiwan", NULL, MADB_CS_UNSUPPORTED}, 
+  {"20002", "Chinese Traditional (Eten)", NULL, MADB_CS_UNSUPPORTED},
+  {"20003", "IBM5550 Taiwan", NULL, MADB_CS_UNSUPPORTED},
+  {"20004", "TeleText Taiwan", NULL, MADB_CS_UNSUPPORTED},
+  {"20005", "Wang Taiwan", NULL, MADB_CS_UNSUPPORTED},
+  {"20105", "Western European (IA5)", NULL, MADB_CS_UNSUPPORTED},
+  {"20106", "IA5 German (7-bit)", NULL, MADB_CS_UNSUPPORTED},
+  {"20107", "Swedish (7-bit)", NULL, MADB_CS_UNSUPPORTED},
+  {"20108", "Norwegian (7-bit)", NULL, MADB_CS_UNSUPPORTED},
+  {"20127", "US-ASCII (7-bit)", NULL, MADB_CS_UNSUPPORTED},
+  {"20261", "T.61", NULL, MADB_CS_UNSUPPORTED},
+  {"20269", "Non-Spacing Accent", NULL, MADB_CS_UNSUPPORTED},
+  {"20273", "EBCDIC Germany", NULL, MADB_CS_UNSUPPORTED},
+  {"20277", "EBCDIC Denmark-Norway", NULL, MADB_CS_UNSUPPORTED},
+  {"20278", "EBCDIC Finland-Sweden", NULL, MADB_CS_UNSUPPORTED},
+  {"20280", "EBCDIC Italy", NULL, MADB_CS_UNSUPPORTED},
+  {"20284", "EBCDIC Latin America-Spain", NULL, MADB_CS_UNSUPPORTED},
+  {"20285", "EBCDIC United Kingdom", NULL, MADB_CS_UNSUPPORTED},
+  {"20290", "EBCDIC Japanese Katakana Extended", NULL, MADB_CS_UNSUPPORTED},
+  {"20297", "EBCDIC France", NULL, MADB_CS_UNSUPPORTED},
+  {"20420", "EBCDIC Arabic", NULL, MADB_CS_UNSUPPORTED},
+  {"20423", "EBCDIC Greek", NULL, MADB_CS_UNSUPPORTED},
+  {"20424", "EBCDIC Hebrew", NULL, MADB_CS_UNSUPPORTED},
+  {"20833", "EBCDIC Korean Extended", NULL, MADB_CS_UNSUPPORTED},
+  {"20838", "EBCDIC Thai", NULL, MADB_CS_UNSUPPORTED},
+  {"20866", "Cyrillic (KOI8-R)", "koi8r", MADB_CS_EXACT},
+  {"20871", "EBCDIC Icelandic", NULL, MADB_CS_UNSUPPORTED},
+  {"20880", "EBCDIC Cyrillic Russian", NULL, MADB_CS_UNSUPPORTED},
+  {"20905", "EBCDIC Turkish", NULL, MADB_CS_UNSUPPORTED},
+  {"20924", "EBCDIC Latin 1/Open System (1047 + Euro symbol)", NULL, MADB_CS_UNSUPPORTED},
+  {"20932", "Japanese (JIS 0208-1990 and 0121-1990)", "ujis", MADB_CS_EXACT},
+  {"20936", "Chinese Simplified (GB2312-80)", "gb2312", MADB_CS_APPROX},
+  {"20949", "Korean Wansung", "euckr", MADB_CS_APPROX},
+  {"21025", "EBCDIC Cyrillic Serbian-Bulgarian", NULL, MADB_CS_UNSUPPORTED},
+  {"21866", "Cyrillic (KOI8-U)", "koi8u", MADB_CS_EXACT},
+  {"28591", "Western European (ISO)", "latin1", MADB_CS_APPROX},
+  {"28592", "Central European (ISO)", "latin2", MADB_CS_EXACT},
+  {"28593", "Latin 3", NULL, MADB_CS_UNSUPPORTED},
+  {"28594", "Baltic", NULL, MADB_CS_UNSUPPORTED},
+  {"28595", "ISO 8859-5 Cyrillic", NULL, MADB_CS_UNSUPPORTED},
+  {"28596", "ISO 8859-6 Arabic", NULL, MADB_CS_UNSUPPORTED},
+  {"28597", "ISO 8859-7 Greek", "greek", MADB_CS_EXACT},
+  {"28598", "Hebrew (ISO-Visual)", "hebrew", MADB_CS_EXACT},
+  {"28599", "ISO 8859-9 Turkish", "latin5", MADB_CS_EXACT},
+  {"28603", "ISO 8859-13 Estonian", "latin7", MADB_CS_EXACT},
+  {"28605", "8859-15 Latin 9", NULL, MADB_CS_UNSUPPORTED},
+  {"29001", "Europa 3", NULL, MADB_CS_UNSUPPORTED},
+  {"38598", "ISO 8859-8 Hebrew; Hebrew (ISO-Logical)", "hebrew", MADB_CS_EXACT},
+  {"50220", "ISO 2022 Japanese with no halfwidth Katakana", NULL, MADB_CS_UNSUPPORTED},
+  {"50221", "ISO 2022 Japanese with halfwidth Katakana", NULL, MADB_CS_UNSUPPORTED},
+  {"50222", "ISO 2022 Japanese JIS X 0201-1989", NULL, MADB_CS_UNSUPPORTED},
+  {"50225", "ISO 2022 Korean", NULL, MADB_CS_UNSUPPORTED},
+  {"50227", "ISO 2022 Simplified Chinese", NULL, MADB_CS_UNSUPPORTED},
+  {"50229", "ISO 2022 Traditional Chinese", NULL, MADB_CS_UNSUPPORTED},
+  {"50930", "EBCDIC Japanese (Katakana) Extended", NULL, MADB_CS_UNSUPPORTED},
+  {"50931", "EBCDIC US-Canada and Japanese", NULL, MADB_CS_UNSUPPORTED},
+  {"50933", "EBCDIC Korean Extended and Korean", NULL, MADB_CS_UNSUPPORTED},
+  {"50935", "EBCDIC Simplified Chinese Extended and Simplified Chinese", NULL, MADB_CS_UNSUPPORTED},
+  {"50936", "EBCDIC Simplified Chinese", NULL, MADB_CS_UNSUPPORTED},
+  {"50937", "EBCDIC US-Canada and Traditional Chinese", NULL, MADB_CS_UNSUPPORTED},
+  {"50939", "EBCDIC Japanese (Latin) Extended and Japanese", NULL, MADB_CS_UNSUPPORTED},
+  {"51932", "EUC Japanese", "ujis", MADB_CS_EXACT},
+  {"51936", "EUC Simplified Chinese; Chinese Simplified (EUC)", "gb2312", MADB_CS_EXACT},
+  {"51949", "EUC Korean", "euckr", MADB_CS_EXACT},
+  {"51950", "EUC Traditional Chinese", "big5", MADB_CS_EXACT},
+  {"52936", "Chinese Simplified (HZ)", NULL, MADB_CS_UNSUPPORTED},
+  {"54936", "Chinese Simplified (GB18030)", NULL, MADB_CS_UNSUPPORTED},
+  {"57002", "ISCII Devanagari", NULL, MADB_CS_UNSUPPORTED},
+  {"57003", "ISCII Bengali", NULL, MADB_CS_UNSUPPORTED},
+  {"57004", "ISCII Tamil", NULL, MADB_CS_UNSUPPORTED},
+  {"57005", "ISCII Telugu", NULL, MADB_CS_UNSUPPORTED},
+  {"57006", "ISCII Assamese", NULL, MADB_CS_UNSUPPORTED},
+  {"57007", "ISCII Oriya", NULL, MADB_CS_UNSUPPORTED},
+  {"57008", "ISCII Kannada", NULL, MADB_CS_UNSUPPORTED},
+  {"57009", "ISCII Malayalam", NULL, MADB_CS_UNSUPPORTED},
+  {"57010", "ISCII Gujarati", NULL, MADB_CS_UNSUPPORTED},
+  {"57011", "ISCII Punjabi", NULL, MADB_CS_UNSUPPORTED},
+  {"65000", "utf-7 Unicode (UTF-7)", NULL, MADB_CS_UNSUPPORTED},
+  {"65001", "utf-8 Unicode (UTF-8)", NULL, MADB_CS_EXACT},
+  /* non Windows */
+#else
+  {"ASCII", "US-ASCII", "ascii", MADB_CS_APPROX},
+  {"US-ASCII", "US-ASCII", "ascii", MADB_CS_APPROX},
+  {"Big5", "Chinese for Taiwan Multi-byte set", "big5", MADB_CS_EXACT},
+  {"CP866", "IBM 866", "cp866", MADB_CS_EXACT},
+  {"IBM-1252", "Catalan Spain", "cp1252", MADB_CS_EXACT},
+  {"ISCII-DEV", "Hindi", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO-8859-1", "ISO-8859-1", "latin1", MADB_CS_APPROX},
+  {"ISO8859-1", "ISO-8859-1", "latin1", MADB_CS_APPROX},
+  {"ISO_8859-1", "ISO-8859-1", "latin1", MADB_CS_APPROX},
+  {"ISO88591", "ISO-8859-1", "latin1", MADB_CS_APPROX},
+  {"ISO-8859-13", "ISO-8859-13", "latin7", MADB_CS_EXACT},
+  {"ISO8859-13", "ISO-8859-13", "latin7", MADB_CS_EXACT},
+  {"ISO_8859-13", "ISO-8859-13", "latin7", MADB_CS_EXACT},
+  {"ISO885913", "ISO-8859-13", "latin7", MADB_CS_EXACT},
+  {"ISO-8859-15", "ISO-8859-15", "latin9", MADB_CS_UNSUPPORTED},  
+  {"ISO8859-15", "ISO-8859-15", "latin9", MADB_CS_UNSUPPORTED},  
+  {"ISO_8859-15", "ISO-8859-15", "latin9", MADB_CS_UNSUPPORTED},  
+  {"ISO885915", "ISO-8859-15", "latin9", MADB_CS_UNSUPPORTED},  
+  {"ISO-8859-2", "ISO-8859-2", "latin2", MADB_CS_EXACT},
+  {"ISO8859-2", "ISO-8859-2", "latin2", MADB_CS_EXACT},
+  {"ISO_8859-2", "ISO-8859-2", "latin2", MADB_CS_EXACT},
+  {"ISO88592", "ISO-8859-2", "latin2", MADB_CS_EXACT},
+  {"ISO-8859-7", "ISO-8859-7", "greek", MADB_CS_EXACT},
+  {"ISO8859-7", "ISO-8859-7", "greek", MADB_CS_EXACT},
+  {"ISO_8859-7", "ISO-8859-7", "greek", MADB_CS_EXACT},
+  {"ISO88597", "ISO-8859-7", "greek", MADB_CS_EXACT},
+  {"ISO-8859-8", "ISO-8859-8", "hebrew", MADB_CS_EXACT},
+  {"ISO8859-8", "ISO-8859-8", "hebrew", MADB_CS_EXACT},
+  {"ISO_8859-8", "ISO-8859-8", "hebrew", MADB_CS_EXACT},
+  {"ISO88598", "ISO-8859-8", "hebrew", MADB_CS_EXACT},
+  {"ISO-8859-9", "ISO-8859-9", "latin5", MADB_CS_EXACT},
+  {"ISO8859-9", "ISO-8859-9", "latin5", MADB_CS_EXACT},
+  {"ISO_8859-9", "ISO-8859-9", "latin5", MADB_CS_EXACT},
+  {"ISO88599", "ISO-8859-9", "latin5", MADB_CS_EXACT},
+  {"ISO-8859-4", "ISO-8859-4", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO8859-4", "ISO-8859-4", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO_8859-4", "ISO-8859-4", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO88594", "ISO-8859-4", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO-8859-5", "ISO-8859-5", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO8859-5", "ISO-8859-5", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO_8859-5", "ISO-8859-5", NULL, MADB_CS_UNSUPPORTED},
+  {"ISO88595", "ISO-8859-5", NULL, MADB_CS_UNSUPPORTED},
+  {"KOI8-R", "KOI8-R", "koi8r", MADB_CS_EXACT},
+  {"koi8r", "KOI8-R", "koi8r", MADB_CS_EXACT},
+  {"KOI8-U", "KOI8-U", "koi8u", MADB_CS_EXACT},     
+  {"koi8u", "KOI8-U", "koi8u", MADB_CS_EXACT},     
+  {"koi8t", "KOI8-T", NULL, MADB_CS_UNSUPPORTED},
+  {"KOI8-T", "KOI8-T", NULL, MADB_CS_UNSUPPORTED},
+  {"SJIS", "SHIFT_JIS", "sjis", MADB_CS_EXACT},      
+  {"Shift-JIS", "SHIFT_JIS", "sjis", MADB_CS_EXACT},      
+  {"ansi1251", "Cyrillic", "cp1251", MADB_CS_EXACT},
+  {"cp1251", "Cyrillic", "cp1251", MADB_CS_EXACT},
+  {"armscii8", "Armenian", "armscii8", MADB_CS_EXACT},
+  {"armscii-8", "Armenian", "armscii8", MADB_CS_EXACT},
+  {"big5hkscs", "Big5-HKSCS", NULL, MADB_CS_UNSUPPORTED},     
+  {"cp1255", "Hebrew", "cp1255", MADB_CS_EXACT},
+  {"eucCN", "GB-2312", "gb2312", MADB_CS_EXACT},
+  {"eucJP", "UJIS", "ujis", MADB_CS_EXACT},
+  {"eucKR", "EUC-KR", "euckr", MADB_CS_EXACT},
+  {"euctw", "EUC-TW", NULL, MADB_CS_UNSUPPORTED},
+  {"gb18030", "GB 18030-2000", "gb18030", MADB_CS_UNSUPPORTED},
+  {"gb2312", "GB2312", "gb2312", MADB_CS_EXACT},
+  {"gbk", "GBK", "gbk", MADB_CS_EXACT},
+  {"georgianps", "Georgian", "geostd8", MADB_CS_EXACT},
+  {"utf8", "UTF8", "utf8", MADB_CS_EXACT},
+  {"utf-8", "UTF8", "utf8", MADB_CS_EXACT},
+#endif
+  {NULL, NULL, NULL, 0}
+};
+/* }}} */
+
+/* {{{ madb_get_os_character_set */
+char *madb_get_os_character_set()
+{
+  unsigned int i= 0;
+  char *p= NULL;
+#ifdef _WIN32
+  char codepage[FN_REFLEN];
+  my_snprintf(codepage, FN_REFLEN, "%u", GetConsoleWindow() ?
+              GetConsoleCP() : GetACP());
+  p= codepage;
+#elif defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)
+  if (setlocale(LC_CTYPE, "") && (p= nl_langinfo(CODESET))); 
+#endif
+  if (!p)
+    return MADB_DEFAULT_CHARSET_NAME;
+  while (MADB_OS_CHARSET[i].identifier)
+  {
+    if (MADB_OS_CHARSET[i].supported > MADB_CS_UNSUPPORTED &&
+        strcmp(MADB_OS_CHARSET[i].identifier, p) == 0)
+      return MADB_OS_CHARSET[i].charset;
+    i++;
+  }
+  return MADB_DEFAULT_CHARSET_NAME;
+}
+/* }}} */
+
+/* {{{ madb_get_code_page */
+#ifdef _WIN32
+int madb_get_windows_cp(const char *charset)
+{
+  unsigned int i= 0;
+  while (MADB_OS_CHARSET[i].identifier)
+  {
+    if (MADB_OS_CHARSET[i].supported > MADB_CS_UNSUPPORTED &&
+        strcmp(MADB_OS_CHARSET[i].charset, charset) == 0)
+      return atoi(MADB_OS_CHARSET[i].identifier);
+    i++;
+  }
+  return -1;
+}
+#endif
+/* }}} */
+

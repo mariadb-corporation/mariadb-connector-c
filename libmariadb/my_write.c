@@ -22,7 +22,7 @@
 
 	/* Write a chunk of bytes to a file */
 
-uint my_write(int Filedes, const byte *Buffer, uint Count, myf MyFlags)
+uint my_write(int Filedes, const unsigned char *Buffer, uint Count, myf MyFlags)
 {
   uint writenbytes,errors;
   ulong written;

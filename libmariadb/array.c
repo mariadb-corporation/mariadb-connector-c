@@ -75,7 +75,7 @@ my_bool insert_dynamic(DYNAMIC_ARRAY *array, gptr element)
 
 	/* Alloc room for one element */
 
-byte *alloc_dynamic(DYNAMIC_ARRAY *array)
+unsigned char *alloc_dynamic(DYNAMIC_ARRAY *array)
 {
   if (array->elements == array->max_element)
   {
@@ -94,7 +94,7 @@ byte *alloc_dynamic(DYNAMIC_ARRAY *array)
 
 	/* remove last element from array and return it */
 
-byte *pop_dynamic(DYNAMIC_ARRAY *array)
+unsigned char *pop_dynamic(DYNAMIC_ARRAY *array)
 {
   if (array->elements)
     return array->buffer+(--array->elements * array->size_of_element);
