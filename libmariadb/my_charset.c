@@ -867,7 +867,7 @@ struct st_madb_os_charset MADB_OS_CHARSET[]=
   {"864", "Arabic (864)", NULL, MADB_CS_UNSUPPORTED},
   {"865", "Nordic (DOS)", NULL, MADB_CS_UNSUPPORTED},
   {"866", "Cyrillic (DOS)", "cp866", MADB_CS_EXACT},
-  {"869", "Greek, Modern (DOS)", NULL, MADB_CS_EXACT},
+  {"869", "Greek, Modern (DOS)", "greek", MADB_CS_EXACT},
   {"870", "IBM EBCDIC Multilingual Latin 2", NULL, MADB_CS_UNSUPPORTED},
   {"874", "Thai (Windows)", "tis620", MADB_CS_UNSUPPORTED},
   {"875", "Greek Modern", NULL, MADB_CS_UNSUPPORTED},
@@ -996,7 +996,7 @@ struct st_madb_os_charset MADB_OS_CHARSET[]=
   {"57010", "ISCII Gujarati", NULL, MADB_CS_UNSUPPORTED},
   {"57011", "ISCII Punjabi", NULL, MADB_CS_UNSUPPORTED},
   {"65000", "utf-7 Unicode (UTF-7)", NULL, MADB_CS_UNSUPPORTED},
-  {"65001", "utf-8 Unicode (UTF-8)", NULL, MADB_CS_EXACT},
+  {"65001", "utf-8 Unicode (UTF-8)", "utf8", MADB_CS_EXACT},
   /* non Windows */
 #else
   {"ASCII", "US-ASCII", "ascii", MADB_CS_APPROX},

@@ -167,6 +167,8 @@ static int test_change_user(MYSQL *mysql)
   const char *db= "mysqltest_user_test_database";
   int rc;
 
+  diag("Due to mysql_change_user security fix this test will not work anymore.");
+  return(SKIP);
   DBUG_ENTER("test_change_user");
 
   /* Prepare environment */
@@ -320,6 +322,9 @@ static int test_bug31669(MYSQL *mysql)
   static char user[USERNAME_CHAR_LENGTH+1];
   static char db[NAME_CHAR_LEN+1];
   static char query[LARGE_BUFFER_SIZE*2];
+
+  diag("Due to mysql_change_user security fix this test will not work anymore.");
+  return(SKIP);
 
   rc= mysql_change_user(mysql, NULL, NULL, NULL);
   FAIL_UNLESS(rc, "Error expected");

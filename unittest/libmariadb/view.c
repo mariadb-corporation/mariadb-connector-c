@@ -569,7 +569,7 @@ static int test_bug19671(MYSQL *mysql)
   rc= mysql_query(mysql, "drop table t1");
   check_mysql_rc(rc, mysql);
 
-  return OK;
+  return retcode;
 }
 
 /*

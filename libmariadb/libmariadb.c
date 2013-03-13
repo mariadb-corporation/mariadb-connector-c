@@ -1500,7 +1500,9 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
   */
 
 #if defined(HAVE_SYS_UN_H)
-  if ((!host || !strcmp(host,LOCAL_HOST)) && (unix_socket || mysql_unix_port))
+  if ((!host ||  strcmp(host,LOCAL_HOST) == 0) &&
+      mysql->options.protocol != MYSQL_PROTOCOL_TCP &&
+      (unix_socket || mysql_unix_port))
   {
     host=LOCAL_HOST;
     if (!unix_socket)
@@ -1530,9 +1532,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
 #elif defined(_WIN32)
   {
     if ((unix_socket ||
-	 !host && is_NT() ||
-	 host && !strcmp(host,LOCAL_HOST_NAMEDPIPE) ||
-	 mysql->options.named_pipe || !have_tcpip))
+        (!host && is_NT()) ||
+        (host && strcmp(host,LOCAL_HOST_NAMEDPIPE) == 0) ||
+        mysql->options.named_pipe ||
+        !have_tcpip) &&
+        mysql->options.protocol != MYSQL_PROTOCOL_TCP)
     {
       sock=0;
       if ((hPipe=create_named_pipe(net, mysql->options.connect_timeout,
@@ -2637,7 +2641,7 @@ mysql_get_client_info(void)
 
 
 int STDCALL
-mysql_options(MYSQL *mysql,enum mysql_option option, const char *arg)
+mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
 {
   DBUG_ENTER("mysql_option");
   DBUG_PRINT("enter",("option: %d",(int) option));
