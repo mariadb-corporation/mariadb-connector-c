@@ -2885,6 +2885,7 @@ static int test_bug6096(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   query_result= mysql_store_result(mysql);
   query_field_list= mysql_fetch_fields(query_result);
+  FAIL_IF(!query_field_list, "fetch_fields faild");
   query_field_count= mysql_num_fields(query_result);
 
   stmt= mysql_stmt_init(mysql);
@@ -3710,6 +3711,8 @@ static int test_bug53311(MYSQL *mysql)
   return OK;
 }
 #define PREPARE_SQL "EXPLAIN SELECT t1.*, t2.* FROM test AS t1, test AS t2"
+
+#ifdef NOT_IN_USE
 static int test_metadata(MYSQL *mysql)
 {
   int rc;
@@ -3758,6 +3761,7 @@ end2:
 end:
 	return 0;
 }
+#endif
 
 static int test_conc_5(MYSQL *mysql)
 {

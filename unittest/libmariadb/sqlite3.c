@@ -8,7 +8,6 @@ static int test1(MYSQL *mysql)
 {
   MYSQL_ROW row;
   MYSQL_RES *res;
-  MYSQL_FIELD *fields;
   int rc;
 
   MYSQL *my= mysql_init(NULL);
@@ -46,8 +45,6 @@ static int test1(MYSQL *mysql)
   check_mysql_rc(rc, my);
   res= mysql_use_result(my);
   FAIL_IF(!res, mysql_error(my));
-
-  fields= mysql_fetch_fields(res);
 
   while ((row= mysql_fetch_row(res)) != NULL)
   {

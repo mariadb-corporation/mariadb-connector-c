@@ -20,8 +20,9 @@ static int basic_connect(MYSQL *mysql)
   check_mysql_rc(rc, my);
 
   res= mysql_store_result(my);
-  field= mysql_fetch_fields(res);
   FAIL_IF(!res, mysql_error(my));
+  field= mysql_fetch_fields(res);
+  FAIL_IF(!field, "Couldn't fetch fields");
 
   while ((row= mysql_fetch_row(res)) != NULL)
   {

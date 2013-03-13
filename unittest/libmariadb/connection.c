@@ -169,7 +169,6 @@ static int test_change_user(MYSQL *mysql)
 
   diag("Due to mysql_change_user security fix this test will not work anymore.");
   return(SKIP);
-  DBUG_ENTER("test_change_user");
 
   /* Prepare environment */
   sprintf(buff, "drop database if exists %s", db);

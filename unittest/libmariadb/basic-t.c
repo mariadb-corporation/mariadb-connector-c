@@ -46,9 +46,9 @@ static int basic_connect(MYSQL *mysql)
   check_mysql_rc(rc, my);
 
   res= mysql_store_result(my);
-  field= mysql_fetch_fields(res);
   FAIL_IF(!res, mysql_error(my));
-
+  field= mysql_fetch_fields(res);
+  FAIL_IF(!field, "couldn't fetch field");
   while ((row= mysql_fetch_row(res)) != NULL)
   {
     FAIL_IF(mysql_num_fields(res) != 1, "Got the wrong number of fields");

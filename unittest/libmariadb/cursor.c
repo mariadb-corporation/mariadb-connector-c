@@ -46,6 +46,10 @@ MYSQL_STMT *open_cursor(MYSQL *mysql, const char *query)
 
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  if (rc) {
+    diag("Error: %s", mysql_stmt_error(stmt));
+    return NULL;
+  }
   mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, (void*) &type);
   return stmt;
 }

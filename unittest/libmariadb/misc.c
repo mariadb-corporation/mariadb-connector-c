@@ -51,12 +51,17 @@ static int test_bug28505(MYSQL *mysql)
   int rc;
 
   rc= mysql_query(mysql, "drop table if exists t1");
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "create table t1(f1 int primary key)");
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "insert into t1 values(1)");
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "insert into t1 values(1) on duplicate key update f1=1");
+  check_mysql_rc(rc, mysql);
   res= mysql_affected_rows(mysql);
   FAIL_UNLESS(!res, "res != 0");
   rc= mysql_query(mysql, "drop table t1");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -251,7 +256,7 @@ static int test_frm_bug(MYSQL *mysql)
   char       test_frm[FN_REFLEN];
   int        rc;
 
-
+  return SKIP;
   mysql_autocommit(mysql, TRUE);
 
   rc= mysql_query(mysql, "drop table if exists test_frm_bug");
@@ -815,7 +820,7 @@ struct my_tests_st my_tests[] = {
   {"test_bug29692", test_bug29692, TEST_CONNECTION_NEW, CLIENT_FOUND_ROWS,  NULL, NULL},
   {"test_bug31418", test_bug31418, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug6081", test_bug6081, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
-//  {"test_frm_bug", test_frm_bug, TEST_CONNECTION_NEW, 0,  NULL, NULL},
+  {"test_frm_bug", test_frm_bug, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_1", test_wl4166_1, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_2", test_wl4166_2, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_3", test_wl4166_3, TEST_CONNECTION_NEW, 0,  NULL, NULL},
