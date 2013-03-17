@@ -441,7 +441,7 @@ unsigned long STDCALL mysql_real_escape_string(MYSQL *mysql,
 					       unsigned long length);
 void		STDCALL mysql_debug(const char *debug);
 #define mysql_debug_init(A) mysql_debug((A));
-void            STDCALL mysql_debug_end();
+void    STDCALL mysql_debug_end(void);
 void 		STDCALL myodbc_remove_escape(MYSQL *mysql,char *name);
 unsigned int	STDCALL mysql_thread_safe(void);
 unsigned int STDCALL mysql_warning_count(MYSQL *mysql);

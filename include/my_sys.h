@@ -178,10 +178,12 @@ void   __CDECL hfree(void *ptr);
 #endif
 #endif /* MSDOS */
 
+#ifndef errno
 #ifdef HAVE_ERRNO_AS_DEFINE
 #include <errno.h>			/* errno is a define */
 #else
 extern int errno;			/* declare errno */
+#endif
 #endif
 extern const char ** NEAR my_errmsg[];
 extern char NEAR errbuff[NRERRBUFFS][ERRMSGSIZE];

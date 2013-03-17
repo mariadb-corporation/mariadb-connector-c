@@ -60,7 +60,7 @@
   const char *desc;                                     \
   unsigned int version[3];                              \
   int (*init)(char *, size_t, int, va_list);            \
-  int (*deinit)();
+  int (*deinit)(void);
 
 struct st_mysql_client_plugin
 {

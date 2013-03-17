@@ -37,7 +37,7 @@ SSL *my_ssl_init(MYSQL *mysql);
 int my_ssl_connect(SSL *ssl);
 
 int my_ssl_start(MYSQL *mysql);
-void my_ssl_end();
+void my_ssl_end(void);
 
 #endif /* HAVE_OPENSSL */
 #endif /* _ma_secure_h_ */
