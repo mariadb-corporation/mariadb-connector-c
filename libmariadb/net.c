@@ -75,7 +75,7 @@ typedef my_bool ALARM;
 #define thr_alarm_in_use(A) (*(A))
 #define thr_end_alarm(A)
 #define thr_alarm(A,B,C) local_thr_alarm((A),(B),(C))
-inline int local_thr_alarm(my_bool *A,int B __attribute__((unused)),ALARM *C __attribute__((unused)))
+static inline int local_thr_alarm(my_bool *A,int B __attribute__((unused)),ALARM *C __attribute__((unused)))
 {
   *A=1;
   return 0;
