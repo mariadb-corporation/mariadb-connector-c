@@ -702,11 +702,13 @@ append_wild(char *to, char *end, const char *wild)
 **************************************************************************/
 void STDCALL mysql_debug_end()
 {
+#ifndef DBUG_OFF
   if (_db_on_)
   {
     DEBUGGER_OFF;
     DBUG_POP();
   }
+#endif
 }
 
 void STDCALL
