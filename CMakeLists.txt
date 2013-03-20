@@ -17,6 +17,7 @@ ENDIF()
 ### Options ###
 IF(NOT WIN32)
   OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
+  OPTION(WITH_OPENSSL "enables SSL support" ON)
 ENDIF()
 
 OPTION(WITH_SQLITE "Enables Sqlite support" ON)
@@ -108,9 +109,11 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
 # Check for OpenSSL
-FIND_PACKAGE(OpenSSL)
-IF(OPENSSL_FOUND)
-  ADD_DEFINITIONS(-DHAVE_OPENSSL)
+IF(WITH_SSL)
+  FIND_PACKAGE(OpenSSL)
+  IF(OPENSSL_FOUND)
+    ADD_DEFINITIONS(-DHAVE_OPENSSL)
+  ENDIF()
 ENDIF()
 
 FIND_PACKAGE(ZLIB QUIET)
@@ -126,6 +129,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
+ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(libmariadb)
 ADD_SUBDIRECTORY(examples)
@@ -147,7 +151,9 @@ IF(WIN32)
  SET(CMAKE_INSTALL_PREFIX "")
 ENDIF()
 
-
+IF(WIN32)
+  ADD_SUBDIRECTORY(win/packaging)
+ENDIF()
 
 SET(CPACK_PACKAGE_VENDOR "Monty Program AB")
 SET(CPACK_PACKAGE_DESCRIPTION "MariaDB client library. A library for connecting to MariaDB and MySQL servers")
