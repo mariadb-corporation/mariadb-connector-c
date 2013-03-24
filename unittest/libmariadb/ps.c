@@ -4153,7 +4153,7 @@ static int test_set_option(MYSQL *mysql)
   mysql_autocommit(mysql, TRUE);
 
   /* LIMIT the rows count to 2 */
-  rc= mysql_query(mysql, "SET OPTION SQL_SELECT_LIMIT= 2");
+  rc= mysql_query(mysql, "SET SQL_SELECT_LIMIT= 2");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_limit");
@@ -4193,7 +4193,7 @@ static int test_set_option(MYSQL *mysql)
   mysql_stmt_close(stmt);
 
   /* RESET the LIMIT the rows count to 0 */
-  rc= mysql_query(mysql, "SET OPTION SQL_SELECT_LIMIT=DEFAULT");
+  rc= mysql_query(mysql, "SET SQL_SELECT_LIMIT=DEFAULT");
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
@@ -4543,6 +4543,52 @@ static int test_stmt_close(MYSQL *mysql)
   return OK;
 }
 
+static int test_new_date(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[1];
+  int rc;
+  char buffer[50];
+
+
+  mysql->reconnect= 1;
+
+  /* set AUTOCOMMIT to ON*/
+  mysql_autocommit(mysql, TRUE);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a date, b date)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (now(), now() + INTERVAL 1 day)");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, "SELECT if(1, a, b) FROM t1", 26);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer_length= 50;
+  bind[0].buffer= (void *)buffer;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc != MYSQL_NO_DATA, "NO DATA expected");
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
   {"test_prepare_insert_update", test_prepare_insert_update, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
@@ -4606,6 +4652,7 @@ struct my_tests_st my_tests[] = {
   {"test_set_variable", test_set_variable, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_sqlmode", test_sqlmode, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_stmt_close", test_stmt_close, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
+  {"test_new_date", test_new_date, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

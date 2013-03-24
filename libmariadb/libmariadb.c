@@ -593,7 +593,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   result=0;
   if (!skipp_check) {
     result= ((mysql->packet_length=net_safe_read(mysql)) == packet_error ?
-	     -1 : 0);
+	     1 : 0);
     DBUG_PRINT("info", ("packet_length=%llu", mysql->packet_length));
   }
  end:
