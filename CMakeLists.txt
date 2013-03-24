@@ -21,7 +21,7 @@ IF(NOT WIN32)
   OPTION(WITH_OPENSSL "enables SSL support" ON)
 ENDIF()
 
-OPTION(WITH_SQLITE "Enables Sqlite support" ON)
+OPTION(WITH_SQLITE "Enables Sqlite support" OFF)
 ###############
 
 
