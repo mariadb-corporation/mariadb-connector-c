@@ -4590,7 +4590,77 @@ static int test_new_date(MYSQL *mysql)
   return OK;
 }
 
+static int test_long_data1(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int        rc;
+  MYSQL_RES  *result;
+  MYSQL_BIND bind[1];
+  char query[MAX_TEST_QUERY_LENGTH];
+  char *data= "12345";
+
+  rc= mysql_autocommit(mysql, TRUE);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS tld");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE tld (col1 int, "
+                         "col2 long varbinary)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO tld VALUES (1,'test')");
+  check_mysql_rc(rc, mysql);
+
+  strcpy(query, "UPDATE tld SET col2=? WHERE col1=1");
+  stmt= mysql_stmt_init(mysql);
+  FAIL_IF(!stmt, mysql_error(mysql));
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_send_long_data(stmt, 0, data, 6);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_close(stmt);
+  check_stmt_rc(rc, stmt);
+  return OK;
+}
+
+int test_blob_9000(MYSQL *mysql)
+{
+  MYSQL_BIND bind[1];
+  MYSQL_STMT *stmt;
+  int rc;
+  char buffer[9200];
+  char *query= "INSERT INTO tb9000 VALUES (?)";
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS tb9000");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE tb9000 (a blob)");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  memset(buffer, 'C', 9200);
+  bind[0].buffer= buffer;
+  bind[0].buffer_length= 9200;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_blob_9000", test_blob_9000, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
+  {"test_long_data1", test_long_data1, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_prepare_insert_update", test_prepare_insert_update, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_prepare_simple", test_prepare_simple, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_prepare_syntax", test_prepare_syntax, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},

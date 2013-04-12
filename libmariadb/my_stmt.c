@@ -504,7 +504,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
                    n      data from bind_buffer
   */
 
-  size_t length= 9000;
+  size_t length= 1024;
   size_t free_bytes= 0;
   size_t data_size= 0;
   uint i;
@@ -512,6 +512,16 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   uchar *start= NULL, *p;
 
   DBUG_ENTER("mysql_stmt_execute_generate_request");
+
+  /* calculate length */
+  for (i=0; i < stmt->param_count; i++)
+  {
+    if (!stmt->params[i].long_data_used)
+      length+= stmt->params[i].buffer_length ?
+               stmt->params[i].buffer_length + 1 : 
+                 stmt->params[i].buffer_type ? 
+                    mysql_ps_fetch_functions[MYSQL_TYPE_YEAR].pack_len + 1 : 1;
+  }
 
   if (!(start= p= (uchar *)my_malloc(length, MYF(MY_WME | MY_ZEROFILL))))
     goto mem_error;
@@ -573,7 +583,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         stmt->params[i].is_null = &is_not_null;
       if (!stmt->params[i].length)
         stmt->params[i].length= &stmt->params[i].length_value;
-      if (!*stmt->params[i].is_null && !stmt->params[i].long_data_used)
+      if (!stmt->params[i].is_null && !stmt->params[i].long_data_used)
       {
         switch (stmt->params[i].buffer_type) {
         case MYSQL_TYPE_NULL:
