@@ -459,6 +459,7 @@ static int test_opt_reconnect(MYSQL *mysql)
   return OK;
 }
 
+
 static int test_compress(MYSQL *mysql)
 {
   MYSQL_RES *res;
@@ -492,6 +493,44 @@ static int test_compress(MYSQL *mysql)
   return OK;
 }
 
+static int test_reconnect(MYSQL *mysql)
+{
+  my_bool my_true= TRUE;
+  MYSQL *mysql1;
+  int rc;
+
+  mysql1= mysql_init(NULL);
+  FAIL_IF(!mysql1, "not enough memory");
+
+  FAIL_UNLESS(mysql1->reconnect == 0, "reconnect != 0");
+
+  rc= mysql_options(mysql1, MYSQL_OPT_RECONNECT, &my_true);
+  check_mysql_rc(rc, mysql1);
+
+  FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
+
+  if (!(mysql_real_connect(mysql1, hostname, username,
+                           password, schema, port,
+                           socketname, 0)))
+  {
+    diag("connection failed");
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
+
+  diag("Thread_id before kill: %d", mysql_thread_id(mysql1));
+  mysql_kill(mysql, mysql_thread_id(mysql1));
+
+  rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
+  check_mysql_rc(rc, mysql1);
+  diag("Thread_id after kill: %d", mysql_thread_id(mysql1));
+
+  mysql_close(mysql1);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
@@ -499,6 +538,7 @@ struct my_tests_st my_tests[] = {
   {"test_change_user", test_change_user, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_opt_reconnect", test_opt_reconnect, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_reconnect", test_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

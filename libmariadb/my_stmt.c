@@ -126,6 +126,7 @@ static int stmt_unbuffered_fetch(MYSQL_STMT *stmt, uchar **row)
   }
   else
     *row = stmt->mysql->net.read_pos;
+  stmt->result.rows++;
   DBUG_RETURN(0);
 }
 

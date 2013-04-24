@@ -77,8 +77,6 @@ typedef enum mysql_stmt_state
   MYSQL_STMT_FETCH_DONE
 } enum_mysqlnd_stmt_state;
 
-
-
 typedef struct st_mysql_bind
 {
   unsigned long  *length;          /* output length pointer */
