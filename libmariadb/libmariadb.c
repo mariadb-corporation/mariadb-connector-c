@@ -1723,8 +1723,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
   mysql->port=port;
   client_flag|=mysql->options.client_flag;
 
-  mysql->server_version= my_strdup(end, MYF(0));
-  end+= strlen(mysql->server_version) + 1;
+  if (strncmp(end, "5.5.5-", 6) == 0)
+    mysql->server_version= my_strdup(end + 6, 0);
+  else
+    mysql->server_version= my_strdup(end, MYF(0));
+  end+= strlen(end) + 1;
 
   mysql->thread_id=uint4korr(end);
   end+=4;

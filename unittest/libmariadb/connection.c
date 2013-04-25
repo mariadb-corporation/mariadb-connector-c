@@ -531,6 +531,34 @@ static int test_reconnect(MYSQL *mysql)
   return OK;
 }
 
+int test_conc21(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_RES *res= NULL;
+  MYSQL_ROW row;
+  char tmp[256];
+  int check_server_version= 0;
+  int major=0, minor= 0, patch=0;
+
+  rc= mysql_query(mysql, "SELECT @@version");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  FAIL_IF(res == NULL, "invalid result set");
+
+  row= mysql_fetch_row(res);
+  strcpy(tmp, row[0]);
+  mysql_free_result(res);
+  
+  sscanf(tmp, "%d.%d.%d", &major, &minor, &patch);
+
+  check_server_version= major * 10000 + minor * 100 + patch;
+
+  FAIL_IF(mysql_get_server_version(mysql) != check_server_version, "Numeric server version mismatch");
+  FAIL_IF(strcmp(mysql_get_server_info(mysql), tmp) != 0, "String server version mismatch");
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
@@ -539,6 +567,7 @@ struct my_tests_st my_tests[] = {
   {"test_opt_reconnect", test_opt_reconnect, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_reconnect", test_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc21", test_conc21, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
