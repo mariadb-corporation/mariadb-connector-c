@@ -173,28 +173,68 @@ static my_bool net_realloc(NET *net, size_t length)
   DBUG_RETURN(0);
 }
 
+static int net_check_if_data_available(Vio *vio)
+{
+  my_socket sd= vio->sd;
+  fd_set sockset;
+  struct timeval tv;
+  int rc;
+
+  FD_ZERO(&sockset);
+  FD_SET(sd, &sockset);
+
+  memset(&tv, 0, sizeof(tv));
+  rc= select(sd + 1, &sockset, NULL, NULL, &tv);
+  if (rc <= 0)
+    return 0;
+  return FD_ISSET(sd, &sockset);
+}
+
 	/* Remove unwanted characters from connection */
 
 void net_clear(NET *net)
 {
-#ifndef EXTRA_DEBUG
-  int count;					/* One may get 'unused' warning */
+  int available= 0;
+  size_t count;					/* One may get 'unused' warning */
   bool is_blocking=vio_is_blocking(net->vio);
-  if (is_blocking)
-    vio_blocking(net->vio, FALSE);
-  if (!vio_is_blocking(net->vio))		/* Safety if SSL */
+
+  DBUG_ENTER("net_clear");
+
+  while ((available= net_check_if_data_available(net->vio)) > 0)
   {
-    while ( (count = vio_read(net->vio, (char*) (net->buff),
-			      net->max_packet)) > 0)
+    if ((count= vio_read(net->vio, (char *)net->buff, net->max_packet)))
+    {
       DBUG_PRINT("info",("skipped %d bytes from file: %s",
 			 count,vio_description(net->vio)));
-    if (is_blocking)
-      vio_blocking(net->vio, TRUE);
+    }
+    else
+    {
+      DBUG_PRINT("info", ("socket disconnected"));
+      net->error= 2;
+      break;
+    }
   }
-#endif /* EXTRA_DEBUG */
+  
+  if (available == -1)
+  {
+    if (is_blocking)
+      vio_blocking(net->vio, FALSE);
+  
+    if (!vio_is_blocking(net->vio))		/* Safety if SSL */
+    {
+      while ( (count = vio_read(net->vio, (char*) (net->buff),
+			        net->max_packet)) > 0)
+        DBUG_PRINT("info",("skipped %d bytes from file: %s",
+			   count,vio_description(net->vio)));
+      if (is_blocking)
+        vio_blocking(net->vio, TRUE);
+    }
+  }
   net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
+  DBUG_VOID_RETURN;
 }
+
 
 	/* Flush write_buffer if not empty. */
 
