@@ -760,10 +760,22 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       break;
     case MYSQL_TYPE_TIME:
       length= sprintf(dtbuffer, "%s%02u:%02u:%02u", (tm.neg ? "-" : ""), tm.hour, tm.minute, tm.second);
+      if (tm.second_part)
+      {
+        char helper[16];
+        sprintf(helper, ".%%0%du", field->decimals);
+        length+= sprintf(dtbuffer + length, helper, tm.second_part);
+      }
       break;
     case MYSQL_TYPE_DATETIME:
     case MYSQL_TYPE_TIMESTAMP:
       length= sprintf(dtbuffer, "%04u-%02u-%02u %02u:%02u:%02u", tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second);
+      if (tm.second_part)
+      {
+        char helper[16];
+        sprintf(helper, ".%%0%du", field->decimals);
+        length+= sprintf(dtbuffer + length, helper, tm.second_part);
+      }
       break;
     default:
       dtbuffer[0]= 0;

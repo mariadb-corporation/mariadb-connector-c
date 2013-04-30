@@ -4594,7 +4594,6 @@ static int test_long_data1(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int        rc;
-  MYSQL_RES  *result;
   MYSQL_BIND bind[1];
   char query[MAX_TEST_QUERY_LENGTH];
   char *data= "12345";
@@ -4658,7 +4657,77 @@ int test_blob_9000(MYSQL *mysql)
   return OK;
 }
 
+int test_fracseconds(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int rc;
+  char *str= "SELECT NOW(6)";
+  char buffer[60], buffer1[60];
+  MYSQL_BIND bind[2];
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, str, strlen(str));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer= buffer;
+  bind[0].buffer_length=60;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(strlen(buffer) != 26, "Expected timestamp with length of 26");
+
+  rc= mysql_stmt_close(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a timestamp(6), b time(6))");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES ('2012-04-25 10:20:49.0194','10:20:49.0194' )");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, "SELECT a,b FROM t1", 18);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
+  bind[0].buffer= buffer;
+  bind[1].buffer= buffer1;
+  bind[0].buffer_length=  bind[1].buffer_length= 60;
+  bind[0].buffer_type= bind[1].buffer_type= MYSQL_TYPE_STRING;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+  FAIL_IF(strcmp(buffer, "2012-04-25 10:20:49.019400") != 0, "Wrong result");
+  FAIL_IF(strcmp(buffer1, "10:20:49.019400") != 0, "Wrong result");
+
+  rc= mysql_stmt_close(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+
+  return OK;  
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_fracseconds", test_fracseconds, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_blob_9000", test_blob_9000, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_long_data1", test_long_data1, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_prepare_insert_update", test_prepare_insert_update, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
