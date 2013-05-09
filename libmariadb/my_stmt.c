@@ -949,6 +949,7 @@ void STDCALL mysql_stmt_data_seek(MYSQL_STMT *stmt, my_ulonglong offset)
     ptr= ptr->next;
 
   stmt->result_cursor= ptr;
+  stmt->state= MYSQL_STMT_USER_FETCHING;
 
   DBUG_VOID_RETURN;
 }
