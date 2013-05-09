@@ -21,24 +21,17 @@
 #ifndef _mysql_h
 #define _mysql_h
 
-#ifndef MYSQL_SERVER
 #ifdef	__cplusplus
 extern "C" {
 #endif
-#endif
 
-  
 #ifndef _global_h				/* If not standard header */
 #include <sys/types.h>
-#ifdef __LCC__
-#include <winsock2.h>				/* For windows */
-#endif
 typedef char my_bool;
 
 #if !defined(_WIN32)
 #define STDCALL
 #else
-#include <WinSock2.h>
 #define STDCALL __stdcall
 #endif
 typedef char * gptr;
@@ -47,8 +40,10 @@ typedef char * gptr;
 
 #ifndef my_socket_defined
 #define my_socket_defined
-#ifdef _WIN32
-#define my_socket SOCKET
+#if defined(_WIN64)
+#define my_socket unsigned long long
+#elif defined(_WIN32)
+#define my_socket unsigned int
 #else
 typedef int my_socket;
 #endif

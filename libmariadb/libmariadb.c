@@ -1879,6 +1879,7 @@ static my_bool mysql_reconnect(MYSQL *mysql)
   }
   mysql_init(&tmp_mysql);
   tmp_mysql.options=mysql->options;
+  tmp_mysql.reconnect= mysql->reconnect;
   bzero((char*) &mysql->options,sizeof(mysql->options));
   if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
 			  mysql->db, mysql->port, mysql->unix_socket,

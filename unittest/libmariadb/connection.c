@@ -527,6 +527,7 @@ static int test_reconnect(MYSQL *mysql)
   check_mysql_rc(rc, mysql1);
   diag("Thread_id after kill: %d", mysql_thread_id(mysql1));
 
+  FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
   mysql_close(mysql1);
   return OK;
 }
