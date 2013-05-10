@@ -65,6 +65,7 @@
 #endif
 
 static my_bool mysql_client_init=0;
+static void mysql_close_options(MYSQL *mysql);
 extern my_bool  my_init_done;
 extern my_bool  mysql_ps_subsystem_initialized;
 extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename);
@@ -1858,6 +1859,8 @@ error:
     end_server(mysql);
     /* only free the allocated memory, user needs to call mysql_close */
     mysql_close_memory(mysql);
+    if (!(((ulong) client_flag) & CLIENT_REMEMBER_OPTIONS))
+      mysql_close_options(mysql);
   }
   DBUG_RETURN(0);
 }

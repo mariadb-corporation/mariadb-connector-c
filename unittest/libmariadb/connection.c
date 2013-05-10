@@ -560,6 +560,27 @@ int test_conc21(MYSQL *mysql)
   return OK;
 }
 
+int test_conc26(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
+
+  FAIL_IF(mysql_real_connect(mysql, hostname, "notexistinguser", "password", schema, port, NULL, CLIENT_REMEMBER_OPTIONS), 
+          "Error expected");
+
+  FAIL_IF(!mysql->options.charset_name || strcmp(mysql->options.charset_name, "utf8") != 0, 
+          "expected charsetname=utf8");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(mysql_real_connect(mysql, hostname, "notexistinguser", "password", schema, port, NULL, 0), 
+          "Error expected");
+  FAIL_IF(mysql->options.charset_name, "Error: options not freed");
+  mysql_close(mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
@@ -569,6 +590,7 @@ struct my_tests_st my_tests[] = {
   {"test_compress", test_compress, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_reconnect", test_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc21", test_conc21, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc26", test_conc26, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
