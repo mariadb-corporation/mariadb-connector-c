@@ -129,7 +129,95 @@ static int test_multi_result(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 }
 
+int test_sp_params(MYSQL *mysql)
+{
+ int i, rc;
+  MYSQL_STMT *stmt;
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+  int a[] = {10,20,30};
+  MYSQL_BIND bind[3];
+  char *stmtstr= "CALL P1(?,?,?)";
+  char res[3][20];
+
+  rc= mysql_query(mysql, "CREATE PROCEDURE p1(OUT p_out VARCHAR(19), IN p_in INT, INOUT p_inout INT)" 
+                         "BEGIN "
+                          "  SET p_in = 300, p_out := 'This is OUT param', p_inout = 200; "
+                          "  SELECT p_inout, p_in, substring(p_out, 9);"
+                         "END");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_param_count(stmt) != 3, "expected param_count=3");
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 3);
+  for (i=0; i < 3; i++)
+  {
+    bind[i].buffer= &a[i];
+    bind[i].buffer_type= MYSQL_TYPE_LONG;
+  }
+  bind[0].buffer_type= MYSQL_TYPE_NULL;
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(res, 0, 60);
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 3);
+  for (i=0; i < 3; i++)
+  {
+    bind[i].buffer_type= MYSQL_TYPE_STRING;
+    bind[i].buffer_length= 20;
+    bind[i].buffer= res[i];
+  }
+
+  do {
+    if (mysql->server_status & SERVER_PS_OUT_PARAMS)
+    {
+      diag("out param result set");
+      FAIL_IF(mysql_stmt_field_count(stmt) != 2, "expected 2 columns");
+      FAIL_IF(strcmp(stmt->fields[0].org_name, "p_out") != 0, "wrong field name");
+      FAIL_IF(strcmp(stmt->fields[1].org_name, "p_inout") != 0, "wrong field name");
+      rc= mysql_stmt_bind_result(stmt, bind);
+      check_stmt_rc(rc, stmt);
+      rc= mysql_stmt_fetch(stmt);
+      check_stmt_rc(rc, stmt);
+      FAIL_IF(strcmp(res[0],"This is OUT param") != 0, "comparison failed");
+      FAIL_IF(strcmp(res[1],"200") != 0, "comparison failed");
+    }
+    else
+    if (mysql_stmt_field_count(stmt))
+    {
+      diag("sp result set");
+      FAIL_IF(mysql_stmt_field_count(stmt) != 3, "expected 3 columns");
+      rc= mysql_stmt_bind_result(stmt, bind);
+      check_stmt_rc(rc, stmt);
+      rc= mysql_stmt_fetch(stmt);
+      check_stmt_rc(rc, stmt);
+      FAIL_IF(strcmp(res[0],"200") != 0, "comparison failed");
+      FAIL_IF(strcmp(res[1],"300") != 0, "comparison failed");
+      FAIL_IF(strcmp(res[2],"OUT param") != 0, "comparison failed");
+
+    }
+  } while (mysql_stmt_next_result(stmt) == 0);
+
+
+
+  rc= mysql_stmt_close(stmt);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_sp_params", test_sp_params, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS, NULL , NULL},
   {"test_multi_result", test_multi_result, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS, NULL , NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };

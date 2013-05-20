@@ -1295,6 +1295,55 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
   DBUG_RETURN(0);
 }
 
+static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
+{
+  int i;
+
+  DBUG_ENTER("madb_alloc_stmt_fields");
+
+  if (stmt->mysql->field_count)
+  {
+    if (!(stmt->fields= (MYSQL_FIELD *)alloc_root(&stmt->mem_root,
+                                                 sizeof(MYSQL_FIELD) * stmt->mysql->field_count)))
+    {
+      SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      DBUG_RETURN(1);
+    }
+    stmt->field_count= stmt->mysql->field_count;
+    
+    for (i=0; i < stmt->field_count; i++)
+    {
+      if (stmt->mysql->fields[i].db)
+        stmt->fields[i].db= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].db);
+      if (stmt->mysql->fields[i].table)
+        stmt->fields[i].table= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].table);
+      if (stmt->mysql->fields[i].org_table)
+        stmt->fields[i].org_table= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].org_table);
+      if (stmt->mysql->fields[i].name)
+        stmt->fields[i].name= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].name);
+      if (stmt->mysql->fields[i].org_name)
+        stmt->fields[i].org_name= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].org_name);
+      if (stmt->mysql->fields[i].catalog)
+        stmt->fields[i].catalog= strdup_root(&stmt->mem_root, stmt->mysql->fields[i].catalog);
+        stmt->fields[i].def= stmt->mysql->fields[i].def ? strdup_root(&stmt->mem_root, stmt->mysql->fields[i].def) : NULL;
+      stmt->fields[i].type= stmt->mysql->fields[i].type;
+      stmt->fields[i].length= stmt->mysql->fields[i].length;
+      stmt->fields[i].flags= stmt->mysql->fields[i].flags;
+      stmt->fields[i].decimals= stmt->mysql->fields[i].decimals;
+      stmt->fields[i].charsetnr= stmt->mysql->fields[i].charsetnr;
+    }
+    if (!(stmt->bind= (MYSQL_BIND *)alloc_root(&stmt->mem_root, stmt->field_count * sizeof(MYSQL_BIND))))
+    {
+      SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      DBUG_RETURN(1);
+    }
+    bzero(stmt->bind, stmt->field_count * sizeof(MYSQL_BIND));
+    stmt->bind_result_done= 0;
+  }
+  DBUG_RETURN(0);
+}
+
+
 int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
 {
   char *request;
@@ -1621,6 +1670,7 @@ MYSQL_RES* STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt)
 
 int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
 {
+  int rc;
   DBUG_ENTER("mysql_stmt_next_result");
 
   if (!stmt->mysql)
@@ -1649,12 +1699,10 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
     DBUG_RETURN(1);
   }
 
-  if (stmt->field_count != stmt->mysql->field_count)
-  {
-    if (stmt->bind)
-      stmt->bind= NULL;
-    stmt->field_count= stmt->mysql->field_count;
-  }
+  if (stmt->mysql->field_count)
+    rc= madb_alloc_stmt_fields(stmt);
 
-  DBUG_RETURN(0);
+  stmt->field_count= stmt->mysql->field_count;
+
+  DBUG_RETURN(rc);
 }
