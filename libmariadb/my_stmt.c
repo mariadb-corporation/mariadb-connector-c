@@ -59,6 +59,11 @@
 #include <time.h>
 #include <mysql/client_plugin.h>
 
+#define MADB_RESET_ERROR     1
+#define MADB_RESET_LONGDATA  2
+#define MADB_RESET_SERVER    4
+#define MADB_RESET_BUFFER    8
+
 static my_bool is_not_null= 0;
 static my_bool is_null= 1;
 
@@ -97,6 +102,8 @@ my_bool mthd_supported_buffer_type(enum enum_field_types type)
 
   }
 }
+
+static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags);
 
 static int stmt_unbuffered_eof(MYSQL_STMT *stmt, uchar **row)
 {
@@ -514,16 +521,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
   DBUG_ENTER("mysql_stmt_execute_generate_request");
 
-  /* calculate length */
-  for (i=0; i < stmt->param_count; i++)
-  {
-    if (!stmt->params[i].long_data_used)
-      length+= stmt->params[i].buffer_length ?
-               stmt->params[i].buffer_length + 1 : 
-                 stmt->params[i].buffer_type ? 
-                    mysql_ps_fetch_functions[MYSQL_TYPE_YEAR].pack_len + 1 : 1;
-  }
-
+  /* preallocate length bytes */
   if (!(start= p= (uchar *)my_malloc(length, MYF(MY_WME | MY_ZEROFILL))))
     goto mem_error;
 
@@ -537,11 +535,20 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   int1store(p, 1); /* and send 1 for iteration count */
   p+= 4;
 
-
   if (stmt->param_count)
   {
     size_t null_byte_offset,
            null_count= (stmt->param_count + 7) / 8;
+
+    free_bytes= length - (p - start);
+    if (null_count + 20 > free_bytes)
+    {
+      size_t offset= p - start;
+      length+= offset + null_count + 20;
+      if (!(start= (uchar *)my_realloc(start, length, MYF(MY_WME | MY_ZEROFILL))))
+        goto mem_error;
+      p= start + offset;
+    }
 
     null_byte_offset = p - start;
     memset(p, 0, null_count);
@@ -560,14 +567,10 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     {
       if (free_bytes < stmt->param_count * 2 + 20)
       {
-        uchar *buf;
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
-        if (!(buf= (uchar *)my_malloc(length, MYF(MY_WME | MY_ZEROFILL))))
+        if (!(start= (uchar *)my_realloc(start, length, MYF(MY_WME | MY_ZEROFILL))))
           goto mem_error;
-        memcpy(buf, start, offset);
-        my_free((gptr)start, MYF(0));
-        start= buf;
         p= start + offset;
       }
       for (i = 0; i < stmt->param_count; i++)
@@ -584,7 +587,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         stmt->params[i].is_null = &is_not_null;
       if (!stmt->params[i].length)
         stmt->params[i].length= &stmt->params[i].length_value;
-      if (!stmt->params[i].is_null && !stmt->params[i].long_data_used)
+      if (!(stmt->params[i].is_null && *stmt->params[i].is_null) && !stmt->params[i].long_data_used)
       {
         switch (stmt->params[i].buffer_type) {
         case MYSQL_TYPE_NULL:
@@ -605,7 +608,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         case MYSQL_TYPE_BIT:
         case MYSQL_TYPE_SET:
           data_size+= 5; /* max 8 bytes for size */
-          data_size+= *stmt->params[i].length;     
+          data_size+= (size_t)*stmt->params[i].length;
           break;
         default:
           data_size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
@@ -618,14 +621,10 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     free_bytes= length - (p - start);
     if (free_bytes < data_size + 20)
     {
-      uchar *buf;
       size_t offset= p - start;
       length= offset + data_size + 20;
-      if (!(buf= (uchar *)my_malloc(length, MYF(MY_WME | MY_ZEROFILL))))
+      if (!(start= (uchar *)my_realloc(start, length, MYF(MY_WME | MY_ZEROFILL))))
         goto mem_error;
-      memcpy(buf, start, offset);
-      my_free((gptr)start, MYF(0));
-      start= buf;
       p= start + offset;
     }
     for (i = 0; i < stmt->param_count; i++) 
@@ -1058,7 +1057,7 @@ unsigned int STDCALL mysql_stmt_field_count(MYSQL_STMT *stmt)
 
 my_bool STDCALL mysql_stmt_free_result(MYSQL_STMT *stmt)
 {
-  return mysql_stmt_reset(stmt);
+  return madb_reset_stmt(stmt, MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR);
 }
 
 MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
@@ -1508,52 +1507,97 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   DBUG_RETURN(0);
 }
 
-my_bool STDCALL mysql_stmt_reset(MYSQL_STMT *stmt)
+static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
 {
-  unsigned char cmd_buf[STMT_ID_LENGTH];
-  my_bool ret= 1;
+  my_bool ret= 0;
 
-  DBUG_ENTER("mysql_stmt_reset");
-
+  DBUG_ENTER("madb_stmt_reset");
   if (!stmt->mysql)
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
 
-  CLEAR_CLIENT_ERROR(stmt->mysql);
-  CLEAR_CLIENT_STMT_ERROR(stmt);
-
+  /* clear error */
+  if (flags & MADB_RESET_ERROR)
+  {
+    CLEAR_CLIENT_ERROR(stmt->mysql);
+    CLEAR_CLIENT_STMT_ERROR(stmt);
+  }
 
   if (stmt->stmt_id)
   {
-    if (stmt->state == MYSQL_STMT_WAITING_USE_OR_STORE)
+    if (flags & MADB_RESET_BUFFER)
     {
-      stmt->default_rset_handler(stmt);
-      stmt->state = MYSQL_STMT_USER_FETCHING;
+      if (stmt->state == MYSQL_STMT_WAITING_USE_OR_STORE)
+      {
+        stmt->default_rset_handler(stmt);
+        stmt->state = MYSQL_STMT_USER_FETCHING;
+      }
+
+      if (stmt->mysql->status!= MYSQL_STATUS_READY && stmt->field_count)
+      {
+        stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
+        stmt->mysql->status= MYSQL_STATUS_READY;
+      } 
     }
 
-    if (stmt->mysql->status!= MYSQL_STATUS_READY && stmt->field_count)
+    if (flags & MADB_RESET_SERVER)
     {
-      stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
-      stmt->mysql->status= MYSQL_STATUS_READY;
-    } 
+      /* reset statement on server side */
+      if (stmt->mysql->status == MYSQL_STATUS_READY)
+      {
+         unsigned char cmd_buf[STMT_ID_LENGTH];
+         int4store(cmd_buf, stmt->stmt_id);
+         if ((ret= simple_command(stmt->mysql,MYSQL_COM_STMT_RESET, (char *)cmd_buf, sizeof(cmd_buf), 0, stmt)))
+         {
+           SET_CLIENT_STMT_ERROR(stmt, stmt->mysql->net.last_errno, stmt->mysql->net.sqlstate,
+                            stmt->mysql->net.last_error);
+           DBUG_RETURN(ret);
+         }
+      }
+    }
 
-    /* reset statement on server side */
-    if (stmt->mysql->status == MYSQL_STATUS_READY)
+    if (flags & MADB_RESET_LONGDATA)
     {
-       int4store(cmd_buf, stmt->stmt_id);
-       if ((ret= simple_command(stmt->mysql,MYSQL_COM_STMT_RESET, (char *)cmd_buf, sizeof(cmd_buf), 0, stmt)))
-         SET_CLIENT_STMT_ERROR(stmt, stmt->mysql->net.last_errno, stmt->mysql->net.sqlstate,
-                          stmt->mysql->net.last_error);
-       
+      if (stmt->params)
+      {
+        ulonglong i;
+        for (i=0; i < stmt->param_count; i++)
+          if (stmt->params[i].long_data_used)
+            stmt->params[i].long_data_used= 0;
+      }
     }
-    if (stmt->params) {
-      ulonglong i;
-      for (i=0; i < stmt->param_count; i++)
-        if (stmt->params[i].long_data_used)
-          stmt->params[i].long_data_used= 0;
-    }
+
+  }
+  DBUG_RETURN(ret);
+}
+
+my_bool STDCALL mysql_stmt_reset(MYSQL_STMT *stmt)
+{
+  my_bool ret= 1;
+
+  DBUG_ENTER("mysql_stmt_reset");
+
+  ret= madb_reset_stmt(stmt, MADB_RESET_LONGDATA | 
+                             MADB_RESET_SERVER | MADB_RESET_ERROR);
+
+
+  /* flush any pending (multiple) result sets */
+  if (stmt->state == MYSQL_STMT_WAITING_USE_OR_STORE)
+  {
+    stmt->default_rset_handler(stmt);
+    stmt->state = MYSQL_STMT_USER_FETCHING;
+  }
+
+  if (stmt->mysql->status!= MYSQL_STATUS_READY && stmt->field_count)
+  {
+    while (mysql_stmt_next_result(stmt) == 0); 
+    stmt->mysql->status= MYSQL_STATUS_READY;
+  } 
+
+  if (stmt->stmt_id)
+  {
     stmt->state= MYSQL_STMT_PREPARED;
     stmt->upsert_status.affected_rows= stmt->mysql->affected_rows;
     stmt->upsert_status.last_insert_id= stmt->mysql->insert_id;
@@ -1689,7 +1733,7 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
   if (!mysql_more_results(stmt->mysql))
     DBUG_RETURN(-1);
 
-  mysql_stmt_reset(stmt);
+  madb_reset_stmt(stmt, MADB_RESET_ERROR | MADB_RESET_BUFFER | MADB_RESET_LONGDATA); 
   stmt->state= MYSQL_STMT_WAITING_USE_OR_STORE;
 
   if (mysql_next_result(stmt->mysql))

@@ -171,8 +171,10 @@ static int test_simple_prepare(MYSQL *my)
 
 
 struct my_tests_st my_tests[] = {
+#ifdef HAVE_SQLITE
   {"test-sqlite", test1, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_simple_prepare", test_simple_prepare, TEST_CONNECTION_NONE, 0, NULL, NULL},
+#endif
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

@@ -4615,6 +4615,7 @@ static int test_long_data1(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   check_stmt_rc(rc, stmt);
+  memset(bind, 0, sizeof(MYSQL_BIND));
   bind[0].buffer_type= MYSQL_TYPE_STRING;
   rc= mysql_stmt_bind_param(stmt, bind);
   check_stmt_rc(rc, stmt);
