@@ -196,7 +196,7 @@ struct st_mysql_stmt
 
   my_bool                  cursor_exists;
 
-  void                     *ext_stmt;
+  void                     *extension;
   mysql_stmt_fetch_row_func fetch_row_func;
   unsigned int             execute_count;/* count how many times the stmt was executed */
   mysql_stmt_use_or_store_func default_rset_handler;

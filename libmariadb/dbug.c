@@ -69,6 +69,8 @@
 #ifdef DBUG_OFF
 #undef DBUG_OFF
 #endif
+
+#undef SAVE_MUTEX
 #include <my_global.h>
 #include <m_string.h>
 #include <errno.h>

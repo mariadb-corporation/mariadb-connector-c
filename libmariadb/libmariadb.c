@@ -1886,7 +1886,7 @@ static my_bool mysql_reconnect(MYSQL *mysql)
   bzero((char*) &mysql->options,sizeof(mysql->options));
   if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
 			  mysql->db, mysql->port, mysql->unix_socket,
-			  mysql->client_flag))
+			  mysql->client_flag | CLIENT_REMEMBER_OPTIONS))
   {
     my_set_error(mysql, tmp_mysql.net.last_errno, 
                         tmp_mysql.net.sqlstate, 
@@ -2035,6 +2035,8 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->default_auth, MYF(MY_ALLOW_ZERO_PTR));
     my_free((gptr)mysql->options.extension->db_driver, MYF(MY_ALLOW_ZERO_PTR));
   }
+  /* clear all pointer */
+  memset(&mysql->options, 0, sizeof(mysql->options));
 }
 
 static void mysql_close_memory(MYSQL *mysql)

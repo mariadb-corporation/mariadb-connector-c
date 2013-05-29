@@ -51,7 +51,7 @@ static int test_multi_result(MYSQL *mysql)
   stmt = mysql_stmt_init(mysql);
   if (!stmt)
   {
-    printf("Could not initialize statement\n");
+    diag("Could not initialize statement");
     exit(1);
   }
   rc = mysql_stmt_prepare(stmt, "CALL p1(?, ?, ?)", 16);
@@ -105,8 +105,8 @@ static int test_multi_result(MYSQL *mysql)
  
   FAIL_IF(int_data[0] != 10 || int_data[1] != 20 || int_data[2] != 30,
           "expected 10 20 30"); 
-
-  FAIL_IF(mysql_stmt_next_result(stmt) != 0, "expected more results");
+  rc= mysql_stmt_next_result(stmt);
+  check_stmt_rc(rc, stmt);
   rc= mysql_stmt_bind_result(stmt, rs_bind);
 
   rc= mysql_stmt_fetch(stmt);
@@ -126,20 +126,20 @@ static int test_multi_result(MYSQL *mysql)
   FAIL_IF(mysql_stmt_field_count(stmt) != 0, "expected 0 fields");
 
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  return OK;
 }
 
 int test_sp_params(MYSQL *mysql)
 {
- int i, rc;
+  int i, rc;
   MYSQL_STMT *stmt;
-
-  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
-  check_mysql_rc(rc, mysql);
   int a[] = {10,20,30};
   MYSQL_BIND bind[3];
   char *stmtstr= "CALL P1(?,?,?)";
   char res[3][20];
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE PROCEDURE p1(OUT p_out VARCHAR(19), IN p_in INT, INOUT p_inout INT)" 
                          "BEGIN "
@@ -254,6 +254,9 @@ int test_sp_reset(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
   rc= mysql_stmt_reset(stmt);
   check_stmt_rc(rc, stmt);
 
@@ -266,10 +269,214 @@ int test_sp_reset(MYSQL *mysql)
   return OK;
 }
 
+int test_sp_reset1(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[1];
+
+  char tmp[20];
+  char *stmtstr= "CALL P1(?)";
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE PROCEDURE p1(OUT p_out VARCHAR(19))" 
+                         "BEGIN "
+                          "  SET p_out = 'foo';"
+                          "  SELECT 'foo' FROM DUAL;"
+                          "  SELECT 'bar' FROM DUAL;"
+                         "END");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  memset(tmp, 0, sizeof(tmp));
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer= tmp;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer_length= 4;
+
+  mysql_stmt_bind_param(stmt, bind);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_next_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  /* mysql_stmt_reset should set statement in prepared state.
+   * this means: all subsequent result sets should be flushed.
+   * Let's try!
+   */ 
+  rc= mysql_stmt_reset(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_query(mysql, "DROP PROCEDURE p1");
+  check_mysql_rc(rc, mysql);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
+int test_sp_reset2(MYSQL *mysql)
+{
+  int rc, i;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[4];
+  long l[4];
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+  char *stmtstr= "CALL P1()";
+
+  rc= mysql_query(mysql, "CREATE PROCEDURE p1()" 
+                         "BEGIN "
+                          "  SET @a:=1;"
+                          "  INSERT INTO t1 VALUES(1);" 
+                          "  SELECT 1 FROM DUAL;"
+                          "  SELECT 2,3 FROM DUAL;"
+                          "  INSERT INTO t1 VALUES(2);" 
+                          "  SELECT 3,4,5 FROM DUAL;"
+                          "  SELECT 4,5,6,7 FROM DUAL;"
+                         "END");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 4);
+  for (i=0; i < 4; i++)
+  {
+    bind[i].buffer_type= MYSQL_TYPE_LONG;
+    bind[i].buffer= &l[i];
+  }
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  while (rc != MYSQL_NO_DATA)
+  { 
+    rc= mysql_stmt_fetch(stmt);
+    diag("l=%d", l[0]);
+  }
+  diag("next result");
+  
+  rc= mysql_stmt_next_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  /* now rebind since we expect 2 columns */
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  while (rc != MYSQL_NO_DATA)
+  { 
+    rc= mysql_stmt_fetch(stmt);
+    diag("l=%d l=%d", l[0], l[1]);
+  }
+
+  diag("next result");
+
+  rc= mysql_stmt_next_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  /* now rebind since we expect 2 columns */
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  while (rc != MYSQL_NO_DATA)
+  { 
+    rc= mysql_stmt_fetch(stmt);
+    diag("l=%d l=%d l=%d", l[0], l[1], l[2]);
+  }
+
+  rc= mysql_stmt_close(stmt);
+
+
+  rc= mysql_query(mysql, "DROP PROCEDURE p1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
+int test_query(MYSQL *mysql)
+{
+  int rc;
+  int counter= 0;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[1];
+
+  char tmp[20];
+  char *stmtstr= "CALL P1(?)";
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE PROCEDURE p1(OUT p_out VARCHAR(19))" 
+                         "BEGIN "
+                          "  SET p_out = 'foo';"
+                          "  SELECT 'foo' FROM DUAL;"
+                          "  SELECT 'bar' FROM DUAL;"
+                         "END");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  memset(tmp, 0, sizeof(tmp));
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer= tmp;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer_length= 4;
+
+  mysql_stmt_bind_param(stmt, bind);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  do {
+    if (!mysql_stmt_store_result(stmt))
+    {
+      counter++;
+      mysql_stmt_free_result(stmt);
+    }
+  } while (mysql_more_results(stmt->mysql) && mysql_next_result(stmt->mysql) == 0);
+
+  diag ("result sets: %d", counter);
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
-  {"test_sp_params", test_sp_params, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS, NULL , NULL},
-  {"test_sp_reset", test_sp_reset, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS, NULL , NULL},
-  {"test_multi_result", test_multi_result, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS, NULL , NULL},
+  {"test_query", test_query, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS , NULL , NULL},
+  {"test_sp_params", test_sp_params, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL},
+  {"test_sp_reset", test_sp_reset, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL}, 
+  {"test_sp_reset1", test_sp_reset1, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL},
+  {"test_sp_reset2", test_sp_reset2, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL},
+  {"test_multi_result", test_multi_result, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

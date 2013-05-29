@@ -1812,7 +1812,7 @@ struct my_tests_st my_tests[] = {
   {"test_cursors_with_union", test_cursors_with_union, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_cursors_with_procedure", test_cursors_with_procedure, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug21206", test_bug21206, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
-  {"test_bug10729", test_bug10729, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
+  {"test_bug10729", test_bug10729, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
   {"test_bug10736", test_bug10736, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug10794", test_bug10794, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug10760", test_bug10760, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},

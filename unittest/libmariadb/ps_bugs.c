@@ -2252,7 +2252,7 @@ static int test_bug4079(MYSQL *mysql)
   mysql_stmt_bind_result(stmt, my_bind);
 
   rc= mysql_stmt_fetch(stmt);
-  FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
+  FAIL_UNLESS(rc == 1, "rc != 1");
   /* buggy version of libmysql hanged up here */
   mysql_stmt_close(stmt);
   return OK;
