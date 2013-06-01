@@ -2853,7 +2853,7 @@ char *STDCALL mysql_info(MYSQL *mysql)
 my_bool STDCALL mysql_more_results(MYSQL *mysql)
 {
   DBUG_ENTER("mysql_more_results");
-  DBUG_RETURN(test(mysql->server_status & SERVER_MORE_RESULTS_EXIST)); 
+  DBUG_RETURN(test(mysql->server_status & SERVER_MORE_RESULTS_EXIST));
 }
 
 int STDCALL mysql_next_result(MYSQL *mysql)

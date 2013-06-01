@@ -103,5 +103,6 @@ EXPORTS
  mysql_set_character_set
  mysql_get_character_set_info
  mysql_stmt_next_result
+ mysql_stmt_more_results
  mariadb_connection
  mysql_get_server_name

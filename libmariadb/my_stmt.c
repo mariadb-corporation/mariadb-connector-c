@@ -1771,11 +1771,17 @@ MYSQL_RES* STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt)
   DBUG_RETURN(NULL);
 }
 
-int STDCALL mysql_stmt_more_results(MYSQL_STMT *stmt)
+my_bool STDCALL mysql_stmt_more_results(MYSQL_STMT *stmt)
 {
+  /* MDEV 4604: Server doesn't set MORE_RESULT flag for
+                OutParam result set, so we need to check
+                for SERVER_MORE_RESULTS_EXIST and for
+                SERVER_PS_OUT_PARAMS)
+  */
   return (stmt &&
           stmt->mysql &&
-          (stmt->mysql->server_status & SERVER_MORE_RESULTS_EXIST)); 
+          ((stmt->mysql->server_status & SERVER_MORE_RESULTS_EXIST) ||
+           (stmt->mysql->server_status & SERVER_PS_OUT_PARAMS))); 
 }
 
 int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)

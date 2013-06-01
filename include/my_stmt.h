@@ -246,3 +246,4 @@ my_ulonglong STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt);
 my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt);
 unsigned int STDCALL mysql_stmt_field_count(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt);
+my_bool STDCALL mysql_stmt_more_results(MYSQL_STMT *stmt);

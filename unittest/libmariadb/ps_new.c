@@ -209,8 +209,6 @@ int test_sp_params(MYSQL *mysql)
     }
   } while (mysql_stmt_next_result(stmt) == 0);
 
-
-
   rc= mysql_stmt_close(stmt);
   return OK;
 }
@@ -219,12 +217,12 @@ int test_sp_reset(MYSQL *mysql)
 {
  int i, rc;
   MYSQL_STMT *stmt;
-
-  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
-  check_mysql_rc(rc, mysql);
   int a[] = {10,20,30};
   MYSQL_BIND bind[3];
   char *stmtstr= "CALL P1(?,?,?)";
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE PROCEDURE p1(OUT p_out VARCHAR(19), IN p_in INT, INOUT p_inout INT)" 
                          "BEGIN "
@@ -334,6 +332,7 @@ int test_sp_reset2(MYSQL *mysql)
   MYSQL_STMT *stmt;
   MYSQL_BIND bind[4];
   long l[4];
+  char *stmtstr= "CALL P1()";
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -342,7 +341,6 @@ int test_sp_reset2(MYSQL *mysql)
 
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
-  char *stmtstr= "CALL P1()";
 
   rc= mysql_query(mysql, "CREATE PROCEDURE p1()" 
                          "BEGIN "
@@ -380,7 +378,6 @@ int test_sp_reset2(MYSQL *mysql)
     rc= mysql_stmt_fetch(stmt);
     diag("l=%d", l[0]);
   }
-  diag("next result");
   
   rc= mysql_stmt_next_result(stmt);
   check_stmt_rc(rc, stmt);
@@ -395,7 +392,6 @@ int test_sp_reset2(MYSQL *mysql)
     diag("l=%d l=%d", l[0], l[1]);
   }
 
-  diag("next result");
 
   rc= mysql_stmt_next_result(stmt);
   check_stmt_rc(rc, stmt);
@@ -422,7 +418,7 @@ int test_sp_reset2(MYSQL *mysql)
 int test_query(MYSQL *mysql)
 {
   int rc;
-  int counter= 0;
+  int i;
   MYSQL_STMT *stmt;
   MYSQL_BIND bind[1];
 
@@ -434,8 +430,7 @@ int test_query(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE PROCEDURE p1(OUT p_out VARCHAR(19))" 
                          "BEGIN "
                           "  SET p_out = 'foo';"
-                          "  SELECT 'foo' FROM DUAL;"
-                          "  SELECT 'bar' FROM DUAL;"
+                          "  SELECT 1 FROM DUAL;"
                          "END");
   check_mysql_rc(rc, mysql);
 
@@ -445,33 +440,48 @@ int test_query(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
-  memset(tmp, 0, sizeof(tmp));
-  memset(bind, 0, sizeof(MYSQL_BIND));
-  bind[0].buffer= tmp;
-  bind[0].buffer_type= MYSQL_TYPE_STRING;
-  bind[0].buffer_length= 4;
+  for (i=0; i < 1000; i++)
+  {
+    int status;
+    memset(tmp, 0, sizeof(tmp));
+    memset(bind, 0, sizeof(MYSQL_BIND));
+    bind[0].buffer= tmp;
+    bind[0].buffer_type= MYSQL_TYPE_STRING;
+    bind[0].buffer_length= 4;
 
-  mysql_stmt_bind_param(stmt, bind);
+    mysql_stmt_bind_param(stmt, bind);
 
-  rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+    do {
+      if (stmt->field_count)
+      {
+        mysql_stmt_bind_result(stmt, bind);
+        rc= mysql_stmt_store_result(stmt);
+        check_stmt_rc(rc, stmt);
+        while(mysql_stmt_fetch(stmt) == 0);
 
-  do {
-    if (!mysql_stmt_store_result(stmt))
-    {
-      counter++;
-      mysql_stmt_free_result(stmt);
-    }
-  } while (mysql_more_results(stmt->mysql) && mysql_next_result(stmt->mysql) == 0);
+        rc= mysql_stmt_free_result(stmt);
+        check_stmt_rc(rc, stmt);
+      }
+      status= mysql_stmt_next_result(stmt);
+      if (status == 1)
+        check_stmt_rc(status, stmt);
+    } while (status == 0);
 
-  diag ("result sets: %d", counter);
+    rc= mysql_stmt_reset(stmt);
+    if (rc)
+      diag("reset failed after %d iterations", i);
+    check_stmt_rc(rc, stmt);
+  }
   mysql_stmt_close(stmt);
+
   return OK;
 }
 
 
 struct my_tests_st my_tests[] = {
-  {"test_query", test_query, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS , NULL , NULL},
+  {"test_query", test_query, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_RESULTS , NULL , NULL},
   {"test_sp_params", test_sp_params, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL},
   {"test_sp_reset", test_sp_reset, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL}, 
   {"test_sp_reset1", test_sp_reset1, TEST_CONNECTION_DEFAULT, CLIENT_MULTI_STATEMENTS, NULL , NULL},

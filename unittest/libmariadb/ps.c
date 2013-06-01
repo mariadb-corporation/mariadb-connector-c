@@ -4727,7 +4727,46 @@ int test_fracseconds(MYSQL *mysql)
   return OK;  
 }
 
+int test_notrunc(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  my_bool trunc= 1;
+  MYSQL_BIND bind[1];
+  char buffer[5];
+  int rc, len= 1, error= 0;
+
+  char *query= "SELECT '1234567890' FROM DUAL";
+
+  mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &trunc);
+
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt); 
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer_type= MYSQL_TYPE_LONG;
+  bind[0].buffer= buffer;
+  bind[0].buffer_length= 3;
+  bind[0].length= &len;
+  bind[0].error= &error;
+
+//  rc= mysql_stmt_bind_result(stmt, bind);
+//  check_stmt_rc(rc, stmt);
+  mysql_stmt_store_result(stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  diag("rc= %d len=%d", rc, len);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_notrunc", test_notrunc, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_fracseconds", test_fracseconds, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_blob_9000", test_blob_9000, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_long_data1", test_long_data1, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
