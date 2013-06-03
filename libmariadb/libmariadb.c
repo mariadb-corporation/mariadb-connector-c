@@ -562,9 +562,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
     goto end;
   }
 
-  mysql->net.last_error[0]=0;
-  mysql->net.last_errno=0;
-  strmov(mysql->net.sqlstate, "00000");
+  CLEAR_CLIENT_ERROR(mysql);
 
   mysql->info=0;
   mysql->affected_rows= ~(my_ulonglong) 0;

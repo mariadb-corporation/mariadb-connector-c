@@ -1071,7 +1071,8 @@ unsigned int STDCALL mysql_stmt_field_count(MYSQL_STMT *stmt)
 
 my_bool STDCALL mysql_stmt_free_result(MYSQL_STMT *stmt)
 {
-  return madb_reset_stmt(stmt, MADB_RESET_LONGDATA | MADB_RESET_STORED | MADB_RESET_ERROR);
+  return madb_reset_stmt(stmt, MADB_RESET_LONGDATA | MADB_RESET_STORED | 
+                               MADB_RESET_BUFFER | MADB_RESET_ERROR);
 }
 
 MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
@@ -1259,6 +1260,7 @@ fail:
 
 int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
 {
+  unsigned int last_server_status;
   DBUG_ENTER("mysql_stmt_store_result");
 
   if (!stmt->mysql)
@@ -1280,6 +1282,8 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
     SET_CLIENT_STMT_ERROR(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
+
+  last_server_status= stmt->mysql->server_status;
 
   /* if stmt is a cursor, we need to tell server to send all rows */
   if (stmt->cursor_exists && stmt->mysql->status == MYSQL_STATUS_READY)
@@ -1308,6 +1312,15 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
     stmt->mysql->status= MYSQL_STATUS_READY;
     DBUG_RETURN(1);
   }
+
+  /* workaround for MDEV 6304:
+     more results not set if the resultset has
+     SERVER_PS_OUT_PARAMS set
+   */
+  if (last_server_status & SERVER_PS_OUT_PARAMS &&
+      !(stmt->mysql->server_status & SERVER_MORE_RESULTS_EXIST))
+    stmt->mysql->server_status|= SERVER_MORE_RESULTS_EXIST;
+
   stmt->result_cursor= stmt->result.data;
   stmt->fetch_row_func= stmt_buffered_fetch;
   stmt->mysql->status= MYSQL_STATUS_READY; 
@@ -1567,7 +1580,8 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
     /* free buffered resultset, previously allocated
      * by mysql_stmt_store_result
      */
-    if (flags & MADB_RESET_STORED)
+    if (flags & MADB_RESET_STORED &&
+        stmt->result_cursor)
     {
       free_root(&stmt->result.alloc, MYF(MY_KEEP_PREALLOC));
       stmt->result.data= NULL;

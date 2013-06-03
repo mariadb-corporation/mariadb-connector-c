@@ -476,7 +476,62 @@ static int test_extended_init_values(MYSQL *my)
   return OK;
 }
 
+static int test_reconnect_maxpackage(MYSQL *my)
+{
+  int rc;
+  ulong max_packet= 0;
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+  char *query;
+
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                              port, socketname, 
+                              CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
+  mysql->reconnect= 1;
+
+  rc= mysql_query(mysql, "SELECT @@max_allowed_packet");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  max_packet= atol(row[0]);
+  diag("max_allowed_packet=%d", max_packet);
+  mysql_free_result(res);
+
+  query= (char *)malloc(max_packet + 30);
+  memset(query, 0, max_packet);
+
+  strcpy(query, "SELECT '");
+  memset(query + 8, 'A', max_packet);
+  strcat(query, "' FROM DUAL");
+
+
+  rc= mysql_query(mysql, query);
+  free(query);
+  if (!rc)
+  {
+    diag("expected error");
+    mysql_close(mysql);
+    return FAIL;
+  }
+  else
+    diag("Error: %s", mysql_error(mysql));
+
+  rc= mysql_query(mysql, "SELECT @@max_allowed_packet");
+  check_mysql_rc(rc, mysql);
+   res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  max_packet= atol(row[0]);
+  diag("max_allowed_packet=%d", max_packet);
+  mysql_free_result(res);
+
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_reconnect_maxpackage", test_reconnect_maxpackage, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"basic_connect", basic_connect, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"use_utf8", use_utf8, TEST_CONNECTION_NEW, 0,  opt_utf8,  NULL},
   {"client_query", client_query, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},

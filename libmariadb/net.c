@@ -173,6 +173,7 @@ static my_bool net_realloc(NET *net, size_t length)
   DBUG_RETURN(0);
 }
 
+#if defined(DBUG_OFF) || defined(USE_NET_CLEAR)
 static int net_check_if_data_available(Vio *vio)
 {
   my_socket sd= vio->sd;
@@ -189,17 +190,18 @@ static int net_check_if_data_available(Vio *vio)
     return 0;
   return FD_ISSET(sd, &sockset);
 }
+#endif
 
 	/* Remove unwanted characters from connection */
 
 void net_clear(NET *net)
 {
+#if defined(DBUG_OFF) || defined(USE_NET_CLEAR)
   int available= 0;
   size_t count;					/* One may get 'unused' warning */
   bool is_blocking=vio_is_blocking(net->vio);
 
   DBUG_ENTER("net_clear");
-
   while ((available= net_check_if_data_available(net->vio)) > 0)
   {
     if ((count= vio_read(net->vio, (char *)net->buff, net->max_packet)))
@@ -230,6 +232,9 @@ void net_clear(NET *net)
         vio_blocking(net->vio, TRUE);
     }
   }
+#else
+  DBUG_ENTER("net_clear");
+#endif
   net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
   DBUG_VOID_RETURN;
