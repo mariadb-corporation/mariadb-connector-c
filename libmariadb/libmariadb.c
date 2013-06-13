@@ -1382,8 +1382,6 @@ mysql_get_ssl_cipher(MYSQL *mysql)
 ** NB! Errors are not reported until you do mysql_real_connect.
 **************************************************************************/
 
-//#endif /* HAVE_OPENSSL */
-
 /**************************************************************************
 ** Connect to sql server
 ** If host == 0 then use localhost
