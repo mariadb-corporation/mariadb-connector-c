@@ -151,7 +151,7 @@ static my_bool net_realloc(NET *net, size_t length)
   DBUG_PRINT("info", ("length: %lu max_allowed_packet: %lu",
               (ulong)length, max_allowed_packet));
 
-  if (length >= max_allowed_packet)
+  if (length >= net->max_packet_size)
   {
     DBUG_PRINT("error",("Packet too large (%lu)", length));
     net->error=1;

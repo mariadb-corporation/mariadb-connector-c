@@ -143,7 +143,8 @@ my_bool my_thread_init(void)
   pthread_setspecific(THR_KEY_mysys,tmp);
 
 #else
-  if (THR_KEY_mysys.id)   /* Already initialized */
+  tmp= &THR_KEY_mysys;
+  if (tmp->initialized)   /* Already initialized */
   {
 #if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
     pthread_mutex_unlock(&THR_LOCK_lock);
@@ -158,13 +159,14 @@ my_bool my_thread_init(void)
 #if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
   pthread_mutex_unlock(&THR_LOCK_lock);
 #endif
+  tmp->initialized= TRUE;
   return 0;
 }
 
 void my_thread_end(void)
 {
   struct st_my_thread_var *tmp=my_thread_var;
-  if (tmp)
+  if (tmp && tmp->initialized)
   {
 #if !defined(DBUG_OFF)
     if (tmp->dbug)
@@ -177,13 +179,11 @@ void my_thread_end(void)
     pthread_cond_destroy(&tmp->suspend);
 #endif
     pthread_mutex_destroy(&tmp->mutex);
-#if (!defined(_WIN32) && !defined(OS2)) || defined(USE_TLS)
     free(tmp);
-#endif
+    pthread_setspecific(THR_KEY_mysys,0);
   }
-#if (!defined(_WIN32) && !defined(OS2)) || defined(USE_TLS)
-  pthread_setspecific(THR_KEY_mysys,0);
-#endif
+  else
+    pthread_setspecific(THR_KEY_mysys,0); 
 }
 
 struct st_my_thread_var *_my_thread_var(void)

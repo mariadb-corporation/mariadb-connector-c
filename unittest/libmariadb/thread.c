@@ -36,8 +36,25 @@ static int basic_connect(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc_27(MYSQL *mysql)
+{
+  int rc;
+
+  mysql_thread_init();
+
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc,mysql);
+
+  mysql_thread_end();
+  rc= mysql_query(mysql, "SET @a:=2");
+  check_mysql_rc(rc,mysql);
+  mysql_thread_end();
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"basic_connect", basic_connect, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+  {"test_conc_27", test_conc_27, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
