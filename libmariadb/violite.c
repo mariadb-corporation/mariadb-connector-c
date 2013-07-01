@@ -186,12 +186,12 @@ int vio_errno(Vio *vio __attribute__((unused)))
 }
 
 
-int vio_read(Vio * vio, gptr buf, int size)
+size_t vio_read(Vio * vio, gptr buf, size_t size)
 {
-  int r;
+  size_t r;
   DBUG_ENTER("vio_read");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
-
+  
 #ifdef HAVE_OPENSSL
   if (vio->type == VIO_TYPE_SSL)
   {
@@ -219,19 +219,19 @@ int vio_read(Vio * vio, gptr buf, int size)
   r = read(vio->sd, buf, size);
 #endif /* _WIN32 */
 #ifndef DBUG_OFF
-  if (r < 0)
+  if ((size_t)r == -1)
   {
     DBUG_PRINT("vio_error", ("Got error %d during read",socket_errno));
   }
 #endif /* DBUG_OFF */
-  DBUG_PRINT("exit", ("%d", r));
+  DBUG_PRINT("exit", ("%u", (uint)r));
   DBUG_RETURN(r);
 }
 
 
-int vio_write(Vio * vio, const gptr buf, int size)
+size_t vio_write(Vio * vio, const gptr buf, size_t size)
 {
-  int r;
+  size_t r;
   DBUG_ENTER("vio_write");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
 #ifdef HAVE_OPENSSL
@@ -259,12 +259,12 @@ int vio_write(Vio * vio, const gptr buf, int size)
   r = write(vio->sd, buf, size);
 #endif /* _WIN32 */
 #ifndef DBUG_OFF
-  if (r < 0)
+  if ((size_t)r == -1)
   {
     DBUG_PRINT("vio_error", ("Got error on write: %d",socket_errno));
   }
 #endif /* DBUG_OFF */
-  DBUG_PRINT("exit", ("%d", r));
+  DBUG_PRINT("exit", ("%u", (uint)r));
   DBUG_RETURN(r);
 }
 

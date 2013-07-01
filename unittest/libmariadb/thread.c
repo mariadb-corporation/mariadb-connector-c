@@ -36,20 +36,103 @@ static int basic_connect(MYSQL *mysql)
   return OK;
 }
 
+pthread_mutex_t LOCK_test;
+
+#ifndef _WIN32
+int thread_conc27(void);
+#else
+DWORD WINAPI thread_conc27(void);
+#endif
+
+#define THREAD_NUM 100
+
 static int test_conc_27(MYSQL *mysql)
 {
+
   int rc;
+  int i;
+  MYSQL_ROW row;
+  MYSQL_RES *res;
+#ifndef _WIN32
+  pthread_t threads[THREAD_NUM];
+#else
+  HANDLE hthreads[THREAD_NUM];
+  DWORD threads[THREAD_NUM];
+#endif
 
-  mysql_thread_init();
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_conc27");
+  check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "SET @a:=1");
+  rc= mysql_query(mysql, "CREATE TABLE t_conc27(a int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t_conc27 VALUES(0)");
+  check_mysql_rc(rc, mysql);
+
+  pthread_mutex_init(&LOCK_test, NULL);
+  for (i=0; i < THREAD_NUM; i++)
+  {
+#ifndef _WIN32
+    pthread_create(&threads[i], NULL, (void *)thread_conc27, NULL);
+#else
+    hthreads[i]= CreateThread(NULL, 0, thread_conc27, NULL, 0, &threads[i]);
+    if (hthreads[i]==NULL)
+      diag("error while starting thread");
+#endif
+  }
+  for (i=0; i < THREAD_NUM; i++)
+  {
+#ifndef _WIN32
+    pthread_join(threads[i], NULL);
+#else
+    WaitForSingleObject(hthreads[i], INFINITE);
+#endif
+  } 
+  pthread_mutex_destroy(&LOCK_test);
+ 
+  rc= mysql_query(mysql, "SELECT a FROM t_conc27");
   check_mysql_rc(rc,mysql);
 
-  mysql_thread_end();
-  rc= mysql_query(mysql, "SET @a:=2");
-  check_mysql_rc(rc,mysql);
-  mysql_thread_end();
+  res= mysql_store_result(mysql);
+  FAIL_IF(!res, "invalid result");
+
+  row= mysql_fetch_row(res);
+  FAIL_IF(!row, "can't fetch row");
+
+  diag("row=%s", row[0]);
+  FAIL_IF(atoi(row[0]) != 100, "expected value 100");
+  mysql_free_result(res);
+
   return OK;
+}
+
+#ifndef _WIN32
+int thread_conc27(void)
+#else
+DWORD WINAPI thread_conc27(void)
+#endif
+{
+  MYSQL *mysql;
+  int rc;
+  mysql_thread_init();
+  mysql= mysql_init(NULL);
+  if(!mysql_real_connect(mysql, hostname, username, password, schema,
+          port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    mysql_thread_end();
+    goto end;
+  }
+  pthread_mutex_lock(&LOCK_test);
+  rc= mysql_query(mysql, "UPDATE t_conc27 SET a=a+1");
+  check_mysql_rc(rc, mysql);
+  pthread_mutex_unlock(&LOCK_test);
+  mysql_close(mysql);
+  mysql_thread_end();
+end:
+  mysql_thread_end();
+  return 0;
 }
 
 struct my_tests_st my_tests[] = {

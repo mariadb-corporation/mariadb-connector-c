@@ -69,11 +69,8 @@ void vio_reset(Vio* vio, enum enum_vio_type type,
  * vio_read and vio_write should have the same semantics
  * as read(2) and write(2).
  */
-int		vio_read(		Vio*		vio,
-					gptr		buf,	int	size);
-int		vio_write(		Vio*		vio,
-					const gptr	buf,
-					int		size);
+size_t vio_read(Vio* vio, gptr buf,	size_t size);
+size_t vio_write(Vio* vio, const gptr buf, size_t size);
 /*
  * Whenever the socket is set to blocking mode or not.
  */

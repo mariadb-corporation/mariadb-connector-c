@@ -543,6 +543,7 @@ static int test_bug30472(MYSQL *mysql)
   }
   /* Retrieve character set information. */
 
+  mysql_set_character_set(mysql, "latin1");
   bug30472_retrieve_charset_info(mysql,
                                  character_set_name_1,
                                  character_set_client_1,
@@ -572,6 +573,7 @@ static int test_bug30472(MYSQL *mysql)
   FAIL_UNLESS(strcmp(character_set_results_2, "utf8") == 0, "cs_result != ut8");
   FAIL_UNLESS(strcmp(collation_connnection_2, "utf8_general_ci") == 0, "collation != utf8_general_ci");
 
+  diag("%s %s", character_set_name_1, character_set_name_2);
   FAIL_UNLESS(strcmp(character_set_name_1, character_set_name_2) != 0, "cs_name1 = cs_name2");
   FAIL_UNLESS(strcmp(character_set_client_1, character_set_client_2) != 0, "cs_client1 = cs_client2");
   FAIL_UNLESS(strcmp(character_set_results_1, character_set_results_2) != 0, "cs_result1 = cs_result2");
@@ -580,6 +582,7 @@ static int test_bug30472(MYSQL *mysql)
   /* Call mysql_change_user() with the same username, password, database. */
 
   rc= mysql_change_user(mysql, username, password, (schema) ? schema : "test");
+  mysql_set_character_set(mysql, "latin1");
   check_mysql_rc(rc, mysql);
 
   /* Retrieve character set information. */

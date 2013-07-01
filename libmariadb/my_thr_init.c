@@ -22,6 +22,7 @@
 
 #include "mysys_priv.h"
 #include <m_string.h>
+#include <dbug.h>
 
 #ifdef THREAD
 #ifdef USE_TLS
@@ -123,49 +124,41 @@ static long thread_id=0;
 my_bool my_thread_init(void)
 {
   struct st_my_thread_var *tmp;
-#if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
-  pthread_mutex_lock(&THR_LOCK_lock);
-#endif
-#if !defined(_WIN32) || defined(USE_TLS)
+  my_bool rc= 0;
   if (my_pthread_getspecific(struct st_my_thread_var *,THR_KEY_mysys))
   {
-    pthread_mutex_unlock(&THR_LOCK_lock);
+    DBUG_PRINT("info", ("my_thread_init was already called. Thread id: %lu",
+                       pthread_self()));
     return 0;						/* Safequard */
   }
-    /* We must have many calloc() here because these are freed on
-       pthread_exit */
+  /* We must have many calloc() here because these are freed on
+     pthread_exit */
   if (!(tmp=(struct st_my_thread_var *)
 	calloc(1,sizeof(struct st_my_thread_var))))
   {
-    pthread_mutex_unlock(&THR_LOCK_lock);
     return 1;
   }
   pthread_setspecific(THR_KEY_mysys,tmp);
 
-#else
-  tmp= &THR_KEY_mysys;
   if (tmp->initialized)   /* Already initialized */
   {
-#if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
-    pthread_mutex_unlock(&THR_LOCK_lock);
-#endif
     return 0;
   }
-  tmp= &THR_KEY_mysys;
-#endif
-  tmp->id= ++thread_id;
+
   pthread_mutex_init(&tmp->mutex,MY_MUTEX_INIT_FAST);
   pthread_cond_init(&tmp->suspend, NULL);
-#if !defined(_WIN32) || defined(USE_TLS) || ! defined(SAFE_MUTEX)
+  pthread_mutex_lock(&THR_LOCK_lock);
+  tmp->id= ++thread_id;
   pthread_mutex_unlock(&THR_LOCK_lock);
-#endif
   tmp->initialized= TRUE;
   return 0;
 }
 
 void my_thread_end(void)
 {
-  struct st_my_thread_var *tmp=my_thread_var;
+  struct st_my_thread_var *tmp= 
+            my_pthread_getspecific(struct st_my_thread_var *, THR_KEY_mysys);
+
   if (tmp && tmp->initialized)
   {
 #if !defined(DBUG_OFF)

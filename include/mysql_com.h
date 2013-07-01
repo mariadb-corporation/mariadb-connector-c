@@ -317,7 +317,7 @@ int	net_flush(NET *net);
 int	my_net_write(NET *net,const char *packet, size_t len);
 int	net_write_command(NET *net,unsigned char command,const char *packet,
 			  size_t len);
-int	net_real_write(NET *net,const char *packet,unsigned long len);
+int	net_real_write(NET *net,const char *packet, size_t len);
 unsigned long	my_net_read(NET *net);
 
 struct rand_struct {

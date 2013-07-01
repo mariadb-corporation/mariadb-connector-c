@@ -417,7 +417,7 @@ restart:
       my_set_error(mysql, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, 0);
     }
 
-    mysql->server_status= ~SERVER_MORE_RESULTS_EXIST;
+    mysql->server_status&= ~SERVER_MORE_RESULTS_EXIST;
 
     DBUG_PRINT("error",("Got error: %d (%s)", net->last_errno,
 			net->last_error));

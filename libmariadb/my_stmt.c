@@ -1436,8 +1436,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   DBUG_PRINT("info",("request_len=%ld", request_len));
 
   ret= test(simple_command(stmt->mysql, MYSQL_COM_STMT_EXECUTE, request, request_len, 1, stmt) || 
-      (stmt->mysql->methods->db_read_stmt_result && stmt->mysql->methods->db_read_stmt_result(stmt->mysql)));
-
+      (stmt->mysql && stmt->mysql->methods->db_read_stmt_result && stmt->mysql->methods->db_read_stmt_result(stmt->mysql)));
   if (request)
     my_free(request, MYF(0));
 

@@ -530,7 +530,32 @@ static int test_reconnect_maxpackage(MYSQL *my)
   return OK;
 }
 
+static int test_compressed(MYSQL *my)
+{
+  int rc;
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *res;
+  char *query;
+
+  mysql_options(mysql, MYSQL_OPT_COMPRESS, (void *)1);
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                              port, socketname, 
+                              CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
+  mysql->reconnect= 1;
+
+  rc= mysql_query(mysql, "SHOW VARIABLES");
+  check_mysql_rc(rc, mysql);
+
+  if ((res= mysql_store_result(mysql)))
+    mysql_free_result(res);
+
+  mysql_close(mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_compressed", test_compressed, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_reconnect_maxpackage", test_reconnect_maxpackage, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"basic_connect", basic_connect, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"use_utf8", use_utf8, TEST_CONNECTION_NEW, 0,  opt_utf8,  NULL},

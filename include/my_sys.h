@@ -616,9 +616,9 @@ void load_defaults(const char *conf_file, const char **groups,
 		   int *argc, char ***argv);
 void free_defaults(char **argv);
 void print_defaults(const char *conf_file, const char **groups);
-my_bool my_compress(unsigned char *, ulong *, ulong *);
-my_bool my_uncompress(unsigned char *, ulong *, ulong *);
-unsigned char *my_compress_alloc(const unsigned char *packet, ulong *len, ulong *complen);
+my_bool my_compress(unsigned char *, size_t *, size_t *);
+my_bool my_uncompress(unsigned char *, size_t *, size_t *);
+unsigned char *my_compress_alloc(const unsigned char *packet, size_t *len, size_t *complen);
 ulong checksum(const unsigned char *mem, uint count);
 
 #if defined(_MSC_VER) && !defined(_WIN32)
