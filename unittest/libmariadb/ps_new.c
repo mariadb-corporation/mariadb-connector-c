@@ -376,7 +376,7 @@ int test_sp_reset2(MYSQL *mysql)
   while (rc != MYSQL_NO_DATA)
   { 
     rc= mysql_stmt_fetch(stmt);
-    diag("l=%d", l[0]);
+    diag("l=%ld", l[0]);
   }
   
   rc= mysql_stmt_next_result(stmt);
@@ -389,7 +389,7 @@ int test_sp_reset2(MYSQL *mysql)
   while (rc != MYSQL_NO_DATA)
   { 
     rc= mysql_stmt_fetch(stmt);
-    diag("l=%d l=%d", l[0], l[1]);
+    diag("l=%ld l=%ld", l[0], l[1]);
   }
 
 
@@ -403,7 +403,7 @@ int test_sp_reset2(MYSQL *mysql)
   while (rc != MYSQL_NO_DATA)
   { 
     rc= mysql_stmt_fetch(stmt);
-    diag("l=%d l=%d l=%d", l[0], l[1], l[2]);
+    diag("l=%ld l=%ld l=%ld", l[0], l[1], l[2]);
   }
 
   rc= mysql_stmt_close(stmt);

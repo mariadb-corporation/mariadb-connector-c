@@ -4733,7 +4733,9 @@ int test_notrunc(MYSQL *mysql)
   my_bool trunc= 1;
   MYSQL_BIND bind[1];
   char buffer[5];
-  int rc, len= 1, error= 0;
+  int rc;
+  my_bool error= 0;
+  unsigned long len= 1;
 
   char *query= "SELECT '1234567890' FROM DUAL";
 
@@ -4759,7 +4761,7 @@ int test_notrunc(MYSQL *mysql)
   mysql_stmt_store_result(stmt);
 
   rc= mysql_stmt_fetch(stmt);
-  diag("rc= %d len=%d", rc, len);
+  diag("rc= %d len=%lu", rc, len);
 
   mysql_stmt_close(stmt);
   return OK;

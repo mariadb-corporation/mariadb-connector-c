@@ -479,7 +479,7 @@ void run_tests(struct my_tests_st *test) {
     if (!mysql_default && (test[i].connection & TEST_CONNECTION_DEFAULT))
     {
       diag("MySQL server not running");
-      skip(1, test[i].name);
+      skip(1, "%s", test[i].name);
     } else if (!test[i].skipmsg) {
       mysql= mysql_default;
       if (test[i].connection & TEST_CONNECTION_NEW)
@@ -491,9 +491,9 @@ void run_tests(struct my_tests_st *test) {
       rc= test[i].function(mysql);
 
       if (rc == SKIP)
-        skip(1, test[i].name);
+        skip(1, "%s", test[i].name);
       else
-        ok(rc == OK, test[i].name);
+        ok(rc == OK, "%s", test[i].name);
 
       /* if test failed, close and reopen default connection to prevent
          errors for further tests */
@@ -509,7 +509,7 @@ void run_tests(struct my_tests_st *test) {
       else if (mysql && !(test[i].connection & TEST_CONNECTION_DONT_CLOSE))
           mysql_close(mysql);
     } else {
-      skip(1, test[i].skipmsg);
+      skip(1, "%s", test[i].skipmsg);
     }
   }
   if (mysql_default) {

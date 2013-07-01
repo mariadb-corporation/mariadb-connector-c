@@ -4,6 +4,7 @@
 
 #include "my_test.h"
 
+#ifdef HAVE_SQLITE
 static int test1(MYSQL *mysql)
 {
   MYSQL_ROW row;
@@ -20,7 +21,7 @@ static int test1(MYSQL *mysql)
 
   diag("Server name: %s", mysql_get_server_name(my));
 
-  diag("Connected to: %s (%d)", mysql_get_server_info(my), mysql_get_server_version(my));
+  diag("Connected to: %s (%lu)", mysql_get_server_info(my), mysql_get_server_version(my));
 
   rc= mysql_query(my, "CREATE TABLE t1 (a int, b varchar(255))");
   rc= mysql_query(my, "DELETE FROM t1");
@@ -168,6 +169,7 @@ static int test_simple_prepare(MYSQL *my)
 
   return OK;
 }
+#endif
 
 
 struct my_tests_st my_tests[] = {

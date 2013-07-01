@@ -520,12 +520,12 @@ static int test_reconnect(MYSQL *mysql)
 
   FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
 
-  diag("Thread_id before kill: %d", mysql_thread_id(mysql1));
+  diag("Thread_id before kill: %lu", mysql_thread_id(mysql1));
   mysql_kill(mysql, mysql_thread_id(mysql1));
 
   rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
   check_mysql_rc(rc, mysql1);
-  diag("Thread_id after kill: %d", mysql_thread_id(mysql1));
+  diag("Thread_id after kill: %lu", mysql_thread_id(mysql1));
 
   FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
   mysql_close(mysql1);

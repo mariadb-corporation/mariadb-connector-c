@@ -672,7 +672,7 @@ static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, en
   if (len)
   {
     unsigned char *to= *row;
-    int has_date= 0, has_time= 0;
+    int has_date= 0;
     uint offset= 7;
     
     if (type == MYSQL_TYPE_TIME)
@@ -695,7 +695,6 @@ static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, en
 
     if (len > 4)
     {
-      has_time= 1;
       t->hour= (uint) to[4];
       t->minute= (uint) to[5];
       t->second= (uint) to[6];

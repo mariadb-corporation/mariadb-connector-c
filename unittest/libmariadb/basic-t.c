@@ -495,7 +495,7 @@ static int test_reconnect_maxpackage(MYSQL *my)
   res= mysql_store_result(mysql);
   row= mysql_fetch_row(res);
   max_packet= atol(row[0]);
-  diag("max_allowed_packet=%d", max_packet);
+  diag("max_allowed_packet=%lu", max_packet);
   mysql_free_result(res);
 
   query= (char *)malloc(max_packet + 30);
@@ -522,7 +522,7 @@ static int test_reconnect_maxpackage(MYSQL *my)
    res= mysql_store_result(mysql);
   row= mysql_fetch_row(res);
   max_packet= atol(row[0]);
-  diag("max_allowed_packet=%d", max_packet);
+  diag("max_allowed_packet=%lu", max_packet);
   mysql_free_result(res);
 
 
@@ -535,7 +535,6 @@ static int test_compressed(MYSQL *my)
   int rc;
   MYSQL *mysql= mysql_init(NULL);
   MYSQL_RES *res;
-  char *query;
 
   mysql_options(mysql, MYSQL_OPT_COMPRESS, (void *)1);
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,

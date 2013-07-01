@@ -124,7 +124,6 @@ static long thread_id=0;
 my_bool my_thread_init(void)
 {
   struct st_my_thread_var *tmp;
-  my_bool rc= 0;
   if (my_pthread_getspecific(struct st_my_thread_var *,THR_KEY_mysys))
   {
     DBUG_PRINT("info", ("my_thread_init was already called. Thread id: %lu",
