@@ -1628,7 +1628,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
 
     if (rc)
     {
-      my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONNECTION_ERROR),
+      my_set_error(mysql, CR_CONN_HOST_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONN_HOST_ERROR),
                           unix_socket, socket_errno);
       goto error;
     }
