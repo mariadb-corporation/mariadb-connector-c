@@ -228,6 +228,28 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
   DBUG_RETURN(r);
 }
 
+/*
+ Return data from the beginning of the receive queue without removing 
+ that data from the queue. A subsequent receive call will return the same data.
+*/
+my_bool vio_read_peek(Vio *vio, size_t *bytes)
+{
+#ifdef _WIN32
+  if (ioctlsocket(vio->sd, FIONREAD, bytes))
+    return TRUE;
+#else
+  char buffer[1024];
+  ssize_t length;
+
+  vio_blocking(vio, 0);
+  length= recv(vio->sd, &buffer, sizeof(buffer), MSG_PEEK);
+  if (length < 0)
+    return TRUE;
+  *bytes= length; 
+#endif 
+  return FALSE;
+}
+
 
 size_t vio_write(Vio * vio, const gptr buf, size_t size)
 {

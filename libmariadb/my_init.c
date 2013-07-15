@@ -162,10 +162,10 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
 #endif
   }
 #ifdef THREAD
-  pthread_mutex_destroy(&THR_LOCK_keycache);
   pthread_mutex_destroy(&THR_LOCK_malloc);
   pthread_mutex_destroy(&THR_LOCK_open);
-  DBUG_POP();				/* Must be done before my_thread_end */
+  pthread_mutex_destroy(&THR_LOCK_net);
+  DBUG_END();				/* Must be done before my_thread_end */
   my_thread_end();
   my_thread_global_end();
 #endif
@@ -244,7 +244,6 @@ static void my_win_init(void)
     /* Crea la stringa d'ambiente */
     setEnvString(EnvString, NameValueBuffer, DataValueBuffer) ;
 
-    /* Inserisce i dati come variabili d'ambiente */
     my_env=strdup(EnvString);  /* variable for putenv must be allocated ! */
     putenv(my_env) ;
 

@@ -702,11 +702,8 @@ append_wild(char *to, char *end, const char *wild)
 void STDCALL mysql_debug_end()
 {
 #ifndef DBUG_OFF
-  if (_db_on_)
-  {
-    DEBUGGER_OFF;
-    DBUG_POP();
-  }
+  DEBUGGER_OFF;
+  DBUG_POP();
 #endif
 }
 
@@ -715,8 +712,6 @@ mysql_debug(const char *debug __attribute__((unused)))
 {
 #ifndef DBUG_OFF
   char	*env;
-  if (_db_on_)
-    return;					/* Already using debugging */
   if (debug)
   {
     DEBUGGER_ON;
@@ -1193,7 +1188,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
     result->rows++;
     if (!(cur= (MYSQL_ROWS*) alloc_root(&result->alloc,
 					    sizeof(MYSQL_ROWS))) ||
-	!(cur->data= ((MYSQL_ROW)
+	      !(cur->data= ((MYSQL_ROW)
 		      alloc_root(&result->alloc,
 				     (fields+1)*sizeof(char *)+pkt_len))))
     {
@@ -1209,11 +1204,11 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
     {
       if ((len=(ulong) net_field_length(&cp)) == NULL_LENGTH)
       {						/* null field */
-	cur->data[field] = 0;
+        cur->data[field] = 0;
       }
       else
       {
-	cur->data[field] = to;
+        cur->data[field] = to;
         if (len > (ulong) (end_to - to))
         {
           free_rows(result);
@@ -1565,8 +1560,9 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
   if (hPipe == INVALID_HANDLE_VALUE)
 #endif
   {
-    struct addrinfo hints, *save_res, *res= 0;
+    struct addrinfo hints, *save_res= 0, *res= 0;
     char server_port[NI_MAXSERV];
+    int gai_rc;
     int rc;
 
     unix_socket=0;				/* This is not used */
@@ -1575,6 +1571,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
     if (!host)
       host=LOCAL_HOST;
     sprintf(host_info=buff,ER(CR_TCP_CONNECTION),host);
+    bzero(&server_port, NI_MAXSERV);
 
     DBUG_PRINT("info",("Server name: '%s'.  TCP sock: %d", host,port));
 
@@ -1587,30 +1584,32 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
     hints.ai_socktype= SOCK_STREAM;
 
     /* Get the address information for the server using getaddrinfo() */
-    if ((rc= getaddrinfo(host, server_port, &hints, &res)))
+    gai_rc= getaddrinfo(host, server_port, &hints, &res);
+    if (gai_rc != 0)
     {
       my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
-                   ER(CR_UNKNOWN_HOST), host, rc);
+                   ER(CR_UNKNOWN_HOST), host, gai_rc);
       goto error;
     }
 
     /* res is a linked list of addresses. If connect to an address fails we will not return
        an error, instead we will try the next address */
     for (save_res= res; save_res; save_res= save_res->ai_next)
-     {
-      if ((sock= (my_socket)socket(save_res->ai_family, 
-                                   save_res->ai_socktype, 
-                                   save_res->ai_protocol)) == SOCKET_ERROR)
+    {
+      sock= socket(save_res->ai_family, save_res->ai_socktype, 
+                   save_res->ai_protocol);
+      if (sock == SOCKET_ERROR)
         /* we do error handling after for loop only for last call */
         continue;
       if (!(net->vio= vio_new(sock, VIO_TYPE_TCPIP, FALSE)))
       {
         my_set_error(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+        closesocket(sock);
         freeaddrinfo(res);
         goto error;
       }
       if (!(rc= connect2(sock, save_res->ai_addr, save_res->ai_addrlen, 
-		               mysql->options.connect_timeout)))
+                   mysql->options.connect_timeout)))
         break; /* success! */
 
       vio_delete(mysql->net.vio);
@@ -1629,7 +1628,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
     if (rc)
     {
       my_set_error(mysql, CR_CONN_HOST_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONN_HOST_ERROR),
-                          unix_socket, socket_errno);
+                          host, rc);
       goto error;
     }
   }
@@ -2031,6 +2030,7 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->default_auth, MYF(MY_ALLOW_ZERO_PTR));
     my_free((gptr)mysql->options.extension->db_driver, MYF(MY_ALLOW_ZERO_PTR));
   }
+  my_free((gptr)mysql->options.extension, MYF(MY_ALLOW_ZERO_PTR));
   /* clear all pointer */
   memset(&mysql->options, 0, sizeof(mysql->options));
 }

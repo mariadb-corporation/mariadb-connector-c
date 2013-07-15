@@ -174,22 +174,19 @@ static my_bool net_realloc(NET *net, size_t length)
   DBUG_RETURN(0);
 }
 
-#if !defined(DBUG_OFF1) || defined(USE_NET_CLEAR)
-static int net_check_if_data_available(Vio *vio)
+#ifdef DEBUG_SOCKET
+static ssize_t net_check_if_data_available(Vio *vio)
 {
-  my_socket sd= vio->sd;
-  fd_set sockset;
-  struct timeval tv;
-  int rc;
+  ssize_t length= 0;
 
-  FD_ZERO(&sockset);
-  FD_SET(sd, &sockset);
-
-  memset(&tv, 0, sizeof(tv));
-  rc= select((int)(sd + 1), &sockset, NULL, NULL, &tv);
-  if (rc <= 0)
+  if (vio->type != VIO_TYPE_SOCKET &&
+      vio->type != VIO_TYPE_TCPIP)
     return 0;
-  return FD_ISSET(sd, &sockset);
+
+  if (vio_read_peek(vio, (size_t *)&length))
+    return -1;
+
+  return length;
 }
 #endif
 
@@ -197,45 +194,12 @@ static int net_check_if_data_available(Vio *vio)
 
 void net_clear(NET *net)
 {
-#if !defined(DBUG_OFF1) || defined(USE_NET_CLEAR)
-  int available= 0;
-  size_t count;					/* One may get 'unused' warning */
-  bool is_blocking=vio_is_blocking(net->vio);
+  DBUG_ENTER("net_clear");
 
-  DBUG_ENTER("net_clear");
-  while ((available= net_check_if_data_available(net->vio)) > 0)
-  {
-    if ((long)(count= vio_read(net->vio, (char *)net->buff, net->max_packet)) > 0)
-    {
-      DBUG_PRINT("info",("skipped %d bytes from file: %s",
-			 count,vio_description(net->vio)));
-    }
-    else
-    {
-      DBUG_PRINT("info", ("socket disconnected"));
-      net->error= 2;
-      break;
-    }
-  }
-  
-  if (available == -1)
-  {
-    if (is_blocking)
-      vio_blocking(net->vio, FALSE);
-  
-    if (!vio_is_blocking(net->vio))		/* Safety if SSL */
-    {
-      while ( (count = vio_read(net->vio, (char*) (net->buff),
-			        net->max_packet)) > 0)
-        DBUG_PRINT("info",("skipped %d bytes from file: %s",
-			   count,vio_description(net->vio)));
-      if (is_blocking)
-        vio_blocking(net->vio, TRUE);
-    }
-  }
-#else
-  DBUG_ENTER("net_clear");
+#ifdef DEBUG_SOCKET
+  DBUG_ASSERT(net_check_if_data_available(net->vio) < 2);
 #endif
+
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
   DBUG_VOID_RETURN;

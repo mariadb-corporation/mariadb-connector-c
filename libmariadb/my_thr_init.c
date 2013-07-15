@@ -30,9 +30,8 @@ pthread_key(struct st_my_thread_var*, THR_KEY_mysys);
 #else
 pthread_key(struct st_my_thread_var, THR_KEY_mysys);
 #endif /* USE_TLS */
-pthread_mutex_t THR_LOCK_malloc,THR_LOCK_open,THR_LOCK_keycache,
-	        THR_LOCK_lock,THR_LOCK_isam,THR_LOCK_myisam,THR_LOCK_heap,
-	        THR_LOCK_net, THR_LOCK_charset; 
+pthread_mutex_t THR_LOCK_malloc,THR_LOCK_open,
+	        THR_LOCK_lock, THR_LOCK_net, THR_LOCK_mysys; 
 #ifdef HAVE_OPENSSL
 pthread_mutex_t LOCK_ssl_config;
 #endif
@@ -48,6 +47,7 @@ pthread_mutexattr_t my_fast_mutexattr;
 #ifdef PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP
 pthread_mutexattr_t my_errchk_mutexattr;
 #endif
+my_bool THR_KEY_mysys_initialized= FALSE;
 
 /* FIXME  Note.  TlsAlloc does not set an auto destructor, so
 	the function my_thread_global_free must be called from
@@ -69,18 +69,14 @@ my_bool my_thread_global_init(void)
   pthread_mutexattr_setkind_np(&my_errchk_mutexattr,
 			       PTHREAD_MUTEX_ERRORCHECK_NP);
 #endif
+  THR_KEY_mysys_initialized= TRUE;
 #ifdef HAVE_OPENSSL
   pthread_mutex_init(&LOCK_ssl_config,MY_MUTEX_INIT_FAST);
 #endif
   pthread_mutex_init(&THR_LOCK_malloc,MY_MUTEX_INIT_FAST);
   pthread_mutex_init(&THR_LOCK_open,MY_MUTEX_INIT_FAST);
-  pthread_mutex_init(&THR_LOCK_keycache,MY_MUTEX_INIT_FAST);
   pthread_mutex_init(&THR_LOCK_lock,MY_MUTEX_INIT_FAST);
-  pthread_mutex_init(&THR_LOCK_isam,MY_MUTEX_INIT_SLOW);
-  pthread_mutex_init(&THR_LOCK_myisam,MY_MUTEX_INIT_SLOW);
-  pthread_mutex_init(&THR_LOCK_heap,MY_MUTEX_INIT_FAST);
   pthread_mutex_init(&THR_LOCK_net,MY_MUTEX_INIT_FAST);
-  pthread_mutex_init(&THR_LOCK_charset,MY_MUTEX_INIT_FAST);
 #ifdef _WIN32
   /* win_pthread_init(); */
 #endif
@@ -163,6 +159,7 @@ void my_thread_end(void)
 #if !defined(DBUG_OFF)
     if (tmp->dbug)
     {
+      DBUG_POP();
       free(tmp->dbug);
       tmp->dbug=0;
     }
@@ -183,7 +180,6 @@ struct st_my_thread_var *_my_thread_var(void)
   struct st_my_thread_var *tmp=
     my_pthread_getspecific(struct st_my_thread_var*,THR_KEY_mysys);
 #if defined(USE_TLS)
-  /* This can only happen in a .DLL */
   if (!tmp)
   {
     my_thread_init();
@@ -229,6 +225,22 @@ const char *my_thread_name(void)
     strmake(tmp->name,name_buff,THREAD_NAME_SIZE);
   }
   return tmp->name;
+}
+
+extern void **my_thread_var_dbug()
+{
+  struct st_my_thread_var *tmp;
+  /*
+    Instead of enforcing DBUG_ASSERT(THR_KEY_mysys_initialized) here,
+    which causes any DBUG_ENTER and related traces to fail when
+    used in init / cleanup code, we are more tolerant:
+    using DBUG_ENTER / DBUG_PRINT / DBUG_RETURN
+    when the dbug instrumentation is not in place will do nothing.
+  */
+  if (! THR_KEY_mysys_initialized)
+    return NULL;
+  tmp= _my_thread_var();
+  return tmp && tmp->initialized ? &tmp->dbug : 0;
 }
 #endif /* DBUG_OFF */
 

@@ -80,7 +80,7 @@ static int use_utf8(MYSQL *my)
     FAIL_IF(strcmp(row[0], "utf8"), "wrong character set");
   }
   FAIL_IF(mysql_errno(my), mysql_error(my));
-
+  mysql_free_result(res);
 
   return OK;
 }
@@ -573,7 +573,6 @@ struct my_tests_st my_tests[] = {
 
 int main(int argc, char **argv)
 {
-
   if (argc > 1)
     get_options(argc, argv);
 

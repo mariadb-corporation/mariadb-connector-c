@@ -33,6 +33,7 @@ static int basic_connect(MYSQL *mysql)
   mysql_free_result(res);
   mysql_close(my);
 
+
   return OK;
 }
 
@@ -44,7 +45,7 @@ int thread_conc27(void);
 DWORD WINAPI thread_conc27(void);
 #endif
 
-#define THREAD_NUM 100
+#define THREAD_NUM 150 
 
 static int test_conc_27(MYSQL *mysql)
 {
@@ -100,7 +101,7 @@ static int test_conc_27(MYSQL *mysql)
   FAIL_IF(!row, "can't fetch row");
 
   diag("row=%s", row[0]);
-  FAIL_IF(atoi(row[0]) != 100, "expected value 100");
+  FAIL_IF(atoi(row[0]) != THREAD_NUM, "expected value THREAD_NUM");
   mysql_free_result(res);
 
   return OK;
@@ -113,10 +114,13 @@ DWORD WINAPI thread_conc27(void)
 #endif
 {
   MYSQL *mysql;
-  int rc;
+  int rc, i;
+  char *hname[]= {"localhost", "127.0.0.1", NULL};
   mysql_thread_init();
   mysql= mysql_init(NULL);
-  if(!mysql_real_connect(mysql, hostname, username, password, schema,
+  i= rand() % 3;
+  diag("Connecting to %s", hname[i]);
+  if(!mysql_real_connect(mysql, hname[i], username, password, schema,
           port, socketname, 0))
   {
     diag("Error: %s", mysql_error(mysql));
@@ -128,8 +132,8 @@ DWORD WINAPI thread_conc27(void)
   rc= mysql_query(mysql, "UPDATE t_conc27 SET a=a+1");
   check_mysql_rc(rc, mysql);
   pthread_mutex_unlock(&LOCK_test);
-  mysql_close(mysql);
   mysql_thread_end();
+  mysql_close(mysql);
 end:
   mysql_thread_end();
   return 0;
@@ -146,9 +150,6 @@ int main(int argc, char **argv)
 {
 
   mysql_library_init(0,0,NULL);
-  mysql_thread_init();
-  mysql_thread_end();
-  mysql_library_end();
 
   if (argc > 1)
     get_options(argc, argv);
@@ -157,5 +158,6 @@ int main(int argc, char **argv)
 
   run_tests(my_tests);
 
+  mysql_server_end();
   return(exit_status());
 }
