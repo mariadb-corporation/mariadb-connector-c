@@ -1,6 +1,4 @@
 
-#define HAVE_GETHOSTBYNAME_R_GLIBC2_STYLE 1
-
 /*
  * Include file constants (processed in LibmysqlIncludeFiles.txt 1
  */

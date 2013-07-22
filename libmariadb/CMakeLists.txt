@@ -56,7 +56,6 @@ my_div.c
 my_error.c 
 my_fopen.c
 my_fstream.c
-my_gethostbyname.c
 my_getwd.c
 my_init.c
 my_lib.c

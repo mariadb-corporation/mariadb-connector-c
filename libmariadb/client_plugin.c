@@ -364,7 +364,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
            name, SO_EXT, NullS);
    
   /* Open new dll handle */
-  if (!(dlhandle= dlopen(dlpath, RTLD_NOW)))
+  if (!(dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))
   {
 #ifdef _WIN32
    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,

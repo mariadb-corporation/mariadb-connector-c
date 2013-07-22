@@ -92,7 +92,7 @@ ELSE(WIN32)
     IF (NOT SOCKET_SIZE_TYPE)
       CHECK_C_SOURCE_COMPILES("
         #include <sys/socket.h>
-        int main()
+        int main(int argc, char **argv)
         {
           getsockname(0, 0, (${CHECK_TYPE} *)0);
           return 0;

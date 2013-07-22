@@ -1406,7 +1406,7 @@ mysql_connect(MYSQL *mysql,const char *host,
 */
 
 MYSQL * STDCALL 
-mysql_real_connect(MYSQL *mysql,const char *host, const char *user,
+mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   const char *passwd, const char *db,
 		   uint port, const char *unix_socket,unsigned long client_flag)
 {
@@ -1417,18 +1417,18 @@ mysql_real_connect(MYSQL *mysql,const char *host, const char *user,
                                     db, port, unix_socket, client_flag);
 }
 
-MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
+MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   const char *passwd, const char *db,
-		   uint port, const char *unix_socket,unsigned long client_flag)
+		   uint port, const char *unix_socket, unsigned long client_flag)
 {
   char		buff[NAME_LEN+USERNAME_LENGTH+100];
   char		*end, *end_pkt, *host_info,
                 *charset_name= NULL;
   my_socket	sock;
-  char          *scramble_data;
-  const char *  scramble_plugin;
-  uint		pkt_length, scramble_len, pkt_scramble_len= 0;
-  NET		*net= &mysql->net;
+  char    *scramble_data;
+  const char *scramble_plugin;
+  uint pkt_length, scramble_len, pkt_scramble_len= 0;
+  NET	*net= &mysql->net;
 #ifdef _WIN32
   HANDLE	hPipe=INVALID_HANDLE_VALUE;
 #endif
@@ -1625,10 +1625,12 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql,const char *host, const char *user,
       goto error;
     }
 
+    /* last call to connect 2 failed */
     if (rc)
     {
       my_set_error(mysql, CR_CONN_HOST_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONN_HOST_ERROR),
                           host, rc);
+      closesocket(sock);
       goto error;
     }
   }

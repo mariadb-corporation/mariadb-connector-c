@@ -38,9 +38,6 @@ pthread_mutex_t LOCK_ssl_config;
 #ifndef HAVE_LOCALTIME_R
 pthread_mutex_t LOCK_localtime_r;
 #endif
-#ifndef HAVE_GETHOSTBYNAME_R
-pthread_mutex_t LOCK_gethostbyname_r;
-#endif
 #ifdef PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP
 pthread_mutexattr_t my_fast_mutexattr;
 #endif
@@ -83,9 +80,6 @@ my_bool my_thread_global_init(void)
 #ifndef HAVE_LOCALTIME_R
   pthread_mutex_init(&LOCK_localtime_r,MY_MUTEX_INIT_SLOW);
 #endif
-#ifndef HAVE_GETHOSTBYNAME_R
-  pthread_mutex_init(&LOCK_gethostbyname_r,MY_MUTEX_INIT_SLOW);
-#endif
   return my_thread_init();
 }
 
@@ -102,9 +96,6 @@ void my_thread_global_end(void)
 #endif
 #ifdef HAVE_OPENSSL
   pthread_mutex_destroy(&LOCK_ssl_config);
-#endif
-#ifndef HAVE_GETHOSTBYNAME_R
-  pthread_mutex_destroy(&LOCK_gethostbyname_r);
 #endif
 }
 
@@ -240,7 +231,7 @@ extern void **my_thread_var_dbug()
   if (! THR_KEY_mysys_initialized)
     return NULL;
   tmp= _my_thread_var();
-  return tmp && tmp->initialized ? &tmp->dbug : 0;
+  return tmp && tmp->initialized ? (void **)&tmp->dbug : 0;
 }
 #endif /* DBUG_OFF */
 
