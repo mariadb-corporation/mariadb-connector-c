@@ -499,7 +499,7 @@ static int test_reconnect_maxpackage(MYSQL *my)
   mysql_free_result(res);
 
   query= (char *)malloc(max_packet + 30);
-  memset(query, 0, max_packet);
+  memset(query, 0, max_packet + 30);
 
   strcpy(query, "SELECT '");
   memset(query + 8, 'A', max_packet);

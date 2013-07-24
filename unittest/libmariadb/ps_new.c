@@ -334,6 +334,8 @@ int test_sp_reset2(MYSQL *mysql)
   long l[4];
   char *stmtstr= "CALL P1()";
 
+  memset(l, 0, sizeof(l));
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");

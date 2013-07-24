@@ -381,6 +381,8 @@ static int test_prepare_syntax(MYSQL *mysql)
   rc= mysql_commit(mysql);
   check_mysql_rc(rc, mysql);
 
+  mysql_stmt_close(stmt);
+
   return OK;
 }
 
@@ -560,6 +562,8 @@ static int test_prepare_multi_statements(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   FAIL_IF(!rc, "Error expected");
+
+  mysql_stmt_close(stmt);
 
   return OK;
 }

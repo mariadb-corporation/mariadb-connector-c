@@ -940,11 +940,11 @@ my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
 {
   DBUG_ENTER("mysql_stmt_close");
 
-  if (stmt->mysql && stmt->mysql->net.vio)
+  if (stmt && stmt->mysql && stmt->mysql->net.vio)
     mysql_stmt_reset(stmt);
   net_stmt_close(stmt, 1);
 
-  my_free((char *)stmt->extension, MYF(MY_WME));
+  my_free((char *)stmt->extension, MYF(MY_ALLOW_ZERO_PTR));
   my_free((char *)stmt, MYF(MY_WME));
 
   DBUG_RETURN(0);
@@ -1237,6 +1237,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       goto fail; 
     }
+    memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
   }
   /* allocated bind buffer for result */
   if (stmt->field_count)

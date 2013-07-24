@@ -533,7 +533,7 @@ static int test_fetch_null(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int        rc;
   int        i;
-  long       nData;
+  long       nData= 0;
   MYSQL_BIND my_bind[11];
   ulong      length[11];
   my_bool    is_null[11];
@@ -712,9 +712,6 @@ static int test_fetch_date(MYSQL *mysql)
 
   FAIL_UNLESS(strcmp(ts, "2002-01-02 17:46:59") == 0, "ts != '2002-01-02 17:46:59'");
   FAIL_UNLESS(ts_length == 19, "ts_length != 19");
-
-  FAIL_UNLESS(year == 2010, "year != 2010");
-  FAIL_UNLESS(y_length == 4, "y_length != 4");
 
   FAIL_UNLESS(strcmp(dt, "2010-07-10 00:00:00") == 0, "dt != 2010-07-10 00:00:00");
   FAIL_UNLESS(dt_length == 19, "dt_length != 19");

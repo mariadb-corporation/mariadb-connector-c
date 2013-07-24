@@ -1722,9 +1722,21 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   client_flag|=mysql->options.client_flag;
 
   if (strncmp(end, "5.5.5-", 6) == 0)
-    mysql->server_version= my_strdup(end + 6, 0);
+  {
+    if (!(mysql->server_version= my_strdup(end + 6, 0)))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      goto error;
+    }
+  }
   else
-    mysql->server_version= my_strdup(end, MYF(0));
+  {
+    if (!(mysql->server_version= my_strdup(end, MYF(0))))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      goto error;
+    }
+  }
   end+= strlen(end) + 1;
 
   mysql->thread_id=uint4korr(end);
@@ -1951,9 +1963,13 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
     my_free(s_passwd,MYF(MY_ALLOW_ZERO_PTR));
     my_free(s_db,MYF(MY_ALLOW_ZERO_PTR));
 
-    mysql->user=  my_strdup(user,MYF(MY_WME));
-    mysql->passwd=my_strdup(passwd,MYF(MY_WME));
-    mysql->db=    db ? my_strdup(db,MYF(MY_WME)) : 0;
+    if (!(mysql->user=  my_strdup(user,MYF(MY_WME))) ||
+        !(mysql->passwd=my_strdup(passwd,MYF(MY_WME))) ||
+        !(mysql->db= db ? my_strdup(db,MYF(MY_WME)) : 0))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      rc= 1;
+    }
 
     for (;li_stmt;li_stmt= li_stmt->next)
     {

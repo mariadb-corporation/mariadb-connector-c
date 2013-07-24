@@ -114,13 +114,11 @@ DWORD WINAPI thread_conc27(void)
 #endif
 {
   MYSQL *mysql;
-  int rc, i;
-  char *hname[]= {"localhost", "127.0.0.1", NULL};
+  int rc;
   mysql_thread_init();
   mysql= mysql_init(NULL);
-  i= rand() % 3;
-  diag("Connecting to %s", hname[i]);
-  if(!mysql_real_connect(mysql, hname[i], username, password, schema,
+  MYSQL_RES *res;
+  if(!mysql_real_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))
   {
     diag("Error: %s", mysql_error(mysql));
@@ -132,7 +130,10 @@ DWORD WINAPI thread_conc27(void)
   rc= mysql_query(mysql, "UPDATE t_conc27 SET a=a+1");
   check_mysql_rc(rc, mysql);
   pthread_mutex_unlock(&LOCK_test);
-  mysql_thread_end();
+  rc= mysql_query(mysql, "SELECT SLEEP(5)");
+  check_mysql_rc(rc, mysql);
+  if (res= mysql_store_result(mysql))
+    mysql_free_result(res);
   mysql_close(mysql);
 end:
   mysql_thread_end();
