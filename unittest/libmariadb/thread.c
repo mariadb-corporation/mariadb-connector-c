@@ -45,8 +45,9 @@ int thread_conc27(void);
 DWORD WINAPI thread_conc27(void);
 #endif
 
-#define THREAD_NUM 150 
+#define THREAD_NUM 1800 
 
+/* run this test as root and increase the number of handles (ulimit -n) */
 static int test_conc_27(MYSQL *mysql)
 {
 
@@ -68,6 +69,9 @@ static int test_conc_27(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "INSERT INTO t_conc27 VALUES(0)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SET GLOBAL max_connections=100000");
   check_mysql_rc(rc, mysql);
 
   pthread_mutex_init(&LOCK_test, NULL);
@@ -121,7 +125,7 @@ DWORD WINAPI thread_conc27(void)
   if(!mysql_real_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))
   {
-    diag("Error: %s", mysql_error(mysql));
+    diag(">Error: %s", mysql_error(mysql));
     mysql_close(mysql);
     mysql_thread_end();
     goto end;
@@ -130,7 +134,6 @@ DWORD WINAPI thread_conc27(void)
   rc= mysql_query(mysql, "UPDATE t_conc27 SET a=a+1");
   check_mysql_rc(rc, mysql);
   pthread_mutex_unlock(&LOCK_test);
-  rc= mysql_query(mysql, "SELECT SLEEP(5)");
   check_mysql_rc(rc, mysql);
   if (res= mysql_store_result(mysql))
     mysql_free_result(res);

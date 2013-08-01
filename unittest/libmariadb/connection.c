@@ -522,7 +522,10 @@ static int test_reconnect(MYSQL *mysql)
 
   diag("Thread_id before kill: %lu", mysql_thread_id(mysql1));
   mysql_kill(mysql, mysql_thread_id(mysql1));
+  sleep(2);
 
+  rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
+  FAIL_IF(rc == 0, "error expected"); 
   rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
   check_mysql_rc(rc, mysql1);
   diag("Thread_id after kill: %lu", mysql_thread_id(mysql1));
@@ -581,6 +584,25 @@ int test_conc26(MYSQL *my)
   return OK;
 }
 
+int test_connection_timeout(MYSQL *my)
+{
+  unsigned int timeout= 5;
+  time_t start, elapsed;
+  MYSQL *mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
+  start= time(NULL);
+  if (mysql_real_connect(mysql, "192.168.1.101", "notexistinguser", "password", schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("Error expected - maybe you have to change hostname");
+    return FAIL;
+  }
+  elapsed= time(NULL) - start;
+  diag("elapsed: %d", elapsed);
+  mysql_close(mysql);
+  FAIL_IF(elapsed +1 > timeout, "timeout ignored")
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
@@ -591,6 +613,7 @@ struct my_tests_st my_tests[] = {
   {"test_reconnect", test_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc21", test_conc21, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc26", test_conc26, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_connection_timeout", test_connection_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

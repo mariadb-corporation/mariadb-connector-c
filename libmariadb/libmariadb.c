@@ -63,6 +63,9 @@
 #ifdef HAVE_OPENSSL
 #include <ma_secure.h>
 #endif
+#ifndef _WIN32
+#include <poll.h>
+#endif
 
 static my_bool mysql_client_init=0;
 static void mysql_close_options(MYSQL *mysql);
@@ -145,93 +148,81 @@ extern void mysql_client_plugin_deinit();
 * Base version coded by Steve Bernacki, Jr. <steve@navinet.net>
 *****************************************************************************/
 
+int socket_block(my_socket s,my_bool blocked)
+{
+#ifdef _WIN32
+  unsigned long socket_blocked= blocked ? 0 : 1;
+  return ioctlsocket(s, FIONBIO, &socket_blocked);
+#else
+  int flags= fcntl(s, F_GETFL, 0);
+  if (blocked)
+    flags&= ~O_NONBLOCK;
+  else 
+    flags|= O_NONBLOCK;
+  return fcntl(s, F_SETFL, flags);
+#endif
+}
+
 static int connect2(my_socket s, const struct sockaddr *name, uint namelen,
 		    uint timeout)
 {
-#if defined(_WIN32) || defined(OS2)
-  return connect(s, (struct sockaddr*) name, namelen);
-#else
-  int flags, res, s_err;
+  int res, s_err;
   socklen_t s_err_size = sizeof(uint);
-  fd_set sfds;
+#ifndef _WIN32
+  struct pollfd poll_fd;
+#else
+  FD_SET sfds, efds;
   struct timeval tv;
-  time_t start_time, now_time;
+#endif
 
-  /*
-    If they passed us a timeout of zero, we should behave
-    exactly like the normal connect() call does.
-  */
-
-  if (timeout == 0)
+  if (!timeout)
     return connect(s, (struct sockaddr*) name, namelen);
 
-  flags = fcntl(s, F_GETFL, 0);		  /* Set socket to not block */
-#ifdef O_NONBLOCK
-  fcntl(s, F_SETFL, flags | O_NONBLOCK);  /* and save the flags..  */
-#endif
+  /* set socket to non blocking */
+  if (socket_block(s, 0) == SOCKET_ERROR)
+    return -1;
 
-  res = connect(s, (struct sockaddr*) name, namelen);
-  s_err = errno;			/* Save the error... */
-  fcntl(s, F_SETFL, flags);
-  if ((res != 0) && (s_err != EINPROGRESS))
-  {
-    errno = s_err;			/* Restore it */
-    return(-1);
-  }
-  if (res == 0)				/* Connected quickly! */
-    return(0);
+  res= connect(s, (struct sockaddr*) name, namelen);
+  if (res == 0)
+    return res;
 
-  /*
-    Otherwise, our connection is "in progress."  We can use
-    the select() call to wait up to a specified period of time
-    for the connection to suceed.  If select() returns 0
-    (after waiting howevermany seconds), our socket never became
-    writable (host is probably unreachable.)  Otherwise, if
-    select() returns 1, then one of two conditions exist:
-   
-    1. An error occured.  We use getsockopt() to check for this.
-    2. The connection was set up sucessfully: getsockopt() will
-    return 0 as an error.
-   
-    Thanks goes to Andrew Gierth <andrew@erlenstar.demon.co.uk>
-    who posted this method of timing out a connect() in
-    comp.unix.programmer on August 15th, 1997.
-  */
-
-  FD_ZERO(&sfds);
-  FD_SET(s, &sfds);
-  /*
-    select could be interrupted by a signal, and if it is, 
-    the timeout should be adjusted and the select restarted
-    to work around OSes that don't restart select and 
-    implementations of select that don't adjust tv upon
-    failure to reflect the time remaining
-   */
-  start_time = time(NULL);
-  for (;;)
-  {
-    tv.tv_sec = (long) timeout;
-    tv.tv_usec = 0;
-#if defined(HPUX) && defined(THREAD)
-    if ((res = select(s+1, NULL, (int*) &sfds, NULL, &tv)) > 0)
-      break;
+#ifdef _WIN32
+  if (GetLastError() != WSAEWOULDBLOCK &&
+      GetLastError() != WSAEINPROGRESS)
 #else
-    if ((res = select(s+1, NULL, &sfds, NULL, &tv)) > 0)
-      break;
+  if (errno != EINPROGRESS)
 #endif
-    if (res == 0)					/* timeout */
-      return -1;
-    now_time=time(NULL);
-    timeout-= (uint) (now_time - start_time);
-    if (errno != EINTR || (int) timeout <= 0)
-      return -1;
-  }
+     return -1;
+#ifndef _WIN32
+  memset(&poll_fd, 0, sizeof(struct pollfd));
+  poll_fd.events= POLLOUT | POLLERR;
+  poll_fd.fd= s;
 
-  /*
-    select() returned something more interesting than zero, let's
-    see if we have any errors.  If the next two statements pass,
-    we've got an open socket!
-  */
+  /* connection timeout in milliseconds */
+  res= poll(&poll_fd, 1, (timeout > -1) ? timeout * 1000 : timeout);
+
+  switch(res)
+  {
+    /* Error= - 1, timeout = 0 */
+    case -1:
+      break;
+    case 0: 
+      errno= ETIMEDOUT;
+      break;
+  }
+#else
+  FD_ZERO(&sfds);
+  FD_ZERO(&efds);
+  FD_SET(s, &sfds);
+  FD_SET(s, &efds);
+
+  memset(&tv, 0, sizeof(struct timeval));
+  tv.tv_sec= timeout;
+
+  res= select(s+1, NULL, &sfds, &efds, &tv);
+  if (res < 1)
+    return -1;
+#endif
 
   s_err=0;
   if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char*) &s_err, &s_err_size) != 0)
@@ -243,8 +234,6 @@ static int connect2(my_socket s, const struct sockaddr *name, uint namelen,
     return(-1);					/* but return an error... */
   }
   return (0);					/* ok */
-
-#endif
 }
 
 /*
@@ -1521,6 +1510,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
                           unix_socket, socket_errno);
       goto error;
     }
+    if (socket_block(sock, 1) == SOCKET_ERROR)
+      goto error;
   }
   else
 #elif defined(_WIN32)
@@ -1610,7 +1601,14 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       }
       if (!(rc= connect2(sock, save_res->ai_addr, save_res->ai_addrlen, 
                    mysql->options.connect_timeout)))
+      {
+        if (socket_block(sock, 1) == SOCKET_ERROR)
+        {
+          closesocket(sock);
+          continue;
+        }
         break; /* success! */
+      }
 
       vio_delete(mysql->net.vio);
       mysql->net.vio= NULL;

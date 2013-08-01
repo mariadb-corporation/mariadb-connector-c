@@ -33,6 +33,7 @@ pthread_cond_init (pthread_cond_t *cv, const pthread_condattr_t *attr)
 {
   DBUG_ENTER("pthread_cond_init");
   /* Initialize the count to 0 */
+  InitializeCriticalSection(&cv->waiters_count_lock);
   cv->waiting = 0;
 
   /* Create an auto-reset and manual-reset event */
