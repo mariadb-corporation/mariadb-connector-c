@@ -76,9 +76,9 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
 
   if (info->fd < 0)
   {
+    info->error_no = my_errno;
     my_snprintf((char *)info->error_msg, sizeof(info->error_msg), 
-                "Can't open file '%-.64s'.", filename);
-    info->error_no = EE_FILENOTFOUND;
+                EE(EE_FILENOTFOUND), filename, info->error_no);
     DBUG_RETURN(1);
   }
   DBUG_RETURN(0);
@@ -136,11 +136,8 @@ void mysql_local_infile_end(void *ptr)
 
   if (info)
   {
-    if (info->fd)
-    {
+    if (info->fd >= 0)
       my_close(info->fd, MYF(0));
-      info->fd= 0;
-    }
     my_free(ptr, MYF(0));
   }		
   DBUG_VOID_RETURN;

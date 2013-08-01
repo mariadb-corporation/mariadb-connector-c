@@ -813,6 +813,31 @@ static int test_bug49694(MYSQL *mysql)
   return OK;
 }
 
+static int test_ldi_path(MYSQL *mysql)
+{
+  int rc;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+#ifdef _WIN32
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE 'X:/non_existing_path/data.csv' INTO TABLE t1 "
+                         "FIELDS TERMINATED BY '.' LINES TERMINATED BY '\r\n'");
+#else
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE '/non_existing_path/data.csv' INTO TABLE t1 "
+                         "FIELDS TERMINATED BY '.' LINES TERMINATED BY '\r\n'");
+#endif
+  FAIL_IF(rc== 0, "Error expected");
+  FAIL_IF(mysql_errno(mysql) != 2, "Error code 2 expected");
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_bug28075", test_bug28075, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28505", test_bug28505, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
@@ -827,6 +852,7 @@ struct my_tests_st my_tests[] = {
   {"test_wl4166_4", test_wl4166_4, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4284_1", test_wl4284_1, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_bug49694", test_bug49694, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_ldi_path", test_ldi_path, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, 0}
 };
 
