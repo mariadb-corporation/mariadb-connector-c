@@ -365,7 +365,7 @@ restart:
     my_set_error(mysql, net->last_errno == ER_NET_PACKET_TOO_LARGE ?
 		     CR_NET_PACKET_TOO_LARGE:
 		     CR_SERVER_LOST,
-                     SQLSTATE_UNKNOWN, 0);
+         SQLSTATE_UNKNOWN, 0);
     return(packet_error);
   }
   if (net->read_pos[0] == 255)
@@ -1651,19 +1651,27 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   /* set write timeout */
   if (mysql->options.write_timeout)
     vio_write_timeout(net->vio, mysql->options.read_timeout);
-
-
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
   if (mysql->options.connect_timeout &&
       vio_poll_read(net->vio, mysql->options.connect_timeout))
   {
-    my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+    my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                 ER(CR_SERVER_LOST_EXTENDED),
+                 "handshake: waiting for inital communication packet",
+                 errno);
     goto error;
   }
   if ((pkt_length=net_safe_read(mysql)) == packet_error)
-    goto error;
+  {
+    if (mysql->net.last_errno == CR_SERVER_LOST)
+      my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                 ER(CR_SERVER_LOST_EXTENDED),
+                 "handshake: reading inital communication packet",
+                 errno);
 
+    goto error;
+  }
   end= (char *)net->read_pos;
   end_pkt= (char *)net->read_pos + pkt_length;
 

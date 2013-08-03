@@ -135,7 +135,7 @@ const char *client_errors[]=
 /* 2052 */  "Prepared statement contains no metadata",
 /* 2053 */  "",
 /* 2054 */  "This feature is not implemented or disabled",
-/* 2055 */  "",
+/* 2055 */  "Lost connection to MySQL server at '%s', system error: %d",
 /* 2056 */  "",
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
 /* 2058 */  "Plugin %s could not be loaded: %s",
