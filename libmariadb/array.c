@@ -17,9 +17,7 @@
 
 /* Handling of arrays that can grow dynamicly. */
 
-#ifdef _WIN32
 #undef SAFEMALLOC /* Problems with threads */
-#endif
 
 #include "mysys_priv.h"
 #include "m_string.h"

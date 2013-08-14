@@ -74,7 +74,6 @@ my_symlink.c
 my_thr_init.c
 my_write.c
 password.c 
-safemalloc.c
 str2int.c
 strcend.c
 strcont.c 

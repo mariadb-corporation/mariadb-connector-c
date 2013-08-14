@@ -146,7 +146,7 @@ void net_end(NET *net)
 static my_bool net_realloc(NET *net, size_t length)
 {
   uchar *buff;
-  ulong pkt_length;
+  size_t pkt_length;
 
   DBUG_ENTER("net_realloc");
   DBUG_PRINT("info", ("length: %lu max_allowed_packet: %lu",
