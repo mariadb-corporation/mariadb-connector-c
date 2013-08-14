@@ -119,9 +119,9 @@ DWORD WINAPI thread_conc27(void)
 {
   MYSQL *mysql;
   int rc;
+  MYSQL_RES *res;
   mysql_thread_init();
   mysql= mysql_init(NULL);
-  MYSQL_RES *res;
   if(!mysql_real_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))
   {

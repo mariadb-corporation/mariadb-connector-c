@@ -84,16 +84,15 @@ void my_init(void)
     DBUG_PROCESS(my_progname ? my_progname : (char*) "unknown");
     if (!home_dir)
     {					/* Don't initialize twice */
-      my_win_init();
       if ((home_dir=getenv("HOME")) != 0)
-	home_dir=intern_filename(home_dir_buff,home_dir);
+        home_dir=intern_filename(home_dir_buff,home_dir);
 #ifndef VMS
       /* Default creation of new files */
       if ((str=getenv("UMASK")) != 0)
-	my_umask=(int) (atoi_octal(str) | 0600);
+        my_umask=(int) (atoi_octal(str) | 0600);
 	/* Default creation of new dir's */
       if ((str=getenv("UMASK_DIR")) != 0)
-	my_umask_dir=(int) (atoi_octal(str) | 0700);
+        my_umask_dir=(int) (atoi_octal(str) | 0700);
 #endif
 #ifdef VMS
       init_ctype();			/* Stupid linker don't link _ctype.c */
@@ -101,7 +100,7 @@ void my_init(void)
       DBUG_PRINT("exit",("home: '%s'",home_dir));
     }
 #ifdef _WIN32
-    win32_init_tcp_ip();
+    my_win_init();
 #endif
     DBUG_VOID_RETURN;
   }
@@ -204,60 +203,8 @@ void setEnvString(char *ret, const char *name, const char *value)
 
 static void my_win_init(void)
 {
-  HKEY	hSoftMysql ;
-  DWORD dimName = 256 ;
-  DWORD dimData = 1024 ;
-  DWORD dimNameValueBuffer = 256 ;
-  DWORD dimDataValueBuffer = 1024 ;
-  DWORD indexValue = 0 ;
-  long	retCodeEnumValue ;
-  char	NameValueBuffer[256] ;
-  char	DataValueBuffer[1024] ;
-  char	EnvString[1271] ;
-  const char *targetKey = "Software\\MySQL" ;
   DBUG_ENTER("my_win_init");
-
-  setlocale(LC_CTYPE, "");             /* To get right sortorder */
-
-  /* Clear the OS system variable TZ and avoid the 100% CPU usage */
-  _putenv( "TZ=" ); 
-  _tzset();
-
-  /* apre la chiave HKEY_LOCAL_MACHINES\software\MySQL */
-  if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,(LPCTSTR)targetKey,0,
-		   KEY_READ,&hSoftMysql) != ERROR_SUCCESS)
-    DBUG_VOID_RETURN;
-
-  /*
-  ** Ne legge i valori e li inserisce  nell'ambiente
-  ** suppone che tutti i valori letti siano di tipo stringa + '\0'
-  ** Legge il valore con indice 0 e lo scarta
-  */
-  retCodeEnumValue = RegEnumValue(hSoftMysql, indexValue++,
-				  (LPTSTR)NameValueBuffer, &dimNameValueBuffer,
-				  NULL, NULL, (LPBYTE)DataValueBuffer,
-				  &dimDataValueBuffer) ;
-
-  while (retCodeEnumValue != ERROR_NO_MORE_ITEMS)
-  {
-    char *my_env;
-    /* Crea la stringa d'ambiente */
-    setEnvString(EnvString, NameValueBuffer, DataValueBuffer) ;
-
-    my_env=strdup(EnvString);  /* variable for putenv must be allocated ! */
-    putenv(my_env) ;
-
-    dimNameValueBuffer = dimName ;
-    dimDataValueBuffer = dimData ;
-
-    retCodeEnumValue = RegEnumValue(hSoftMysql, indexValue++,
-				    NameValueBuffer, &dimNameValueBuffer,
-				    NULL, NULL, (LPBYTE)DataValueBuffer,
-				    &dimDataValueBuffer) ;
-  }
-
-  /* chiude la chiave */
-  RegCloseKey(hSoftMysql) ;
+  win32_init_tcp_ip();
   DBUG_VOID_RETURN ;
 }
 
