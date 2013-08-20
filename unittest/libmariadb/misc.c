@@ -799,7 +799,7 @@ static int test_bug49694(MYSQL *mysql)
     fprintf (fp, "%.08d,%d,%f\r\n", 100 + i, i % 3 + 1, 60000.0 + i/100);
   fclose(fp);
 
-  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './data.csv' INTO TABLE enclist "
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE 'data.csv' INTO TABLE enclist "
                          "FIELDS TERMINATED BY '.' LINES TERMINATED BY '\r\n'");
   check_mysql_rc(rc, mysql);
 
@@ -838,6 +838,52 @@ static int test_ldi_path(MYSQL *mysql)
   return OK;
 }
 
+#if _WIN32
+static int test_conc44(MYSQL *mysql)
+{
+  char query[1024];
+  char *a_filename= "æøå.csv";
+  int rc;
+  int i;
+  FILE *fp;
+
+  rc= mysql_set_character_set(mysql, "latin1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS enclist");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE `enclist` ("
+                         "  `pat_id` int(11) NOT NULL,"
+                         "  `episode_id` int(11) NOT NULL,"
+                         "  `enc_id` double NOT NULL,"
+                         "  PRIMARY KEY (`pat_id`,`episode_id`,`enc_id`)"
+                         ") ENGINE=MyISAM DEFAULT CHARSET=latin1");
+  check_mysql_rc(rc, mysql);
+
+  fp= fopen(a_filename, "w");
+  FAIL_IF(!fp, "Can't open file");
+
+  for (i=0; i < 100; i++)
+    fprintf (fp, "%.08d,%d,%f\r\n", 100 + i, i % 3 + 1, 60000.0 + i/100);
+  fclose(fp);
+
+  sprintf(query, "LOAD DATA LOCAL INFILE '%s' INTO TABLE enclist "
+                         "FIELDS TERMINATED BY '.' LINES TERMINATED BY '\r\n'", a_filename);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DELETE FROM enclist");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql_affected_rows(mysql) != 100, "Import failure. Expected 2 imported rows");
+
+  rc= mysql_query(mysql, "DROP TABLE enclist");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+#endif
+
 struct my_tests_st my_tests[] = {
   {"test_bug28075", test_bug28075, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28505", test_bug28505, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
@@ -853,6 +899,9 @@ struct my_tests_st my_tests[] = {
   {"test_wl4284_1", test_wl4284_1, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_bug49694", test_bug49694, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_ldi_path", test_ldi_path, TEST_CONNECTION_NEW, 0, NULL, NULL},
+#ifdef _WIN32
+  {"test_conc44", test_conc44, TEST_CONNECTION_NEW, 0, NULL, NULL},
+#endif
   {NULL, NULL, 0, 0, NULL, 0}
 };
 

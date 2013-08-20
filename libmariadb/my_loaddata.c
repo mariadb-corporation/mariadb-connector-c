@@ -47,6 +47,9 @@
 #include "errmsg.h"
 #include "mysql.h"
 #include <string.h>
+#ifdef _WIN32
+#include <share.h>
+#endif
 
 typedef struct st_mysql_infile_info
 {
@@ -61,7 +64,12 @@ static
 int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
 {
   MYSQL_INFILE_INFO *info;
-
+  int CodePage= -1;
+#ifdef _WIN32
+  MYSQL *mysql= (MYSQL *)userdata;
+  wchar_t *w_filename= NULL;
+  int Length;
+#endif
   DBUG_ENTER("mysql_local_infile_init");
 
   info = (MYSQL_INFILE_INFO *)my_malloc(sizeof(MYSQL_INFILE_INFO), MYF(MY_ZEROFILL));
@@ -72,7 +80,47 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
   *ptr = info;
 
   info->filename = filename;
-  info->fd = my_open(info->filename, O_RDONLY, MYF(0));
+
+#ifdef _WIN32
+  if (mysql)
+    CodePage= madb_get_windows_cp(mysql->charset->csname);
+#endif
+  if (CodePage == -1)
+  {
+#ifdef _WIN32
+    info->fd= sopen(info->filename, _O_RDONLY, _SH_DENYNO , _S_IREAD | _S_IWRITE);
+#else
+    info->fd = open(info->filename, O_RDONLY | O_BINARY, my_umask);
+#endif
+    my_errno= errno;
+  }
+#ifdef _WIN32
+  else
+  {
+    if ((Length= MultiByteToWideChar(CodePage, 0, info->filename, strlen(info->filename), NULL, 0)))
+    {
+      if (!(w_filename= (wchar_t *)my_malloc((Length + 1) * sizeof(wchar_t), MYF(MY_ZEROFILL))))
+      {
+        info->error_no= CR_OUT_OF_MEMORY;
+        my_snprintf((char *)info->error_msg, sizeof(info->error_msg), 
+                     ER(CR_OUT_OF_MEMORY));
+        DBUG_RETURN(1);
+      }
+      Length= MultiByteToWideChar(CodePage, 0, info->filename, strlen(info->filename), w_filename, Length);
+    }
+    if (Length == 0)
+    {
+      my_free((gptr)w_filename, MYF(0));
+      info->error_no= CR_UNKNOWN_ERROR;
+      my_snprintf((char *)info->error_msg, sizeof(info->error_msg), 
+                  "Character conversion error: %d", GetLastError());
+      DBUG_RETURN(1);
+    }
+    info->fd= _wsopen(w_filename, _O_RDONLY, _SH_DENYNO , _S_IREAD | _S_IWRITE);
+    my_errno= errno;
+    my_free((gptr)w_filename, MYF(0));
+  }
+#endif
 
   if (info->fd < 0)
   {
@@ -95,7 +143,7 @@ int mysql_local_infile_read(void *ptr, char * buf, unsigned int buf_len)
 
   DBUG_ENTER("mysql_local_infile_read");
 
-  count= my_read(info->fd, buf, buf_len, MYF(0));
+  count= read(info->fd, (void *)buf, (size_t)buf_len);
 
   if (count < 0)
   {
@@ -137,8 +185,8 @@ void mysql_local_infile_end(void *ptr)
   if (info)
   {
     if (info->fd >= 0)
-      my_close(info->fd, MYF(0));
-    my_free(ptr, MYF(0));
+      close(info->fd);
+    my_free((gptr)ptr, MYF(0));
   }		
   DBUG_VOID_RETURN;
 }
@@ -197,8 +245,10 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
   /* check if all callback functions exist */
   if (!conn->options.local_infile_init || !conn->options.local_infile_end ||
       !conn->options.local_infile_read || !conn->options.local_infile_error)
+  {
+    conn->options.local_infile_userdata= conn;
     mysql_set_local_infile_default(conn);
-
+  }
   /* allocate buffer for reading data */
   buf = (uchar *)my_malloc(buflen, MYF(0));
 
@@ -250,3 +300,4 @@ infile_error:
   DBUG_RETURN(result);
 }
 /* }}} */
+

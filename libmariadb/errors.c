@@ -22,7 +22,6 @@
 
 const char * NEAR globerrs[GLOBERRS]=
 {
-  "File '%s' not found (Errcode: %d)",
   "Can't create/write to file '%s' (Errcode: %d)",
   "Error reading file '%s' (Errcode: %d)",
   "Error writing file '%s' (Errcode: %d)",
@@ -41,14 +40,19 @@ const char * NEAR globerrs[GLOBERRS]=
   "Can't get working dirctory (Errcode: %d)",
   "Can't change dir to '%s' (Errcode: %d)",
   "Warning: '%s' had %d links",
-  "%d files and %d streams is left open\n",
-  "Disk is full writing '%s'. Waiting for someone to free space...",
+  "Warning: %d files and %d streams is left open\n",
+  "Disk is full writing '%s' (Errcode: %d). Waiting for someone to free space... (Expect up to %d secs delay for server to continue after freeing disk space)",
   "Can't create directory '%s' (Errcode: %d)",
   "Character set '%s' is not a compiled character set and is not specified in the '%s' file",
   "Out of resources when opening file '%s' (Errcode: %d)",
   "Can't read value for symlink '%s' (Error %d)",
   "Can't create symlink '%s' pointing at '%s' (Error %d)",
   "Error on realpath() on '%s' (Error %d)",
+  "Can't sync file '%s' to disk (Errcode: %d)",
+  "Collation '%s' is not a compiled collation and is not specified in the '%s' file",
+  "File '%s' not found (Errcode: %d)",
+  "File '%s' (fileno: %d) was not closed",
+  "Can't change mode for file '%s' to 0x%lx (Error: %d)"
 };
 
 void init_glob_errs(void)

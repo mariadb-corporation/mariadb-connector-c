@@ -44,14 +44,11 @@ mf_format.c
 mf_loadpath.c 
 mf_pack.c 
 mf_path.c
-mf_tempfile.c 
 mf_unixpath.c
 mf_wcomp.c
 mulalloc.c 
 my_alloc.c
 my_compress.c
-my_create.c
-my_delete.c
 my_div.c
 my_error.c 
 my_fopen.c
