@@ -22,6 +22,9 @@
 #include <my_dir.h>
 
 CHARSET_INFO *default_charset_info = (CHARSET_INFO *)&compiled_charsets[5];
+CHARSET_INFO *my_charset_bin= (CHARSET_INFO *)&compiled_charsets[32];
+CHARSET_INFO *my_charset_latin1= (CHARSET_INFO *)&compiled_charsets[5];
+CHARSET_INFO *my_charset_utf8_general_ci= (CHARSET_INFO *)&compiled_charsets[21];
 
 CHARSET_INFO *get_charset_by_nr(uint cs_number)
 {
@@ -52,7 +55,7 @@ CHARSET_INFO *get_charset_by_name(const char *cs_name)
 {
   int i= 0;
 
-  while (compiled_charsets[i].nr && strcmp(cs_name, compiled_charsets[i].name) != 0)
+  while (compiled_charsets[i].nr && strcmp(cs_name, compiled_charsets[i].csname) != 0)
     i++;
  
   return (compiled_charsets[i].nr) ? (CHARSET_INFO *)&compiled_charsets[i] : NULL;
