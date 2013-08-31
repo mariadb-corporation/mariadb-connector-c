@@ -649,7 +649,7 @@ my_real_read(NET *net, size_t *complen)
 	if (helping >= net->max_packet)
 	{
 	  /* We must allocate one extra byte for the end null */
-	  if (net_realloc(net,helping))
+	  if (net_realloc(net,helping + 1))
 	  {
 #ifdef MYSQL_SERVER
 	    if (i == 1)
