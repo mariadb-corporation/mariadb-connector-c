@@ -74,8 +74,11 @@ uint32 copy_and_convert(char *to, uint32 to_length, CHARSET_INFO *to_cs,
 			const char *from, uint32 from_length,
 			CHARSET_INFO *from_cs, uint *errors);
 #else
+
 size_t mariadb_time_to_string(const MYSQL_TIME *tm, char *time_str, size_t len,
                            unsigned int digits);
+size_t convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
+                       char *to, size_t *to_len, CHARSET_INFO *to_cs);
 #endif
 /*
   Flag byte bits
@@ -575,7 +578,7 @@ static my_bool type_and_offset_read_named(DYNAMIC_COLUMN_TYPE *type,
     return 1;
   }
   *type= (val & 0xf) + 1;
-  *offset= val >> 4;
+  *offset= (size_t)(val >> 4);
   return (*offset >= lim);
 }
 
@@ -2816,7 +2819,7 @@ dynamic_column_update_copy(DYNAMIC_COLUMN *str, PLAN *plan,
       else if (offs < first_offset)
         goto err;
 
-      offs+= plan[i].ddelta;
+      offs+= (size_t)plan[i].ddelta;
       {
         DYNAMIC_COLUMN_VALUE val;
         val.type= tp; // only the type used in the header
@@ -2982,7 +2985,7 @@ dynamic_column_update_move_left(DYNAMIC_COLUMN *str, PLAN *plan,
           return ER_DYNCOL_FORMAT;
         }
 
-        offs+= plan[i].ddelta;
+        offs+= (size_t)plan[i].ddelta;
         int2store(write, nm);
         /* write rest of data at write + COLUMN_NUMBER_SIZE */
         type_and_offset_store_num(write, new_offset_size, tp, offs);
@@ -3034,11 +3037,11 @@ dynamic_column_update_move_left(DYNAMIC_COLUMN *str, PLAN *plan,
     if (start < end && plan[i].mv_length)
     {
       memmove((header_base + new_header_size +
-               plan[i].mv_offset + plan[i].ddelta),
-              header_base + header_size + plan[i].mv_offset,
-              plan[i].mv_length);
+               (size_t)plan[i].mv_offset + (size_t)plan[i].ddelta),
+              header_base + header_size + (size_t)plan[i].mv_offset,
+              (size_t)plan[i].mv_length);
     }
-    str->length+= plan[i].mv_length;
+    str->length+= (size_t)plan[i].mv_length;
 
     /* new data adding */
     if (i < add_column_count)
@@ -3527,8 +3530,8 @@ dynamic_column_update_many_fmt(DYNAMIC_COLUMN *str,
     Check if it is only "increasing" or only "decreasing" plan for (header
     and data separately).
   */
-  new_header.data_size= header.data_size + data_delta;
-  new_header.nmpool_size= new_header.nmpool_size + name_delta;
+  new_header.data_size= header.data_size + (size_t)data_delta;
+  new_header.nmpool_size= new_header.nmpool_size + (size_t)name_delta;
   DBUG_ASSERT(new_header.format != dyncol_fmt_num ||
               new_header.nmpool_size == 0);
   if ((new_header.offset_size=
@@ -4402,5 +4405,5 @@ mariadb_dyncol_column_count(DYNAMIC_COLUMN *str, uint *column_count)
 */
 void mariadb_dyncol_free(DYNAMIC_COLUMN *str)
 {
-  return dynstr_free(str);
+  dynstr_free(str);
 }

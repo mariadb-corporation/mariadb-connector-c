@@ -100,6 +100,12 @@ ma_secure.c
 libmariadb_exports.def
 )
 
+IF(WIN32)
+  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
+                         ${CMAKE_SOURCE_DIR}/win-iconv/win_iconv.c)
+ENDIF()
+
 IF(WITH_SQLITE)
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
                          ${CMAKE_SOURCE_DIR}/plugins/sqlite/sqlite3.c

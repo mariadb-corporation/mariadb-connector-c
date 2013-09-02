@@ -74,7 +74,7 @@ my_bool dynstr_set(DYNAMIC_STRING *str, const char *init_str)
 }
 
 
-my_bool dynstr_realloc(DYNAMIC_STRING *str, ulong additional_size)
+my_bool dynstr_realloc(DYNAMIC_STRING *str, size_t additional_size)
 {
   DBUG_ENTER("dynstr_realloc");
 
