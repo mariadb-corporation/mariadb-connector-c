@@ -813,6 +813,26 @@ static int test_bug49694(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc49(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_RES *res;
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc49");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE conc49 (a int, b int, c int) Engine=InnoDB DEFAULT CHARSET=latin1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './sample.csv' INTO TABLE conc49 FIELDS ESCAPED BY ' ' TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\r\n'");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SELECT a FROM conc49");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  rc= mysql_num_rows(res);
+  mysql_free_result(res);
+  FAIL_IF(rc != 3, "3 rows expected");
+  return OK;
+}
+
 static int test_ldi_path(MYSQL *mysql)
 {
   int rc;
@@ -885,6 +905,7 @@ static int test_conc44(MYSQL *mysql)
 #endif
 
 struct my_tests_st my_tests[] = {
+  {"test_conc49", test_conc49, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28075", test_bug28075, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28505", test_bug28505, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_debug_example", test_debug_example, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

@@ -88,7 +88,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
   if (CodePage == -1)
   {
 #ifdef _WIN32
-    info->fd= sopen(info->filename, _O_RDONLY, _SH_DENYNO , _S_IREAD | _S_IWRITE);
+    info->fd= sopen(info->filename, _O_RDONLY | _O_BINARY, _SH_DENYNO , _S_IREAD | _S_IWRITE);
 #else
     info->fd = open(info->filename, O_RDONLY | O_BINARY, my_umask);
 #endif
@@ -116,7 +116,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
                   "Character conversion error: %d", GetLastError());
       DBUG_RETURN(1);
     }
-    info->fd= _wsopen(w_filename, _O_RDONLY, _SH_DENYNO , _S_IREAD | _S_IWRITE);
+    info->fd= _wsopen(w_filename, _O_RDONLY | _O_BINARY, _SH_DENYNO , _S_IREAD | _S_IWRITE);
     my_errno= errno;
     my_free((gptr)w_filename, MYF(0));
   }
