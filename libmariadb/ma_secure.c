@@ -270,6 +270,8 @@ static int my_ssl_set_certs(SSL *ssl)
         DBUG_RETURN(1);
 #endif        
       }
+      else
+        goto error;
     }
   }
 
@@ -455,7 +457,7 @@ int my_ssl_close(Vio *vio)
   SSL_free(vio->ssl);
   vio->ssl= NULL;
 
-  return rc;
+  DBUG_RETURN(rc);
 }
 
 #endif /* HAVE_OPENSSL */

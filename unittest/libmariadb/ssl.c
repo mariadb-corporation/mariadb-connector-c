@@ -22,7 +22,7 @@
 
 static int skip_ssl= 1;
 
-#ifdef THREAD
+#ifndef WIN32
 pthread_mutex_t LOCK_test;
 #endif
 
@@ -142,7 +142,6 @@ static int test_multi_ssl_connections(MYSQL *unused)
 }
 
 #ifndef WIN32
-#ifdef THREAD
 static void ssl_thread(void)
 {
   MYSQL *mysql;
@@ -152,7 +151,7 @@ static void ssl_thread(void)
   if (!(mysql= mysql_init(NULL)))
   {  
     mysql_thread_end();
-    pthread_exit(-1);
+    pthread_exit(NULL);
   }
   mysql_ssl_set(mysql, 0, 0, "./certs/ca.pem", 0, 0);
 
@@ -162,7 +161,7 @@ static void ssl_thread(void)
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
     mysql_thread_end();
-    pthread_exit(-1);
+    pthread_exit(NULL);
   }
 
   pthread_mutex_lock(&LOCK_test);
@@ -172,11 +171,9 @@ static void ssl_thread(void)
   mysql_thread_end();
   pthread_exit(0);
 }
-#endif
 
 static int test_ssl_threads(MYSQL *mysql)
 {
-#ifdef THREAD
   int i, rc;
   pthread_t thread[50];
   MYSQL_RES *res;
@@ -206,10 +203,6 @@ static int test_ssl_threads(MYSQL *mysql)
   FAIL_IF(strcmp(row[0], "50") != 0, "Expected 50");
   mysql_free_result(res);
   return OK;
-#else
-  diag("no thread support -> skip");
-  return SKIP;
-#endif
 }
 #endif
 
@@ -219,6 +212,9 @@ static int test_phpbug51647(MYSQL *my)
 
   if (check_skip_ssl())
     return SKIP;
+
+  diag("todo: fix ca");
+  return SKIP;
 
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
@@ -233,9 +229,50 @@ static int test_phpbug51647(MYSQL *my)
   return OK;
 }
 
+static int test_conc50(MYSQL *my)
+{
+  MYSQL *mysql;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, NULL, "test", NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_bug62743(MYSQL *my)
+{
+  MYSQL *mysql;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, "dummykey", NULL, NULL, NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
+  mysql_close(mysql);
+
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_bug62743", test_bug62743, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_phpbug51647", test_phpbug51647, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_ssl_cipher", test_ssl_cipher, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_multi_ssl_connections", test_multi_ssl_connections, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
