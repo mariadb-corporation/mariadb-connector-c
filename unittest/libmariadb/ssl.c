@@ -249,6 +249,36 @@ static int test_conc50(MYSQL *my)
   return OK;
 }
 
+static int verify_ssl_server_cert(MYSQL *my)
+{
+  MYSQL *mysql;
+  uint verify= 1;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, NULL, "./certs/ca-cert.pem", NULL, NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+
+  if (!strcmp(mysql->host, "localhost"))
+  {
+    FAIL_IF(mysql_errno(mysql), "No error expected");
+  }
+  else
+  {
+    FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
+  }
+  mysql_close(mysql);
+
+  return OK;
+}
+
 static int test_bug62743(MYSQL *my)
 {
   MYSQL *mysql;
@@ -272,6 +302,7 @@ static int test_bug62743(MYSQL *my)
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"verify_ssl_server_cert", verify_ssl_server_cert, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_bug62743", test_bug62743, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_phpbug51647", test_phpbug51647, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_ssl_cipher", test_ssl_cipher, TEST_CONNECTION_NONE, 0,  NULL,  NULL},

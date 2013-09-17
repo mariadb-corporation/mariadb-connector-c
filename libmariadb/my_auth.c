@@ -352,7 +352,10 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       SSL_free(ssl);
       goto error;
     }
-    /* todo: server certification verification */
+
+    if (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT &&
+        my_ssl_verify_server_cert(ssl))
+      goto error;
   }
 #endif /* HAVE_OPENSSL */
 

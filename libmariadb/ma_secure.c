@@ -209,7 +209,7 @@ static int my_ssl_set_certs(SSL *ssl)
   int have_cert= 0;
   MYSQL *mysql;
 
-  DBUG_ENTER("my_ssl_connect");
+  DBUG_ENTER("my_ssl_set_certs");
 
   /* Make sure that ssl was allocated and 
      ssl_system was initialized */
@@ -377,7 +377,6 @@ int my_ssl_connect(SSL *ssl)
 
   if (SSL_connect(ssl) != 1)
   {
-    printf("connect failed\n");
     my_SSL_error(mysql);
     /* restore blocking mode */
     if (!blocking)
@@ -390,6 +389,62 @@ int my_ssl_connect(SSL *ssl)
   DBUG_RETURN(0);
 }
 
+/* 
+  verify server certificate
+
+  SYNOPSIS
+    my_ssl_verify_server_cert()
+      MYSQL        mysql
+
+  RETURN VALUES
+     1 Error
+     0 OK
+*/
+
+int my_ssl_verify_server_cert(SSL *ssl)
+{
+  X509 *cert;
+  MYSQL *mysql;
+  char *p1, *p2, buf[256];
+
+  DBUG_ENTER("my_ssl_verify_server_cert");
+
+  mysql= (MYSQL *)SSL_get_app_data(ssl);
+
+  if (!mysql->host)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Invalid (empty) hostname");
+    DBUG_RETURN(1);
+  }
+
+  if (!(cert= SSL_get_peer_certificate(ssl)))
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Unable to get server certificate");
+    DBUG_RETURN(1);
+  }
+
+  X509_NAME_oneline(X509_get_subject_name(cert), buf, 256);
+  X509_free(cert);
+
+  /* Extract the server name from buffer:
+     Format: ....CN=/hostname/.... */
+  if ((p1= strstr(buf, "/CN=")))
+  {
+    p1+= 4;
+    if ((p2= strchr(p1, '/')))
+      *p2= 0;
+    if (!strcmp(mysql->host, p1))
+      DBUG_RETURN(0);
+  }
+  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                      ER(CR_SSL_CONNECTION_ERROR), 
+                      "Validation of SSL server certificate failed");
+  DBUG_RETURN(1);
+}
 /*
    write to ssl socket
 
