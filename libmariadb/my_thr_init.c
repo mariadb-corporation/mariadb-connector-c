@@ -147,6 +147,9 @@ void my_thread_end(void)
 
   if (tmp && tmp->initialized)
   {
+#ifdef HAVE_OPENSSL
+    ERR_remove_thread_state(NULL);
+#endif
 #if !defined(DBUG_OFF)
     if (tmp->dbug)
     {

@@ -30,10 +30,8 @@ static SSL_CTX *SSL_context= NULL;
 
 #define MAX_SSL_ERR_LEN 100
 
-#ifdef THREAD
 extern pthread_mutex_t LOCK_ssl_config;
 static pthread_mutex_t *LOCK_crypto;
-#endif
 
 /* 
  SSL error handling
@@ -46,9 +44,12 @@ static void my_SSL_error(MYSQL *mysql)
 
   DBUG_ENTER("my_SSL_error");
 
+  if (mysql_errno(mysql))
+    DBUG_VOID_RETURN;
+
   if (!ssl_errno)
   {
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "No SSL error");
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
     DBUG_VOID_RETURN;
   }
   if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
@@ -63,7 +64,6 @@ static void my_SSL_error(MYSQL *mysql)
   DBUG_VOID_RETURN;
 }
 
-#ifdef THREAD
 /* 
    thread safe callbacks for OpenSSL 
    Crypto call back functions will be
@@ -83,7 +83,6 @@ my_cb_locking(int mode, int n, const char *file, int line)
 	else
 		pthread_mutex_unlock(&LOCK_crypto[n]);
 }
-#endif
 
 /*
   Initializes SSL and allocate global
@@ -101,14 +100,11 @@ int my_ssl_start(MYSQL *mysql)
 {
   int rc= 0;
   DBUG_ENTER("my_ssl_start");
-#ifdef THREAD
   /* lock mutex to prevent multiple initialization */
   pthread_mutex_lock(&LOCK_ssl_config);
-#endif
 
   if (!my_ssl_initialized)
   {
-#ifdef THREAD
     if (!(LOCK_crypto= 
           (pthread_mutex_t *)my_malloc(sizeof(pthread_mutex_t) * 
                                        CRYPTO_num_locks(), MYF(0))))
@@ -124,7 +120,6 @@ int my_ssl_start(MYSQL *mysql)
       CRYPTO_set_id_callback(my_cb_threadid);
 			CRYPTO_set_locking_callback(my_cb_locking);
     }
-#endif
 #if SSLEAY_VERSION_NUMBER >= 0x00907000L
     OPENSSL_config(NULL);
 #endif
@@ -145,9 +140,7 @@ int my_ssl_start(MYSQL *mysql)
     my_ssl_initialized= TRUE;
   }
 end:
-#ifdef THREAD
   pthread_mutex_unlock(&LOCK_ssl_config);
-#endif
   DBUG_RETURN(rc);
 }
 
@@ -166,12 +159,9 @@ end:
 void my_ssl_end()
 {
   DBUG_ENTER("my_ssl_end");
-#ifdef THREAD
   pthread_mutex_lock(&LOCK_ssl_config);
-#endif
   if (my_ssl_initialized)
   {
-#ifdef THREAD
     int i;
     CRYPTO_set_locking_callback(NULL);
 		CRYPTO_set_id_callback(NULL);
@@ -180,26 +170,25 @@ void my_ssl_end()
       pthread_mutex_destroy(&LOCK_crypto[i]);
 
     my_free((gptr)LOCK_crypto, MYF(0));
-#endif    
     if (SSL_context)
     {
       SSL_CTX_free(SSL_context);
       SSL_context= FALSE;
     }
-    ERR_free_strings();
+    ERR_remove_state(0);
     EVP_cleanup();
-    CONF_modules_unload(1);
     CRYPTO_cleanup_all_ex_data();
+    ERR_free_strings();
+    ENGINE_cleanup();
+    CONF_modules_free();
+    CONF_modules_unload(1);
+    sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
     my_ssl_initialized= FALSE;
   }
-#ifdef THREAD
   pthread_mutex_unlock(&LOCK_ssl_config);
-#endif
+  pthread_mutex_destroy(&LOCK_ssl_config);
   DBUG_VOID_RETURN;
 }
-
-#ifdef THREAD
-#endif
 
 /* 
   Set certification stuff.
@@ -228,21 +217,19 @@ static int my_ssl_set_certs(SSL *ssl)
   /* set cert */
   if (mysql->options.ssl_cert && mysql->options.ssl_cert[0] != 0)  
   {
-    if (SSL_CTX_use_certificate_chain_file(SSL_context, mysql->options.ssl_cert) != 1) 
-      goto error;
-    if (SSL_use_certificate_file(ssl, mysql->options.ssl_cert, SSL_FILETYPE_PEM) != 1)
-      goto error;
+    if (SSL_CTX_use_certificate_chain_file(SSL_context, mysql->options.ssl_cert) <= 0)
+      goto error; 
     have_cert= 1;
   }
 
   /* set key */
   if (mysql->options.ssl_key && mysql->options.ssl_key[0])
   {
-    if (SSL_use_PrivateKey_file(ssl, mysql->options.ssl_key, SSL_FILETYPE_PEM) != 1)
+    if (SSL_CTX_use_PrivateKey_file(SSL_context, mysql->options.ssl_key, SSL_FILETYPE_PEM) <= 0)
       goto error;
 
     /* verify key */
-    if (have_cert && SSL_check_private_key(ssl) != 1)
+    if (have_cert && SSL_CTX_check_private_key(SSL_context) != 1)
       goto error;
   }
   /* ca_file and ca_path */
@@ -250,30 +237,37 @@ static int my_ssl_set_certs(SSL *ssl)
                                     mysql->options.ssl_ca,
                                     mysql->options.ssl_capath) == 0)
   {
+    if (mysql->options.ssl_ca || mysql->options.ssl_capath)
+      goto error;
     if (SSL_CTX_set_default_verify_paths(SSL_context) == 0)
       goto error;
   }
-
-  if (mysql->options.ssl_ca || mysql->options.ssl_capath)
+#ifdef CRL_IMPLEMENTED
+  if (mysql->options.ssl_crl || mysql->options.ssl_crlpath)
   {
     X509_STORE *certstore;
 
     if ((certstore= SSL_CTX_get_cert_store(SSL_context)))
     {
       if (X509_STORE_load_locations(certstore, mysql->options.ssl_ca,
-                                     mysql->options.ssl_capath) == 1)
+                                     mysql->options.ssl_capath) == 0)
       {
-#ifdef X509_V_FLAG_CRL_CHECK
-				X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-#else
-        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "OpenSSL library doesn't support CRL certificates");
+        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                            ER(CR_SSL_CONNECTION_ERROR), 
+                            "Loading certificate failed");
         DBUG_RETURN(1);
-#endif        
       }
-      else
-        goto error;
+			if (X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK |
+                                         X509_V_FLAG_CRL_CHECK_ALL) == 0)
+      {
+        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                            ER(CR_SSL_CONNECTION_ERROR), 
+                            "X509_STORE_set_flags failed");
+        DBUG_RETURN(1);
+      }
     }
   }
+#endif
 
   DBUG_RETURN(0);
 
@@ -285,7 +279,21 @@ error:
 static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
 {
   X509 *check_cert;
+  SSL *ssl;
+  MYSQL *mysql;
   DBUG_ENTER("my_verify_callback");
+
+  ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+  DBUG_ASSERT(ssl != NULL);
+  mysql= (MYSQL *)SSL_get_app_data(ssl);
+  DBUG_ASSERT(mysql != NULL);
+
+  /* skip verification if no ca_file/path was specified */
+  if (!mysql->options.ssl_ca && !mysql->options.ssl_capath)
+  {
+    ok= 1;
+    DBUG_RETURN(1);
+  }
 
   if (!ok)
   {
@@ -293,12 +301,19 @@ static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
     if (!(check_cert= X509_STORE_CTX_get_current_cert(ctx)))
       DBUG_RETURN(0);
     depth= X509_STORE_CTX_get_error_depth(ctx);
-    DBUG_PRINT("info", ("error_depth=%d", depth));
     if (depth == 0)
+    {
+      ok= 1;
       DBUG_RETURN(1);
+    }
   }
-  DBUG_PRINT("info", ("ctx->error= %d", ctx->error));
-  DBUG_RETURN(1);
+  else
+    DBUG_RETURN(1);
+
+  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                      ER(CR_SSL_CONNECTION_ERROR), 
+                      X509_verify_cert_error_string(ctx->error));
+  DBUG_RETURN(0);
 }
 
 /*
@@ -317,7 +332,7 @@ SSL *my_ssl_init(MYSQL *mysql)
   int verify;
   SSL *ssl= NULL;
 
-  DBUG_ENTER("my_get_ssl");
+  DBUG_ENTER("my_ssl_init");
 
   DBUG_ASSERT(mysql->net.vio->ssl == NULL);
 
@@ -335,6 +350,7 @@ SSL *my_ssl_init(MYSQL *mysql)
   verify= (!mysql->options.ssl_ca && !mysql->options.ssl_capath) ?
            SSL_VERIFY_NONE : SSL_VERIFY_PEER;
   SSL_set_verify(ssl, verify, my_verify_callback);
+  SSL_set_verify_depth(ssl, 1);
 
   DBUG_RETURN(ssl);
 error:
@@ -365,6 +381,7 @@ int my_ssl_connect(SSL *ssl)
   DBUG_ASSERT(ssl != NULL);
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
+  CLEAR_CLIENT_ERROR(mysql);
 
   /* Set socket to blocking if not already set */
   if (!(blocking= vio_is_blocking(mysql->net.vio)))
@@ -395,6 +412,7 @@ int my_ssl_connect(SSL *ssl)
   SYNOPSIS
     my_ssl_verify_server_cert()
       MYSQL        mysql
+      mybool       verify_server_cert;
 
   RETURN VALUES
      1 Error
@@ -504,6 +522,7 @@ int my_ssl_close(Vio *vio)
   int i, rc;
   DBUG_ENTER("my_ssl_close");
 
+  
   /* 2 x pending + 2 * data = 4 */ 
   for (i=0; i < 4; i++)
     if ((rc= SSL_shutdown(vio->ssl)))

@@ -326,7 +326,20 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     end= buff+5;
   }
 #ifdef HAVE_OPENSSL
-  if (mysql->client_flag & CLIENT_SSL)
+  if (mysql->options.ssl_key ||
+      mysql->options.ssl_cert ||
+      mysql->options.ssl_ca ||
+      mysql->options.ssl_capath ||
+      mysql->options.ssl_cipher
+#ifdef CRL_IMPLEMENTED
+      || (mysql->options.extension &&
+       (mysql->options.extension->ssl_crl ||
+        mysql->options.extension->ssl_crlpath))
+#endif
+      )
+    mysql->options.use_ssl= 1;
+  if (mysql->options.use_ssl &&
+      (mysql->client_flag & CLIENT_SSL))
   {
     SSL *ssl;
     /*
@@ -353,8 +366,9 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       goto error;
     }
 
-    if (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT &&
-        my_ssl_verify_server_cert(ssl))
+    if ((mysql->options.ssl_ca || mysql->options.ssl_capath) &&
+        (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
+         my_ssl_verify_server_cert(ssl))
       goto error;
   }
 #endif /* HAVE_OPENSSL */

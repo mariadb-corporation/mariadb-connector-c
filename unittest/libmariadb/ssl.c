@@ -117,8 +117,13 @@ static int test_multi_ssl_connections(MYSQL *unused)
 
     mysql_ssl_set(mysql[i], 0, 0, "./certs/ca.pem", 0, 0);
 
-    FAIL_IF(!mysql_real_connect(mysql[i], hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(mysql[i]));
+    mysql_real_connect(mysql[i], hostname, username, password, schema,
+                         port, socketname, 0);
+    if (mysql_errno(mysql[i]))
+    {
+      diag("loop: %d error: %d %s", i, mysql_errno(mysql[i]), mysql_error(mysql[i]));
+      return FAIL;
+    }
 
     cipher= (char *)mysql_get_ssl_cipher(mysql[i]);
     FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
@@ -158,7 +163,7 @@ static void ssl_thread(void)
   if(!mysql_real_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))
   {
-    diag("Error: %s", mysql_error(mysql));
+    diag(">Error: %s", mysql_error(mysql));
     mysql_close(mysql);
     mysql_thread_end();
     pthread_exit(NULL);
@@ -178,6 +183,9 @@ static int test_ssl_threads(MYSQL *mysql)
   pthread_t thread[50];
   MYSQL_RES *res;
   MYSQL_ROW row;
+  
+  if (check_skip_ssl())
+    return SKIP;
 
   rc= mysql_query(mysql, "DROP TABLE IF exists ssltest");
   check_mysql_rc(rc, mysql);
@@ -213,13 +221,10 @@ static int test_phpbug51647(MYSQL *my)
   if (check_skip_ssl())
     return SKIP;
 
-  diag("todo: fix ca");
-  return SKIP;
-
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, "certs/client-key.pem", "certs/client-cert.pem", "certs/ca-cert.pem", 0, 0);
+  mysql_ssl_set(mysql, "./certs/client-key.pem", "./certs/client-cert.pem", "./certs/ca.pem", 0, 0);
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0), mysql_error(mysql));
@@ -239,10 +244,114 @@ static int test_conc50(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "test", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "certs/my_cert.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
+  diag("Error: %d %s", mysql_errno(mysql), mysql_error(mysql));
+  FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_conc50_1(MYSQL *my)
+{
+  MYSQL *mysql;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, NULL, "./certs/ca.pem", NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  if (mysql_errno(mysql))
+    diag("Error: %d %s", mysql_errno(mysql), mysql_error(mysql));
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_conc50_2(MYSQL *my)
+{
+  MYSQL *mysql;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, NULL, "./certs/dummy.pem", NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_conc50_3(MYSQL *my)
+{
+  MYSQL *mysql;
+  int rc;
+  char query[256];
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql_query(my, "DROP USER 'ssltest'@'localhost'");
+
+  sprintf(query, "GRANT ALL ON %s.* TO 'ssltest'@'localhost' REQUIRE SSL", schema ? schema : "*");
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(my, "FLUSH PRIVILEGES");
+  check_mysql_rc(rc, mysql);
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, (const char *)"ssltest", NULL, schema,
+           port, socketname, 0);
+  FAIL_IF(!mysql_errno(mysql), "Error expected, SSL connection required!");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, NULL, "./certs/ca.pem", NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, "ssltest", NULL, schema,
+           port, socketname, 0);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_conc50_4(MYSQL *my)
+{
+  MYSQL *mysql;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, "./certs/ca.pem", NULL, NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  diag("Error: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
 
@@ -260,20 +369,13 @@ static int verify_ssl_server_cert(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "./certs/ca-cert.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "./certs/ca.pem", NULL, NULL);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
 
-  if (!strcmp(mysql->host, "localhost"))
-  {
-    FAIL_IF(mysql_errno(mysql), "No error expected");
-  }
-  else
-  {
-    FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
-  }
+  FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
 
   return OK;
@@ -302,14 +404,19 @@ static int test_bug62743(MYSQL *my)
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc50_1", test_conc50_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc50_2", test_conc50_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc50_3", test_conc50_3, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc50_4", test_conc50_4, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"verify_ssl_server_cert", verify_ssl_server_cert, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-  {"test_bug62743", test_bug62743, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_bug62743", test_bug62743, TEST_CONNECTION_NEW, 0,  NULL,  NULL}, 
   {"test_phpbug51647", test_phpbug51647, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_ssl_cipher", test_ssl_cipher, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_multi_ssl_connections", test_multi_ssl_connections, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
 #ifndef WIN32
   {"test_ssl_threads", test_ssl_threads, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-#endif
+#endif 
+
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

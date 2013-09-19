@@ -1321,16 +1321,11 @@ mysql_init(MYSQL *mysql)
 #ifdef ENABLED_LOCAL_INFILE
   mysql->options.client_flag|= CLIENT_LOCAL_FILES;
 #endif
+  mysql->reconnect= 0;
   return mysql;
 }
 
 
-
-//#ifdef HAVE_OPENSSL
-/**************************************************************************
-** Fill in SSL part of MYSQL structure and set 'use_ssl' flag.
-** NB! Errors are not reported until you do mysql_real_connect.
-**************************************************************************/
 
 int STDCALL
 mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
@@ -1341,8 +1336,7 @@ mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
   mysql->options.ssl_ca = ca==0 ? 0 : my_strdup(ca,MYF(0));
   mysql->options.ssl_capath = capath==0 ? 0 : my_strdup(capath,MYF(0));
   mysql->options.ssl_cipher = cipher==0 ? 0 : my_strdup(cipher,MYF(0));
-  mysql->options.use_ssl = 1;
-  //mysql->connector_fd = new_VioSSLConnectorFd(key, cert, ca, capath);
+/* todo: add crl stuff */
   return 0;
 }
 
