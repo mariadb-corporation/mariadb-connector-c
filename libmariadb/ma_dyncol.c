@@ -75,10 +75,10 @@ uint32 copy_and_convert(char *to, uint32 to_length, CHARSET_INFO *to_cs,
 			CHARSET_INFO *from_cs, uint *errors);
 #else
 
-extern size_t mariadb_time_to_string(const MYSQL_TIME *tm, char *time_str, size_t len,
+size_t mariadb_time_to_string(const MYSQL_TIME *tm, char *time_str, size_t len,
                            unsigned int digits);
-extern STDCALL size_t mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
-                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
+size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
+                                      char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 #endif
 /*
   Flag byte bits
