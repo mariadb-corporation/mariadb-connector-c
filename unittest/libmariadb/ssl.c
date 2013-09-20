@@ -310,9 +310,9 @@ static int test_conc50_3(MYSQL *my)
 
   sprintf(query, "GRANT ALL ON %s.* TO 'ssltest'@'localhost' REQUIRE SSL", schema ? schema : "*");
   rc= mysql_query(my, query);
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc(rc, my);
 
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
@@ -428,10 +428,9 @@ static int test_bug62743(MYSQL *my)
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
   diag("Error with cert: %s", mysql_error(mysql));
-  FAIL_IF(mysql_errno(mysql) != 0, "Expected no error");
+  FAIL_IF(mysql_errno(mysql) == 0, "Expected error");
   mysql_close(mysql);
 
-  return OK;
   return OK;
 }
 
