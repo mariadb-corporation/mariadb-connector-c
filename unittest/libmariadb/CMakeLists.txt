@@ -22,7 +22,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
 ADD_DEFINITIONS(-DLIBMARIADB)
 
 SET(API_TESTS "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
-              "sp" "result" "connection" "misc" "ssl" "ps_new" "sqlite3" "thread" "cs_conv") 
+              "sp" "result" "connection" "misc" "ssl" "ps_new" "sqlite3" "thread" "cs_conv" "dyncol") 
 
 FOREACH(API_TEST ${API_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)

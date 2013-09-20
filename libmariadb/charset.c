@@ -26,7 +26,7 @@ CHARSET_INFO *my_charset_bin= (CHARSET_INFO *)&compiled_charsets[32];
 CHARSET_INFO *my_charset_latin1= (CHARSET_INFO *)&compiled_charsets[5];
 CHARSET_INFO *my_charset_utf8_general_ci= (CHARSET_INFO *)&compiled_charsets[21];
 
-CHARSET_INFO *get_charset_by_nr(uint cs_number)
+CHARSET_INFO * STDCALL mysql_get_charset_by_nr(uint cs_number)
 {
   int i= 0;
 
@@ -41,7 +41,7 @@ my_bool set_default_charset(uint cs, myf flags)
   CHARSET_INFO *new_charset;
   DBUG_ENTER("set_default_charset");
   DBUG_PRINT("enter",("character set: %d",(int) cs));
-  new_charset = get_charset_by_nr(cs);
+  new_charset = mysql_get_charset_by_nr(cs);
   if (!new_charset)
   {
     DBUG_PRINT("error",("Couldn't set default character set"));
@@ -51,7 +51,7 @@ my_bool set_default_charset(uint cs, myf flags)
   DBUG_RETURN(FALSE);
 }
 
-CHARSET_INFO *get_charset_by_name(const char *cs_name)
+CHARSET_INFO * STDCALL mysql_get_charset_by_name(const char *cs_name)
 {
   int i= 0;
 
@@ -66,7 +66,7 @@ my_bool set_default_charset_by_name(const char *cs_name, myf flags)
   CHARSET_INFO *new_charset;
   DBUG_ENTER("set_default_charset_by_name");
   DBUG_PRINT("enter",("character set: %s", cs_name));
-  new_charset = get_charset_by_name(cs_name);
+  new_charset = mysql_get_charset_by_name(cs_name);
   if (!new_charset)
   {
     DBUG_PRINT("error",("Couldn't set default character set"));

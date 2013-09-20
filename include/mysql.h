@@ -52,6 +52,7 @@ typedef int my_socket;
 #include "mysql_com.h"
 #include "mysql_version.h"
 #include "my_list.h"
+#include "m_ctype.h"
 
 #ifndef ST_USED_MEM_DEFINED
 #define ST_USED_MEM_DEFINED
@@ -449,6 +450,10 @@ const char * STDCALL mysql_get_client_info(void);
 unsigned long STDCALL mysql_get_client_version(void);
 my_bool STDCALL mariadb_connection(MYSQL *mysql);
 const char * STDCALL mysql_get_server_name(MYSQL *mysql);
+CHARSET_INFO * STDCALL mysql_get_charset_by_name(const char *csname);
+CHARSET_INFO * STDCALL mysql_get_charset_by_nr(uint csnr);
+size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
+                                      char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 
 #include <my_stmt.h>
   

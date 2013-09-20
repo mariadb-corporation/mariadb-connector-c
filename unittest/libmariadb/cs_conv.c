@@ -59,6 +59,7 @@ static int test_cs_conversion(MYSQL *mysql)
 
   while (cs_conv[i].cs_from)
   {
+    int error_code;
     char query[1024];
     size_t from_len, to_len= 1024;
     CHARSET_INFO *cs_from, *cs_to;
@@ -69,8 +70,8 @@ static int test_cs_conversion(MYSQL *mysql)
     memset(str_converted, 0, 1024);
     memset(str_expected, 0, 1024);
 
-    FAIL_IF(!(cs_from= get_charset_by_name(cs_conv[i].cs_from)), "invalid character set");
-    FAIL_IF(!(cs_to= get_charset_by_name(cs_conv[i].cs_to)), "invalid character set");
+    FAIL_IF(!(cs_from= mysql_get_charset_by_name(cs_conv[i].cs_from)), "invalid character set");
+    FAIL_IF(!(cs_to= mysql_get_charset_by_name(cs_conv[i].cs_to)), "invalid character set");
 
 
     snprintf(query, 1024, "SET NAMES %s", cs_conv[i].cs_to);
@@ -94,8 +95,8 @@ static int test_cs_conversion(MYSQL *mysql)
     mysql_free_result(res);
 
     from_len= cs_conv[i].len ? cs_conv[i].len : strlen(cs_conv[i].source);
-    FAIL_IF(convert_string(cs_conv[i].source, &from_len, cs_from,
-                            str_expected, &to_len, cs_to) < 1, "conversion error occured");
+    FAIL_IF(mariadb_convert_string(cs_conv[i].source, &from_len, cs_from,
+                            str_expected, &to_len, cs_to, &error_code) < 1, "conversion error occured");
 
     if (strcmp(str_converted, str_expected))
     {

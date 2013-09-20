@@ -555,12 +555,14 @@ const CHARSET_INFO compiled_charsets[] =
   {  53, 1, "macroman", "macroman_bin", "", "MACINTOSH", 1, 1, NULL, NULL},
   {  54, 1, "utf16", "utf16_general_ci", "UTF_16 Unicode", "UTF16", 2, 4, mysql_mbcharlen_utf16, check_mb_utf16},
   {  55, 1, "utf16", "utf16_bin", "UTF-16 Unicode", "UTF16", 2, 4, mysql_mbcharlen_utf16, check_mb_utf16},
+  {  56, 1, "utf16le", "utf16_general_ci", "UTF_16LE Unicode", "UTF16LE", 2, 4, mysql_mbcharlen_utf16, check_mb_utf16},
   {  58, 1, "cp1257", "cp1257_bin", "", "CP1257", 1, 1, NULL, NULL},
 #ifdef USED_TO_BE_SO_BEFORE_MYSQL_5_5
   {  60, 1, "armascii8", "armascii8_bin", "", "ARMSCII-8", 1, 1, NULL, NULL},
 #endif
   {  60, 1, "utf32", "utf32_general_ci", "UTF-32 Unicode", "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
   {  61, 1, "utf32", "utf32_bin", "UTF-32 Unicode", "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
+  {  62, 1, "utf16le", "utf16_bin", "UTF_16LE Unicode", "UTF16LE", 2, 4, mysql_mbcharlen_utf16, check_mb_utf16},
   {  65, 1, "ascii", "ascii_bin", "", "ASCII", 1, 1, NULL, NULL},
   {  66, 1, "cp1250", "cp1250_bin", "", "CP1250", 1, 1, NULL, NULL},
   {  67, 1, "cp1256", "cp1256_bin", "", "CP1256", 1, 1, NULL, NULL},
@@ -930,7 +932,7 @@ struct st_madb_os_charset MADB_OS_CHARSET[]=
   {"20106", "IA5 German (7-bit)", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"20107", "Swedish (7-bit)", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"20108", "Norwegian (7-bit)", NULL, NULL, MADB_CS_UNSUPPORTED},
-  {"20127", "US-ASCII (7-bit)", NULL, NULL, MADB_CS_UNSUPPORTED},
+  {"20127", "US-ASCII (7-bit)", "ascii", NULL, MADB_CS_EXACT},
   {"20261", "T.61", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"20269", "Non-Spacing Accent", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"20273", "EBCDIC Germany", NULL, NULL, MADB_CS_UNSUPPORTED},
@@ -1117,25 +1119,36 @@ int madb_get_windows_cp(const char *charset)
 #endif
 /* }}} */
 
-size_t convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
-                       char *to, size_t *to_len, CHARSET_INFO *to_cs)
+size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
+                                      char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode)
 {
   iconv_t conv= 0;
   size_t rc= -1;
   size_t save_len= *to_len;
   char to_encoding[128];
+
+  *errorcode= 0;
+
   /* check if conversion is supported */
   if (!from_cs || !from_cs->encoding || !from_cs->encoding[0] ||
       !to_cs || !to_cs->encoding || !to_cs->encoding[0])
-    goto error;
-
+  {
+    *errorcode= EINVAL;
+    return rc;
+  }
   snprintf(to_encoding, 128, "%s//TRANSLIT", to_cs->encoding);
 
   if ((conv= iconv_open(to_encoding, from_cs->encoding)) == (iconv_t)-1)
+  {
+    *errorcode= errno;
     goto error;
+  }
 
   if ((rc= iconv(conv, (char **)&from, from_len, &to, to_len)) == -1)
+  {
+    *errorcode= errno;
     goto error;
+  }
   rc= save_len - *to_len;
 error:
   if (conv != (iconv_t)-1)

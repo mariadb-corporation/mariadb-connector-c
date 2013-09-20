@@ -75,10 +75,10 @@ uint32 copy_and_convert(char *to, uint32 to_length, CHARSET_INFO *to_cs,
 			CHARSET_INFO *from_cs, uint *errors);
 #else
 
-size_t mariadb_time_to_string(const MYSQL_TIME *tm, char *time_str, size_t len,
+extern size_t mariadb_time_to_string(const MYSQL_TIME *tm, char *time_str, size_t len,
                            unsigned int digits);
-size_t convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
-                       char *to, size_t *to_len, CHARSET_INFO *to_cs);
+extern STDCALL size_t mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
+                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 #endif
 /*
   Flag byte bits
@@ -1110,7 +1110,11 @@ dynamic_column_string_read(DYNAMIC_COLUMN_VALUE *store_it_here,
   uint charset_nr= (uint)dynamic_column_var_uint_get(data, length, &len);
   if (len == 0)                                /* Wrong packed number */
     return ER_DYNCOL_FORMAT;
+#ifndef LIBMARIADB
   store_it_here->x.string.charset= get_charset_by_nr(charset_nr);
+#else
+  store_it_here->x.string.charset= mysql_get_charset_by_nr(charset_nr);
+#endif
   if (store_it_here->x.string.charset == NULL)
     return ER_DYNCOL_UNKNOWN_CHARSET;
   data+= len;
@@ -1643,15 +1647,22 @@ dynamic_new_column_store(DYNAMIC_COLUMN *str,
 
   if (!(columns_order= malloc(sizeof(void*)*column_count)))
     return ER_DYNCOL_RESOURCE;
-  if (new_str)
+  if (new_str || str->str == 0)
   {
-    if (dynamic_column_init_named(str,
-                                  fmt->fixed_hdr +
-                                  hdr->header_size +
-                                  hdr->nmpool_size +
-                                  hdr->data_size +
-                                  DYNCOL_SYZERESERVE))
-      goto err;
+    if (column_count)
+    {
+      if (dynamic_column_init_named(str,
+                                    fmt->fixed_hdr +
+                                    hdr->header_size +
+                                    hdr->nmpool_size +
+                                    hdr->data_size +
+                                    DYNCOL_SYZERESERVE))
+        goto err;
+    }
+    else
+    {
+      dynamic_column_initialize(str);
+    }
   }
   else
   {
@@ -1856,11 +1867,11 @@ dynamic_column_create_many(DYNAMIC_COLUMN *str,
 */
 
 enum enum_dyncol_func_result
-mariadb_dyncol_create_many(DYNAMIC_COLUMN *str,
-                           uint column_count,
-                           uint *column_numbers,
-                           DYNAMIC_COLUMN_VALUE *values,
-                           my_bool new_string)
+mariadb_dyncol_create_many_num(DYNAMIC_COLUMN *str,
+                               uint column_count,
+                               uint *column_numbers,
+                               DYNAMIC_COLUMN_VALUE *values,
+                               my_bool new_string)
 {
   DBUG_ENTER("mariadb_dyncol_create_many");
   DBUG_RETURN(dynamic_column_create_many_internal_fmt(str, column_count,
@@ -2217,8 +2228,8 @@ dynamic_column_get(DYNAMIC_COLUMN *str, uint column_nr,
 }
 
 enum enum_dyncol_func_result
-mariadb_dyncol_get(DYNAMIC_COLUMN *str, uint column_nr,
-                   DYNAMIC_COLUMN_VALUE *store_it_here)
+mariadb_dyncol_get_num(DYNAMIC_COLUMN *str, uint column_nr,
+                       DYNAMIC_COLUMN_VALUE *store_it_here)
 {
   return dynamic_column_get_internal(str, store_it_here, column_nr, NULL);
 }
@@ -2342,13 +2353,7 @@ err:
 */
 
 enum enum_dyncol_func_result
-dynamic_column_exists(DYNAMIC_COLUMN *str, uint column_nr)
-{
-  return dynamic_column_exists_internal(str, column_nr, NULL);
-}
-
-enum enum_dyncol_func_result
-mariadb_dyncol_exists(DYNAMIC_COLUMN *str, uint column_nr)
+mariadb_dyncol_exists_num(DYNAMIC_COLUMN *str, uint column_nr)
 {
   return dynamic_column_exists_internal(str, column_nr, NULL);
 }
@@ -2457,14 +2462,14 @@ dynamic_column_list(DYNAMIC_COLUMN *str, DYNAMIC_ARRAY *array_of_uint)
   @return ER_DYNCOL_* return code
 */
 enum enum_dyncol_func_result
-mariadb_dyncol_list(DYNAMIC_COLUMN *str, uint *count, uint **nums)
+mariadb_dyncol_list_num(DYNAMIC_COLUMN *str, uint *count, uint **nums)
 {
   DYN_HEADER header;
   uchar *read;
   uint i;
   enum enum_dyncol_func_result rc;
 
-  (*nums)= 0;                                   /* In case of errors */
+  (*nums)= 0; (*count)= 0;                      /* In case of errors */
   if (str->length == 0)
     return ER_DYNCOL_OK;                        /* no columns */
 
@@ -3275,10 +3280,10 @@ dynamic_column_update_many(DYNAMIC_COLUMN *str,
 }
 
 enum enum_dyncol_func_result
-mariadb_dyncol_update_many(DYNAMIC_COLUMN *str,
-                           uint add_column_count,
-                           uint *column_numbers,
-                           DYNAMIC_COLUMN_VALUE *values)
+mariadb_dyncol_update_many_num(DYNAMIC_COLUMN *str,
+                               uint add_column_count,
+                               uint *column_numbers,
+                               DYNAMIC_COLUMN_VALUE *values)
 {
   return dynamic_column_update_many_fmt(str, add_column_count, column_numbers,
                                         values, FALSE);
@@ -3887,6 +3892,8 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
         {
 #ifndef LIBMARIADB
           uint dummy_errors;
+#else
+          int dummy_errors;
 #endif
           if (!quote)
           {
@@ -3899,8 +3906,8 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
                                                     val->x.string.charset,
                                                     &dummy_errors);
 #else
-              convert_string(from, &len, val->x.string.charset,
-                             str->str, (size_t *)&bufflen, cs);
+              mariadb_convert_string(from, &len, val->x.string.charset,
+                                     str->str, (size_t *)&bufflen, cs, &dummy_errors);
 #endif
             return ER_DYNCOL_OK;
           }
@@ -3913,8 +3920,8 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
                                         val->x.string.charset,
                                         &dummy_errors);
 #else
-              convert_string(from, &len, val->x.string.charset,
-                             alloc, (size_t *)&bufflen, cs);
+              mariadb_convert_string(from, &len, val->x.string.charset,
+                                     alloc, (size_t *)&bufflen, cs, &dummy_errors);
 #endif
             from= alloc;
           }
@@ -4390,6 +4397,10 @@ mariadb_dyncol_column_count(DYNAMIC_COLUMN *str, uint *column_count)
 {
   DYN_HEADER header;
   enum enum_dyncol_func_result rc;
+
+  (*column_count)= 0;
+  if (str->length == 0)
+    return ER_DYNCOL_OK;
 
   if ((rc= init_read_hdr(&header, str)) < 0)
     return rc;

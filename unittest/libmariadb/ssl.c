@@ -395,9 +395,43 @@ static int test_bug62743(MYSQL *my)
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
+  diag("Error: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
 
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, "./certs/client-key.pem", NULL, NULL, NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  diag("Error with key: %s", mysql_error(mysql));
+  FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, "./certs/client-key.pem", "./certs/client-cert.pem", NULL, NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  FAIL_IF(mysql_errno(mysql) != 0, "Expected no error");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, "./certs/client-key.pem", "blablubb", NULL, NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, username, password, schema,
+           port, socketname, 0);
+  diag("Error with cert: %s", mysql_error(mysql));
+  FAIL_IF(mysql_errno(mysql) != 0, "Expected no error");
+  mysql_close(mysql);
+
+  return OK;
   return OK;
 }
 
