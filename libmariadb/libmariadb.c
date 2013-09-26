@@ -2035,18 +2035,18 @@ static void mysql_close_options(MYSQL *mysql)
   my_free(mysql->options.my_cnf_group,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.charset_dir,MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.charset_name,MYF(MY_ALLOW_ZERO_PTR));
-#ifdef HAVE_OPENSSL
   my_free(mysql->options.ssl_key, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
   my_free(mysql->options.ssl_cipher, MYF(MY_ALLOW_ZERO_PTR));
-#endif /* HAVE_OPENSSL */
   if (mysql->options.extension)
   {
     my_free(mysql->options.extension->plugin_dir, MYF(MY_ALLOW_ZERO_PTR));
     my_free(mysql->options.extension->default_auth, MYF(MY_ALLOW_ZERO_PTR));
     my_free((gptr)mysql->options.extension->db_driver, MYF(MY_ALLOW_ZERO_PTR));
+    my_free(mysql->options.extension->ssl_crl, MYF(MY_ALLOW_ZERO_PTR));
+    my_free(mysql->options.extension->ssl_crlpath, MYF(MY_ALLOW_ZERO_PTR));
   }
   my_free((gptr)mysql->options.extension, MYF(MY_ALLOW_ZERO_PTR));
   /* clear all pointer */
@@ -2771,6 +2771,32 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
     else
       mysql->options.client_flag &= ~CLIENT_SSL_VERIFY_SERVER_CERT;
     break;
+  case MYSQL_OPT_SSL_KEY:
+    my_free(mysql->options.ssl_key, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_key=my_strdup(arg,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CERT:
+    my_free(mysql->options.ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_cert=my_strdup(arg,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CA:
+    my_free(mysql->options.ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_ca=my_strdup(arg,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CAPATH:
+    my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_capath=my_strdup(arg,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CIPHER:
+    my_free(mysql->options.ssl_cipher, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_cipher=my_strdup(arg,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CRL:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crl, (char *)arg, 1);
+    break;
+  case MYSQL_OPT_SSL_CRLPATH:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crlpath, (char *)arg, 1);
+    break;    
   default:
     DBUG_RETURN(-1);
   }

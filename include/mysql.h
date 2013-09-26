@@ -181,8 +181,18 @@ enum mysql_option
   MYSQL_OPT_SSL_VERIFY_SERVER_CERT,
   MYSQL_PLUGIN_DIR,
   MYSQL_DEFAULT_AUTH,
-  MYSQL_PROGRESS_CALLBACK,
-  MYSQL_DATABASE_DRIVER=255
+  MYSQL_OPT_BIND,
+  MYSQL_OPT_SSL_KEY,
+  MYSQL_OPT_SSL_CERT,
+  MYSQL_OPT_SSL_CA,
+  MYSQL_OPT_SSL_CAPATH,
+  MYSQL_OPT_SSL_CIPHER,
+  MYSQL_OPT_SSL_CRL,
+  MYSQL_OPT_SSL_CRLPATH,
+
+  /* MariaDB specific */
+  MYSQL_PROGRESS_CALLBACK=5999,
+  MYSQL_DATABASE_DRIVER=7000
 };
 
 enum mysql_status { MYSQL_STATUS_READY,
@@ -277,6 +287,9 @@ typedef struct st_mysql {
 struct st_mysql_options_extention {
   char *plugin_dir;
   char *default_auth;
+  char *ssl_crl;
+  char *ssl_crlpath;
+  char *server_public_key_path;
   void (*report_progress)(const MYSQL *mysql,
                           unsigned int stage,
                           unsigned int max_stage,

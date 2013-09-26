@@ -242,32 +242,20 @@ static int my_ssl_set_certs(SSL *ssl)
     if (SSL_CTX_set_default_verify_paths(SSL_context) == 0)
       goto error;
   }
-#ifdef CRL_IMPLEMENTED
-  if (mysql->options.ssl_crl || mysql->options.ssl_crlpath)
+  if (mysql->options.extension &&
+      (mysql->options.extension->ssl_crl || mysql->options.extension->ssl_crlpath))
   {
     X509_STORE *certstore;
 
     if ((certstore= SSL_CTX_get_cert_store(SSL_context)))
     {
       if (X509_STORE_load_locations(certstore, mysql->options.ssl_ca,
-                                     mysql->options.ssl_capath) == 0)
-      {
-        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                            ER(CR_SSL_CONNECTION_ERROR), 
-                            "Loading certificate failed");
-        DBUG_RETURN(1);
-      }
-			if (X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK |
+                                     mysql->options.ssl_capath) == 0 ||
+			    X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK |
                                          X509_V_FLAG_CRL_CHECK_ALL) == 0)
-      {
-        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                            ER(CR_SSL_CONNECTION_ERROR), 
-                            "X509_STORE_set_flags failed");
-        DBUG_RETURN(1);
-      }
+        goto error;
     }
   }
-#endif
 
   DBUG_RETURN(0);
 
