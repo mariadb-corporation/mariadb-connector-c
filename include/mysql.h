@@ -49,6 +49,7 @@ typedef int my_socket;
 #endif
 #endif
 #endif
+#include "my_global.h"
 #include "mysql_com.h"
 #include "mysql_version.h"
 #include "my_list.h"

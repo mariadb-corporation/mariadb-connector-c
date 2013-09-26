@@ -65,4 +65,9 @@ char* madb_get_os_character_set(void);
 #ifdef _WIN32
 int madb_get_windows_cp(const char *charset);
 #endif
+
+#ifdef	__cplusplus
+}
+#endif
+
 #endif
