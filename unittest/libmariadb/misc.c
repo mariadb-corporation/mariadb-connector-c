@@ -582,7 +582,7 @@ static int test_wl4166_3(MYSQL *mysql)
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
 
-  tm[0].year= 10000;
+  tm[0].year= 2014;
   tm[0].month= 1; tm[0].day= 1;
   tm[0].hour= 1; tm[0].minute= 1; tm[0].second= 1;
   tm[0].second_part= 0; tm[0].neg= 0;
@@ -592,15 +592,10 @@ static int test_wl4166_3(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_execute(stmt);
+  diag("rc=%d %s", rc, mysql_stmt_error(stmt));
   check_stmt_rc(rc, stmt);
-  /*
-    Sic: only one warning, instead of two. The warning
-    about data truncation when assigning a parameter is lost.
-    This is a bug.
-  */
-  FAIL_IF(mysql_warning_count(mysql) != 1, "warning count != 1");
 
-  if (verify_col_data(mysql, "t1", "year", "0000-00-00 00:00:00")) {
+  if (verify_col_data(mysql, "t1", "year", "2014-01-01 01:01:01")) {
     mysql_stmt_close(stmt);
     rc= mysql_query(mysql, "drop table t1");
     return FAIL;
@@ -904,7 +899,55 @@ static int test_conc44(MYSQL *mysql)
 }
 #endif
 
+static int test_connect_attrs(MYSQL *my)
+{
+  MYSQL *mysql;
+  MYSQL_RES *result;
+  int rc, len;
+
+  mysql= mysql_init(NULL);
+
+  mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo0", "bar0");
+  mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo1", "bar1");
+  mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo2", "bar2");
+
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  if (!(mysql->server_capabilities & CLIENT_CONNECT_ATTRS))
+  {
+    mysql_close(mysql);
+    diag("Server doesn't support connection attributes");
+    return SKIP;
+  }
+
+  rc= mysql_query(mysql, "SELECT * FROM performance_schema.session_connect_attrs where attr_name like 'foo%'");
+  check_mysql_rc(rc, mysql);
+  result= mysql_store_result(mysql);
+  rc= mysql_num_rows(result);
+  mysql_free_result(result);
+
+  mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_RESET, NULL);
+  mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo0", "bar0");
+  mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo1", "bar1");
+  mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo2", "bar2");
+  mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo0");
+  mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo1");
+  mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo2");
+
+  len= mysql->options.extension->connect_attrs_len;
+
+
+  mysql_close(mysql);
+
+  FAIL_IF(rc < 3, "Expected 3 or more rows");
+  FAIL_IF(len != 0, "Expected connection_attr_len=0");
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc49", test_conc49, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28075", test_bug28075, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28505", test_bug28505, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

@@ -14,6 +14,7 @@ static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 static int old_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 extern void read_user_name(char *name);
+extern uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer);
 
 #define compile_time_assert(A) \
 do {\
@@ -61,7 +62,6 @@ struct st_mysql_client_plugin *mysql_client_builtins[]=
   0
 };
 
-/* this is a "superset" of MYSQL_PLUGIN_VIO, in C++ I use inheritance */
 typedef struct {
   int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
   int (*write_packet)(struct st_plugin_vio *vio, const uchar *pkt, size_t pkt_len);
@@ -170,34 +170,16 @@ static int old_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   return CR_OK;
 }
 
-/**
-  sends a COM_CHANGE_USER command with a caller provided payload
-
-  Packet format:
-   
-    Bytes       Content
-    -----       ----
-    n           user name - \0-terminated string
-    n           password
-                  3.23 scramble - \0-terminated string (9 bytes)
-                  otherwise - length (1 byte) coded
-    n           database name - \0-terminated string
-    2           character set number (if the server >= 4.1.x)
-    n           client auth plugin name - \0-terminated string,
-                  (if the server supports plugin auth)
-
-  @retval 0 ok
-  @retval 1 error
-*/
-
 static int send_change_user_packet(MCPVIO_EXT *mpvio,
                                    const uchar *data, int data_len)
 {
   MYSQL *mysql= mpvio->mysql;
   char *buff, *end;
   int res= 1;
+  size_t conn_attr_len= (mysql->options.extension) ? 
+                         mysql->options.extension->connect_attrs_len : 0;
 
-  buff= my_alloca(USERNAME_LENGTH+1 + data_len+1 + NAME_LEN+1 + 2 + NAME_LEN+1);
+  buff= my_alloca(USERNAME_LENGTH+1 + data_len+1 + NAME_LEN+1 + 2 + NAME_LEN+1 + 9 + conn_attr_len);
 
   end= strmake(buff, mysql->user, USERNAME_LENGTH) + 1;
 
@@ -234,6 +216,8 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
     end= strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
 
+  end= ma_send_connect_attr(mysql, end);
+
   res= simple_command(mysql, MYSQL_COM_CHANGE_USER,
                       buff, (ulong)(end-buff), 1);
 
@@ -243,36 +227,6 @@ error:
 }
 
 
-/**
-  sends a client authentication packet (second packet in the 3-way handshake)
-
-  Packet format (when the server is 4.0 or earlier):
-   
-    Bytes       Content
-    -----       ----
-    2           client capabilities
-    3           max packet size
-    n           user name, \0-terminated
-    9           scramble_323, \0-terminated
-
-  Packet format (when the server is 4.1 or newer):
-   
-    Bytes       Content
-    -----       ----
-    4           client capabilities
-    4           max packet size
-    1           charset number
-    23          reserved (always 0)
-    n           user name, \0-terminated
-    n           plugin auth data (e.g. scramble), length (1 byte) coded
-    n           database name, \0-terminated
-                (if CLIENT_CONNECT_WITH_DB is set in the capabilities)
-    n           client auth plugin name - \0-terminated string,
-                (if CLIENT_PLUGIN_AUTH is set in the capabilities)
-
-  @retval 0 ok
-  @retval 1 error
-*/
 
 static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                                     const uchar *data, int data_len)
@@ -280,9 +234,11 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   MYSQL *mysql= mpvio->mysql;
   NET *net= &mysql->net;
   char *buff, *end;
+  size_t conn_attr_len= (mysql->options.extension) ? 
+                         mysql->options.extension->connect_attrs_len : 0;
 
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
-  buff= my_alloca(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN);
+  buff= my_alloca(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
   
   mysql->client_flag|= mysql->options.client_flag;
   mysql->client_flag|= CLIENT_CAPABILITIES;
@@ -415,6 +371,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
     end= strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
+
+  end= ma_send_connect_attr(mysql, end);
 
   /* Write authentication package */
   if (my_net_write(net, buff, (size_t) (end-buff)) || net_flush(net))

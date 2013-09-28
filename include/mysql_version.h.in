@@ -16,6 +16,10 @@
 #define MYSQL_UNIX_ADDR			"@MYSQL_UNIX_ADDR@"
 #define MYSQL_CONFIG_NAME		"my"
 
+#define MARIADB_PACKAGE_VERSION "@CPACK_PACKAGE_VERSION@"
+#define MARIADB_SYSTEM_TYPE "@CMAKE_SYSTEM_NAME@"
+#define MARIADB_MACHINE_TYPE "@CMAKE_SYSTEM_PROCESSOR@"
+
 /* mysqld compile time options */
 #ifndef MYSQL_CHARSET
 #define MYSQL_CHARSET			"@default_charset@"

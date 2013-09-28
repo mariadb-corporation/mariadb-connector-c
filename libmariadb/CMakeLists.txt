@@ -22,7 +22,8 @@ ma_dyncol.c
 bchange.c 
 bmove.c 
 bmove_upp.c 
-my_charset.c 
+my_charset.c
+hash.c
 violite.c 
 net.c
 charset.c

@@ -275,3 +275,4 @@
 #cmakedefine SHAREDIR "@SHAREDIR@"
 #cmakedefine DEFAULT_CHARSET_HOME "@DEFAULT_CHARSET_HOME@"
 #cmakedefine PLUGINDIR "@PLUGINDIR@"
+
