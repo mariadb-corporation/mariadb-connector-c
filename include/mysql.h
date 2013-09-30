@@ -29,6 +29,10 @@ extern "C" {
 #include <sys/types.h>
 typedef char my_bool;
 
+#ifndef LIBMARIADB
+#define LIBMARIADB
+#endif
+
 #if !defined(_WIN32)
 #define STDCALL
 #else
