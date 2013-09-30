@@ -25,13 +25,13 @@
 extern "C" {
 #endif
 
-#ifndef _global_h				/* If not standard header */
-#include <sys/types.h>
-typedef char my_bool;
-
 #ifndef LIBMARIADB
 #define LIBMARIADB
 #endif
+
+#ifndef _global_h				/* If not standard header */
+#include <sys/types.h>
+typedef char my_bool;
 
 #if !defined(_WIN32)
 #define STDCALL

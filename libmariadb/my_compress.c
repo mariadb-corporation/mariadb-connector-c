@@ -39,7 +39,7 @@ my_bool my_compress(unsigned char *packet, size_t *len, size_t *complen)
     if (!compbuf)
       return *complen ? 0 : 1;
     memcpy(packet,compbuf,*len);
-    my_free(compbuf,MYF(MY_WME));
+    my_free((gptr)compbuf,MYF(MY_WME));
   }
   return 0;
 }
@@ -54,19 +54,18 @@ unsigned char *my_compress_alloc(const unsigned char *packet, size_t *len, size_
   if (compress((Bytef*) compbuf,(ulong *) complen, (Bytef*) packet,
 	       (uLong) *len ) != Z_OK)
   {
-    my_free(compbuf,MYF(MY_WME));
+    my_free((gptr)compbuf,MYF(MY_WME));
     return 0;
   }
   if (*complen >= *len)
   {
     *complen=0;
-    my_free(compbuf,MYF(MY_WME));
+    my_free((gptr)compbuf,MYF(MY_WME));
     return 0;
   }
   swap(ulong,*len,*complen);			/* *len is now packet length */
   return compbuf;
 }
-
 
 my_bool my_uncompress (unsigned char *packet, size_t *len, size_t *complen)
 {
@@ -75,14 +74,14 @@ my_bool my_uncompress (unsigned char *packet, size_t *len, size_t *complen)
     unsigned char *compbuf = (unsigned char *) my_malloc (*complen,MYF(MY_WME));
     if (!compbuf)
       return 1;					/* Not enough memory */
-    if (uncompress((Bytef*) compbuf, complen, (Bytef*) packet, *len) != Z_OK)
+    if (uncompress((Bytef*) compbuf, (uLongf *)complen, (Bytef*) packet, (uLongf)*len) != Z_OK)
     {						/* Probably wrong packet */
-      my_free (compbuf,MYF(MY_WME));
+      my_free ((gptr)compbuf,MYF(MY_WME));
       return 1;
     }
     *len = *complen;
     memcpy(packet,compbuf,*len);
-    my_free(compbuf,MYF(MY_WME));
+    my_free((gptr)compbuf,MYF(MY_WME));
   }
   return 0;
 }

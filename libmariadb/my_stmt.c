@@ -550,7 +550,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     {
       size_t offset= p - start;
       length+= offset + null_count + 20;
-      if (!(start= (uchar *)my_realloc(start, length, MYF(MY_WME | MY_ZEROFILL))))
+      if (!(start= (uchar *)my_realloc((gptr)start, length, MYF(MY_WME | MY_ZEROFILL))))
         goto mem_error;
       p= start + offset;
     }
@@ -574,7 +574,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
       {
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
-        if (!(start= (uchar *)my_realloc(start, length, MYF(MY_WME | MY_ZEROFILL))))
+        if (!(start= (uchar *)my_realloc((gptr)start, length, MYF(MY_WME | MY_ZEROFILL))))
           goto mem_error;
         p= start + offset;
       }
@@ -628,7 +628,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     {
       size_t offset= p - start;
       length= offset + data_size + 20;
-      if (!(start= (uchar *)my_realloc(start, length, MYF(MY_WME | MY_ZEROFILL))))
+      if (!(start= (uchar *)my_realloc((gptr)start, length, MYF(MY_WME | MY_ZEROFILL))))
         goto mem_error;
       p= start + offset;
     }

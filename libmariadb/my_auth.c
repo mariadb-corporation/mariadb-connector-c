@@ -219,7 +219,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   end= ma_send_connect_attr(mysql, end);
 
   res= simple_command(mysql, MYSQL_COM_CHANGE_USER,
-                      buff, (ulong)(end-buff), 1);
+                      buff, (ulong)(end-buff), 1, NULL);
 
 error:
   my_afree(buff);

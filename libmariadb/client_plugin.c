@@ -175,7 +175,9 @@ add_plugin(MYSQL *mysql, struct st_mysql_client_plugin *plugin, void *dlhandle,
     goto err2;
   }
 
+#ifdef THREAD
   safe_mutex_assert_owner(&LOCK_load_client_plugin);
+#endif
 
   p->next= plugin_list[plugin->type];
   plugin_list[plugin->type]= p;

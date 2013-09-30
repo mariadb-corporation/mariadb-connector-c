@@ -227,7 +227,7 @@ void STDCALL mysql_set_local_infile_handler(MYSQL *conn,
 my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
 {
   unsigned int buflen= 4096;
-  unsigned int bufread;
+  int bufread;
   unsigned char *buf= NULL;
   void *info= NULL;
   my_bool result= 1;

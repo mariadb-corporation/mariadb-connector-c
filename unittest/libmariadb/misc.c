@@ -189,11 +189,11 @@ static int test_bug6081(MYSQL *mysql)
   }
 
   rc= simple_command(mysql, MYSQL_COM_DROP_DB, (char*) schema,
-                     (ulong)strlen(schema), 0U);
+                     (ulong)strlen(schema), 0U, NULL);
   FAIL_IF(!rc, "Error expected");
 
   rc= simple_command(mysql, MYSQL_COM_CREATE_DB, (char*) schema,
-                     (ulong)strlen(schema), 0U);
+                     (ulong)strlen(schema), 0U, NULL);
   FAIL_IF(!rc, "Error expected");
   
   rc= mysql_select_db(mysql, schema);
