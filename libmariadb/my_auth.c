@@ -2,7 +2,7 @@
 #include <my_sys.h>
 #include <m_string.h>
 #include <errmsg.h>
-#include <mysql.h>
+#include <ma_common.h>
 #include <mysql/client_plugin.h>
 #include <violite.h>
 #ifdef HAVE_OPENSSL

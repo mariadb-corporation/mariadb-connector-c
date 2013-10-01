@@ -53,13 +53,10 @@ typedef int my_socket;
 #endif
 #endif
 #endif
-#include "my_global.h"
 #include "mysql_com.h"
 #include "mysql_version.h"
 #include "my_list.h"
 #include "m_ctype.h"
-#include "my_sys.h"
-#include "hash.h"
 
 #ifndef ST_USED_MEM_DEFINED
 #define ST_USED_MEM_DEFINED
@@ -81,8 +78,8 @@ typedef int my_socket;
   } MEM_ROOT;
 #endif
 
-  extern unsigned int mysql_port;
-  extern char *mysql_unix_port;
+extern unsigned int mysql_port;
+extern char *mysql_unix_port;
 
 #define IS_PRI_KEY(n)	((n) & PRI_KEY_FLAG)
 #define IS_NOT_NULL(n)	((n) & NOT_NULL_FLAG)
@@ -127,6 +124,16 @@ typedef int my_socket;
 #else
   typedef unsigned long long my_ulonglong;
 #endif
+
+#ifndef longlong_defined
+#if defined(HAVE_LONG_LONG) && SIZEOF_LONG != 8
+typedef long long int longlong;
+#else
+typedef long		longlong;
+#endif
+#define longlong_defined
+#endif
+
 
 
 #define SET_CLIENT_ERROR(a, b, c, d) \
@@ -221,7 +228,9 @@ typedef int my_socket;
     MYSQL_PROTOCOL_PIPE, MYSQL_PROTOCOL_MEMORY
   };
 
-  struct st_mysql_options {
+struct st_mysql_options_extention;
+
+struct st_mysql_options {
     unsigned int connect_timeout, read_timeout, write_timeout;
     unsigned int port, protocol;
     unsigned long client_flag;
@@ -249,14 +258,7 @@ typedef int my_socket;
     int (*local_infile_error)(void *, char *, unsigned int);
     void *local_infile_userdata;
     struct st_mysql_options_extention *extension;
-  };
-
-  typedef struct st_mariadb_db_driver
-  {
-    struct st_mariadb_client_plugin_DB *plugin;
-    char *name;
-    void *buffer;
-  } MARIADB_DB_DRIVER;
+};
 
   typedef struct st_mysql {
     NET		net;			/* Communication parameters */
@@ -293,23 +295,6 @@ typedef int my_socket;
     char          *info_buffer;
     void          *extension;
 } MYSQL;
-
-struct st_mysql_options_extention {
-  char *plugin_dir;
-  char *default_auth;
-  char *ssl_crl;
-  char *ssl_crlpath;
-  char *server_public_key_path;
-  HASH connect_attrs;
-  size_t connect_attrs_len;
-  void (*report_progress)(const MYSQL *mysql,
-                          unsigned int stage,
-                          unsigned int max_stage,
-                          double progress,
-                          const char *proc_info,
-                          unsigned int proc_info_length);
-  MARIADB_DB_DRIVER       *db_driver;
-};
 
 typedef struct st_mysql_res {
   my_ulonglong  row_count;

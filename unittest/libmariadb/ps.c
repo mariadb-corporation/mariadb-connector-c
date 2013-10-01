@@ -113,7 +113,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
   my_bind[0].buffer_type= MYSQL_TYPE_TIMESTAMP;
   my_bind[1].buffer_type= MYSQL_TYPE_TIME;
   my_bind[2].buffer_type= MYSQL_TYPE_DATETIME;
-  my_bind[3].buffer_type= MYSQL_TYPE_DATE;
+  my_bind[3].buffer_type= MYSQL_TYPE_DATETIME;
 
   for (i= 0; i < (int) array_elements(my_bind); i++)
   {
@@ -196,7 +196,6 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
       FAIL_UNLESS(tm[i].year == 0 || tm[i].year == year+count, "wrong value for year");
       FAIL_UNLESS(tm[i].month == 0 || tm[i].month == month+count, "wrong value for month");
       FAIL_UNLESS(tm[i].day == 0 || tm[i].day == day+count, "wrong value for day");
-
       FAIL_UNLESS(tm[i].hour == 0 || tm[i].hour == hour+count, "wrong value for hour");
       FAIL_UNLESS(tm[i].minute == 0 || tm[i].minute == minute+count, "wrong value for minute");
       FAIL_UNLESS(tm[i].second == 0 || tm[i].second == sec+count, "wrong value for second");

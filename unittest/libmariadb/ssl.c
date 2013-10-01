@@ -141,8 +141,8 @@ static int test_multi_ssl_connections(MYSQL *unused)
 
   mysql_close(my);
 
-  FAIL_IF(new_connections - old_connections < 50, "new_connections should be at least old_connections + 50");
   diag("%d SSL connections processed", new_connections - old_connections);
+  FAIL_IF(new_connections - old_connections < 50, "new_connections should be at least old_connections + 50");
   return OK;
 }
 

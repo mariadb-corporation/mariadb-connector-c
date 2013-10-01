@@ -29,12 +29,31 @@
 #ifndef ma_dyncol_h
 #define ma_dyncol_h
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #ifndef LIBMARIADB
 #include <decimal.h>
 #include <my_decimal_limits.h>
 #endif
 #include <mysql.h>
 
+#ifndef _my_sys_h
+typedef struct st_dynamic_string
+{
+  char *str;
+  size_t length,max_length,alloc_increment;
+} DYNAMIC_STRING;
+#endif
+
+struct st_mysql_lex_string
+{
+  char *str;
+  size_t length;
+};
+typedef struct st_mysql_lex_string MYSQL_LEX_STRING;
+typedef struct st_mysql_lex_string LEX_STRING;
 /*
   Limits of implementation
 */
@@ -218,4 +237,8 @@ mariadb_dyncol_column_count(DYNAMIC_COLUMN *str, uint *column_count);
 */
 void mariadb_dyncol_prepare_decimal(DYNAMIC_COLUMN_VALUE *value);
 
+
+#ifdef	__cplusplus
+}
+#endif
 #endif

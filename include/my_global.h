@@ -330,14 +330,6 @@ typedef unsigned short ushort;
 #define ASCII_BITS_USED 8	/* Bit char used */
 #define NEAR_F			/* No near function handling */
 
-struct st_mysql_lex_string
-{
-  char *str;
-  size_t length;
-};
-typedef struct st_mysql_lex_string LEX_STRING;
-typedef struct st_mysql_lex_string MYSQL_LEX_STRING;
-
 /* Some types that is different between systems */
 
 typedef int	File;		/* File descriptor */
@@ -650,6 +642,7 @@ typedef long long int longlong;
 typedef unsigned long	ulonglong;	/* ulong or unsigned long long */
 typedef long		longlong;
 #endif
+#define longlong_defined
 #endif
 
 #ifndef MIN

@@ -45,7 +45,7 @@ int thread_conc27(void);
 DWORD WINAPI thread_conc27(void);
 #endif
 
-#define THREAD_NUM 1800 
+#define THREAD_NUM 100 
 
 /* run this test as root and increase the number of handles (ulimit -n) */
 static int test_conc_27(MYSQL *mysql)

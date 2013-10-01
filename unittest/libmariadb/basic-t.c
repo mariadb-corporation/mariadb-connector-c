@@ -28,6 +28,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include "my_test.h"
+#include "ma_common.h"
 
 static int basic_connect(MYSQL *mysql)
 {

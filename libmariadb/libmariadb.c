@@ -27,6 +27,7 @@
 #include <mysys_err.h>
 #include <m_string.h>
 #include <m_ctype.h>
+#include <ma_common.h>
 #include "mysql.h"
 #include "mysql_version.h"
 #include "mysqld_error.h"
@@ -864,7 +865,7 @@ static void options_add_initcommand(struct st_mysql_options *options,
     my_init_dynamic_array(options->init_command, sizeof(char*), 5, 5);
   }
 
-  if (insert_dynamic(options->init_command, (uchar*)&insert))
+  if (insert_dynamic(options->init_command, (gptr)&insert))
     my_free(insert, MYF(MY_ALLOW_ZERO_PTR));
 }
 
@@ -1396,7 +1397,7 @@ uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer)
     if (mysql->options.extension &&
         hash_inited(&mysql->options.extension->connect_attrs))
     {
-      int i;
+      uint i;
       for (i=0; i < mysql->options.extension->connect_attrs.records; i++)
       {
         size_t len;
@@ -1435,8 +1436,8 @@ ma_set_connect_attrs(MYSQL *mysql)
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_pid") +
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_platform");
 
-  rc+= mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb");
-       + mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION);
+  rc+= mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb")
+       + mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
        + mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE);
 
 #ifdef _WIN32
@@ -1756,7 +1757,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     goto error;
   }
 
-  DBUG_DUMP("packet",(char*) net->read_pos,10);
+  DBUG_DUMP("packet",net->read_pos,10);
   DBUG_PRINT("info",("mysql protocol version %d, server=%d",
 		     PROTOCOL_VERSION, mysql->protocol_version));
   if (mysql->protocol_version <  PROTOCOL_VERSION)
@@ -2771,15 +2772,15 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
       mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
     break;
   case MYSQL_INIT_COMMAND:
-    options_add_initcommand(&mysql->options, arg);
+    options_add_initcommand(&mysql->options, (char *)arg);
     break;
   case MYSQL_READ_DEFAULT_FILE:
     my_free(mysql->options.my_cnf_file,MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.my_cnf_file=my_strdup(arg,MYF(MY_WME));
+    mysql->options.my_cnf_file=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_READ_DEFAULT_GROUP:
     my_free(mysql->options.my_cnf_group,MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.my_cnf_group=my_strdup(arg,MYF(MY_WME));
+    mysql->options.my_cnf_group=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_SET_CHARSET_DIR:
     /* not supported in this version. Since all character sets 
@@ -2787,7 +2788,7 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
     break;
   case MYSQL_SET_CHARSET_NAME:
     my_free(mysql->options.charset_name,MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.charset_name=my_strdup(arg,MYF(MY_WME));
+    mysql->options.charset_name=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_OPT_RECONNECT:
     mysql->reconnect= *(uint *)arg;
@@ -2856,23 +2857,23 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
     break;
   case MYSQL_OPT_SSL_KEY:
     my_free(mysql->options.ssl_key, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_key=my_strdup(arg,MYF(MY_WME));
+    mysql->options.ssl_key=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_OPT_SSL_CERT:
     my_free(mysql->options.ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_cert=my_strdup(arg,MYF(MY_WME));
+    mysql->options.ssl_cert=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_OPT_SSL_CA:
     my_free(mysql->options.ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_ca=my_strdup(arg,MYF(MY_WME));
+    mysql->options.ssl_ca=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_OPT_SSL_CAPATH:
     my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_capath=my_strdup(arg,MYF(MY_WME));
+    mysql->options.ssl_capath=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_OPT_SSL_CIPHER:
     my_free(mysql->options.ssl_cipher, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_cipher=my_strdup(arg,MYF(MY_WME));
+    mysql->options.ssl_cipher=my_strdup((char *)arg,MYF(MY_WME));
     break;
   case MYSQL_OPT_SSL_CRL:
     OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crl, (char *)arg, 1);
@@ -2885,8 +2886,8 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
       uchar *p;
       CHECK_OPT_EXTENSION_SET(&mysql->options);
       if (hash_inited(&mysql->options.extension->connect_attrs) &&
-          (p= hash_search(&mysql->options.extension->connect_attrs, arg,
-                      arg ? strlen(arg) : 0)))
+          (p= (uchar *)hash_search(&mysql->options.extension->connect_attrs, (uchar *)arg,
+                      arg ? strlen((char *)arg) : 0)))
       {
         size_t key_len= *(size_t *)p;
         mysql->options.extension->connect_attrs_len-= key_len;
@@ -2932,7 +2933,7 @@ uchar *ma_get_hash_key(const uchar *hash_entry,
 
 void ma_hash_free(void *p)
 {
-  my_free(p, MYF(MYF_ALLOW_ZERO_PTR));
+  my_free((gptr)p, MYF(MYF_ALLOW_ZERO_PTR));
 }
 
 int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option, 
@@ -2945,8 +2946,8 @@ int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option,
   case MYSQL_OPT_CONNECT_ATTR_ADD:
     {
       uchar *buffer;
-      size_t key_len= arg1 ? strlen(arg1) : 0,
-             value_len= arg2 ? strlen(arg2) : 0;
+      size_t key_len= arg1 ? strlen((char *)arg1) : 0,
+             value_len= arg2 ? strlen((char *)arg2) : 0;
       size_t storage_len= key_len + value_len + 
                           get_store_length(key_len) +
                           get_store_length(value_len);
@@ -2983,7 +2984,7 @@ int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option,
 
         if (hash_insert(&mysql->options.extension->connect_attrs, buffer))
         {
-          my_free(buffer, MYF(0));
+          my_free((gptr)buffer, MYF(0));
           SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, unknown_sqlstate, 0);
           DBUG_RETURN(1);
         }

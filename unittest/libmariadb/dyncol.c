@@ -104,7 +104,7 @@ static int mdev_4994(MYSQL *mysql)
   int rc;
   
 
-  val.type= MYSQL_TYPE_NULL;
+  val.type= DYN_COL_NULL;
 
   mariadb_dyncol_init(&dyncol);
   rc= mariadb_dyncol_create_many_num(&dyncol, 1, &key, &val, 0); 

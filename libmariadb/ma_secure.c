@@ -21,6 +21,7 @@
 
 #include <my_global.h>
 #include <my_sys.h>
+#include <ma_common.h>
 #include <ma_secure.h>
 #include <errmsg.h>
 #include <violite.h>

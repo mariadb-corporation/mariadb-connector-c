@@ -101,6 +101,7 @@
 #include <signal.h>
 #endif
 
+extern int my_snprintf(char* to, size_t n, const char* fmt, ...);
 
 char _dig_vec_upper[] =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";

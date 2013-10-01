@@ -35,8 +35,8 @@
 #endif
 
 #include <my_global.h>
-#include "mysql.h"
 #include <my_sys.h>
+#include <ma_common.h> 
 #include <m_string.h>
 #ifdef THREAD
 #include <my_pthread.h>

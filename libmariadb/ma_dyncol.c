@@ -64,6 +64,7 @@
 #include "mysys_priv.h"
 #include <my_global.h>
 #include <m_string.h>
+#include <hash.h>
 #include <ma_dyncol.h>
 #include <mysql.h>
 
