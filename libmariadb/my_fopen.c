@@ -36,7 +36,11 @@ FILE *my_fopen(const char *FileName, int Flags, myf MyFlags)
 		   FileName, Flags, MyFlags));
 
   make_ftype(type,Flags);
+#ifdef _WIN32
+  if (fopen_s(&fd, FileName, type) == 0)
+#else
   if ((fd = fopen(FileName, type)) != 0)
+#endif
   {
     /*
       The test works if MY_NFILE < 128. The problem is that fileno() is char

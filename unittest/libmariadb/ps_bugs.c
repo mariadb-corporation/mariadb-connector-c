@@ -3798,6 +3798,7 @@ static int test_conc_5(MYSQL *mysql)
 
   mysql_free_result(res);
   mysql_stmt_close(stmt);
+  return OK;
 }
 
 struct my_tests_st my_tests[] = {

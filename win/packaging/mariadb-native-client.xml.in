@@ -6,7 +6,7 @@
 		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
 
 		<MajorUpgrade DowngradeErrorMessage="A newer version of @PRODUCT_NAME@ is already installed." />
-		<MediaTemplate />
+		<MediaTemplate EmbedCab="yes" />
 
     <UIRef Id="WixUI_Mondo" />
     <WixVariable Id="WixUILicenseRtf" Value="@CMAKE_SOURCE_DIR@/win/packaging/license.rtf" />
@@ -16,6 +16,7 @@
 		<Feature Id="ProductFeature" Title="@PRODUCT_NAME@ @PRODUCT_VERSION@" Level="1">
 			<ComponentRef Id="RegistryKeys" />
       <ComponentRef Id="Library"/>
+        <ComponentRef Id="DebugLibrary" />
       <Feature Id="DebugFeature" Title="Debug Information" Level="2">
         <ComponentRef Id="Debug" />
       </Feature>
@@ -30,7 +31,9 @@
 			<Directory Id="ProgramFilesFolder">
         <Directory Id="Mariadb" Name="@PRODUCT_MANUFACTURER@">
           <Directory Id="INSTALLFOLDER" Name="@PRODUCT_NAME@" >
-            <Directory Id="instlib" Name="lib" />
+            <Directory Id="instlib" Name="lib">
+              <Directory Id="instlib_debug" Name="debug"/>
+            </Directory>
             <Directory Id="instinclude" Name="include" />
           </Directory>  
         </Directory>
@@ -49,6 +52,11 @@
         <File Id="libdll" Name="libmariadb.dll"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.dll" />
         <File Id="libdllimp" Name="libmariadb.lib"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.lib" />
         <File Id="libstatic" Name="mariadbclient.lib"  DiskId="1"  Source="@CLIENT_LIB_DIR@/mariadbclient.lib" />
+      </Component>
+      <Component Id="DebugLibrary" Guid="1b8f741d-e7d9-48f1-9e11-9270216d1dc7" KeyPath="yes" DiskId="1" Directory="instlib_debug">
+        <File Id="dlibdll" Name="libmariadb.dll"  DiskId="1"  Source="@CLIENT_DBG_DIR@/libmariadb.dll" />
+        <File Id="dlibdllimp" Name="libmariadb.lib"  DiskId="1"  Source="@CLIENT_DBG_DIR@/libmariadb.lib" />
+        <File Id="dlibstatic" Name="mariadbclient.lib"  DiskId="1"  Source="@CLIENT_DBG_DIR@/mariadbclient.lib" />
       </Component>
       <Component Id="Debug" Guid="FFAFCCCC-4E0C-4A87-840C-53B63C8A427A" KeyPath="yes" Directory="instlib" DiskId="1">
         <File Id="libdllpdb" Name="libmariadb.pdb"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.pdb" />

@@ -55,7 +55,11 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
 #endif
   {
 #if defined(HAVE_GETCWD)
-    if (!getcwd(buf,size-2) && MyFlags & MY_WME)
+#ifdef _WIN32
+    if (!(_getcwd(buf,size-2)) && MyFlags & MY_WME)
+#else
+    if (!(getcwd(buf,size-2)) && MyFlags & MY_WME)
+#endif
     {
       my_errno=errno;
       my_error(EE_GETWD,MYF(ME_BELL+ME_WAITTANG),errno);
@@ -151,7 +155,11 @@ int my_setwd(const char *dir, myf MyFlags)
     dir=buff;
   }
 #endif /* VMS */
+#ifdef _WIN32
+  if ((res=_chdir((char*) dir)) != 0)
+#else
   if ((res=chdir((char*) dir)) != 0)
+#endif
   {
     my_errno=errno;
     if (MyFlags & MY_WME)

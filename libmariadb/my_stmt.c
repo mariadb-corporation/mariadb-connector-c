@@ -1336,7 +1336,7 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
 
 static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
 {
-  int i;
+  uint i;
   MEM_ROOT *fields_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_alloc_root;
 
   DBUG_ENTER("madb_alloc_stmt_fields");

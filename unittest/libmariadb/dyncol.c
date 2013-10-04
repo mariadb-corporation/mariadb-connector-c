@@ -161,7 +161,8 @@ static int create_dyncol_num(MYSQL *mysql)
 
 static int mdev_x1(MYSQL *mysql)
 {
-  int i, rc;
+  int rc;
+  uint i;
   uint num_keys[5]= {1,2,3,4,5};
   char *strval[]= {"Val1", "Val2", "Val3", "Val4", "Val5"};
   DYNAMIC_COLUMN_VALUE vals[5];

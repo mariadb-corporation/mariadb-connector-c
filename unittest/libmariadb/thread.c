@@ -80,7 +80,7 @@ static int test_conc_27(MYSQL *mysql)
 #ifndef _WIN32
     pthread_create(&threads[i], NULL, (void *)thread_conc27, NULL);
 #else
-    hthreads[i]= CreateThread(NULL, 0, thread_conc27, NULL, 0, &threads[i]);
+    hthreads[i]= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_conc27, NULL, 0, &threads[i]);
     if (hthreads[i]==NULL)
       diag("error while starting thread");
 #endif
