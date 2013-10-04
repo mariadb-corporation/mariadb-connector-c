@@ -221,6 +221,16 @@ typedef struct st_vio Vio;
 #define MAX_CHAR_WIDTH		255	/* Max length for a CHAR colum */
 #define MAX_BLOB_WIDTH		8192	/* Default width for blob */
 
+/* the following defines were added for PHP's mysqli and pdo extensions: 
+   see: CONC-56
+*/
+#define MAX_TINYINT_WIDTH     3
+#define MAX_SMALLINT_WIDTH    5
+#define MAX_MEDIUMINT_WIDTH   8
+#define MAX_INT_WIDTH        10
+#define MAX_BIGINT_WIDTH     20
+
+
 typedef struct st_net {
   Vio *vio;
   unsigned char *buff;
