@@ -462,7 +462,7 @@ unsigned long STDCALL mysql_get_client_version(void);
 my_bool STDCALL mariadb_connection(MYSQL *mysql);
 const char * STDCALL mysql_get_server_name(MYSQL *mysql);
 CHARSET_INFO * STDCALL mysql_get_charset_by_name(const char *csname);
-CHARSET_INFO * STDCALL mysql_get_charset_by_nr(uint csnr);
+CHARSET_INFO * STDCALL mysql_get_charset_by_nr(unsigned int csnr);
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option, 
