@@ -166,7 +166,7 @@ int socket_block(my_socket s,my_bool blocked)
 #endif
 }
 
-static int connect2(my_socket s, const struct sockaddr *name, uint namelen,
+static int connect2(my_socket s, const struct sockaddr *name, size_t namelen,
 		    uint timeout)
 {
   int res, s_err;
@@ -179,13 +179,13 @@ static int connect2(my_socket s, const struct sockaddr *name, uint namelen,
 #endif
 
   if (!timeout)
-    return connect(s, (struct sockaddr*) name, namelen);
+    return connect(s, (struct sockaddr*) name, (int)namelen);
 
   /* set socket to non blocking */
   if (socket_block(s, 0) == SOCKET_ERROR)
     return -1;
 
-  res= connect(s, (struct sockaddr*) name, namelen);
+  res= connect(s, (struct sockaddr*) name, (int)namelen);
   if (res == 0)
     return res;
 
@@ -222,7 +222,7 @@ static int connect2(my_socket s, const struct sockaddr *name, uint namelen,
   memset(&tv, 0, sizeof(struct timeval));
   tv.tv_sec= timeout;
 
-  res= select(s+1, NULL, &sfds, &efds, &tv);
+  res= select((int)s+1, NULL, &sfds, &efds, &tv);
   if (res < 1)
     return -1;
 #endif
@@ -1850,10 +1850,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       scramble_len= pkt_scramble_len;
       scramble_plugin= scramble_data + scramble_len;
       if (scramble_data + scramble_len > end_pkt)
-        scramble_len= end_pkt - scramble_data;
+        scramble_len= (uint)(end_pkt - scramble_data);
     } else
     {
-      scramble_len= end_pkt - scramble_data;
+      scramble_len= (uint)(end_pkt - scramble_data);
       scramble_plugin= native_password_plugin_name;
     }
   } else
@@ -1913,7 +1913,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
     for (;begin < end; begin++)
     {  
-      if (mysql_real_query(mysql, *begin, strlen(*begin)))
+      if (mysql_real_query(mysql, *begin, (unsigned long)strlen(*begin)))
         goto error;
 
     /* check if query produced a result set */
@@ -2222,7 +2222,7 @@ mysql_query(MYSQL *mysql, const char *query)
 */  
 
 int STDCALL
-mysql_send_query(MYSQL* mysql, const char* query, uint length)
+mysql_send_query(MYSQL* mysql, const char* query, unsigned long length)
 {
   return simple_command(mysql, MYSQL_COM_QUERY, query, length, 1,0);
 }
@@ -2277,7 +2277,7 @@ get_info:
 }
 
 int STDCALL
-mysql_real_query(MYSQL *mysql, const char *query, uint length)
+mysql_real_query(MYSQL *mysql, const char *query, unsigned long length)
 {
   DBUG_ENTER("mysql_real_query");
   DBUG_PRINT("enter",("handle: %lx",mysql));
@@ -2887,7 +2887,7 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
       CHECK_OPT_EXTENSION_SET(&mysql->options);
       if (hash_inited(&mysql->options.extension->connect_attrs) &&
           (p= (uchar *)hash_search(&mysql->options.extension->connect_attrs, (uchar *)arg,
-                      arg ? strlen((char *)arg) : 0)))
+                      arg ? (uint)strlen((char *)arg) : 0)))
       {
         size_t key_len= *(size_t *)p;
         mysql->options.extension->connect_attrs_len-= key_len;
@@ -2915,7 +2915,7 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
 }
 
 uchar *ma_get_hash_key(const uchar *hash_entry, 
-                       size_t *length,
+                       unsigned int *length,
                        my_bool not_used __attribute__((unused)))
 {
   /* Hash entry has the following format:
@@ -2926,8 +2926,9 @@ uchar *ma_get_hash_key(const uchar *hash_entry,
                              value
   */
   uchar *p= (uchar *)hash_entry;
-  *length=*((size_t*)p);
+  size_t len=*((size_t*)p);
   p+= sizeof(size_t);
+  *length= (uint)len;
   return p;
 }
 
@@ -3358,7 +3359,7 @@ ulong STDCALL mysql_hex_string(char *to, const char *from,
     from++;
   }
   *to= 0;
-  return (to - start);
+  return (ulong)(to - start);
 }
 
 my_bool STDCALL mariadb_connection(MYSQL *mysql)

@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-typedef uchar *(*hash_get_key)(const uchar *,size_t*,my_bool);
+typedef uchar *(*hash_get_key)(const uchar *,uint*,my_bool);
 typedef void (*hash_free_key)(void *);
 
   /* flags for hash_init */

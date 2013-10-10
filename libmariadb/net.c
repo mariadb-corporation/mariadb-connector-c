@@ -644,7 +644,7 @@ my_real_read(NET *net, size_t *complen)
 	len=uint3korr(net->buff+net->where_b);
         if (!len)
           goto end;
-	helping = max(len,*complen) + net->where_b;
+	helping = max(len,(ulong)*complen) + net->where_b;
 	/* The necessary size of net->buff */
 	if (helping >= net->max_packet)
 	{
@@ -692,7 +692,7 @@ ulong my_net_read(NET *net)
       do 
       {
         length+= len;
-        net->where_b+= len;
+        net->where_b+= (unsigned long)len;
       } while (len == MAX_PACKET_LENGTH);
       net->where_b= last_pos;
       if (len != packet_error)
@@ -701,7 +701,7 @@ ulong my_net_read(NET *net)
     net->read_pos = net->buff + net->where_b;
     if (len != packet_error)
       net->read_pos[len]=0;		/* Safeguard for mysql_use_result */
-    return len;
+    return (ulong)len;
 #ifdef HAVE_COMPRESS
   }
   else
@@ -751,8 +751,8 @@ ulong my_net_read(NET *net)
         net->last_errno=ER_NET_UNCOMPRESS_ERROR;
         break;
       }
-      net->buf_length+=len;
-      net->remain_in_buf+=len;
+      net->buf_length+=(unsigned long)len;
+      net->remain_in_buf+=(unsigned long)len;
     }
     if (len != packet_error)
     {
@@ -761,5 +761,5 @@ ulong my_net_read(NET *net)
     }
   }
 #endif
-  return len;
+  return (ulong)len;
 }

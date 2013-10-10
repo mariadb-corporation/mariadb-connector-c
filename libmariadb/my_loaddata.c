@@ -97,7 +97,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
 #ifdef _WIN32
   else
   {
-    if ((Length= MultiByteToWideChar(CodePage, 0, info->filename, strlen(info->filename), NULL, 0)))
+    if ((Length= MultiByteToWideChar(CodePage, 0, info->filename, (int)strlen(info->filename), NULL, 0)))
     {
       if (!(w_filename= (wchar_t *)my_malloc((Length + 1) * sizeof(wchar_t), MYF(MY_ZEROFILL))))
       {
@@ -106,7 +106,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
                      ER(CR_OUT_OF_MEMORY));
         DBUG_RETURN(1);
       }
-      Length= MultiByteToWideChar(CodePage, 0, info->filename, strlen(info->filename), w_filename, Length);
+      Length= MultiByteToWideChar(CodePage, 0, info->filename, (int)strlen(info->filename), w_filename, (int)Length);
     }
     if (Length == 0)
     {

@@ -469,9 +469,9 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
   if (mpvio->packets_written == 0)
   {
     if (mpvio->mysql_change_user)
-      res= send_change_user_packet(mpvio, pkt, pkt_len);
+      res= send_change_user_packet(mpvio, pkt, (int)pkt_len);
     else
-      res= send_client_reply_packet(mpvio, pkt, pkt_len);
+      res= send_client_reply_packet(mpvio, pkt, (int)pkt_len);
   }
   else
   {
@@ -653,7 +653,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
       /* new "use different plugin" packet */
       uint len;
       auth_plugin_name= (char*)mysql->net.read_pos + 1;
-      len= strlen(auth_plugin_name); /* safe as my_net_read always appends \0 */
+      len= (uint)strlen(auth_plugin_name); /* safe as my_net_read always appends \0 */
       mpvio.cached_server_reply.pkt_len= pkt_length - len - 2;
       mpvio.cached_server_reply.pkt= mysql->net.read_pos + len + 2;
     }

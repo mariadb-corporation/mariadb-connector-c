@@ -98,7 +98,7 @@ inline char*
 hash_key(HASH *hash,const uchar *record,uint *length,my_bool first)
 {
   if (hash->get_key)
-    return (*hash->get_key)(record,(size_t *)length,first);
+    return (*hash->get_key)(record,(uint *)length,first);
   *length=hash->key_length;
   return (uchar*) record+hash->key_offset;
 }

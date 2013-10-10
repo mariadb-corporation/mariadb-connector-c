@@ -208,12 +208,12 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
     if (!DosRead((HFILE)vio->hPipe, buf, size, &length))
       DBUG_RETURN(-1);
 #else
-    if (!ReadFile(vio->hPipe, buf, size, &length, NULL))
+    if (!ReadFile(vio->hPipe, buf, (DWORD)size, &length, NULL))
       DBUG_RETURN(-1);
 #endif
     DBUG_RETURN(length);
   }
-  r = recv(vio->sd, buf, size,0);
+  r = recv(vio->sd, buf, (int)size,0);
 #else
   errno=0; /* For linux */
   r = read(vio->sd, buf, size);
@@ -235,7 +235,7 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
 my_bool vio_read_peek(Vio *vio, size_t *bytes)
 {
 #ifdef _WIN32
-  if (ioctlsocket(vio->sd, FIONREAD, bytes))
+  if (ioctlsocket(vio->sd, FIONREAD, (unsigned long)bytes))
     return TRUE;
 #else
   char buffer[1024];
@@ -271,12 +271,12 @@ size_t vio_write(Vio * vio, const gptr buf, size_t size)
     if (!DosWrite((HFILE)vio->hPipe, (char*) buf, size, &length))
       DBUG_RETURN(-1);
 #else
-    if (!WriteFile(vio->hPipe, (char*) buf, size, &length, NULL))
+    if (!WriteFile(vio->hPipe, (char*) buf, (DWORD)size, &length, NULL))
       DBUG_RETURN(-1);
 #endif
     DBUG_RETURN(length);
   }
-  r = send(vio->sd, buf, size,0);
+  r = send(vio->sd, buf, (int)size,0);
 #else
   r = write(vio->sd, buf, size);
 #endif /* _WIN32 */
