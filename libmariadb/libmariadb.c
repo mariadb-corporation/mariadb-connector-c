@@ -69,6 +69,13 @@
 #endif
 #include <ma_dyncol.h>
 
+#undef max_allowed_packet
+#undef net_buffer_length
+extern ulong max_allowed_packet; /* net.c */
+extern ulong net_buffer_length;  /* net.c */
+static MYSQL_PARAMETERS mariadb_internal_parameters=
+{&max_allowed_packet, &net_buffer_length, 0};
+
 static my_bool mysql_client_init=0;
 static void mysql_close_options(MYSQL *mysql);
 extern my_bool  my_init_done;
@@ -2233,7 +2240,7 @@ int mthd_my_read_query_result(MYSQL *mysql)
   ulong field_count;
   MYSQL_DATA *fields;
   ulong length;
-  DBUG_ENTER("mysql_read_query_result");
+  DBUG_ENTER("mthd_my_read_query_result");
 
   if (!mysql || (length = net_safe_read(mysql)) == packet_error)
     DBUG_RETURN(1);
@@ -2274,6 +2281,12 @@ get_info:
   mysql->status=MYSQL_STATUS_GET_RESULT;
   mysql->field_count=field_count;
   DBUG_RETURN(0);
+}
+
+my_bool STDCALL
+mysql_read_query_result(MYSQL *mysql)
+{
+  return test(mysql->methods->db_read_query_result(mysql)) ? 1 : 0;
 }
 
 int STDCALL
@@ -3375,6 +3388,12 @@ mysql_get_server_name(MYSQL *mysql)
       mysql->options.extension->db_driver != NULL) 
     return mysql->options.extension->db_driver->name;
   return mariadb_connection(mysql) ? "MariaDB" : "MySQL";
+}
+
+MYSQL_PARAMETERS *STDCALL
+mysql_get_parameters(void)
+{
+  return &mariadb_internal_parameters;
 }
 
 /*

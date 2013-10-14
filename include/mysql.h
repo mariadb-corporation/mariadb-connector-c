@@ -341,6 +341,16 @@ typedef struct character_set
   unsigned int      mbmaxlen;   /* max. length for multibyte strings */
 } MY_CHARSET_INFO;
 
+typedef struct 
+{
+  unsigned long *p_max_allowed_packet;
+  unsigned long *p_net_buffer_length;
+  void *extension;
+} MYSQL_PARAMETERS;
+
+#define net_buffer_length (*mysql_get_parameters()->p_net_buffer_length)
+#define max_allowed_packet (*mysql_get_parameters()->p_max_allowed_packet)
+
 /* Local infile support functions */
 #define LOCAL_INFILE_ERROR_LEN 512
 
@@ -405,7 +415,7 @@ int		STDCALL mysql_select_db(MYSQL *mysql, const char *db);
 int		STDCALL mysql_query(MYSQL *mysql, const char *q);
 int		STDCALL mysql_send_query(MYSQL *mysql, const char *q,
 					 unsigned long length);
-int		STDCALL mysql_read_query_result(MYSQL *mysql);
+my_bool	STDCALL mysql_read_query_result(MYSQL *mysql);
 int		STDCALL mysql_real_query(MYSQL *mysql, const char *q,
 					unsigned long length);
 int		STDCALL mysql_create_db(MYSQL *mysql, const char *DB);
@@ -467,6 +477,7 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSE
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option, 
                           const void *arg1, const void *arg2);
+MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 
 #include <my_stmt.h>
   

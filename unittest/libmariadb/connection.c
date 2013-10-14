@@ -597,7 +597,7 @@ int test_connection_timeout(MYSQL *my)
     return FAIL;
   }
   elapsed= time(NULL) - start;
-  diag("elapsed: %d, timeout: %d", elapsed, timeout);
+  diag("elapsed: %u", elapsed);
   mysql_close(mysql);
   FAIL_IF(elapsed > timeout + 1, "timeout ignored")
   return OK;

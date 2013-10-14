@@ -37,6 +37,11 @@
 
 #define MAX_PACKET_LENGTH (256L*256L*256L-1)
 
+/* net_buffer_length and max_allowec_packet are defined in mysql.h
+   See bug conc-57
+*/
+#undef net_buffer_length
+#undef max_allowed_packet
 ulong max_allowed_packet=1024L * 1024L * 1024L;
 ulong net_read_timeout=  NET_READ_TIMEOUT;
 ulong net_write_timeout= NET_WRITE_TIMEOUT;

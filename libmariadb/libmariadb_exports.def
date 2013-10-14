@@ -59,6 +59,7 @@ EXPORTS
  mysql_ping
  mysql_stmt_result_metadata
  mysql_query
+ mysql_read_query_result
  mysql_real_connect
  mysql_real_escape_string
  mysql_real_query
@@ -109,6 +110,7 @@ EXPORTS
  mysql_get_server_name
  mysql_get_charset_by_name
  mysql_get_charset_by_nr
+ mysql_get_parameters
  mariadb_convert_string
  mariadb_dyncol_free
  mariadb_dyncol_create_many_num
