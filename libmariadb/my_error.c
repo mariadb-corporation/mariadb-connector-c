@@ -45,7 +45,7 @@ int my_error(int nr,myf MyFlags, ...)
   if (nr / ERRMOD == GLOB && my_errmsg[GLOB] == 0)
     init_glob_errs();
 
-  olen=(uint) strlen(tpos=my_errmsg[nr / ERRMOD][nr % ERRMOD]);
+  olen=(uint) strlen(tpos=my_errmsg[nr / ERRMOD][nr % ERRMOD - EE_FIRSTERROR]);
   endpos=ebuff;
 
   while (*tpos)
