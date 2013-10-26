@@ -65,6 +65,10 @@
 #define MADB_RESET_BUFFER    8
 #define MADB_RESET_STORED   16
 
+#define MAX_TIME_STR_LEN 13
+#define MAX_DATE_STR_LEN 5
+#define MAX_DATETIME_STR_LEN 12
+
 typedef struct
 {
   MEM_ROOT fields_alloc_root;
@@ -311,15 +315,28 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
       stmt->bind[i].row_ptr= NULL;
     } else
     { 
-      if (!stmt->bind[i].length)
-        stmt->bind[i].length= &stmt->bind[i].length_value;
-      if (!stmt->bind[i].is_null)
-        stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
-      *stmt->bind[i].is_null= 0;
       stmt->bind[i].row_ptr= row;
-      mysql_ps_fetch_functions[stmt->fields[i].type].func(&stmt->bind[i], &stmt->fields[i], &row);
-      if (stmt->mysql->options.report_data_truncation)
-        truncations+= *stmt->bind[i].error;
+      if (stmt->bind[i].flags & MADB_BIND_DUMMY)
+      {
+        unsigned long length;
+        
+        if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
+          length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
+        else
+          length= net_field_length(&row);
+        row+= length;
+      }
+      else
+      {
+        if (!stmt->bind[i].length)
+          stmt->bind[i].length= &stmt->bind[i].length_value;
+        if (!stmt->bind[i].is_null)
+          stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
+        *stmt->bind[i].is_null= 0;
+        mysql_ps_fetch_functions[stmt->fields[i].type].func(&stmt->bind[i], &stmt->fields[i], &row);
+        if (stmt->mysql->options.report_data_truncation)
+          truncations+= *stmt->bind[i].error;
+      }
     }
 
     if (!((bit_offset <<=1) & 255)) {
@@ -423,16 +440,22 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
        9-13       4       second_part
        */
     MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
-    char t_buffer[14];
-    uint len= *stmt->params[column].length;
+    char t_buffer[MAX_TIME_STR_LEN];
+    uint len= 0;
 
-    t_buffer[0]= len;
     t_buffer[1]= t->neg ? 1 : 0;
     int4store(t_buffer + 2, t->day);
     t_buffer[6]= (uchar) t->hour; 
     t_buffer[7]= (uchar) t->minute; 
-    t_buffer[8]= (uchar) t->second; 
-    int4store(t_buffer + 9, t->second_part);
+    t_buffer[8]= (uchar) t->second;
+    if (t->second_part)
+    {
+      int4store(t_buffer + 9, t->second_part);
+      len= 12;
+    }
+    else if (t->day || t->hour || t->minute || t->second)
+      len= 8;
+    t_buffer[0]= len;
     memcpy(*p, t_buffer, len);
     len++;
     (*p)+= len;
@@ -454,17 +477,25 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
        8-11       4       secondpart
        */ 
     MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
-    char t_buffer[12];
+    char t_buffer[MAX_DATETIME_STR_LEN];
     uint len= *stmt->params[column].length;
 
-    t_buffer[0]= len;
     int2store(t_buffer + 1, t->year);
     t_buffer[3]= (char) t->month;
     t_buffer[4]= (char) t->day;
     t_buffer[5]= (char) t->hour;
     t_buffer[6]= (char) t->minute;
     t_buffer[7]= (char) t->second;
-    int4store(t_buffer + 8, t->second_part);
+    if (t->second_part)
+    {
+      int4store(t_buffer + 8, t->second_part);
+      len= 12;
+    }
+    else if (t->hour || t->minute || t->second)
+      len= 7;
+    else if (t->year || t->month || t->day)
+      len= 4;
+    t_buffer[0]= len;
     memcpy(*p, t_buffer, len);
     len++;
     (*p)+= len;
@@ -586,6 +617,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         p+= 2;
       }
     }
+
     /* calculate data size */
     for (i = 0; i < stmt->param_count; i++) {
       if (stmt->params[i].buffer && !stmt->params[i].is_null)
@@ -648,7 +680,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     }
   }
   stmt->send_types_to_server= 0;
-  *request_len = (p - start);
+  *request_len = (size_t)(p - start);
   DBUG_RETURN(start);
 
 

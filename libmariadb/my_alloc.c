@@ -78,7 +78,7 @@ gptr alloc_root(MEM_ROOT *mem_root, size_t Size)
     if (max_left*4 < mem_root->block_size && get_size < mem_root->block_size)
       get_size=mem_root->block_size;		/* Normal alloc */
 
-    if (!(next = (USED_MEM*) my_malloc(get_size,MYF(MY_WME))))
+    if (!(next = (USED_MEM*) my_malloc(get_size,MYF(MY_WME | MY_ZEROFILL))))
     {
       if (mem_root->error_handler)
 	(*mem_root->error_handler)();
@@ -141,6 +141,7 @@ char *strdup_root(MEM_ROOT *root,const char *str)
   char *pos;
   if ((pos=alloc_root(root,len)))
     memcpy(pos,str,len);
+  pos[len]= 0;
   return pos;
 }
 

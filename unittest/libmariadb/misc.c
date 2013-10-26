@@ -24,6 +24,31 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "ma_common.h"
 
+
+static int test_conc60(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  char *stmtstr= "SELECT * FROM agendas";
+  int rc;
+  
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  diag("rows: %u", mysql_stmt_num_rows(stmt));
+
+  while (mysql_stmt_fetch(stmt));
+
+  mysql_stmt_close(stmt);
+
+  return(OK);
+}
+
 /*
   Bug#28075 "COM_DEBUG crashes mysqld"
 */
@@ -949,6 +974,7 @@ static int test_connect_attrs(MYSQL *my)
 
 struct my_tests_st my_tests[] = {
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
+  {"test_conc60", test_conc60, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc49", test_conc49, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28075", test_bug28075, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28505", test_bug28505, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

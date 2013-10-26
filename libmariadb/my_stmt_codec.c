@@ -860,7 +860,7 @@ void mysql_init_ps_subsystem(void)
 
   mysql_ps_fetch_functions[MYSQL_TYPE_DOUBLE].func    = ps_fetch_double;
   mysql_ps_fetch_functions[MYSQL_TYPE_DOUBLE].pack_len  = 8;
-  mysql_ps_fetch_functions[MYSQL_TYPE_FLOAT].max_len  = MAX_DOUBLE_STRING_REP_LENGTH;
+  mysql_ps_fetch_functions[MYSQL_TYPE_DOUBLE].max_len  = MAX_DOUBLE_STRING_REP_LENGTH;
   
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].func  = ps_fetch_datetime;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].pack_len  = 13;

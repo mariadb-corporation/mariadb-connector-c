@@ -111,7 +111,7 @@ static int net_write_buff(NET *net,const char *packet, size_t len);
 
 int my_net_init(NET *net, Vio* vio)
 {
-  if (!(net->buff=(uchar*) my_malloc(net_buffer_length,MYF(MY_WME))))
+  if (!(net->buff=(uchar*) my_malloc(net_buffer_length,MYF(MY_WME | MY_ZEROFILL))))
     return 1;
   if (net_buffer_length > max_allowed_packet)
     max_allowed_packet=net_buffer_length;
@@ -220,7 +220,7 @@ int net_flush(NET *net)
   if (net->buff != net->write_pos)
   {
     error=net_real_write(net,(char*) net->buff,
-			 (uint) (net->write_pos - net->buff));
+			 (size_t) (net->write_pos - net->buff));
     net->write_pos=net->buff;
   }
   if (net->compress)
@@ -274,6 +274,7 @@ net_write_command(NET *net, uchar command,
   size_t length= 1 + len; /* 1 extra byte for command */
   int rc;
 
+  buff[NET_HEADER_SIZE]= 0;
   buff[4]=command;
 
   if (length >= MAX_PACKET_LENGTH)
@@ -401,7 +402,7 @@ net_real_write(NET *net,const char *packet,size_t  len)
   pos=(char*) packet; end=pos+len;
   while (pos != end)
   {
-    if ((long) (length=vio_write(net->vio,pos,(int) (end-pos))) <= 0)
+    if ((long) (length=vio_write(net->vio,pos,(size_t) (end-pos))) <= 0)
     {
       my_bool interrupted = vio_should_retry(net->vio);
 #if (!defined(_WIN32) && !defined(__EMX__) && !defined(OS2))

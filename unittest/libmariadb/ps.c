@@ -99,7 +99,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO test_date VALUES(?, ?, ?, ?)", strlen("INSERT INTO test_date VALUES(?, ?, ?, ?)"));
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO test_date VALUES(?, ?, ?, ?)", strlen("INSERT INTO test_date VALUES(?, ?, ?, ?)") + 1);
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 4, "param_count != 4");
@@ -4734,13 +4734,13 @@ int test_notrunc(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   my_bool trunc= 1;
-  MYSQL_BIND bind[1];
-  char buffer[5];
+  MYSQL_BIND bind[2];
+  char buffer[5], buffer2[5];
   int rc;
   my_bool error= 0;
-  unsigned long len= 1;
+  unsigned long len= 1, len2;
 
-  char *query= "SELECT '1234567890' FROM DUAL";
+  char *query= "SELECT '1234567890', 'foo' FROM DUAL";
 
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &trunc);
 
@@ -4752,21 +4752,30 @@ int test_notrunc(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt); 
   check_stmt_rc(rc, stmt);
 
-  memset(bind, 0, sizeof(MYSQL_BIND));
-  bind[0].buffer_type= MYSQL_TYPE_LONG;
-  bind[0].buffer= buffer;
-  bind[0].buffer_length= 3;
-  bind[0].length= &len;
-  bind[0].error= &error;
+  strcpy(buffer, "bar");
 
-//  rc= mysql_stmt_bind_result(stmt, bind);
-//  check_stmt_rc(rc, stmt);
+  memset(bind, 0, sizeof(MYSQL_BIND) * 2);
+  bind[0].buffer_type= MYSQL_TYPE_NULL;
+  bind[0].buffer= buffer;
+  bind[0].buffer_length= 1;
+  bind[0].length= &len;
+  bind[0].flags|= MADB_BIND_DUMMY;
+  bind[0].error= &error;
+  bind[1].buffer_type= MYSQL_TYPE_STRING;
+  bind[1].buffer= buffer2;
+  bind[1].buffer_length= 5;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
   mysql_stmt_store_result(stmt);
 
   rc= mysql_stmt_fetch(stmt);
-  diag("rc= %d len=%lu", rc, len);
-
   mysql_stmt_close(stmt);
+
+  FAIL_IF(rc!= 0, "expected rc= 0");
+  FAIL_IF(strcmp(buffer, "bar"), "Bind dummy failed");
+  FAIL_IF(strcmp(buffer2, "foo"), "Invalid second buffer");
+
   return OK;
 }
 
