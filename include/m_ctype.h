@@ -43,6 +43,7 @@ typedef struct charset_info_st
   char	*csname;
   char	*name;
   char  *dir;
+  unsigned int codepage;
   char  *encoding;
   unsigned int	char_minlen;
   unsigned int	char_maxlen;
