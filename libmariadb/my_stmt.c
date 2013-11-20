@@ -194,39 +194,48 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
       {
         uchar *null_ptr, bit_offset= 4;
         uchar *cp= p;
-        uint i;
+        unsigned int i;
 
         cp++; /* skip first byte */
         null_ptr= cp;
         cp+= (stmt->field_count + 9) / 8;
-
+          
         for (i=0; i < stmt->field_count; i++)
         {
           if (!(*null_ptr & bit_offset))
           {
-            switch(mysql_ps_fetch_functions[stmt->fields[i].type].max_len) {
-            case -1:
+            if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len < 0)
             {
+              /* We need to calculate the sizes for date and time types */
               size_t len= net_field_length(&cp);
+              switch(stmt->fields[i].type) {
+              case MYSQL_TYPE_TIME:
+              case MYSQL_TYPE_DATE:
+              case MYSQL_TYPE_DATETIME:
+              case MYSQL_TYPE_TIMESTAMP:
+                stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
+                break;
+              default:
+                if (len > stmt->fields[i].max_length)
+                  stmt->fields[i].max_length= (ulong)len;
+                break;
+              }
               cp+= len;
-              if (len > stmt->fields[i].max_length)
-                stmt->fields[i].max_length= (ulong)len;
-              break;
             }
-            default:
+            else
+            {
               if (!stmt->fields[i].max_length)
                 stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
               cp+= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
-              break;
+            }
+          }
+          if (!((bit_offset <<=1) & 255))
+          {
+            bit_offset= 1; /* To next byte */
+            null_ptr++;
           }
         }
-        if (!((bit_offset <<=1) & 255))
-        {
-          bit_offset= 1; /* To next byte */
-          null_ptr++;
-        }
       }
-    }
 
 
       current->length= packet_len;

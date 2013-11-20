@@ -863,11 +863,11 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_DOUBLE].max_len  = MAX_DOUBLE_STRING_REP_LENGTH;
   
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].func  = ps_fetch_datetime;
-  mysql_ps_fetch_functions[MYSQL_TYPE_TIME].pack_len  = 13;
+  mysql_ps_fetch_functions[MYSQL_TYPE_TIME].pack_len  = MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].max_len  = 15;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_DATE].func  = ps_fetch_datetime;
-  mysql_ps_fetch_functions[MYSQL_TYPE_DATE].pack_len  = 5;
+  mysql_ps_fetch_functions[MYSQL_TYPE_DATE].pack_len  = MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_DATE].max_len  = 10;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].func    = ps_fetch_string;
@@ -875,11 +875,11 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].max_len  = -1;
   
   mysql_ps_fetch_functions[MYSQL_TYPE_DATETIME].func  = ps_fetch_datetime;
-  mysql_ps_fetch_functions[MYSQL_TYPE_DATETIME].pack_len= 12;
+  mysql_ps_fetch_functions[MYSQL_TYPE_DATETIME].pack_len= MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_DATETIME].max_len  = 30;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_TIMESTAMP].func  = ps_fetch_datetime;
-  mysql_ps_fetch_functions[MYSQL_TYPE_TIMESTAMP].pack_len= 12;
+  mysql_ps_fetch_functions[MYSQL_TYPE_TIMESTAMP].pack_len= MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIMESTAMP].max_len  = 30;
   
   mysql_ps_fetch_functions[MYSQL_TYPE_TINY_BLOB].func  = ps_fetch_bin;

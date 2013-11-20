@@ -26,6 +26,38 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 /* Utility function to verify the field members */
 
 
+static int test_conc60(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int rc;
+  char *query= "SELECT * FROM agendas";
+  my_bool x= 1;
+
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void *)&x);
+
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  if (rc && mysql_stmt_errno(stmt) == 1146) {
+    diag("Internal test - customer data not available");
+    return SKIP;
+  }
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_free_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 static int test_prepare_insert_update(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
@@ -1267,7 +1299,7 @@ static int test_long_data_str1(MYSQL *mysql)
   int        rc, i, rowcount= 0;
   char       data[255];
   long       length;
-  ulong      max_blob_length, blob_length, length1;
+  size_t     max_blob_length, blob_length, length1;
   my_bool    true_value;
   MYSQL_RES  *result;
   MYSQL_BIND my_bind[2];
@@ -1386,6 +1418,7 @@ static int test_long_data_str1(MYSQL *mysql)
   result= mysql_stmt_result_metadata(stmt);
   field= mysql_fetch_fields(result);
 
+  diag("max_length: %lu  max_blob_length: %lu", field->max_length, max_blob_length);
   FAIL_UNLESS(field->max_length == max_blob_length, "field->max_length != max_blob_length");
 
   /* Fetch results into a data buffer that is smaller than data */
@@ -4738,7 +4771,7 @@ int test_notrunc(MYSQL *mysql)
   char buffer[5], buffer2[5];
   int rc;
   my_bool error= 0;
-  unsigned long len= 1, len2;
+  unsigned long len= 1;
 
   char *query= "SELECT '1234567890', 'foo' FROM DUAL";
 
@@ -4780,6 +4813,7 @@ int test_notrunc(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc60", test_conc60, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_notrunc", test_notrunc, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_fracseconds", test_fracseconds, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_blob_9000", test_blob_9000, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},

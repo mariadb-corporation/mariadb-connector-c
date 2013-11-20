@@ -2914,6 +2914,7 @@ static int test_bug6096(MYSQL *mysql)
   }
   mysql_stmt_bind_result(stmt, my_bind);
   rc= mysql_stmt_fetch(stmt);
+  diag("rc=%d", rc);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
