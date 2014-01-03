@@ -5,9 +5,21 @@ if (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
   set(ICONV_FIND_QUIETLY TRUE)
 endif (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
 
-find_path(ICONV_INCLUDE_DIR iconv.h)
+IF(APPLE)
+  find_path(ICONV_INCLUDE_DIR iconv.h PATHS
+            /opt/local/include/
+            NO_CMAKE_SYSTEM_PATH)
+ELSE()
+  find_path(ICONV_INCLUDE_DIR iconv.h)
+ENDIF()
 
-find_library(ICONV_LIBRARIES NAMES iconv libiconv libiconv-2 c)
+IF(APPLE)
+  find_library(ICONV_LIBRARIES NAMES iconv libiconv c PATHS
+               /opt/local/lib/
+               NO_CMAKE_SYSTEM_PATH)
+ELSE()
+  find_library(ICONV_LIBRARIES NAMES iconv libiconv libiconv-2 c)
+ENDIF()
 
 if (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
    set (ICONV_FOUND TRUE)
