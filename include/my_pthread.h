@@ -61,10 +61,12 @@ typedef struct {
   CRITICAL_SECTION waiters_count_lock;
 } pthread_cond_t;
 
+#ifndef _TIMESPEC_DEFINED
 struct timespec {		/* For pthread_cond_timedwait() */
     time_t tv_sec;
     long tv_nsec;
 };
+#endif
 
 typedef int pthread_mutexattr_t;
 #define pthread_self() GetCurrentThreadId()

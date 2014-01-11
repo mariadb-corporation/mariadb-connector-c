@@ -522,10 +522,8 @@ static int test_reconnect(MYSQL *mysql)
 
   diag("Thread_id before kill: %lu", mysql_thread_id(mysql1));
   mysql_kill(mysql, mysql_thread_id(mysql1));
-  sleep(2);
+  sleep(4);
 
-  rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
-  FAIL_IF(rc == 0, "error expected"); 
   rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
   check_mysql_rc(rc, mysql1);
   diag("Thread_id after kill: %lu", mysql_thread_id(mysql1));

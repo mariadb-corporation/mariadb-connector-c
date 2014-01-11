@@ -297,7 +297,9 @@ typedef unsigned short ushort;
 
 #if defined(__GNUC__)
 #define function_volatile	volatile
+#ifndef my_reinterpret_cast
 #define my_reinterpret_cast(A) reinterpret_cast<A>
+#endif
 #define my_const_cast(A) const_cast<A>
 #elif !defined(my_reinterpret_cast)
 #define my_reinterpret_cast(A) (A)
@@ -741,7 +743,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 
 #define NOT_FIXED_DEC 31
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(_MSVC)
 #define MYSQLND_LLU_SPEC "%I64u"
 #define MYSQLND_LL_SPEC "%I64d"
 #ifndef L64

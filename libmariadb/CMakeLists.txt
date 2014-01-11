@@ -98,8 +98,11 @@ my_stmt_codec.c
 client_plugin.c
 my_auth.c
 ma_secure.c
-libmariadb_exports.def
 )
+
+IF(MSVC)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} libmariadb_exports.def)
+ENDIF()
 
 IF(WIN32)
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)
@@ -208,9 +211,9 @@ ENDIF()
 
 INSTALL(TARGETS
           libmariadb mariadbclient
-          RUNTIME DESTINATION "lib/mariadb"
-          LIBRARY DESTINATION "lib/mariadb"
-          ARCHIVE DESTINATION "lib/mariadb")
+          RUNTIME DESTINATION "lib"
+          LIBRARY DESTINATION "lib"
+          ARCHIVE DESTINATION "lib")
 IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
   INSTALL(FILES "${CMAKE_BINARY_DIR}/libmariadb/libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"

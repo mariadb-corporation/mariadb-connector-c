@@ -144,7 +144,7 @@ Vio *vio_new(my_socket sd, enum enum_vio_type type, my_bool localhost)
     {
       /* set to blocking mode by default */
       ulong arg=0, r;
-      r = ioctlsocket(vio->sd,FIONBIO,(void*) &arg, sizeof(arg));
+      r = ioctlsocket(vio->sd,FIONBIO,(void*) &arg/*, sizeof(arg)*/);
     }
 #endif
   }
@@ -235,7 +235,7 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
 my_bool vio_read_peek(Vio *vio, size_t *bytes)
 {
 #ifdef _WIN32
-  if (ioctlsocket(vio->sd, FIONREAD, (unsigned long)bytes))
+  if (ioctlsocket(vio->sd, FIONREAD, (unsigned long*)bytes))
     return TRUE;
 #else
   char buffer[1024];
@@ -329,7 +329,7 @@ int vio_blocking(Vio * vio, my_bool set_blocking_mode)
       vio->fcntl_mode |= O_NONBLOCK; /* set bit */
     }
     if (old_fcntl != vio->fcntl_mode)
-      r = ioctlsocket(vio->sd,FIONBIO,(void*) &arg, sizeof(arg));
+      r = ioctlsocket(vio->sd,FIONBIO,(void*) &arg);
   }
 #endif /* !defined(_WIN32) && !defined(__EMX__) */
   DBUG_RETURN(r);

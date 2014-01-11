@@ -931,6 +931,16 @@ static int test_connect_attrs(MYSQL *my)
   MYSQL_RES *result;
   int rc, len;
 
+  rc= mysql_query(my, "SELECT * FROM performance_schema.session_connect_attrs LIMIT 1");
+  if (rc != 0)
+  {
+    diag("Server doesn't connection attributes");
+    return SKIP;
+  }
+
+  result= mysql_store_result(my);
+  mysql_free_result(result);
+
   mysql= mysql_init(NULL);
 
   mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo0", "bar0");
