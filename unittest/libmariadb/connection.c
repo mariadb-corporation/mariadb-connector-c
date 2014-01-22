@@ -27,6 +27,42 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "my_test.h"
 
+static int test_conc66(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+  FILE *fp;
+
+  if (!(fp= fopen("./my.cnf", "w")))
+    return FAIL;
+
+  fprintf(fp, "[conc-66]\n");
+  fprintf(fp, "user=conc66\n");
+  fprintf(fp, "password='test;#test'\n");
+
+  fclose(fp);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(my, "GRANT ALL ON test.* TO 'conc66'@'localhost' IDENTIFIED BY 'test;#test'");
+  check_mysql_rc(rc, my);
+  rc= mysql_query(my, "FLUSH PRIVILEGES");
+  check_mysql_rc(rc, my);
+  if (!mysql_real_connect(mysql, hostname, NULL,
+                             NULL, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+  rc= mysql_query(my, "DROP USER conc66");
+  check_mysql_rc(rc, my);
+  mysql_close(mysql);
+  return OK; 
+}
+
 static int test_bug20023(MYSQL *mysql)
 {
   int sql_big_selects_orig;
@@ -602,6 +638,7 @@ int test_connection_timeout(MYSQL *my)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc66", test_conc66, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug33831", test_bug33831, TEST_CONNECTION_NEW, 0, NULL,  NULL},

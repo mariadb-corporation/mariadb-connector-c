@@ -227,7 +227,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
   char name[FN_REFLEN+10],buff[4096],*ptr,*end,*value,*tmp;
   FILE *fp;
   uint line=0;
-  my_bool read_values=0,found_group=0;
+  my_bool read_values= 0, found_group= 0, is_escaped= 0, is_quoted= 0;
 
   if ((dir ? strlen(dir) : 0 )+strlen(config_file) >= FN_REFLEN-3)
     return 0;					/* Ignore wrong paths */
@@ -264,9 +264,15 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
   {
     line++;
     /* Ignore comment and empty lines */
-    for (ptr=buff ; isspace(*ptr) ; ptr++ ) ;
+    for (ptr=buff ; isspace(*ptr) ; ptr++ );
+    if (!is_escaped && (*ptr == '\"' || *ptr== '\''))
+    {
+      is_quoted= !is_quoted;
+      continue;
+    }
     if (*ptr == '#' || *ptr == ';' || !*ptr)
       continue;
+    is_escaped= (*ptr == '\\');
     if (*ptr == '[')				/* Group name */
     {
       found_group=1;
@@ -309,6 +315,13 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
       for (value++ ; isspace(*value); value++) ;
       value_end=strend(value);
       for ( ; isspace(value_end[-1]) ; value_end--) ;
+      /* remove possible quotes */
+      if (*value == '\'' || *value == '\"')
+      {
+        value++;
+        if (value_end[-1] == '\'' || value_end[-1] == '\"')
+          value_end--;
+      }
       if (value_end < value)			/* Empty string */
 	value_end=value;
       if (!(tmp=alloc_root(alloc,(uint) (end-ptr)+3 +
