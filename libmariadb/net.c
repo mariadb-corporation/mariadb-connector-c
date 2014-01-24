@@ -41,6 +41,7 @@
    See bug conc-57
 */
 #undef net_buffer_length
+
 #undef max_allowed_packet
 ulong max_allowed_packet=1024L * 1024L * 1024L;
 ulong net_read_timeout=  NET_READ_TIMEOUT;
@@ -113,9 +114,9 @@ int my_net_init(NET *net, Vio* vio)
 {
   if (!(net->buff=(uchar*) my_malloc(net_buffer_length,MYF(MY_WME | MY_ZEROFILL))))
     return 1;
-  if (net_buffer_length > max_allowed_packet)
-    max_allowed_packet=net_buffer_length;
-  net->max_packet_size= 0xFFFFFF;
+//  if (net_buffer_length > max_allowed_packet)
+//    max_allowed_packet=net_buffer_length;
+  max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
   net->vio = vio;
   net->error=0; net->return_status=0;
@@ -654,8 +655,7 @@ my_real_read(NET *net, size_t *complen)
 	/* The necessary size of net->buff */
 	if (helping >= net->max_packet)
 	{
-	  /* We must allocate one extra byte for the end null */
-	  if (net_realloc(net,helping + 1))
+	  if (net_realloc(net,helping))
 	  {
 #ifdef MYSQL_SERVER
 	    if (i == 1)
@@ -699,6 +699,7 @@ ulong my_net_read(NET *net)
       {
         length+= len;
         net->where_b+= (unsigned long)len;
+        len= my_real_read(net, &complen);
       } while (len == MAX_PACKET_LENGTH);
       net->where_b= last_pos;
       if (len != packet_error)

@@ -30,6 +30,72 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "ma_common.h"
 
+static int test_conc68(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a LONGBLOB)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (REPEAT('A', 1024 * 1024 * 20))");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SELECT a FROM t1");
+  check_mysql_rc(rc, mysql);
+
+  if (!(res= mysql_store_result(mysql)))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+
+  row= mysql_fetch_row(res);
+  FAIL_IF(strlen(row[0]) != 1024 * 1024 * 20, "Wrong length");
+  mysql_free_result(res);
+
+  return OK;
+}
+
+static int test_conc66(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+  FILE *fp;
+
+  fp= fopen("./my.cnf", "w");
+  fprintf(fp, "[conc-66]\nuser=conc-66\npassword=\"my#pass;word\"");
+  fclose(fp);
+
+  rc= mysql_query(my, "GRANT ALL ON test.* to 'conc-66'@'%' identified by 'my#pass;word'");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(my, "FLUSH PRIVILEGES");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_real_connect(mysql, hostname, NULL, NULL, schema,
+                         port, socketname, 0);
+  if (!rc) {
+    diag("Error: %s\n", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+  mysql_close(mysql);
+
+  rc= mysql_query(my, "DROP USER 'conc-66'");
+  check_mysql_rc(rc, mysql);
+
+  return OK; 
+}
+
 static int basic_connect(MYSQL *mysql)
 {
   MYSQL_ROW row;
@@ -555,6 +621,8 @@ static int test_compressed(MYSQL *my)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc68", test_conc68, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"test_conc66", test_conc66, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_compressed", test_compressed, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_reconnect_maxpackage", test_reconnect_maxpackage, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"basic_connect", basic_connect, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
