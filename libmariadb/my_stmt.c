@@ -274,22 +274,29 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
   /* do we have some prefetched rows available ? */
   if (stmt->result_cursor)
     DBUG_RETURN(stmt_buffered_fetch(stmt, row));
+  if (stmt->mysql->server_status & SERVER_STATUS_LAST_ROW_SENT)
+    stmt->mysql->server_status&=  ~SERVER_STATUS_LAST_ROW_SENT;
+  else
+  {
+    int4store(buf, stmt->stmt_id);
+    int4store(buf + STMT_ID_LENGTH, stmt->prefetch_rows);
 
-  int4store(buf, stmt->stmt_id);
-  int4store(buf + STMT_ID_LENGTH, stmt->prefetch_rows);
+    if (simple_command(stmt->mysql, MYSQL_COM_STMT_FETCH, (char *)buf, sizeof(buf), 1, stmt))
+      DBUG_RETURN(1);
 
-  if (simple_command(stmt->mysql, MYSQL_COM_STMT_FETCH, (char *)buf, sizeof(buf), 1, stmt))
-    DBUG_RETURN(1);
+    /* free previously allocated buffer */
+    free_root(&result->alloc, MYF(MY_KEEP_PREALLOC));
+    result->data= 0;
+    result->rows= 0; 
 
-  /* free previously allocated buffer */
-  free_root(&result->alloc, MYF(MY_KEEP_PREALLOC));
-  result->data= 0;
-  result->rows= 0; 
+    if (stmt->mysql->methods->db_stmt_read_all_rows(stmt))
+      DBUG_RETURN(1);
 
-  if (stmt->mysql->methods->db_stmt_read_all_rows(stmt))
-    DBUG_RETURN(1);
-
-  DBUG_RETURN(stmt_buffered_fetch(stmt, row));
+    DBUG_RETURN(stmt_buffered_fetch(stmt, row));
+  }
+  /* no more cursor data available */
+  *row= NULL;
+  DBUG_RETURN(MYSQL_NO_DATA);
 }
 
 void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)

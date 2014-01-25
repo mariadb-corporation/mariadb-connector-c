@@ -36,6 +36,72 @@ static int cmp_double(double *a, double *b)
 
 /* Test BUG#1115 (incorrect string parameter value allocation) */
 
+static int test_conc67(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  char *query= "SELECT a,b FROM conc67 WHERE a=?";
+  int rc, i;
+  MYSQL_BIND bind[2];
+  char val[20];
+  MYSQL_BIND rbind;
+  MYSQL_RES *res;
+  ulong prefetch_rows= 1000;
+  ulong cursor_type= CURSOR_TYPE_READ_ONLY;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc67");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE conc67 (a int, b text)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO conc67 VALUES (1, 'foo')");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, &cursor_type);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREFETCH_ROWS, &prefetch_rows);
+  check_stmt_rc(rc, stmt);
+  
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+
+  memset(&rbind, 0, sizeof(MYSQL_BIND));
+  i= 1;
+  rbind.buffer_type= MYSQL_TYPE_LONG;
+  rbind.buffer= &i;
+  rbind.buffer_length= 4;
+  mysql_stmt_bind_param(stmt, &rbind);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  res= mysql_stmt_result_metadata(stmt);
+  mysql_free_result(res);
+ 
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
+
+  i= 0;
+  bind[0].buffer_type= MYSQL_TYPE_LONG;
+  bind[0].buffer= &i;
+  bind[0].buffer_length= 4;
+  bind[1].buffer_type= MYSQL_TYPE_STRING;
+  bind[1].buffer= &val;
+  bind[1].buffer_length= 20;
+
+  mysql_stmt_bind_result(stmt, bind);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(i != 1, "expected value 1 for first row");
+
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc != MYSQL_NO_DATA, "Eof expected");
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 static int test_bug1115(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
@@ -3803,6 +3869,7 @@ static int test_conc_5(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc67", test_conc67, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_conc_5", test_conc_5, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1115", test_bug1115, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1180", test_bug1180, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
