@@ -37,7 +37,7 @@
 
 #define MAX_PACKET_LENGTH (256L*256L*256L-1)
 
-/* net_buffer_length and max_allowec_packet are defined in mysql.h
+/* net_buffer_length and max_allowed_packet are defined in mysql.h
    See bug conc-57
 */
 #undef net_buffer_length
@@ -713,54 +713,120 @@ ulong my_net_read(NET *net)
   }
   else
   {
-    if (net->remain_in_buf)
+    /* 
+    compressed protocol:
+
+    --------------------------------------
+    packet_lengt h      3 
+    sequence_id         1
+    uncompressed_length 3
+    --------------------------------------
+    compressed data     packet_length - 7
+    --------------------------------------
+
+    Another packet will follow if:
+    packet_length == MAX_PACKET_LENGTH
+
+    Last package will be identified by
+    - packet_length is zero (special case)
+    - packet_length < MAX_PACKET_LENGTH
+    */
+
+    size_t packet_length,
+           buffer_length;
+    size_t current= 0, start= 0;
+    my_bool is_multi_packet= 0;
+
+    /* check if buffer is empty */
+    if (!net->remain_in_buf)
     {
-      /* restore 0 character */
+      buffer_length= 0;
+    }
+    else
+    {
+      /* save position and restore \0 character */
+      buffer_length= net->buf_length;
+      current= net->buf_length - net->remain_in_buf;
+      start= current;
       net->buff[net->buf_length - net->remain_in_buf]=net->save_char;
     }
     for (;;)
     {
-      if (net->remain_in_buf)
+      if (buffer_length - current >= 4)
       {
-        uchar *pos = net->buff + net->buf_length - net->remain_in_buf;
-        if (net->remain_in_buf >= 4)
+        uchar *pos= net->buff + current;
+        packet_length= uint3korr(pos);
+
+        /* check if we have last package (special case: zero length) */
+        if (!packet_length)
         {
-          net->length = uint3korr(pos);
-          if (net->length <= net->remain_in_buf - 4)
+          current+= 4; /* length + sequence_id,
+                          no more data will follow */
+          break;
+        }
+        if (packet_length + 4 <= buffer_length - current)
+        {
+          if (!is_multi_packet)
           {
-            /* We have a full packet */
-            len=net->length;
-            net->remain_in_buf -= net->length + 4;
-            net->read_pos=pos + 4;
-            break;			/* We have a full packet */
+            current= current + packet_length + 4;
           }
+          else
+          {
+            /* remove packet_header */
+            memmove(net->buff + current, 
+                     net->buff + current + 4, 
+                     buffer_length - current);
+            buffer_length-= 4;
+            current+= packet_length;
+          }
+          /* do we have last packet ? */
+          if (packet_length != MAX_PACKET_LENGTH)
+          {
+            is_multi_packet= 0;
+            break;
+          }
+          else
+            is_multi_packet= 1;
+          if (start)
+          {
+            memmove(net->buff, net->buff + start,
+                    buffer_length - start);
+            /* decrease buflen*/
+            buffer_length-= start;
+            start= 0;
+          }
+          continue;
         }
-        /* Move data down to read next data packet after current one */
-        if (net->buf_length != net->remain_in_buf)
-        {
-          memmove(net->buff,pos,net->remain_in_buf);
-          net->buf_length=net->remain_in_buf;
-        }
-        net->where_b=net->buf_length;
       }
-      else
-      {
-        net->where_b=0;
-        net->buf_length=0;
+      if (start)
+      { 
+        memmove(net->buff, net->buff + start, buffer_length - start);
+        /* decrease buflen and current */
+        current -= start;
+        buffer_length-= start;
+        start= 0;
       }
 
-      if ((len = my_real_read(net,(size_t *)&complen)) == packet_error)
+      net->where_b=buffer_length;
+
+      if ((packet_length = my_real_read(net,(size_t *)&complen)) == packet_error)
         break;
-      if (my_uncompress((unsigned char*) net->buff + net->where_b, &len, &complen))
+      if (my_uncompress((unsigned char*) net->buff + net->where_b, &packet_length, &complen))
       {
         len= packet_error;
         net->error=2;			/* caller will close socket */
         net->last_errno=ER_NET_UNCOMPRESS_ERROR;
         break;
       }
-      net->buf_length+=(unsigned long)len;
-      net->remain_in_buf+=(unsigned long)len;
+      buffer_length+= complen;
     }
+    /* set values */
+    net->buf_length= buffer_length;
+    net->remain_in_buf= buffer_length - current;
+    net->read_pos= net->buff + start + 4;
+    len= current - start - 4;
+    if (is_multi_packet)
+      len-= 4;
     if (len != packet_error)
     {
       net->save_char= net->read_pos[len];	/* Must be saved */

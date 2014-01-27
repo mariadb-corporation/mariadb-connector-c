@@ -83,6 +83,7 @@ my_bool my_uncompress (unsigned char *packet, size_t *len, size_t *complen)
     memcpy(packet,compbuf,*len);
     my_free((gptr)compbuf,MYF(MY_WME));
   }
+  else *complen= *len;
   return 0;
 }
 #endif /* HAVE_COMPRESS */

@@ -57,7 +57,8 @@ static int test_conc66(MYSQL *my)
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
-  rc= mysql_query(my, "DROP USER conc66");
+  rc= mysql_query(my, "DROP USER conc66@localhost");
+
   check_mysql_rc(rc, my);
   mysql_close(mysql);
   return OK; 
