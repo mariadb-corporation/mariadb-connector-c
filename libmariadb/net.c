@@ -31,8 +31,8 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/types.h>
-#ifdef MYSQL_SERVER
-#include <violite.h>
+#ifndef _WIN32
+#include <poll.h>
 #endif
 
 #define MAX_PACKET_LENGTH (256L*256L*256L-1)
@@ -114,8 +114,6 @@ int my_net_init(NET *net, Vio* vio)
 {
   if (!(net->buff=(uchar*) my_malloc(net_buffer_length,MYF(MY_WME | MY_ZEROFILL))))
     return 1;
-//  if (net_buffer_length > max_allowed_packet)
-//    max_allowed_packet=net_buffer_length;
   max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
   net->vio = vio;
@@ -166,13 +164,10 @@ static my_bool net_realloc(NET *net, size_t length)
     DBUG_RETURN(1);
   }
   pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
-  if (!(buff=(uchar*) my_realloc((char*) net->buff, pkt_length, MYF(MY_WME))))
+  if (!(buff=(uchar*) my_realloc((char*) net->buff, pkt_length + 1, MYF(MY_WME))))
   {
     DBUG_PRINT("info", ("Out of memory"));
     net->error=1;
-#ifdef MYSQL_SERVER
-    net->last_errno=ER_OUT_OF_RESOURCES;
-#endif
     DBUG_RETURN(1);
   }
   net->buff=net->write_pos=buff;
@@ -180,21 +175,45 @@ static my_bool net_realloc(NET *net, size_t length)
   DBUG_RETURN(0);
 }
 
-#ifdef DEBUG_SOCKET
-static ssize_t net_check_if_data_available(Vio *vio)
+
+/* check if the socket is still alive */
+static my_bool net_check_socket_status(my_socket sock)
 {
-  ssize_t length= 0;
-
-  if (vio->type != VIO_TYPE_SOCKET &&
-      vio->type != VIO_TYPE_TCPIP)
-    return 0;
-
-  if (vio_read_peek(vio, (size_t *)&length))
-    return -1;
-
-  return length;
-}
+#ifndef _WIN32
+  struct pollfd poll_fd;
+#else
+  FD_SET sfds;
+  struct timeval tv= {0,0};
 #endif
+  int res;
+#ifndef _WIN32
+  memset(&poll_fd, 0, sizeof(struct pollfd));
+  poll_fd.events= POLLPRI | POLLIN;
+  poll_fd.fd= sock;
+
+  res= poll(&poll_fd, 1, 0);
+  if (res <= 0) /* timeout or error */
+    return FALSE;
+  if (!(poll_fd.revents & (POLLIN | POLLPRI)))
+    return FALSE;
+  return TRUE;
+#else
+  /* We can't use the WSAPoll function, it's broken :-(
+     (see Windows 8 Bugs 309411 - WSAPoll does not report failed connections)
+     Instead we need to use select function:
+     If TIMEVAL is initialized to {0, 0}, select will return immediately; 
+     this is used to poll the state of the selected sockets.
+  */
+  FD_ZERO(&sfds);
+  FD_SET(sock, &sfds);
+
+  res= select(sock + 1, &sfds, NULL, NULL, &tv);
+  if (res > 0 && FD_ISSET(sock, &sfds))
+    return TRUE;
+  return FALSE;
+#endif
+
+}
 
 	/* Remove unwanted characters from connection */
 
@@ -202,10 +221,19 @@ void net_clear(NET *net)
 {
   DBUG_ENTER("net_clear");
 
-#ifdef DEBUG_SOCKET
-  DBUG_ASSERT(net_check_if_data_available(net->vio) < 2);
-#endif
-
+  /* see conc-71: we need to check the socket status first:
+     if the socket is dead we set net->error, so net_flush
+     will report an error */
+  while (net_check_socket_status(net->vio->sd))
+  {
+    /* vio_read returns size_t. so casting to long is required to check for -1 */
+    if ((long)vio_read(net->vio, (gptr)net->buff, (size_t) net->max_packet) <= 0)
+    {
+      net->error= 2;
+      DBUG_PRINT("info", ("socket disconnected"));
+      DBUG_VOID_RETURN;
+    }
+  }
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
   DBUG_VOID_RETURN;
@@ -810,13 +838,14 @@ ulong my_net_read(NET *net)
       net->where_b=buffer_length;
 
       if ((packet_length = my_real_read(net,(size_t *)&complen)) == packet_error)
-        break;
+        return packet_error;
       if (my_uncompress((unsigned char*) net->buff + net->where_b, &packet_length, &complen))
       {
         len= packet_error;
         net->error=2;			/* caller will close socket */
         net->last_errno=ER_NET_UNCOMPRESS_ERROR;
         break;
+        return packet_error;
       }
       buffer_length+= complen;
     }
@@ -827,11 +856,8 @@ ulong my_net_read(NET *net)
     len= current - start - 4;
     if (is_multi_packet)
       len-= 4;
-    if (len != packet_error)
-    {
-      net->save_char= net->read_pos[len];	/* Must be saved */
-      net->read_pos[len]=0;		/* Safeguard for mysql_use_result */
-    }
+    net->save_char= net->read_pos[len];	/* Must be saved */
+    net->read_pos[len]=0;		/* Safeguard for mysql_use_result */
   }
 #endif
   return (ulong)len;

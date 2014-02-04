@@ -21,12 +21,16 @@ IF(NOT WIN32)
   OPTION(WITH_OPENSSL "enables SSL support" ON)
 ELSE()
   OPTION(WITH_OPENSSL "enables SSL support" OFF)
+  OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
 
 OPTION(WITH_SQLITE "Enables Sqlite support" OFF)
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 
+IF(WITH_RTC)
+  SET(RTC_OPTIONS "/RTC1 /RTCc")
+ENDIF()
 
 IF(MSVC)
   # Speedup system tests
@@ -39,7 +43,7 @@ IF(MSVC)
         IF (NOT COMPILER_FLAGS STREQUAL "")
           STRING(REPLACE "/MD" "/MT" COMPILER_FLAGS ${COMPILER_FLAGS})
           IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
-            SET(COMPILER_FLAGS "${COMPILER_FLAGS} /RTC1 /RTCc")
+            SET(COMPILER_FLAGS "${COMPILER_FLAGS} ${RTC_OPTIONS}")
             STRING(REPLACE "/Zi" "/ZI" COMPILER_FLAGS ${COMPILER_FLAGS})
           ENDIF()
           MESSAGE (STATUS "CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE}= ${COMPILER_FLAGS}") 

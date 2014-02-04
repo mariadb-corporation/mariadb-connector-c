@@ -30,6 +30,38 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "ma_common.h"
 
+static int test_conc71(MYSQL *my)
+{
+  int rc;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+  char *query;
+  MYSQL *mysql;
+  
+  /* uncomment if you want to test manually */
+  return SKIP;
+
+  mysql= mysql_init(NULL);
+
+
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
+  mysql_options(mysql, MYSQL_OPT_COMPRESS, 0);
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "/*!40101 SET SQL_MODE='' */");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "/*!40101 set @@session.wait_timeout=28800 */");
+
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  diag("kill server");
+  sleep(20);
+
+  rc= mysql_query(mysql, "SELECT 'foo' FROM DUAL");
+  check_mysql_rc(rc, mysql);
+
+  mysql_close(mysql);
+  return OK;
+}
+
 static int test_conc70(MYSQL *my)
 {
   int rc;
@@ -37,7 +69,7 @@ static int test_conc70(MYSQL *my)
   MYSQL_ROW row;
   MYSQL *mysql= mysql_init(NULL);
 
-  mysql_query(my, "SET @a:=@@max_allowed_packet");
+  rc= mysql_query(my, "SET @a:=@@max_allowed_packet");
   check_mysql_rc(rc, my);
 
   mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
@@ -84,7 +116,7 @@ static int test_conc68(MYSQL *my)
   MYSQL_ROW row;
   MYSQL *mysql= mysql_init(NULL);
 
-  mysql_query(my, "SET @a:=@@max_allowed_packet");
+  rc= mysql_query(my, "SET @a:=@@max_allowed_packet");
   check_mysql_rc(rc, my);
 
   mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
@@ -648,6 +680,7 @@ static int test_compressed(MYSQL *my)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc71", test_conc71, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc70", test_conc70, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc68", test_conc68, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_compressed", test_compressed, TEST_CONNECTION_NONE, 0,  NULL,  NULL},

@@ -65,6 +65,9 @@ static int test_logs(MYSQL *mysql)
   int        rc;
   short      id;
 
+  rc= mysql_query(mysql, "SET session sql_mode=''");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_logs");
   check_mysql_rc(rc, mysql);
 

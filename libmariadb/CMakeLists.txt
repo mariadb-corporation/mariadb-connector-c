@@ -127,7 +127,6 @@ ELSE()
     ../zlib/compress.c
     ../zlib/crc32.c
     ../zlib/deflate.c
-    ../zlib/example.c
     ../zlib/gzclose.c
     ../zlib/gzlib.c
     ../zlib/gzread.c
