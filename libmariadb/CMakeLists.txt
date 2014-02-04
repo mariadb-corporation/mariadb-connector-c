@@ -210,9 +210,9 @@ ENDIF()
 
 INSTALL(TARGETS
           libmariadb mariadbclient
-          RUNTIME DESTINATION "lib"
-          LIBRARY DESTINATION "lib"
-          ARCHIVE DESTINATION "lib")
+          RUNTIME DESTINATION "lib/mariadb"
+          LIBRARY DESTINATION "lib/mariadb"
+          ARCHIVE DESTINATION "lib/mariadb")
 IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
   INSTALL(FILES "${CMAKE_BINARY_DIR}/libmariadb/libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
