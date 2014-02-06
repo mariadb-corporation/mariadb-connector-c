@@ -234,6 +234,14 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
 
   DBUG_ENTER("mysql_handle_local_infile");
 
+  /* check if all callback functions exist */
+  if (!conn->options.local_infile_init || !conn->options.local_infile_end ||
+      !conn->options.local_infile_read || !conn->options.local_infile_error)
+  {
+    conn->options.local_infile_userdata= conn;
+    mysql_set_local_infile_default(conn);
+  }
+
   if (!(conn->options.client_flag & CLIENT_LOCAL_FILES)) {
     my_set_error(conn, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, "Load data local infile forbidden");
     /* write empty packet to server */
@@ -242,13 +250,6 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
     goto infile_error;
   }
 
-  /* check if all callback functions exist */
-  if (!conn->options.local_infile_init || !conn->options.local_infile_end ||
-      !conn->options.local_infile_read || !conn->options.local_infile_error)
-  {
-    conn->options.local_infile_userdata= conn;
-    mysql_set_local_infile_default(conn);
-  }
   /* allocate buffer for reading data */
   buf = (uchar *)my_malloc(buflen, MYF(0));
 

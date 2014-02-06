@@ -30,12 +30,35 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "ma_common.h"
 
+static int test_conc74(MYSQL *my)
+{
+  int rc;
+  MYSQL *mysql;
+
+  mysql= mysql_init(NULL);
+
+
+  mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS a");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE a (a varchar(200))");
+  check_mysql_rc(rc, mysql);
+
+  mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
+
+  rc= mysql_query(mysql, "load data local infile './nonexistingfile.csv' into table a (`a`)");
+  FAIL_IF(!rc, "Error expected");
+
+  mysql_close(mysql);
+  return OK;
+}
+
+
 static int test_conc71(MYSQL *my)
 {
   int rc;
-  MYSQL_RES *res;
-  MYSQL_ROW row;
-  char *query;
   MYSQL *mysql;
   
   /* uncomment if you want to test manually */
@@ -680,6 +703,7 @@ static int test_compressed(MYSQL *my)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc74", test_conc74, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc71", test_conc71, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc70", test_conc70, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc68", test_conc68, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
