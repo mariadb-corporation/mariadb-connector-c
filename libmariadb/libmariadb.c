@@ -1968,8 +1968,21 @@ static my_bool mysql_reconnect(MYSQL *mysql)
     my_set_error(mysql, CR_SERVER_GONE_ERROR, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
+
   mysql_init(&tmp_mysql);
   tmp_mysql.options=mysql->options;
+
+  /* don't reread options from configuration files */
+  tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
+
+  /* make sure that we reconnect with the same character set */
+  if (!tmp_mysql.options.charset_name ||
+      strcmp(tmp_mysql.options.charset_name, mysql->charset->csname))
+  {
+    my_free(tmp_mysql.options.charset_name, MYF(MY_ALLOW_ZERO_PTR));
+    tmp_mysql.options.charset_name= my_strdup(mysql->charset->csname, MYF(MY_WME));
+  }
+
   tmp_mysql.reconnect= mysql->reconnect;
   bzero((char*) &mysql->options,sizeof(mysql->options));
   if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
@@ -1981,10 +1994,11 @@ static my_bool mysql_reconnect(MYSQL *mysql)
                         tmp_mysql.net.last_error);
     DBUG_RETURN(1);
   }
-  tmp_mysql.free_me=mysql->free_me;
   mysql->free_me=0;
   mysql_close(mysql);
+  memset(&mysql->options, 0, sizeof(mysql->options));
   *mysql=tmp_mysql;
+  mysql->reconnect= 1;
   net_clear(&mysql->net);
   mysql->affected_rows= ~(my_ulonglong) 0;
 

@@ -30,6 +30,44 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "ma_common.h"
 
+static int test_conc75(MYSQL *my)
+{
+  int rc;
+  MYSQL *mysql;
+  int i;
+
+  mysql= mysql_init(NULL);
+
+
+  mysql_options(mysql, MYSQL_OPT_RECONNECT,(const char *)"true");
+
+  mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS a");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE a (a varchar(200))");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_set_character_set(mysql, "utf8");
+  check_mysql_rc(rc, mysql);
+
+  for (i=0; i < 10; i++)
+  {
+    ulong thread_id= mysql_thread_id(mysql);
+    /* force reconnect */
+    mysql_kill(my, thread_id);
+    sleep(1);
+    rc= mysql_query(mysql, "load data local infile './nonexistingfile.csv' into table a (`a`)");
+    FAIL_IF(!test(mysql->options.client_flag | CLIENT_LOCAL_FILES), "client_flags not correct");
+    FAIL_IF(thread_id == mysql_thread_id(mysql), "new thread id expected");
+    FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "wrong character set");
+  }
+  mysql_close(mysql);
+  return OK;
+}
+
+
 static int test_conc74(MYSQL *my)
 {
   int rc;
@@ -703,6 +741,7 @@ static int test_compressed(MYSQL *my)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc75", test_conc75, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc74", test_conc74, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc71", test_conc71, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc70", test_conc70, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
