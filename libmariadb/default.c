@@ -351,6 +351,12 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
 	  case 's':
 	    *ptr++= ' ';			/* space */
 	    break;
+    case '\"':
+      *ptr++= '\"';
+      break;
+    case '\'':
+      *ptr++= '\'';
+      break;
 	  case '\\':
 	    *ptr++= '\\';
 	    break;

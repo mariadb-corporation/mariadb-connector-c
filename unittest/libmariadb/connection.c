@@ -38,7 +38,7 @@ static int test_conc66(MYSQL *my)
 
   fprintf(fp, "[conc-66]\n");
   fprintf(fp, "user=conc66\n");
-  fprintf(fp, "password='test;#test'\n");
+  fprintf(fp, "password='test\\\";#test'\n");
 
   fclose(fp);
 
@@ -47,7 +47,7 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(my, "GRANT ALL ON test.* TO 'conc66'@'localhost' IDENTIFIED BY 'test;#test'");
+  rc= mysql_query(my, "GRANT ALL ON test.* TO 'conc66'@'localhost' IDENTIFIED BY 'test\";#test'");
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
   check_mysql_rc(rc, my);
