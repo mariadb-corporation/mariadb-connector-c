@@ -81,11 +81,15 @@ void vio_reset(Vio* vio, enum enum_vio_type type,
                my_socket sd, HANDLE hPipe,
                my_bool localhost)
 {
+  uchar *save_cache= vio->cache;
   bzero((char*) vio, sizeof(*vio));
   vio->type= type;
   vio->sd= sd;
   vio->hPipe= hPipe;
   vio->localhost= localhost;
+  /* do not clear cache */
+  vio->cache= vio->cache_pos= save_cache;
+  vio->cache_size= 0;
 }
 
 void vio_timeout(Vio *vio, int type, uint seconds)
@@ -252,6 +256,7 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
       memcpy(buf, vio->cache, r);
     }
   } 
+
 #ifndef DBUG_OFF
   if ((size_t)r == -1)
   {
