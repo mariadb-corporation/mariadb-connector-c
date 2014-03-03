@@ -148,6 +148,13 @@ Vio *vio_new(my_socket sd, enum enum_vio_type type, my_bool localhost)
     }
 #endif
   }
+  if (!(vio->cache= my_malloc(VIO_CACHE_SIZE, MYF(MY_WME))))
+  {
+    my_free((gptr)vio, MYF(0));
+    vio= NULL;
+  }
+  vio->cache_size= 0;
+  vio->cache_pos= vio->cache;
   DBUG_RETURN(vio);
 }
 
@@ -176,6 +183,7 @@ void vio_delete(Vio * vio)
   {
     if (vio->type != VIO_CLOSED)
       vio_close(vio);
+    my_free((gptr) vio->cache, MYF(0));
     my_free((gptr) vio,MYF(0));
   }
 }
@@ -185,39 +193,65 @@ int vio_errno(Vio *vio __attribute__((unused)))
   return socket_errno; /* On Win32 this mapped to WSAGetLastError() */
 }
 
+size_t vio_real_read(Vio *vio, gptr buf, size_t size)
+{
+  switch(vio->type) {
+#ifdef HAVE_OPENSSL
+  case VIO_TYPE_SSL:
+    return my_ssl_read(vio, (char *)buf, size);
+    break;
+#endif
+#ifdef _WIN32
+  case VIO_TYPE_NAMEDPIPE:
+    {
+      DWORD length= 0;
+      if (!ReadFile(vio->hPipe, buf, (DWORD)size, &length, NULL))
+        return -1;
+      return length;
+    }
+    break;
+#endif
+  default:
+    return recv(vio->sd, buf,
+#ifdef _WIN32
+           (int)
+#endif 
+                size, 0);
+    break;
+  }
+}
+
 
 size_t vio_read(Vio * vio, gptr buf, size_t size)
 {
   size_t r;
   DBUG_ENTER("vio_read");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
-  
-#ifdef HAVE_OPENSSL
-  if (vio->type == VIO_TYPE_SSL)
-  {
-    r= my_ssl_read(vio, (uchar *)buf, size);
-    DBUG_RETURN(r); 
-  }
-#endif
 
-#if defined( _WIN32) || defined(OS2)
-  if (vio->type == VIO_TYPE_NAMEDPIPE)
+  if (vio->cache + vio->cache_size > vio->cache_pos)
   {
-    DWORD length;
-#ifdef OS2
-    if (!DosRead((HFILE)vio->hPipe, buf, size, &length))
-      DBUG_RETURN(-1);
-#else
-    if (!ReadFile(vio->hPipe, buf, (DWORD)size, &length, NULL))
-      DBUG_RETURN(-1);
-#endif
-    DBUG_RETURN(length);
+    r= MIN(size, vio->cache + vio->cache_size - vio->cache_pos);
+    memcpy(buf, vio->cache_pos, r);
+    vio->cache_pos+= r;
   }
-  r = recv(vio->sd, buf, (int)size,0);
-#else
-  errno=0; /* For linux */
-  r = read(vio->sd, buf, size);
-#endif /* _WIN32 */
+  else if (size >= VIO_CACHE_MIN_SIZE)
+  {
+    r= vio_real_read(vio, buf, size); 
+  }
+  else
+  {
+    r= vio_real_read(vio, vio->cache, VIO_CACHE_SIZE);
+    if (r > 0)
+    {
+      if (size < r)
+      {
+        vio->cache_size= r; /* might be < VIO_CACHE_SIZE */
+        vio->cache_pos= vio->cache + size;
+        r= size;
+      }
+      memcpy(buf, vio->cache, r);
+    }
+  } 
 #ifndef DBUG_OFF
   if ((size_t)r == -1)
   {

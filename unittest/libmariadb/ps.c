@@ -3859,7 +3859,7 @@ static int test_rename(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_execute(stmt);
-  FAIL_IF(!rc, "Errr expected");
+  FAIL_IF(!rc, "Error expected");
 
   rc= mysql_query(mysql, "create table t3 (a int)");
   check_mysql_rc(rc, mysql);
