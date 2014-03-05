@@ -688,7 +688,7 @@ const CHARSET_INFO * mysql_find_charset_nr(unsigned int charsetnr)
 CHARSET_INFO * mysql_find_charset_name(const char *name)
 {
   CHARSET_INFO *c = (CHARSET_INFO *)compiled_charsets;
-  DBUG_ENTER("mysql_find_charset_nr");
+  DBUG_ENTER("mysql_find_charset_name");
 
   do {
     if (!strcasecmp(c->csname, name)) {
@@ -697,7 +697,7 @@ CHARSET_INFO * mysql_find_charset_name(const char *name)
     }
     ++c;
   } while (c[0].nr != 0);
-  return NULL;
+  DBUG_RETURN(NULL);
 }
 /* }}} */
 
