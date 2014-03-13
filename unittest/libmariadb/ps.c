@@ -25,6 +25,36 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 /* Utility function to verify the field members */
 
+static int test_conc83(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int rc;
+
+  char *query= "SELECT 1,2,3 FROM DUAL";
+
+  stmt= mysql_stmt_init(mysql);
+
+  mysql->reconnect= 1;
+
+  /* 1. Status is inited, so prepare should work */
+
+  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+  diag("Ok");
+
+  /* 2. Status is prepared, second prepare should fail */
+  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  FAIL_IF(!rc, "Error expected"); 
+
+  mysql_stmt_close(stmt);
+  mysql_close(mysql);
+  return OK;
+}
+
 
 static int test_conc60(MYSQL *mysql)
 {
@@ -40,6 +70,7 @@ static int test_conc60(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   if (rc && mysql_stmt_errno(stmt) == 1146) {
     diag("Internal test - customer data not available");
+    mysql_stmt_close(stmt);
     return SKIP;
   }
   check_stmt_rc(rc, stmt);
@@ -403,7 +434,6 @@ static int test_prepare_syntax(MYSQL *mysql)
   FAIL_IF(!rc, "error expected");
 
   strcpy(query, "SELECT id, name FROM test_prepare_syntax WHERE id=? AND WHERE");
-  stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   FAIL_IF(!rc, "error expected");
@@ -964,7 +994,6 @@ static int test_select_show(MYSQL *mysql)
   FAIL_IF(!rc, "Error expected");
 
   strcpy(query, "show tables like \'test_show\'");
-  stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   check_stmt_rc(rc, stmt);
@@ -4813,6 +4842,7 @@ int test_notrunc(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc83", test_conc83, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc60", test_conc60, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_notrunc", test_notrunc, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_fracseconds", test_fracseconds, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

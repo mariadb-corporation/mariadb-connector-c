@@ -1994,23 +1994,31 @@ static my_bool mysql_reconnect(MYSQL *mysql)
                         tmp_mysql.net.last_error);
     DBUG_RETURN(1);
   }
-  mysql->free_me=0;
-  mysql_close(mysql);
-  memset(&mysql->options, 0, sizeof(mysql->options));
-  *mysql=tmp_mysql;
-  mysql->reconnect= 1;
-  net_clear(&mysql->net);
-  mysql->affected_rows= ~(my_ulonglong) 0;
 
   /* reset the connection in all active statements 
      todo: check stmt->mysql in mysql_stmt* functions ! */
   for (;li_stmt;li_stmt= li_stmt->next)
   {
     MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
-    stmt->mysql= NULL;
-    stmt->state= MYSQL_STMT_INITTED;
-    SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+
+    if (stmt->state != MYSQL_STMT_INITTED)
+    {
+      stmt->mysql= NULL;
+      stmt->state= MYSQL_STMT_INITTED;
+      SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+    }
+    else
+      tmp_mysql.stmts= list_add(tmp_mysql.stmts, &stmt->list);
   }
+
+  mysql->free_me=0;
+  mysql->stmts= NULL;
+  mysql_close(mysql);
+  memset(&mysql->options, 0, sizeof(mysql->options));
+  *mysql=tmp_mysql;
+  mysql->reconnect= 1;
+  net_clear(&mysql->net);
+  mysql->affected_rows= ~(my_ulonglong) 0;
   DBUG_RETURN(0);
 }
 

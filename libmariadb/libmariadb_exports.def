@@ -54,6 +54,7 @@ EXPORTS
  mysql_num_rows
  mysql_options
  mysql_options4
+ mysql_optionsv
  mysql_stmt_param_count
  mysql_stmt_param_metadata
  mysql_ping
