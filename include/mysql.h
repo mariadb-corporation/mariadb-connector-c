@@ -134,7 +134,8 @@ typedef long		longlong;
 #define longlong_defined
 #endif
 
-
+/* mysql compatibility macro */
+#define mysql_options4(A,B,C,D) mysql_optionsv((A),(B),(C),(D))
 
 #define SET_CLIENT_ERROR(a, b, c, d) \
   { \
@@ -475,8 +476,7 @@ CHARSET_INFO * STDCALL mysql_get_charset_by_name(const char *csname);
 CHARSET_INFO * STDCALL mysql_get_charset_by_nr(unsigned int csnr);
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
-int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option, 
-                          const void *arg1, const void *arg2);
+int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 
 #include <my_stmt.h>

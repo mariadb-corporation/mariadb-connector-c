@@ -1443,20 +1443,20 @@ ma_set_connect_attrs(MYSQL *mysql)
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_pid") +
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_platform");
 
-  rc+= mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb")
-       + mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
-       + mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE);
+  rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb")
+       + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
+       + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE);
 
 #ifdef _WIN32
   snprintf(buffer, 255, "%lu", (ulong) GetCurrentThreadId());
-  rc+= mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_thread", buffer);
+  rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_thread", buffer);
   snprintf(buffer, 255, "%lu", (ulong) GetCurrentProcessId());
 #else
   snprintf(buffer, 255, "%lu", (ulong) getpid());
 #endif
-  rc+= mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_pid", buffer);
+  rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_pid", buffer);
 
-  rc+= mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_platform", MARIADB_MACHINE_TYPE);
+  rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_platform", MARIADB_MACHINE_TYPE);
   return(test(rc>0));
 }
 
@@ -2784,171 +2784,6 @@ static size_t get_store_length(size_t length)
   return 9;
 }
 
-int STDCALL
-mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
-{
-  DBUG_ENTER("mysql_option");
-  DBUG_PRINT("enter",("option: %d",(int) option));
-  switch (option) {
-  case MYSQL_OPT_CONNECT_TIMEOUT:
-    mysql->options.connect_timeout= *(uint*) arg;
-    break;
-  case MYSQL_OPT_COMPRESS:
-    mysql->options.compress= 1;			/* Remember for connect */
-    mysql->options.client_flag|= CLIENT_COMPRESS;
-    break;
-  case MYSQL_OPT_NAMED_PIPE:
-    mysql->options.named_pipe=1;		/* Force named pipe */
-    break;
-  case MYSQL_OPT_LOCAL_INFILE:			/* Allow LOAD DATA LOCAL ?*/
-    if (!arg || test(*(uint*) arg))
-      mysql->options.client_flag|= CLIENT_LOCAL_FILES;
-    else
-      mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
-    break;
-  case MYSQL_INIT_COMMAND:
-    options_add_initcommand(&mysql->options, (char *)arg);
-    break;
-  case MYSQL_READ_DEFAULT_FILE:
-    my_free(mysql->options.my_cnf_file,MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.my_cnf_file=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_READ_DEFAULT_GROUP:
-    my_free(mysql->options.my_cnf_group,MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.my_cnf_group=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_SET_CHARSET_DIR:
-    /* not supported in this version. Since all character sets 
-       are internally available, we don't throw an error */
-    break;
-  case MYSQL_SET_CHARSET_NAME:
-    my_free(mysql->options.charset_name,MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.charset_name=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_OPT_RECONNECT:
-    mysql->reconnect= *(uint *)arg;
-    break;
-  case MYSQL_OPT_PROTOCOL:
-#ifdef _WIN32
-    if (*(uint *)arg > MYSQL_PROTOCOL_PIPE)
-#else
-    if (*(uint *)arg > MYSQL_PROTOCOL_SOCKET)
-#endif
-      DBUG_RETURN(-1);
-    mysql->options.protocol= *(uint *)arg;
-    break;
-  case MYSQL_OPT_READ_TIMEOUT:
-    mysql->options.read_timeout= *(uint *)arg;
-    break;
-  case MYSQL_OPT_WRITE_TIMEOUT:
-    mysql->options.write_timeout= *(uint *)arg;
-    break;
-  case MYSQL_REPORT_DATA_TRUNCATION:
-    mysql->options.report_data_truncation= *(uint *)arg;
-    break;
-  case MYSQL_PROGRESS_CALLBACK:
-    if (!mysql->options.extension)
-      mysql->options.extension= (struct st_mysql_options_extention *)
-        my_malloc(sizeof(struct st_mysql_options_extention),
-                  MYF(MY_WME | MY_ZEROFILL));
-    if (mysql->options.extension)
-      mysql->options.extension->report_progress=
-        (void (*)(const MYSQL *, uint, uint, double, const char *, uint)) arg; 
-    break;
-  case MYSQL_PLUGIN_DIR:
-    OPT_SET_EXTENDED_VALUE(&mysql->options, plugin_dir, (char *)arg, 1);
-    break;
-  case MYSQL_DEFAULT_AUTH:
-    OPT_SET_EXTENDED_VALUE(&mysql->options, default_auth, (char *)arg, 1);
-    break;
-  case MYSQL_DATABASE_DRIVER:
-    {
-      MARIADB_DB_PLUGIN *db_plugin;
-      if (!(db_plugin= (MARIADB_DB_PLUGIN *)mysql_client_find_plugin(mysql, (char *)arg,
-                                                          MYSQL_CLIENT_DB_PLUGIN)))
-        break;
-      if (!mysql->options.extension)
-        mysql->options.extension= (struct st_mysql_options_extention *)
-          my_malloc(sizeof(struct st_mysql_options_extention),
-                    MYF(MY_WME | MY_ZEROFILL));
-      if (!mysql->options.extension->db_driver)
-        mysql->options.extension->db_driver= (MARIADB_DB_DRIVER *)
-          my_malloc(sizeof(MARIADB_DB_DRIVER), MYF(MY_WME | MY_ZEROFILL));
-      if (mysql->options.extension &&
-          mysql->options.extension->db_driver)
-      {  
-        mysql->options.extension->db_driver->plugin = db_plugin;
-        mysql->options.extension->db_driver->buffer= NULL;
-        mysql->options.extension->db_driver->name= (char *)db_plugin->name;
-        mysql->methods= db_plugin->methods;
-      }
-    }
-    break;
-  case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
-    if (*(uint *)arg)
-      mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
-    else
-      mysql->options.client_flag &= ~CLIENT_SSL_VERIFY_SERVER_CERT;
-    break;
-  case MYSQL_OPT_SSL_KEY:
-    my_free(mysql->options.ssl_key, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_key=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_OPT_SSL_CERT:
-    my_free(mysql->options.ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_cert=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_OPT_SSL_CA:
-    my_free(mysql->options.ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_ca=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_OPT_SSL_CAPATH:
-    my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_capath=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_OPT_SSL_CIPHER:
-    my_free(mysql->options.ssl_cipher, MYF(MY_ALLOW_ZERO_PTR));
-    mysql->options.ssl_cipher=my_strdup((char *)arg,MYF(MY_WME));
-    break;
-  case MYSQL_OPT_SSL_CRL:
-    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crl, (char *)arg, 1);
-    break;
-  case MYSQL_OPT_SSL_CRLPATH:
-    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crlpath, (char *)arg, 1);
-    break;
-  case MYSQL_OPT_CONNECT_ATTR_DELETE:
-    {
-      uchar *p;
-      CHECK_OPT_EXTENSION_SET(&mysql->options);
-      if (hash_inited(&mysql->options.extension->connect_attrs) &&
-          (p= (uchar *)hash_search(&mysql->options.extension->connect_attrs, (uchar *)arg,
-                      arg ? (uint)strlen((char *)arg) : 0)))
-      {
-        size_t key_len= *(size_t *)p;
-        mysql->options.extension->connect_attrs_len-= key_len;
-        mysql->options.extension->connect_attrs_len-= get_store_length(key_len);
-        key_len= *(size_t *)(p + sizeof(size_t) + key_len);
-        mysql->options.extension->connect_attrs_len-= key_len;
-        mysql->options.extension->connect_attrs_len-= get_store_length(key_len);
-        hash_delete(&mysql->options.extension->connect_attrs, p);
-      }
-          
-    }
-    break;
-  case MYSQL_OPT_CONNECT_ATTR_RESET:
-    CHECK_OPT_EXTENSION_SET(&mysql->options);
-      if (hash_inited(&mysql->options.extension->connect_attrs))
-      {
-        hash_free(&mysql->options.extension->connect_attrs);
-        mysql->options.extension->connect_attrs_len= 0;
-      }
-    break;
-  default:
-    DBUG_RETURN(-1);
-  }
-  DBUG_RETURN(0);
-}
-
 uchar *ma_get_hash_key(const uchar *hash_entry, 
                        unsigned int *length,
                        my_bool not_used __attribute__((unused)))
@@ -2972,16 +2807,179 @@ void ma_hash_free(void *p)
   my_free((gptr)p, MYF(MYF_ALLOW_ZERO_PTR));
 }
 
-int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option, 
-                          const void *arg1, const void *arg2)
+
+int STDCALL
+mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
 {
-  DBUG_ENTER("mysql_option4");
-  DBUG_PRINT("enter",("option: %d",(int) option));
+  va_list ap;
+  void *arg1;
   
+
+  DBUG_ENTER("mysql_option");
+  DBUG_PRINT("enter",("option: %d",(int) option));
+
+  va_start(ap, option);
+
+  arg1= va_arg(ap, void *);
+
   switch (option) {
+  case MYSQL_OPT_CONNECT_TIMEOUT:
+    mysql->options.connect_timeout= *(uint*) arg1;
+    break;
+  case MYSQL_OPT_COMPRESS:
+    mysql->options.compress= 1;			/* Remember for connect */
+    mysql->options.client_flag|= CLIENT_COMPRESS;
+    break;
+  case MYSQL_OPT_NAMED_PIPE:
+    mysql->options.named_pipe=1;		/* Force named pipe */
+    break;
+  case MYSQL_OPT_LOCAL_INFILE:			/* Allow LOAD DATA LOCAL ?*/
+    if (!arg1 || test(*(uint*) arg1))
+      mysql->options.client_flag|= CLIENT_LOCAL_FILES;
+    else
+      mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
+    break;
+  case MYSQL_INIT_COMMAND:
+    options_add_initcommand(&mysql->options, (char *)arg1);
+    break;
+  case MYSQL_READ_DEFAULT_FILE:
+    my_free(mysql->options.my_cnf_file,MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.my_cnf_file=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_READ_DEFAULT_GROUP:
+    my_free(mysql->options.my_cnf_group,MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.my_cnf_group=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_SET_CHARSET_DIR:
+    /* not supported in this version. Since all character sets 
+       are internally available, we don't throw an error */
+    break;
+  case MYSQL_SET_CHARSET_NAME:
+    my_free(mysql->options.charset_name,MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.charset_name=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_RECONNECT:
+    mysql->reconnect= *(uint *)arg1;
+    break;
+  case MYSQL_OPT_PROTOCOL:
+#ifdef _WIN32
+    if (*(uint *)arg1 > MYSQL_PROTOCOL_PIPE)
+#else
+    if (*(uint *)arg1 > MYSQL_PROTOCOL_SOCKET)
+#endif
+      DBUG_RETURN(-1);
+    mysql->options.protocol= *(uint *)arg1;
+    break;
+  case MYSQL_OPT_READ_TIMEOUT:
+    mysql->options.read_timeout= *(uint *)arg1;
+    break;
+  case MYSQL_OPT_WRITE_TIMEOUT:
+    mysql->options.write_timeout= *(uint *)arg1;
+    break;
+  case MYSQL_REPORT_DATA_TRUNCATION:
+    mysql->options.report_data_truncation= *(uint *)arg1;
+    break;
+  case MYSQL_PROGRESS_CALLBACK:
+    if (!mysql->options.extension)
+      mysql->options.extension= (struct st_mysql_options_extention *)
+        my_malloc(sizeof(struct st_mysql_options_extention),
+                  MYF(MY_WME | MY_ZEROFILL));
+    if (mysql->options.extension)
+      mysql->options.extension->report_progress=
+        (void (*)(const MYSQL *, uint, uint, double, const char *, uint)) arg1; 
+    break;
+  case MYSQL_PLUGIN_DIR:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, plugin_dir, (char *)arg1, 1);
+    break;
+  case MYSQL_DEFAULT_AUTH:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, default_auth, (char *)arg1, 1);
+    break;
+  case MYSQL_DATABASE_DRIVER:
+    {
+      MARIADB_DB_PLUGIN *db_plugin;
+      if (!(db_plugin= (MARIADB_DB_PLUGIN *)mysql_client_find_plugin(mysql, (char *)arg1,
+                                                          MYSQL_CLIENT_DB_PLUGIN)))
+        break;
+      if (!mysql->options.extension)
+        mysql->options.extension= (struct st_mysql_options_extention *)
+          my_malloc(sizeof(struct st_mysql_options_extention),
+                    MYF(MY_WME | MY_ZEROFILL));
+      if (!mysql->options.extension->db_driver)
+        mysql->options.extension->db_driver= (MARIADB_DB_DRIVER *)
+          my_malloc(sizeof(MARIADB_DB_DRIVER), MYF(MY_WME | MY_ZEROFILL));
+      if (mysql->options.extension &&
+          mysql->options.extension->db_driver)
+      {  
+        mysql->options.extension->db_driver->plugin = db_plugin;
+        mysql->options.extension->db_driver->buffer= NULL;
+        mysql->options.extension->db_driver->name= (char *)db_plugin->name;
+        mysql->methods= db_plugin->methods;
+      }
+    }
+    break;
+  case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
+    if (*(uint *)arg1)
+      mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
+    else
+      mysql->options.client_flag &= ~CLIENT_SSL_VERIFY_SERVER_CERT;
+    break;
+  case MYSQL_OPT_SSL_KEY:
+    my_free(mysql->options.ssl_key, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_key=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CERT:
+    my_free(mysql->options.ssl_cert, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_cert=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CA:
+    my_free(mysql->options.ssl_ca, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_ca=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CAPATH:
+    my_free(mysql->options.ssl_capath, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_capath=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CIPHER:
+    my_free(mysql->options.ssl_cipher, MYF(MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_cipher=my_strdup((char *)arg1,MYF(MY_WME));
+    break;
+  case MYSQL_OPT_SSL_CRL:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crl, (char *)arg1, 1);
+    break;
+  case MYSQL_OPT_SSL_CRLPATH:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crlpath, (char *)arg1, 1);
+    break;
+  case MYSQL_OPT_CONNECT_ATTR_DELETE:
+    {
+      uchar *p;
+      CHECK_OPT_EXTENSION_SET(&mysql->options);
+      if (hash_inited(&mysql->options.extension->connect_attrs) &&
+          (p= (uchar *)hash_search(&mysql->options.extension->connect_attrs, (uchar *)arg1,
+                      arg1 ? (uint)strlen((char *)arg1) : 0)))
+      {
+        size_t key_len= *(size_t *)p;
+        mysql->options.extension->connect_attrs_len-= key_len;
+        mysql->options.extension->connect_attrs_len-= get_store_length(key_len);
+        key_len= *(size_t *)(p + sizeof(size_t) + key_len);
+        mysql->options.extension->connect_attrs_len-= key_len;
+        mysql->options.extension->connect_attrs_len-= get_store_length(key_len);
+        hash_delete(&mysql->options.extension->connect_attrs, p);
+      }
+          
+    }
+    break;
+  case MYSQL_OPT_CONNECT_ATTR_RESET:
+    CHECK_OPT_EXTENSION_SET(&mysql->options);
+    if (hash_inited(&mysql->options.extension->connect_attrs))
+    {
+      hash_free(&mysql->options.extension->connect_attrs);
+      mysql->options.extension->connect_attrs_len= 0;
+    }
+    break;
   case MYSQL_OPT_CONNECT_ATTR_ADD:
     {
       uchar *buffer;
+      void *arg2= va_arg(ap, void *);
       size_t key_len= arg1 ? strlen((char *)arg1) : 0,
              value_len= arg2 ? strlen((char *)arg2) : 0;
       size_t storage_len= key_len + value_len + 
@@ -2993,7 +2991,7 @@ int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option,
           storage_len + mysql->options.extension->connect_attrs_len > 0xFFFF)
       {
         SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, unknown_sqlstate, 0);
-        DBUG_RETURN(1);
+        goto end;
       }
 
       if (!hash_inited(&mysql->options.extension->connect_attrs))
@@ -3002,7 +3000,7 @@ int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option,
                        0, 0, 0, ma_get_hash_key, ma_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
-          DBUG_RETURN(1);
+          goto end;
         }
       }
       if ((buffer= (uchar *)my_malloc(2 * sizeof(size_t) + key_len + value_len, 
@@ -3022,22 +3020,37 @@ int STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option,
         {
           my_free((gptr)buffer, MYF(0));
           SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, unknown_sqlstate, 0);
-          DBUG_RETURN(1);
+          goto end;
         }
         mysql->options.extension->connect_attrs_len+= storage_len;
       }
       else
       {
         SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
-        DBUG_RETURN(1);
+        goto end;
       }
     }
     break;
+
   default:
-    DBUG_RETURN(1);
+    va_end(ap);
+    DBUG_RETURN(-1);
   }
+  va_end(ap);
   DBUG_RETURN(0);
+end:
+  va_end(ap);
+  DBUG_RETURN(1);
 }
+
+
+int STDCALL
+mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
+{
+  return mysql_optionsv(mysql, option, arg);
+}
+
+
 /****************************************************************************
 ** Functions to get information from the MySQL structure
 ** These are functions to make shared libraries more usable.
