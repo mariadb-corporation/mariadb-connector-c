@@ -163,8 +163,12 @@ ENDIF()
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/include/mysql_version.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
+               ${CMAKE_SOURCE_DIR}/include/mysql_version.h)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/include/my_config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
+               ${CMAKE_SOURCE_DIR}/include/my_config.h)
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
@@ -189,7 +193,7 @@ IF(MSVC)
  SET(CMAKE_INSTALL_PREFIX "")
 ENDIF()
 
-IF(WIN32)
+IF(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   ADD_SUBDIRECTORY(win/packaging)
 ENDIF()
 
