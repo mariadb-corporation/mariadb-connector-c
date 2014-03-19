@@ -23,6 +23,22 @@ ELSE()
   SET(FOLDER "ProgramFilesFolder")
 ENDIF()
 
+IF (WITH_SIGNCODE)
+  SET(SIGN_OPTIONS " /a /t http://timestamp.verisign.com/scripts/timstamp.dll ")
+  EXECUTE_PROCESS(
+    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/libmariadb.dll)
+  EXECUTE_PROCESS(
+    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/libmariadb.lib)
+  EXECUTE_PROCESS(
+    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/mariadbclient.lib)
+  EXECUTE_PROCESS(
+    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/libmariadb.dll)
+  EXECUTE_PROCESS(
+    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/libmariadb.lib)
+  EXECUTE_PROCESS(
+    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/mariadbclient.lib)
+ENDIF()
+
 FOREACH(src ${MARIADB_CLIENT_INCLUDES})
   STRING(REPLACE "-" "_" src_id ${src})
   SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
@@ -35,6 +51,13 @@ ENDIF()
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/packaging/mariadb-native-client.xml.in
   ${CMAKE_BINARY_DIR}/win/packaging/mariadb-native-client.xml)
 SET(MSI_PACKAGE "mariadb-native-client-${PRODUCT_VERSION}-${PLATFORM}.msi")
+
+IF(WITH_SIGNCODE)
+  ADD_CUSTOM_TARGET(SIGNMSI
+    DEPENDS ${MSI_PACKAGE}
+    COMMAND signtool sign ${SIGN_OPTIONS} ${MSI_PACKAGE})
+  ADD_DEPENDENCIES(SIGNMSI ${MSI_PACKAGE})
+ENDIF()
 
 ADD_CUSTOM_TARGET(
         ${MSI_PACKAGE}

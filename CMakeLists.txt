@@ -21,6 +21,7 @@ IF(NOT WIN32)
   OPTION(WITH_OPENSSL "enables SSL support" ON)
 ELSE()
   OPTION(WITH_OPENSSL "enables SSL support" OFF)
+  OPTION(WITH_SIGNCODE "digitally sign files" OFF)
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
 
