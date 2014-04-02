@@ -21,8 +21,11 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
+               ${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c)
+
 SET(API_TESTS "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
-              "sp" "result" "connection" "misc" "ssl" "ps_new" "sqlite3" "thread" "cs_conv" "dyncol") 
+              "sp" "result" "connection" "misc" "ssl" "ps_new" "sqlite3" "thread" "dyncol") 
 
 FOREACH(API_TEST ${API_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)

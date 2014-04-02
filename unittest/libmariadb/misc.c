@@ -816,6 +816,11 @@ static int test_conc49(MYSQL *mysql)
 {
   int rc;
   MYSQL_RES *res;
+  int i;
+  FILE *fp= fopen("./sample.csv", "w");
+  for (i=1; i < 4; i++)
+    fprintf(fp, "\"%d\", \"%d\", \"%d\"\r\n", i, i, i);
+  fclose(fp);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc49");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE conc49 (a int, b int, c int) Engine=InnoDB DEFAULT CHARSET=latin1");
