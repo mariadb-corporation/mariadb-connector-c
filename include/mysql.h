@@ -478,6 +478,7 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSE
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
+ulong STDCALL mysql_hex_string(char *to, const char *from, unsigned long len);
 
 #include <my_stmt.h>
   
