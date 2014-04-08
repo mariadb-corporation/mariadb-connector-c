@@ -144,6 +144,10 @@ typedef long		longlong;
     strncpy((a)->net.last_error, (d) ? (d) : ER((b)), sizeof((a)->net.last_error));\
   }
 
+/* For mysql_async.c */
+#define set_mysql_error(A,B,C) SET_CLIENT_ERROR((A),(B),(C),0)
+#define unknown_sqlstate SQLSTATE_UNKNOWN
+
 #define CLEAR_CLIENT_ERROR(a) \
   { \
     (a)->net.last_errno= 0;\
@@ -210,6 +214,7 @@ typedef long		longlong;
 
     /* MariaDB specific */
     MYSQL_PROGRESS_CALLBACK=5999,
+    MYSQL_OPT_NONBLOCK,
     MYSQL_DATABASE_DRIVER=7000
   };
 
@@ -229,7 +234,7 @@ typedef long		longlong;
     MYSQL_PROTOCOL_PIPE, MYSQL_PROTOCOL_MEMORY
   };
 
-struct st_mysql_options_extention;
+struct st_mysql_options_extension;
 
 struct st_mysql_options {
     unsigned int connect_timeout, read_timeout, write_timeout;
@@ -258,7 +263,7 @@ struct st_mysql_options {
     void (*local_infile_end)(void *);
     int (*local_infile_error)(void *, char *, unsigned int);
     void *local_infile_userdata;
-    struct st_mysql_options_extention *extension;
+    struct st_mysql_options_extension *extension;
 };
 
   typedef struct st_mysql {
@@ -329,6 +334,12 @@ typedef struct st_mysql_time
 
 #define AUTO_SEC_PART_DIGITS 31
 #define SEC_PART_DIGITS 6
+
+/* Ansynchronous API constants */
+#define MYSQL_WAIT_READ      1
+#define MYSQL_WAIT_WRITE     2
+#define MYSQL_WAIT_EXCEPT    4
+#define MYSQL_WAIT_TIMEOUT   8
 
 typedef struct character_set
 {
@@ -479,6 +490,9 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSE
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 ulong STDCALL mysql_hex_string(char *to, const char *from, unsigned long len);
+my_socket STDCALL mysql_get_socket(const MYSQL *mysql);
+unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
+unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 
 #include <my_stmt.h>
   

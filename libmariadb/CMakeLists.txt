@@ -53,6 +53,7 @@ mf_wcomp.c
 mulalloc.c 
 my_alloc.c
 my_compress.c
+my_context.c
 my_div.c
 my_error.c 
 my_fopen.c
@@ -74,6 +75,7 @@ my_static.c
 my_symlink.c
 my_thr_init.c
 my_write.c
+mysql_async.c
 password.c 
 str2int.c
 strcend.c

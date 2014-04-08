@@ -28,6 +28,7 @@
 #include <m_string.h>
 #include <m_ctype.h>
 #include <ma_common.h>
+#include "my_context.h"
 #include "mysql.h"
 #include "mysql_version.h"
 #include "mysqld_error.h"
@@ -68,6 +69,8 @@
 #include <poll.h>
 #endif
 #include <ma_dyncol.h>
+
+#define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
 
 #undef max_allowed_packet
 #undef net_buffer_length
@@ -119,7 +122,6 @@ struct st_mysql_methods MARIADB_DEFAULT_METHODS;
 #include <mysql/client_plugin.h>
 
 #define native_password_plugin_name "mysql_native_password"
-const char     *unknown_sqlstate= "HY000";
 
 static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
@@ -841,8 +843,8 @@ enum option_val
 
 #define CHECK_OPT_EXTENSION_SET(OPTS)\
     if (!(OPTS)->extension)                                     \
-      (OPTS)->extension= (struct st_mysql_options_extention *)  \
-        my_malloc(sizeof(struct st_mysql_options_extention),    \
+      (OPTS)->extension= (struct st_mysql_options_extension *)  \
+        my_malloc(sizeof(struct st_mysql_options_extension),    \
                   MYF(MY_WME | MY_ZEROFILL));                   \
 
 #define OPT_SET_EXTENDED_VALUE(OPTS, KEY, VAL, IS_STRING)       \
@@ -1578,6 +1580,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     if (connect2(sock,(struct sockaddr *) &UNIXaddr, sizeof(UNIXaddr),
 		 mysql->options.connect_timeout) <0)
     {
+      printf("err\n");
       DBUG_PRINT("error",("Got error %d on connect to local server",socket_errno));
       my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONNECTION_ERROR),
                           unix_socket, socket_errno);
@@ -2188,7 +2191,7 @@ void my_set_error(MYSQL *mysql,
   DBUG_VOID_RETURN;
 }
 
-void mthd_my_close(MYSQL *mysql)
+void STDCALL mysql_close_slow_part(MYSQL *mysql)
 {
   if (mysql->net.vio)
   {
@@ -2813,7 +2816,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
 {
   va_list ap;
   void *arg1;
-  
+  struct mysql_async_context *ctxt;
+  size_t stacksize;  
 
   DBUG_ENTER("mysql_option");
   DBUG_PRINT("enter",("option: %d",(int) option));
@@ -2881,8 +2885,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_PROGRESS_CALLBACK:
     if (!mysql->options.extension)
-      mysql->options.extension= (struct st_mysql_options_extention *)
-        my_malloc(sizeof(struct st_mysql_options_extention),
+      mysql->options.extension= (struct st_mysql_options_extension *)
+        my_malloc(sizeof(struct st_mysql_options_extension),
                   MYF(MY_WME | MY_ZEROFILL));
     if (mysql->options.extension)
       mysql->options.extension->report_progress=
@@ -2901,8 +2905,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
                                                           MYSQL_CLIENT_DB_PLUGIN)))
         break;
       if (!mysql->options.extension)
-        mysql->options.extension= (struct st_mysql_options_extention *)
-          my_malloc(sizeof(struct st_mysql_options_extention),
+        mysql->options.extension= (struct st_mysql_options_extension *)
+          my_malloc(sizeof(struct st_mysql_options_extension),
                     MYF(MY_WME | MY_ZEROFILL));
       if (!mysql->options.extension->db_driver)
         mysql->options.extension->db_driver= (MARIADB_DB_DRIVER *)
@@ -2917,6 +2921,48 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       }
     }
     break;
+    case MYSQL_OPT_NONBLOCK:
+    if (mysql->options.extension &&
+        (ctxt = mysql->options.extension->async_context) != 0)
+    {
+      /*
+        We must not allow changing the stack size while a non-blocking call is
+        suspended (as the stack is then in use).
+      */
+      if (ctxt->suspended)
+        DBUG_RETURN(1);
+      my_context_destroy(&ctxt->async_context);
+      my_free((gptr)ctxt, MYF(0));
+    }
+    if (!(ctxt= (struct mysql_async_context *)
+          my_malloc(sizeof(*ctxt), MYF(MY_ZEROFILL))))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      DBUG_RETURN(1);
+    }
+    stacksize= 0;
+    if (arg1)
+      stacksize= *(const size_t *)arg1;
+    if (!stacksize)
+      stacksize= ASYNC_CONTEXT_DEFAULT_STACK_SIZE;
+    if (my_context_init(&ctxt->async_context, stacksize))
+    {
+      my_free((gptr)ctxt, MYF(0));
+      DBUG_RETURN(1);
+    }
+    if (!mysql->options.extension)
+      if(!(mysql->options.extension= (struct st_mysql_options_extension *)
+        my_malloc(sizeof(struct st_mysql_options_extension),
+                  MYF(MY_WME | MY_ZEROFILL))))
+      {
+        SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+        DBUG_RETURN(1);
+      }
+    mysql->options.extension->async_context= ctxt;
+    if (mysql->net.vio)
+      mysql->net.vio->async_context= ctxt;
+    break;
+
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
     if (*(uint *)arg1)
       mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
@@ -3431,6 +3477,14 @@ mysql_get_parameters(void)
   return &mariadb_internal_parameters;
 }
 
+my_socket STDCALL
+mysql_get_socket(const MYSQL *mysql)
+{
+  if (mysql->net.vio)
+    return vio_fd(mysql->net.vio);
+  return INVALID_SOCKET;
+}
+
 /*
  * Default methods for a connection. These methods are
  * stored in mysql->methods and can be overwritten by
@@ -3440,7 +3494,7 @@ struct st_mysql_methods MARIADB_DEFAULT_METHODS = {
   /* open a connection */
   mthd_my_real_connect,
   /* close connection */
-  mthd_my_close,
+  mysql_close_slow_part,
   /* send command to server */
   mthd_my_send_cmd,
   /* skip result set */

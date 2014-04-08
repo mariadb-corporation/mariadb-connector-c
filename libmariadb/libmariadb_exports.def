@@ -39,6 +39,9 @@ EXPORTS
  mysql_get_server_info
  mysql_get_client_version
  mysql_get_ssl_cipher
+ mysql_get_socket
+ mysql_get_timeout_value
+ mysql_get_timeout_value_ms
  mysql_info
  mysql_init
  mysql_insert_id
