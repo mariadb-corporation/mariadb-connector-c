@@ -34,7 +34,7 @@
 #include "mysql_async.h"
 
 
-#ifdef __WIN__
+#ifdef _WIN32
 /*
   Windows does not support MSG_DONTWAIT for send()/recv(). So we need to ensure
   that the socket is non-blocking at the start of every operation.
@@ -67,7 +67,7 @@ my_connect_async(struct mysql_async_context *b, my_socket fd,
   size_socket s_err_size;
 
   /* Make the socket non-blocking. */
-#ifdef __WIN__
+#ifdef _WIN32
   ulong arg= 1;
   ioctlsocket(fd, FIONBIO, (void *)&arg);
 #else
@@ -84,7 +84,7 @@ my_connect_async(struct mysql_async_context *b, my_socket fd,
   res= connect(fd, name, namelen);
   if (res != 0)
   {
-#ifdef __WIN__
+#ifdef _WIN32
     int wsa_err= WSAGetLastError();
     if (wsa_err != WSAEWOULDBLOCK)
       return res;

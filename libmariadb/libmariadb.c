@@ -2191,7 +2191,7 @@ void my_set_error(MYSQL *mysql,
   DBUG_VOID_RETURN;
 }
 
-void STDCALL mysql_close_slow_part(MYSQL *mysql)
+void mysql_close_slow_part(MYSQL *mysql)
 {
   if (mysql->net.vio)
   {

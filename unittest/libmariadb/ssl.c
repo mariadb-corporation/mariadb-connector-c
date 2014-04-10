@@ -74,7 +74,7 @@ static int test_ssl_cipher(MYSQL *unused)
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
-  mysql_ssl_set(my,0, 0, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
+  mysql_ssl_set(my,0, 0, "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
 
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
@@ -118,7 +118,7 @@ static int test_multi_ssl_connections(MYSQL *unused)
     mysql[i]= mysql_init(NULL);
     FAIL_IF(!mysql[i],"mysql_init() failed");
 
-    mysql_ssl_set(mysql[i], 0, 0, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
+    mysql_ssl_set(mysql[i], 0, 0, "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
 
     mysql_real_connect(mysql[i], hostname, username, password, schema,
                          port, socketname, 0);
@@ -161,7 +161,7 @@ static void ssl_thread(void)
     mysql_thread_end();
     pthread_exit(NULL);
   }
-  mysql_ssl_set(mysql, 0, 0, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
+  mysql_ssl_set(mysql, 0, 0, "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
 
   if(!mysql_real_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))
@@ -227,9 +227,9 @@ static int test_phpbug51647(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/client-key.pem", 
-                       "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/client-cert.pem",
-                       "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
+  mysql_ssl_set(mysql, "C:/work/mariadb-native-client/unittest/libmariadb/certs/client-key.pem", 
+                       "C:/work/mariadb-native-client/unittest/libmariadb/certs/client-cert.pem",
+                       "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", 0, 0);
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0), mysql_error(mysql));
@@ -249,7 +249,7 @@ static int test_conc50(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/my_cert.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "C:/work/mariadb-native-client/unittest/libmariadb/certs/my_cert.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
@@ -270,7 +270,7 @@ static int test_conc50_1(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
@@ -292,7 +292,7 @@ static int test_conc50_2(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/dummy.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "C:/work/mariadb-native-client/unittest/libmariadb/certs/dummy.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
@@ -332,7 +332,7 @@ static int test_conc50_3(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, "ssltest", NULL, schema,
            port, socketname, 0);
@@ -352,7 +352,7 @@ static int test_conc50_4(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL, NULL);
+  mysql_ssl_set(mysql, NULL, "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
@@ -376,7 +376,7 @@ static int verify_ssl_server_cert(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "C:/work/mariadb-native-client/unittest/libmariadb/certs/ca.pem", NULL, NULL);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
@@ -409,7 +409,7 @@ static int test_bug62743(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/client-key.pem", NULL, NULL, NULL, NULL);
+  mysql_ssl_set(mysql, "C:/work/mariadb-native-client/unittest/libmariadb/certs/client-key.pem", NULL, NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
@@ -420,8 +420,8 @@ static int test_bug62743(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/client-key.pem",
-                       "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/client-cert.pem", NULL, NULL, NULL);
+  mysql_ssl_set(mysql, "C:/work/mariadb-native-client/unittest/libmariadb/certs/client-key.pem",
+                       "C:/work/mariadb-native-client/unittest/libmariadb/certs/client-cert.pem", NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
@@ -431,7 +431,7 @@ static int test_bug62743(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, "/home/georg/work/mariadb/client/mariadb-native-client/unittest/libmariadb/certs/client-key.pem", "blablubb", NULL, NULL, NULL);
+  mysql_ssl_set(mysql, "C:/work/mariadb-native-client/unittest/libmariadb/certs/client-key.pem", "blablubb", NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, username, password, schema,
            port, socketname, 0);
