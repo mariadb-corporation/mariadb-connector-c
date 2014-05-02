@@ -102,7 +102,7 @@ INCLUDE(cmake/SearchLibrary.cmake)
 IF(WITH_EXTERNAL_ZLIB)
   FIND_PACKAGE(ZLIB QUIET)
   IF(${ZLIB_FOUND})
-    SET(LIBZ "-lz")
+    SET(LIBZ "z")
   ENDIF()
 ENDIF()
 

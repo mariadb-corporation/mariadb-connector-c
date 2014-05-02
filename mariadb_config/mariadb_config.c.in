@@ -6,7 +6,7 @@
 #define INCLUDE "-I@CMAKE_INSTALL_PREFIX@/include/mariadb"
 #define LIBS    "-L@CMAKE_INSTALL_PREFIX@/lib/mariadb -lmariadb" \
                 "@extra_dynamic_LDFLAGS@"
-#define CFLAGS  INCLUDE "@CMAKE_C_FLAGS@"
+#define CFLAGS  INCLUDE " @CMAKE_C_FLAGS@"
 #define VERSION "@MYSQL_CLIENT_VERSION@"
 #define SOCKET  "@MYSQL_UNIX_ADDR@"
 #define PORT "@MYSQL_PORT@"
