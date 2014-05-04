@@ -169,7 +169,7 @@ Vio *vio_new_win32pipe(HANDLE hPipe)
 {
   Vio *vio;
   DBUG_ENTER("vio_new_handle");
-  if ((vio = (Vio*) my_malloc(sizeof(Vio),MYF(MY_WME))))
+  if ((vio = (Vio*) my_malloc(sizeof(Vio),MYF(MY_ZEROFILL))))
   {
     vio_reset(vio, VIO_TYPE_NAMEDPIPE, 0, hPipe, TRUE);
     strmov(vio->desc, "named pipe");
@@ -231,6 +231,9 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
   size_t r;
   DBUG_ENTER("vio_read");
   DBUG_PRINT("enter", ("sd=%d  size=%d", vio->sd, size));
+
+  if (!vio->cache)
+    DBUG_RETURN(vio_real_read(vio, buf, size));
 
   if (vio->cache + vio->cache_size > vio->cache_pos)
   {
