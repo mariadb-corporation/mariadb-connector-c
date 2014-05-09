@@ -151,6 +151,8 @@ IF(WITH_OPENSSL)
   FIND_PACKAGE(OpenSSL)
   IF(OPENSSL_FOUND)
     ADD_DEFINITIONS(-DHAVE_OPENSSL)
+  ELSE()
+    MESSAGE(FATAL_ERROR "OpenSSL not found. Please install OpenSSL or disable SSL support via option -DWITH_OPENSSL=Off")
   ENDIF()
 ENDIF()
 
