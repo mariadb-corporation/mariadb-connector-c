@@ -39,6 +39,7 @@ static int test_conc83(MYSQL *mysql)
   /* 1. Status is inited, so prepare should work */
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  sleep(2);
 
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   check_stmt_rc(rc, stmt);
@@ -46,6 +47,7 @@ static int test_conc83(MYSQL *mysql)
 
   /* 2. Status is prepared, second prepare should fail */
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  sleep(2);
 
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   FAIL_IF(!rc, "Error expected"); 
