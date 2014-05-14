@@ -22,6 +22,9 @@
 
 static int skip_ssl= 1;
 
+const char *ssluser= "ssluser";
+const char *sslpw= "sslpw";
+
 #ifndef WIN32
 pthread_mutex_t LOCK_test;
 #endif
@@ -60,6 +63,14 @@ static int test_ssl(MYSQL *mysql)
   }
   mysql_free_result(res);
 
+  if (!skip_ssl)
+  {
+    rc= mysql_query(mysql, "DROP USER 'ssltest'@'localhost'");
+
+    rc= mysql_query(mysql, "GRANT ALL ON test.* TO 'ssluser'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE SSL");
+    rc= mysql_query(mysql, "FLUSH PRVILEGES");
+  }
+
   return OK;
 }
 
@@ -76,7 +87,7 @@ static int test_ssl_cipher(MYSQL *unused)
 
   mysql_ssl_set(my,0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", 0, 0);
 
-  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+  FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
@@ -102,7 +113,7 @@ static int test_multi_ssl_connections(MYSQL *unused)
 
   my= mysql_init(NULL);
   FAIL_IF(!my,"mysql_init() failed");
-  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+  FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
            port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(my, "SHOW STATUS LIKE 'Ssl_accepts'");
@@ -120,7 +131,7 @@ static int test_multi_ssl_connections(MYSQL *unused)
 
     mysql_ssl_set(mysql[i], 0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", 0, 0);
 
-    mysql_real_connect(mysql[i], hostname, username, password, schema,
+    mysql_real_connect(mysql[i], hostname, ssluser, sslpw, schema,
                          port, socketname, 0);
     if (mysql_errno(mysql[i]))
     {
@@ -163,7 +174,7 @@ static void ssl_thread(void)
   }
   mysql_ssl_set(mysql, 0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", 0, 0);
 
-  if(!mysql_real_connect(mysql, hostname, username, password, schema,
+  if(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
           port, socketname, 0))
   {
     diag(">Error: %s", mysql_error(mysql));
@@ -231,7 +242,7 @@ static int test_phpbug51647(MYSQL *my)
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem",
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", 0, 0);
 
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0), mysql_error(mysql));
   diag("%s", mysql_get_ssl_cipher(mysql));
   mysql_close(mysql);
@@ -251,7 +262,7 @@ static int test_conc50(MYSQL *my)
 
   mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/my_cert.pem", NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   diag("Error: %d %s", mysql_errno(mysql), mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
@@ -272,7 +283,7 @@ static int test_conc50_1(MYSQL *my)
 
   mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   if (mysql_errno(mysql))
     diag("Error: %d %s", mysql_errno(mysql), mysql_error(mysql));
@@ -294,7 +305,7 @@ static int test_conc50_2(MYSQL *my)
 
   mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/dummy.pem", NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
@@ -354,7 +365,7 @@ static int test_conc50_4(MYSQL *my)
 
   mysql_ssl_set(mysql, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", NULL, NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   FAIL_IF(mysql_errno(mysql) , "Expected no error");
   mysql_close(mysql);
@@ -379,7 +390,7 @@ static int verify_ssl_server_cert(MYSQL *my)
   mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", NULL, NULL);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
 
   FAIL_IF(!mysql_errno(mysql), "Expected error");
@@ -400,7 +411,7 @@ static int test_bug62743(MYSQL *my)
 
   mysql_ssl_set(mysql, "dummykey", NULL, NULL, NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   diag("Error: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
@@ -411,7 +422,7 @@ static int test_bug62743(MYSQL *my)
 
   mysql_ssl_set(mysql, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-key.pem", NULL, NULL, NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   diag("Error with key: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
@@ -423,7 +434,7 @@ static int test_bug62743(MYSQL *my)
   mysql_ssl_set(mysql, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-key.pem",
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem", NULL, NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   FAIL_IF(mysql_errno(mysql) != 0, "Expected no error");
   mysql_close(mysql);
@@ -433,7 +444,7 @@ static int test_bug62743(MYSQL *my)
 
   mysql_ssl_set(mysql, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-key.pem", "blablubb", NULL, NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   diag("Error with cert: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) == 0, "Expected error");
