@@ -1194,7 +1194,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
 					    sizeof(MYSQL_ROWS))) ||
 	      !(cur->data= ((MYSQL_ROW)
 		      alloc_root(&result->alloc,
-				     (fields+1)*sizeof(char *)+pkt_len))))
+				     (fields+1)*sizeof(char *)+fields+pkt_len))))
     {
       free_rows(result);
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
@@ -1203,7 +1203,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
     *prev_ptr=cur;
     prev_ptr= &cur->next;
     to= (char*) (cur->data+fields+1);
-    end_to=to+pkt_len-1;
+    end_to=to+fields+pkt_len-1;
     for (field=0 ; field < fields ; field++)
     {
       if ((len=(ulong) net_field_length(&cp)) == NULL_LENGTH)
