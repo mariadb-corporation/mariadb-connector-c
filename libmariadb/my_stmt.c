@@ -1662,7 +1662,7 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
     if (flags & MADB_RESET_SERVER)
     {
       /* reset statement on server side */
-      if (stmt->mysql->status == MYSQL_STATUS_READY)
+      if (stmt->mysql && stmt->mysql->status == MYSQL_STATUS_READY)
       {
         unsigned char cmd_buf[STMT_ID_LENGTH];
         int4store(cmd_buf, stmt->stmt_id);
@@ -1697,6 +1697,14 @@ my_bool STDCALL mysql_stmt_reset(MYSQL_STMT *stmt)
   unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR;
 
   DBUG_ENTER("mysql_stmt_reset");
+
+  if (!mysql)
+  {
+    /* connection could be invalid, e.g. after mysql_stmt_close or failed reconnect
+       attempt (see bug CONC-97) */
+    SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+    DBUG_RETURN(1); 
+  }
 
   if (stmt->state >= MYSQL_STMT_USER_FETCHING &&
       stmt->fetch_row_func == stmt_unbuffered_fetch)

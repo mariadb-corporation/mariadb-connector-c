@@ -25,6 +25,24 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 /* Utility function to verify the field members */
 
+static int test_conc97(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  mysql_close(mysql);
+
+  rc= mysql_stmt_reset(stmt);
+  FAIL_IF(!rc, "Error expected while resetting stmt");
+
+  rc= mysql_stmt_close(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql= mysql_init(NULL);
+
+  return OK;
+}
+
 static int test_conc83(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
@@ -4844,6 +4862,7 @@ int test_notrunc(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc97", test_conc97, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc83", test_conc83, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc60", test_conc60, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_notrunc", test_notrunc, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

@@ -41,7 +41,7 @@
 */
 #define WIN_SET_NONBLOCKING(mysql) { \
     my_bool old_mode; \
-    if ((mysql)->net.vio) vio_blocking((mysql)->net.vio, FALSE, &old_mode); \
+    if ((mysql)->net.vio) vio_blocking((mysql)->net.vio, FALSE); \
   }
 #else
 #define WIN_SET_NONBLOCKING(mysql)
