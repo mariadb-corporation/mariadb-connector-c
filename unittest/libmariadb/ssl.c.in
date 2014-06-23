@@ -65,8 +65,7 @@ static int test_ssl(MYSQL *mysql)
 
   if (!skip_ssl)
   {
-    rc= mysql_query(mysql, "DROP USER 'ssltest'@'localhost'");
-
+    rc= mysql_query(mysql, "DROP USER 'ssluser'@'localhost'");
     rc= mysql_query(mysql, "GRANT ALL ON test.* TO 'ssluser'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE SSL");
     rc= mysql_query(mysql, "FLUSH PRVILEGES");
   }
@@ -93,6 +92,40 @@ static int test_ssl_cipher(MYSQL *unused)
   cipher= (char *)mysql_get_ssl_cipher(my);
   FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
   mysql_close(my);
+  return OK;
+}
+
+static int test_conc95(MYSQL *my)
+{
+  MYSQL *mysql;
+  int rc;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  rc= mysql_query(my, "DROP USER 'ssluser1'@'localhost'");
+  check_mysql_rc(rc, my);
+  rc= mysql_query(my, "GRANT ALL ON test.* TO 'ssluser1'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE X509");
+  check_mysql_rc(rc, my);
+  rc= mysql_query(my, "FLUSH PRIVILEGES");
+  check_mysql_rc(rc, my);
+
+  mysql= mysql_init(mysql);
+  mysql_ssl_set(mysql, 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-key.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-cert.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca.pem", 
+                NULL, 
+                NULL);
+
+  if (!mysql_real_connect(mysql, hostname, "ssluser1", sslpw, schema,
+           port, socketname, 0))
+  {
+    mysql_close(mysql);
+    diag("could not establish x509 connection");
+    return FAIL;
+  }
+  mysql_close(mysql);
   return OK;
 }
 
@@ -347,6 +380,7 @@ static int test_conc50_3(MYSQL *my)
 
   mysql_real_connect(mysql, hostname, "ssltest", NULL, schema,
            port, socketname, 0);
+  diag("Error: %s<", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql), "No error expected");
   mysql_close(mysql);
 
@@ -367,7 +401,7 @@ static int test_conc50_4(MYSQL *my)
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
-  FAIL_IF(mysql_errno(mysql) , "Expected no error");
+  FAIL_IF(!mysql_errno(mysql) , "Error expected");
   mysql_close(mysql);
 
   return OK;
@@ -380,9 +414,6 @@ static int verify_ssl_server_cert(MYSQL *my)
 
   if (check_skip_ssl())
     return SKIP;
-
-  diag("certs needs to be fixed.");
-  return SKIP;
 
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
@@ -460,6 +491,7 @@ struct my_tests_st my_tests[] = {
   {"test_conc50_2", test_conc50_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_3", test_conc50_3, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_4", test_conc50_4, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc95", test_conc95, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"verify_ssl_server_cert", verify_ssl_server_cert, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_bug62743", test_bug62743, TEST_CONNECTION_NEW, 0,  NULL,  NULL}, 
   {"test_phpbug51647", test_phpbug51647, TEST_CONNECTION_NONE, 0, NULL, NULL},

@@ -72,7 +72,7 @@ static void my_SSL_error(MYSQL *mysql)
  */
 static unsigned long my_cb_threadid(void)
 {
-  /* chast pthread_t to unsigned long */
+  /* cast pthread_t to unsigned long */
 	return (unsigned long) pthread_self();
 }
 
@@ -180,7 +180,7 @@ void my_ssl_end()
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
     ERR_free_strings();
-    ENGINE_cleanup();
+    //ENGINE_cleanup();
     CONF_modules_free();
     CONF_modules_unload(1);
     sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
@@ -194,45 +194,21 @@ void my_ssl_end()
 /* 
   Set certification stuff.
 */
-static int my_ssl_set_certs(SSL *ssl)
+static int my_ssl_set_certs(MYSQL *mysql)
 {
-  int have_cert= 0;
-  MYSQL *mysql;
-
+  char *key_file= mysql->options.ssl_key ? mysql->options.ssl_key : mysql->options.ssl_cert;
   DBUG_ENTER("my_ssl_set_certs");
 
   /* Make sure that ssl was allocated and 
      ssl_system was initialized */
-  DBUG_ASSERT(ssl != NULL);
   DBUG_ASSERT(my_ssl_initialized == TRUE);
-
-  /* get connection for current ssl */
-  mysql= (MYSQL *)SSL_get_app_data(ssl);
 
   /* add cipher */
   if ((mysql->options.ssl_cipher && 
         mysql->options.ssl_cipher[0] != 0) &&
-      SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
+      SSL_CTX_set_cipher_list(SSL_context, mysql->options.ssl_cipher) == 0)
     goto error;
 
-  /* set cert */
-  if (mysql->options.ssl_cert && mysql->options.ssl_cert[0] != 0)  
-  {
-    if (SSL_CTX_use_certificate_chain_file(SSL_context, mysql->options.ssl_cert) <= 0)
-      goto error; 
-    have_cert= 1;
-  }
-
-  /* set key */
-  if (mysql->options.ssl_key && mysql->options.ssl_key[0])
-  {
-    if (SSL_CTX_use_PrivateKey_file(SSL_context, mysql->options.ssl_key, SSL_FILETYPE_PEM) <= 0)
-      goto error;
-
-    /* verify key */
-    if (have_cert && SSL_CTX_check_private_key(SSL_context) != 1)
-      goto error;
-  }
   /* ca_file and ca_path */
   if (SSL_CTX_load_verify_locations(SSL_context, 
                                     mysql->options.ssl_ca,
@@ -241,6 +217,22 @@ static int my_ssl_set_certs(SSL *ssl)
     if (mysql->options.ssl_ca || mysql->options.ssl_capath)
       goto error;
     if (SSL_CTX_set_default_verify_paths(SSL_context) == 0)
+      goto error;
+  }
+
+  /* set cert */
+  if (mysql->options.ssl_cert && mysql->options.ssl_cert[0] != 0)  
+    if (SSL_CTX_use_certificate_chain_file(SSL_context, mysql->options.ssl_cert) <= 0)
+      goto error; 
+
+    /* set key */
+  if (key_file)
+  {
+    if (SSL_CTX_use_PrivateKey_file(SSL_context, key_file, SSL_FILETYPE_PEM) <= 0)
+      goto error;
+
+    /* verify key */
+    if (!SSL_CTX_check_private_key(SSL_context))
       goto error;
   }
   if (mysql->options.extension &&
@@ -291,19 +283,17 @@ static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
       DBUG_RETURN(0);
     depth= X509_STORE_CTX_get_error_depth(ctx);
     if (depth == 0)
-    {
       ok= 1;
-      DBUG_RETURN(1);
-    }
   }
-  else
-    DBUG_RETURN(1);
 
-  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                      ER(CR_SSL_CONNECTION_ERROR), 
-                      X509_verify_cert_error_string(ctx->error));
-  DBUG_RETURN(0);
+/*
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        X509_verify_cert_error_string(ctx->error));
+*/
+  DBUG_RETURN(ok);
 }
+
 
 /*
    allocates a new ssl object
@@ -328,18 +318,20 @@ SSL *my_ssl_init(MYSQL *mysql)
   if (!my_ssl_initialized)
     my_ssl_start(mysql); 
 
+  if (my_ssl_set_certs(mysql))
+    goto error;
+
   if (!(ssl= SSL_new(SSL_context)))
     goto error;
 
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
-  if (my_ssl_set_certs(ssl))
-    goto error;
 
   verify= (!mysql->options.ssl_ca && !mysql->options.ssl_capath) ?
            SSL_VERIFY_NONE : SSL_VERIFY_PEER;
-  SSL_set_verify(ssl, verify, my_verify_callback);
-  SSL_set_verify_depth(ssl, 1);
+
+  SSL_CTX_set_verify(SSL_context, verify, my_verify_callback);
+  SSL_CTX_set_verify_depth(SSL_context, 1);
 
   DBUG_RETURN(ssl);
 error:
