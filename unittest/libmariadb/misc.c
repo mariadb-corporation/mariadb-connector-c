@@ -935,7 +935,6 @@ static int test_connect_attrs(MYSQL *my)
 
   if (!(mysql->server_capabilities & CLIENT_CONNECT_ATTRS))
   {
-    mysql_close(mysql);
     diag("Server doesn't support connection attributes");
     return SKIP;
   }
@@ -955,7 +954,6 @@ static int test_connect_attrs(MYSQL *my)
   mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo2");
 
   len= mysql->options.extension->connect_attrs_len;
-
 
   mysql_close(mysql);
 

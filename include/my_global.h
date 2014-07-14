@@ -1081,7 +1081,7 @@ do { doubleget_union _tmp; \
 #elif defined(HAVE_DLFCN_H)
 #include <dlfcn.h>
 #endif
-#if HAVE_DLERROR
+#ifndef HAVE_DLERROR
 #define dlerror() ""
 #endif
 #endif
