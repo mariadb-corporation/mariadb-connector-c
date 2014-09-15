@@ -1866,7 +1866,15 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       scramble_plugin= native_password_plugin_name;
     }
   } else
+  {
     mysql->server_capabilities&= ~CLIENT_SECURE_CONNECTION;
+    if (mysql->options.secure_auth)
+    {
+      SET_CLIENT_ERROR(mysql, CR_SECURE_AUTH, unknown_sqlstate, 0);
+      goto error;
+    }
+  }
+   
 
   /* Set character set */
   if (mysql->options.charset_name)
@@ -3076,7 +3084,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       }
     }
     break;
-
+  case MYSQL_SECURE_AUTH:
+    mysql->options.secure_auth= *(my_bool *)arg1;
+    break;
   default:
     va_end(ap);
     DBUG_RETURN(-1);

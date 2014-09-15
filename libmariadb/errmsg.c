@@ -129,7 +129,7 @@ const char *client_errors[]=
 /* 2046 */  "",
 /* 2047 */  "",
 /* 2048 */  "",
-/* 2049 */  "",
+/* 2049 */  "Connection with old authentication protocol refused.",
 /* 2050 */  "",
 /* 2051 */  "",
 /* 2052 */  "Prepared statement contains no metadata",
