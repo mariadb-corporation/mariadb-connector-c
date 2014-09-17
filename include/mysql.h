@@ -125,15 +125,6 @@ extern char *mysql_unix_port;
   typedef unsigned long long my_ulonglong;
 #endif
 
-#ifndef longlong_defined
-#if defined(HAVE_LONG_LONG) && SIZEOF_LONG != 8
-typedef long long int longlong;
-#else
-typedef long		longlong;
-#endif
-#define longlong_defined
-#endif
-
 /* mysql compatibility macro */
 #define mysql_options4(A,B,C,D) mysql_optionsv((A),(B),(C),(D))
 
