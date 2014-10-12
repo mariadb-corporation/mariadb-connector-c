@@ -104,7 +104,6 @@ static int test_conc95(MYSQL *my)
     return SKIP;
 
   rc= mysql_query(my, "DROP USER 'ssluser1'@'localhost'");
-  check_mysql_rc(rc, my);
   rc= mysql_query(my, "GRANT ALL ON test.* TO 'ssluser1'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE X509");
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
@@ -484,6 +483,96 @@ static int test_bug62743(MYSQL *my)
   return OK;
 }
 
+#ifndef _WIN32
+int thread_conc102(void)
+#else
+DWORD WINAPI thread_conc102(void)
+#endif
+{
+  MYSQL *mysql;
+  int rc;
+  MYSQL_RES *res;
+  mysql_thread_init();
+  mysql= mysql_init(NULL);
+
+  mysql_ssl_set(mysql, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/combined.pem", 
+                       "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/combined.pem", 
+                       "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/combined.pem", 0, 0);
+
+  if(!mysql_real_connect(mysql, hostname, username, password, schema,
+          port, socketname, 0))
+  {
+    diag(">Error: %s", mysql_error(mysql));
+    goto end;
+  }
+  if (!mysql_get_ssl_cipher(mysql))
+  {
+    diag("Error: No ssl connection");
+    goto end;
+  }
+  pthread_mutex_lock(&LOCK_test);
+  rc= mysql_query(mysql, "UPDATE t_conc102 SET a=a+1");
+  check_mysql_rc(rc, mysql);
+  pthread_mutex_unlock(&LOCK_test);
+  check_mysql_rc(rc, mysql);
+  if (res= mysql_store_result(mysql))
+    mysql_free_result(res);
+end:
+  mysql_close(mysql);
+  mysql_thread_end();
+  return 0;
+}
+
+static int test_conc_102(MYSQL *mysql)
+{
+
+  int rc;
+  int i;
+  MYSQL_ROW row;
+  MYSQL_RES *res;
+#ifndef _WIN32
+  pthread_t threads[50];
+#else
+  HANDLE hthreads[50];
+  DWORD threads[50];
+#endif
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_conc102");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t_conc102 ( a int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t_conc102 VALUES (0)");
+  check_mysql_rc(rc, mysql);
+
+  for (i=0; i < 50; i++)
+  {
+#ifndef _WIN32
+    pthread_create(&threads[i], NULL, (void *)thread_conc102, NULL);
+#else
+    hthreads[i]= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_conc27, NULL, 0, &threads[i]);
+    if (hthreads[i]==NULL)
+      diag("error while starting thread");
+#endif
+  }
+  for (i=0; i < 50; i++)
+  {
+#ifndef _WIN32
+    pthread_join(threads[i], NULL);
+#else
+    WaitForSingleObject(hthreads[i], INFINITE);
+#endif
+  } 
+  rc= mysql_query(mysql, "SELECT a FROM t_conc102");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  diag("Found: %s", row[0]);
+  FAIL_IF(strcmp(row[0], "50") != 0, "Expected 50");
+  mysql_free_result(res);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
@@ -497,9 +586,8 @@ struct my_tests_st my_tests[] = {
   {"test_phpbug51647", test_phpbug51647, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_ssl_cipher", test_ssl_cipher, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_multi_ssl_connections", test_multi_ssl_connections, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
-#ifndef WIN32
+  {"test_conc_102", test_conc_102, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_ssl_threads", test_ssl_threads, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-#endif 
 
   {NULL, NULL, 0, 0, NULL, NULL}
 };

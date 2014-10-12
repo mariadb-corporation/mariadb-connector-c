@@ -13,3 +13,5 @@ openssl rsa -in client-key-enc.pem -out client-key.pem \
 -passin pass:qwerty -passout pass:
 
 cat server-cert.pem client-cert.pem > ca.pem
+
+cat client-key.pem client-cert.pem ca.pem > combined.pem
