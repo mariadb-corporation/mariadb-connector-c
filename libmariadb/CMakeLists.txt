@@ -212,15 +212,15 @@ ENDIF()
 
 INSTALL(TARGETS
           libmariadb mariadbclient
-          RUNTIME DESTINATION "lib/mariadb"
-          LIBRARY DESTINATION "lib/mariadb"
-          ARCHIVE DESTINATION "lib/mariadb")
+          RUNTIME DESTINATION "${LIB_INSTALL_DIR}/mariadb"
+          LIBRARY DESTINATION "${LIB_INSTALL_DIR}/mariadb"
+          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}/mariadb")
 IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
   INSTALL(FILES "${CMAKE_BINARY_DIR}/libmariadb/libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
                 "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
-                DESTINATION lib/mariadb)
+                DESTINATION ${LIB_INSTALL_DIR}/mariadb)
 ENDIF()
 
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
