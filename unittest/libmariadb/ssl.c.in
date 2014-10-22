@@ -600,7 +600,6 @@ int main(int argc, char **argv)
   if (argc > 1)
     get_options(argc, argv);
 
-
   run_tests(my_tests);
 
   mysql_server_end();
