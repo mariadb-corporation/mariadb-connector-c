@@ -22,12 +22,14 @@
 
 static int skip_ssl= 1;
 
+#ifdef WIN32
+#define pthread_exit(A) _endthreadex(0)
+#endif
+
 const char *ssluser= "ssluser";
 const char *sslpw= "sslpw";
 
-#ifndef WIN32
 pthread_mutex_t LOCK_test;
-#endif
 
 int check_skip_ssl()
 {
@@ -109,7 +111,7 @@ static int test_conc95(MYSQL *my)
   rc= mysql_query(my, "FLUSH PRIVILEGES");
   check_mysql_rc(rc, my);
 
-  mysql= mysql_init(mysql);
+  mysql= mysql_init(NULL);
   mysql_ssl_set(mysql, 
                 "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-key.pem", 
                 "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-cert.pem", 
@@ -193,9 +195,12 @@ static int test_multi_ssl_connections(MYSQL *unused)
 }
 
 #ifndef WIN32
-static void ssl_thread(void)
+static void ssl_thread(void *dummy)
+#else
+DWORD WINAPI ssl_thread(void *dummy)
+#endif
 {
-  MYSQL *mysql;
+  MYSQL *mysql= NULL;
 
   mysql_thread_init();
   
@@ -226,7 +231,12 @@ static void ssl_thread(void)
 static int test_ssl_threads(MYSQL *mysql)
 {
   int i, rc;
-  pthread_t thread[50];
+#ifndef WIN32
+  pthread_t threads[50];
+#else
+  HANDLE hthreads[50];
+  DWORD dthreads[50];
+#endif
   MYSQL_RES *res;
   MYSQL_ROW row;
   
@@ -243,9 +253,21 @@ static int test_ssl_threads(MYSQL *mysql)
   pthread_mutex_init(&LOCK_test, NULL);
 
   for (i=0; i < 50; i++)
-    pthread_create(&thread[i], NULL, (void *)&ssl_thread, NULL);
+  {
+#ifndef WIN32
+    pthread_create(&threads[i], NULL, (void *)ssl_thread, NULL);
+#else
+    hthreads[i]= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ssl_thread, NULL, 0, &dthreads[i]);
+    if (hthreads[i]==NULL)
+      diag("error while starting thread");
+#endif
+  }
   for (i=0; i < 50; i++)
-    pthread_join(thread[i], NULL);
+#ifndef WIN32
+    pthread_join(threads[i], NULL);
+#else
+    WaitForSingleObject(hthreads[i], INFINITE);
+#endif
 
   pthread_mutex_destroy(&LOCK_test);
 
@@ -258,7 +280,6 @@ static int test_ssl_threads(MYSQL *mysql)
   mysql_free_result(res);
   return OK;
 }
-#endif
 
 static int test_phpbug51647(MYSQL *my)
 {
@@ -483,7 +504,7 @@ static int test_bug62743(MYSQL *my)
   return OK;
 }
 
-#ifndef _WIN32
+#ifndef WIN32
 int thread_conc102(void)
 #else
 DWORD WINAPI thread_conc102(void)
@@ -530,7 +551,7 @@ static int test_conc_102(MYSQL *mysql)
   int i;
   MYSQL_ROW row;
   MYSQL_RES *res;
-#ifndef _WIN32
+#ifndef WIN32
   pthread_t threads[50];
 #else
   HANDLE hthreads[50];
@@ -546,17 +567,17 @@ static int test_conc_102(MYSQL *mysql)
 
   for (i=0; i < 50; i++)
   {
-#ifndef _WIN32
+#ifndef WIN32
     pthread_create(&threads[i], NULL, (void *)thread_conc102, NULL);
 #else
-    hthreads[i]= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_conc27, NULL, 0, &threads[i]);
+    hthreads[i]= CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)thread_conc102, NULL, 0, &threads[i]);
     if (hthreads[i]==NULL)
       diag("error while starting thread");
 #endif
   }
   for (i=0; i < 50; i++)
   {
-#ifndef _WIN32
+#ifndef WIN32
     pthread_join(threads[i], NULL);
 #else
     WaitForSingleObject(hthreads[i], INFINITE);
@@ -605,3 +626,4 @@ int main(int argc, char **argv)
   mysql_server_end();
   return(exit_status());
 }
+

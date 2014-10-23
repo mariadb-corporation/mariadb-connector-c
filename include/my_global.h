@@ -363,15 +363,11 @@ typedef int	(*qsort_cmp)(const void *,const void *);
 #else
 #define qsort_t RETQSORTTYPE	/* Broken GCC cant handle typedef !!!! */
 #endif
-typedef SOCKET_SIZE_TYPE size_socket;
-
-#ifndef SOCKOPT_OPTLEN_TYPE
-#define SOCKOPT_OPTLEN_TYPE size_socket
-#endif
 
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
+typedef SOCKET_SIZE_TYPE size_socket;
 
 #ifndef SOCKOPT_OPTLEN_TYPE
 #define SOCKOPT_OPTLEN_TYPE size_socket
