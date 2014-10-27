@@ -70,10 +70,18 @@ static void my_SSL_error(MYSQL *mysql)
    Crypto call back functions will be
    set during ssl_initialization
  */
+#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
+static unsigned long my_cb_threadid(void)
+{
+  /* cast pthread_t to unsigned long */
+  return (unsigned long) pthread_self();
+}
+#else
 static void my_cb_threadid(CRYPTO_THREADID *id)
 {
   CRYPTO_THREADID_set_numeric(id, (unsigned long)pthread_self());
 }
+#endif
 
 static void my_cb_locking(int mode, int n, const char *file, int line)
 {
@@ -98,7 +106,11 @@ static int ssl_thread_init()
       pthread_mutex_init(&LOCK_crypto[i], NULL);
   }
 
+#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
+  CRYPTO_set_id_callback(my_cb_threadid);
+#else
   CRYPTO_THREADID_set_callback(my_cb_threadid);
+#endif
   CRYPTO_set_locking_callback(my_cb_locking);
 
   return 0;
