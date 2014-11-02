@@ -250,8 +250,6 @@ static int test_bug27876(MYSQL *mysql)
 
   char query[500];
 
-  DBUG_ENTER("test_bug27876");
-
   rc= mysql_query(mysql, "set names utf8");
   check_mysql_rc(rc, mysql);
 

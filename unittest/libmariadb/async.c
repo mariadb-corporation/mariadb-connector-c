@@ -21,7 +21,7 @@
 #ifndef _WIN32
 #include <poll.h>
 #else
-#include <WinSock2.h>
+#include <winsock2.h>
 #endif
 
 #include <stdlib.h>

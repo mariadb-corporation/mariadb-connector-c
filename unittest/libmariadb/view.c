@@ -642,8 +642,6 @@ static int test_bug29306(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
 
-  DBUG_ENTER("test_bug29306");
-
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS tab17557");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "DROP VIEW IF EXISTS view17557");

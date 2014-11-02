@@ -7,6 +7,7 @@ endif (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
 
 IF(APPLE)
   find_path(ICONV_INCLUDE_DIR iconv.h PATHS
+            /usr/include/
             /opt/local/include/
             NO_CMAKE_SYSTEM_PATH)
 ELSE()
@@ -15,6 +16,7 @@ ENDIF()
 
 IF(APPLE)
   find_library(ICONV_LIBRARIES NAMES iconv libiconv c PATHS
+               /usr/lib/
                /opt/local/lib/
                NO_CMAKE_SYSTEM_PATH)
 ELSE()

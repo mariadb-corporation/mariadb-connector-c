@@ -66,7 +66,6 @@ int stmt_fetch_init(MYSQL *mysql, Stmt_fetch *fetch, unsigned stmt_no_arg,
   int rc;
   unsigned i;
   MYSQL_RES *metadata;
-  DBUG_ENTER("stmt_fetch_init");
 
   /* Save query and statement number for error messages */
   fetch->stmt_no= stmt_no_arg;
@@ -126,7 +125,6 @@ int fill_tables(MYSQL *mysql, const char **query_list, unsigned query_count)
 {
   int rc;
   const char **query;
-  DBUG_ENTER("fill_tables");
   for (query= query_list; query < query_list + query_count;
        ++query)
   {
@@ -179,7 +177,6 @@ int fetch_n(MYSQL *mysql, const char **query_list, unsigned query_count,
   Stmt_fetch *fetch_array= (Stmt_fetch*) calloc(1, sizeof(Stmt_fetch) *
                                                   query_count);
   Stmt_fetch *fetch;
-  DBUG_ENTER("fetch_n");
 
   for (fetch= fetch_array; fetch < fetch_array + query_count; ++fetch)
   {
@@ -1496,8 +1493,6 @@ static int test_bug38486(MYSQL *mysql)
   int rc;
   unsigned long type= CURSOR_TYPE_READ_ONLY;
 
-  DBUG_ENTER("test_bug38486");
-
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, (void*)&type);
   check_stmt_rc(rc, stmt);
@@ -1586,7 +1581,6 @@ static int test_bug9478(MYSQL *mysql)
   char a[6];
   ulong a_len;
   int rc, i;
-  DBUG_ENTER("test_bug9478");
 
   mysql_query(mysql, "drop table if exists t1");
   mysql_query(mysql, "create table t1 (id integer not null primary key, "
@@ -1665,7 +1659,6 @@ static int test_bug9478(MYSQL *mysql)
 
   for (i= 0; i < 5; i++)
   {
-    DBUG_PRINT("loop",("i: %d", i));
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_fetch(stmt);
