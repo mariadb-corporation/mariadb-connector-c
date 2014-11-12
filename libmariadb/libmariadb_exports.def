@@ -109,7 +109,6 @@ EXPORTS
  mysql_ping
  mysql_ping_cont
  mysql_ping_start
- mysql_plugin_options
  mysql_ps_fetch_functions DATA
  mysql_query
  mysql_query_cont

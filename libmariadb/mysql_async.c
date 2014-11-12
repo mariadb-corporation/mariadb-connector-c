@@ -41,11 +41,13 @@
 */
 #define WIN_SET_NONBLOCKING(mysql) { \
     my_bool old_mode; \
-    if ((mysql)->net.vio) vio_blocking((mysql)->net.vio, FALSE); \
+    if ((mysql)->net.vio) vio_blocking((mysql)->net.vio, FALSE, &old_mode); \
   }
 #else
 #define WIN_SET_NONBLOCKING(mysql)
 #endif
+
+extern void mysql_close_slow_part(MYSQL *mysql);
 
 
 void

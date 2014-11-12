@@ -211,7 +211,7 @@ static int connect2(my_socket s, const struct sockaddr *name, size_t namelen,
   poll_fd.fd= s;
 
   /* connection timeout in milliseconds */
-  res= poll(&poll_fd, 1, (timeout > -1) ? timeout * 1000 : timeout);
+  res= poll(&poll_fd, 1, timeout);
 
   switch(res)
   {
@@ -248,6 +248,24 @@ static int connect2(my_socket s, const struct sockaddr *name, size_t namelen,
   return (0);					/* ok */
 }
 
+static int
+connect_sync_or_async(MYSQL *mysql, NET *net, my_socket fd,
+                      const struct sockaddr *name, uint namelen)
+{
+  int vio_timeout= (mysql->options.connect_timeout >= 0) ? 
+                   mysql->options.connect_timeout * 1000 : -1;
+
+  if (mysql->options.extension && mysql->options.extension->async_context &&
+      mysql->options.extension->async_context->active)
+  {
+    my_bool old_mode;
+    vio_blocking(net->vio, FALSE, &old_mode);
+    return my_connect_async(mysql->options.extension->async_context, fd,
+                            name, namelen, vio_timeout);
+  }
+
+  return connect2(fd, name, namelen, vio_timeout);
+}
 /*
 ** Create a named pipe connection
 */
@@ -291,7 +309,7 @@ HANDLE create_named_pipe(NET *net, uint connect_timeout, char **arg_host,
       return INVALID_HANDLE_VALUE;
     }
     /* wait for for an other instance */
-    if (! WaitNamedPipe(szPipeName, connect_timeout*1000) )
+    if (! WaitNamedPipe(szPipeName, connect_timeout) )
     {
       net->last_errno=CR_NAMEDPIPEWAIT_ERROR;
       sprintf(net->last_error,ER(net->last_errno),host, unix_socket,
@@ -936,7 +954,7 @@ static void mysql_read_default_options(struct st_mysql_options *options,
       	  options->named_pipe=1;	/* Force named pipe */
       	  break;
       	case OPT_connect_timeout:
-              case OPT_timeout:
+        case OPT_timeout:
       	  if (opt_arg)
       	    options->connect_timeout=atoi(opt_arg);
       	  break;
@@ -1577,10 +1595,9 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     bzero((char*) &UNIXaddr,sizeof(UNIXaddr));
     UNIXaddr.sun_family = AF_UNIX;
     strmov(UNIXaddr.sun_path, unix_socket);
-    if (connect2(sock,(struct sockaddr *) &UNIXaddr, sizeof(UNIXaddr),
-		 mysql->options.connect_timeout) <0)
+    if (connect_sync_or_async(mysql, net, sock,
+                              (struct sockaddr *) &UNIXaddr, sizeof(UNIXaddr)))
     {
-      printf("err\n");
       DBUG_PRINT("error",("Got error %d on connect to local server",socket_errno));
       my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONNECTION_ERROR),
                           unix_socket, socket_errno);
@@ -1675,17 +1692,20 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
         freeaddrinfo(res);
         goto error;
       }
-      if (!(rc= connect2(sock, save_res->ai_addr, save_res->ai_addrlen, 
-                   mysql->options.connect_timeout)))
+      rc= connect_sync_or_async(mysql, net, sock,
+                                save_res->ai_addr, save_res->ai_addrlen);
+      if (!rc)
       {
-        if (socket_block(sock, 1) == SOCKET_ERROR)
+        if (mysql->options.extension && mysql->options.extension->async_context &&
+             mysql->options.extension->async_context->active)
+          break;
+        else if (socket_block(sock, 1) == SOCKET_ERROR)
         {
-          closesocket(sock);
-          continue;
+        closesocket(sock);
+        continue;
         }
         break; /* success! */
       }
-
       vio_delete(mysql->net.vio);
       mysql->net.vio= NULL;
     }
@@ -1708,6 +1728,13 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     }
   }
 
+  /* set timeouts */
+  net->vio->read_timeout= mysql->options.read_timeout;
+  net->vio->write_timeout= mysql->options.write_timeout;
+
+  if (mysql->options.extension && mysql->options.extension->async_context)
+    net->vio->async_context= mysql->options.extension->async_context;
+
   if (!net->vio || my_net_init(net, net->vio))
   {
     vio_delete(net->vio);
@@ -1720,16 +1747,16 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
 
   /* set read timeout */
-  if (mysql->options.read_timeout)
+  if (mysql->options.read_timeout >= 0)
     vio_read_timeout(net->vio, mysql->options.read_timeout);
 
   /* set write timeout */
-  if (mysql->options.write_timeout)
+  if (mysql->options.write_timeout >= 0)
     vio_write_timeout(net->vio, mysql->options.read_timeout);
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
-  if (mysql->options.connect_timeout &&
-      vio_poll_read(net->vio, mysql->options.connect_timeout))
+  if (mysql->options.connect_timeout >= 0 &&
+      vio_wait_or_timeout(net->vio, FALSE, mysql->options.connect_timeout * 1000) < 1)
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),

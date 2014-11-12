@@ -69,6 +69,14 @@
 #define SOCKET_EWOULDBLOCK SOCKET_EAGAIN
 #endif
 
+#include <mysql_async.h>
+#include <my_context.h>
+
+#ifdef _WIN32
+#define ma_get_error() WSAGetLastError()
+#else
+#define ma_get_error() errno
+#endif
 
 typedef void *vio_ptr;
 typedef char *vio_cstring;
@@ -82,6 +90,7 @@ void vio_reset(Vio* vio, enum enum_vio_type type,
                my_bool localhost)
 {
   uchar *save_cache= vio->cache;
+  int save_timeouts[2]= {vio->read_timeout, vio->write_timeout};
   bzero((char*) vio, sizeof(*vio));
   vio->type= type;
   vio->sd= sd;
@@ -90,16 +99,18 @@ void vio_reset(Vio* vio, enum enum_vio_type type,
   /* do not clear cache */
   vio->cache= vio->cache_pos= save_cache;
   vio->cache_size= 0;
+  vio->read_timeout= save_timeouts[0];
+  vio->write_timeout= save_timeouts[1];
 }
 
-void vio_timeout(Vio *vio, int type, uint seconds)
+void vio_timeout(Vio *vio, int type, uint timeval)
 {
 #ifdef _WIN32
-  uint timeout= seconds * 1000; /* milli secs */
+  uint timeout= timeval; /* milli secs */
 #else
   struct timeval timeout;
-  timeout.tv_sec= seconds;
-  timeout.tv_usec= 0;
+  timeout.tv_sec= timeval;
+  timeout.tv_usec= (timeval % 1000) * 1000;
 #endif
 
   if (setsockopt(vio->sd, SOL_SOCKET, type,
@@ -114,14 +125,16 @@ void vio_timeout(Vio *vio, int type, uint seconds)
   }
 }
 
-void vio_read_timeout(Vio *vio, uint seconds)
+void vio_read_timeout(Vio *vio, uint timeout)
 {
-  vio_timeout(vio, SO_RCVTIMEO, seconds);
+  vio->read_timeout= (timeout >= 0) ? timeout * 1000 : -1;
+  vio_timeout(vio, SO_RCVTIMEO, vio->read_timeout);
 }
 
-void vio_write_timeout(Vio *vio, uint seconds)
+void vio_write_timeout(Vio *vio, uint timeout)
 {
-  vio_timeout(vio, SO_SNDTIMEO, seconds);
+  vio->write_timeout= (timeout >= 0) ? timeout * 1000 : -1;
+  vio_timeout(vio, SO_SNDTIMEO, vio->write_timeout);
 }
 
 /* Open the socket or TCP/IP connection and read the fnctl() status */
@@ -197,8 +210,75 @@ int vio_errno(Vio *vio __attribute__((unused)))
   return socket_errno; /* On Win32 this mapped to WSAGetLastError() */
 }
 
+int vio_wait_or_timeout(Vio *vio, my_bool is_read, int timeout)
+{
+  int rc;
+#ifndef _WIN32
+  struct pollfd p_fd;
+#else
+  struct timeval tv= {0,0};
+  fd_set fds, exc_fds;
+#endif
+
+  /* we don't support it via named pipes yet.
+   * maybe this could be handled via PeekNamedPipe somehow !? */
+  if (vio->type == VIO_TYPE_NAMEDPIPE)
+    return 1;
+
+  /*
+    Note that if zero timeout, then we will not block, so we do not need to
+    yield to calling application in the async case.
+  */
+  if (timeout != 0 && vio->async_context && vio->async_context->active)
+  {
+    rc= my_io_wait_async(vio->async_context,
+                         (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
+                         timeout);
+    return(rc);
+  }
+  else
+  {
+#ifndef _WIN32
+    p_fd.fd= vio->sd;
+    p_fd.events= (is_read) ? POLLIN : POLLOUT;
+
+    do {
+      rc= poll(&p_fd, 1, timeout);
+    } while (rc == -1 || errno == EINTR);
+
+    if (rc == 0)
+      errno= ETIMEDOUT;
+#else
+    FD_ZERO(&fds);
+    FD_ZERO(&exc_fds);
+
+    FD_SET(vio->sd, &fds);
+    FD_SET(vio->sd, &exc_fds);
+
+    if (timeout >= 0)
+    {
+      tv.tv_sec= timeout / 1000;
+      tv.tv_usec= (timeout % 1000) * 1000;
+    }
+
+    rc= select(0, (is_read) ? &fds : NULL,
+                  (is_read) ? NULL : &fds,
+                  &exc_fds, 
+                  (timeout >= 0) ? &tv : NULL);
+    if (rc == SOCKET_ERROR)
+      errno= WSAGetLastError();
+    if (rc == 0)
+      errno= ETIMEDOUT;
+#endif
+  }
+  return rc;
+}
+
+
 size_t vio_real_read(Vio *vio, gptr buf, size_t size)
 {
+  size_t r;
+
   switch(vio->type) {
 #ifdef HAVE_OPENSSL
   case VIO_TYPE_SSL:
@@ -216,13 +296,56 @@ size_t vio_real_read(Vio *vio, gptr buf, size_t size)
     break;
 #endif
   default:
-    return recv(vio->sd, buf,
-#ifdef _WIN32
-           (int)
-#endif 
-                size, 0);
+    if (vio->async_context && vio->async_context->active)
+      r= my_recv_async(vio->async_context,
+                       vio->sd,
+                       buf, size, vio->read_timeout);
+    else
+    {
+      if (vio->async_context)
+      {
+        /*
+          If switching from non-blocking to blocking API usage, set the socket
+          back to blocking mode.
+        */
+        my_bool old_mode;
+        vio_blocking(vio, TRUE, &old_mode);
+      }
+#ifndef _WIN32
+      do {
+        r= read(vio->sd, buf, size);
+      } while (r == -1 && errno == EINTR);
+
+      while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)
+                      && vio->read_timeout > 0)
+      {
+        if (vio_wait_or_timeout(vio, TRUE, vio->write_timeout) < 1)
+          return 0;
+        do {
+          r= read(vio->sd, buf, size);
+        } while (r == -1 && errno == EINTR);
+      }
+#else
+      {
+        WSABUF wsaData;
+        DWORD dwBytes = 0;
+        DWORD flags = 0;
+
+        wsaData.len= size;
+        wsaData.buf= buf;
+
+        if (WSARecv(vio->sd, &wsaData, 1, &dwBytes, &flags, NULL, NULL) == SOCKET_ERROR)
+        {
+          errno= WSAGetLastError();
+          return 0;
+        }
+        r= (size_t)dwBytes;
+      }
+#endif
+    }
     break;
   }
+  return r;
 }
 
 
@@ -283,7 +406,7 @@ my_bool vio_read_peek(Vio *vio, size_t *bytes)
   char buffer[1024];
   ssize_t length;
 
-  vio_blocking(vio, 0);
+  vio_blocking(vio, 0, 0);
   length= recv(vio->sd, &buffer, sizeof(buffer), MSG_PEEK);
   if (length < 0)
     return TRUE;
@@ -305,23 +428,60 @@ size_t vio_write(Vio * vio, const gptr buf, size_t size)
     DBUG_RETURN(r); 
   }
 #endif
-#if defined( _WIN32) || defined(OS2)
+#ifdef _WIN32
   if ( vio->type == VIO_TYPE_NAMEDPIPE)
   {
     DWORD length;
-#ifdef OS2
-    if (!DosWrite((HFILE)vio->hPipe, (char*) buf, size, &length))
-      DBUG_RETURN(-1);
-#else
     if (!WriteFile(vio->hPipe, (char*) buf, (DWORD)size, &length, NULL))
       DBUG_RETURN(-1);
-#endif
     DBUG_RETURN(length);
   }
-  r = send(vio->sd, buf, (int)size,0);
+#endif
+  if (vio->async_context && vio->async_context->active)
+    r= my_send_async(vio->async_context, vio->sd, buf, size,
+                     vio->write_timeout);
+  else
+  {
+    if (vio->async_context)
+    {
+      /*
+        If switching from non-blocking to blocking API usage, set the socket
+        back to blocking mode.
+      */
+      my_bool old_mode;
+      vio_blocking(vio, TRUE, &old_mode);
+    }
+#ifndef _WIN32
+    do {
+      r= send(vio->sd, buf, size, vio->write_timeout ? MSG_DONTWAIT : MSG_WAITALL);
+    } while (r == -1 && errno == EINTR);
+
+    while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) &&
+           vio->write_timeout > 0)
+    {
+      if (vio_wait_or_timeout(vio, FALSE, vio->write_timeout) < 1)
+        return 0;
+      do {
+        r= send(vio->sd, buf, size, vio->write_timeout ? MSG_DONTWAIT : MSG_WAITALL);
+      } while (r == -1 && errno == EINTR);
+    }
 #else
-  r = write(vio->sd, buf, size);
-#endif /* _WIN32 */
+    {
+      WSABUF wsaData;
+      DWORD dwBytes = 0;
+
+      wsaData.len= size;
+      wsaData.buf= (char *)buf;
+
+      if (WSASend(vio->sd, &wsaData, 1, &dwBytes, 0, NULL, NULL) == SOCKET_ERROR)
+      {
+        errno= WSAGetLastError();
+        DBUG_RETURN(0);
+      }
+      r= (size_t)dwBytes;
+    }
+#endif
+  }
 #ifndef DBUG_OFF
   if ((size_t)r == -1)
   {
@@ -333,48 +493,50 @@ size_t vio_write(Vio * vio, const gptr buf, size_t size)
 }
 
 
-int vio_blocking(Vio * vio, my_bool set_blocking_mode)
+int vio_blocking(Vio *vio, my_bool block, my_bool *previous_mode)
 {
-  int r=0;
-  DBUG_ENTER("vio_blocking");
-  DBUG_PRINT("enter", ("set_blocking_mode: %d", (int) set_blocking_mode));
+  int *sd_flags= &vio->fcntl_mode;
+  int save_flags= vio->fcntl_mode;
+  my_bool tmp;
+  my_socket sock= vio->sd;
 
-#if !defined(__WIN32) && !defined(__EMX__) && !defined(OS2)
-#if !defined(NO_FCNTL_NONBLOCK)
+  if (vio->type == VIO_TYPE_NAMEDPIPE)
+    return 0;
 
-  if (vio->sd >= 0)
+  if (!previous_mode)
+    previous_mode= &tmp;
+
+#ifdef _WIN32
+  *previous_mode= (*sd_flags & O_NONBLOCK) != 0;
+  *sd_flags = (block) ? *sd_flags & ~O_NONBLOCK : *sd_flags | O_NONBLOCK;
   {
-    int old_fcntl=vio->fcntl_mode;
-    if (set_blocking_mode)
-      vio->fcntl_mode &= ~O_NONBLOCK; /* clear bit */
-    else
-      vio->fcntl_mode |= O_NONBLOCK; /* set bit */
-    if (old_fcntl != vio->fcntl_mode)
-      r = fcntl(vio->sd, F_SETFL, vio->fcntl_mode);
+    ulong arg= 1 - block;
+    if (ioctlsocket(sock, FIONBIO, (void *)&arg))
+    {
+      vio->fcntl_mode= save_flags;
+      return(WSAGetLastError());
+    }
   }
-#endif /* !defined(NO_FCNTL_NONBLOCK) */
-#else /* !defined(_WIN32) && !defined(__EMX__) */
-#ifndef __EMX__
-  if (vio->type != VIO_TYPE_NAMEDPIPE)  
+#else
+#if defined(O_NONBLOCK)
+  *previous_mode= (*sd_flags & O_NONBLOCK) != 0;
+  *sd_flags = (block) ? *sd_flags & ~O_NONBLOCK : *sd_flags | O_NONBLOCK;
+#elif defined(O_NDELAY)
+  *previous_mode= (*sd_flags & O_NODELAY) != 0;
+  *sd_flags = (block) ? *sd_flags & ~O_NODELAY : *sd_flags | O_NODELAY;
+#elif defined(FNDELAY)
+  *previous_mode= (*sd_flags & O_FNDELAY) != 0;
+  *sd_flags = (block) ? *sd_flags & ~O_FNDELAY : *sd_flags | O_FNDELAY;
+#else
+#error socket blocking is not supported on this platform
 #endif
-  { 
-    ulong arg;
-    int old_fcntl=vio->fcntl_mode;
-    if (set_blocking_mode)
-    {
-      arg = 0;
-      vio->fcntl_mode &= ~O_NONBLOCK; /* clear bit */
-    }
-    else
-    {
-      arg = 1;
-      vio->fcntl_mode |= O_NONBLOCK; /* set bit */
-    }
-    if (old_fcntl != vio->fcntl_mode)
-      r = ioctlsocket(vio->sd,FIONBIO,(void*) &arg);
+  if (fcntl(sock, F_SETFL, *sd_flags) == -1)
+  {
+    vio->fcntl_mode= save_flags;
+    return errno;
   }
-#endif /* !defined(_WIN32) && !defined(__EMX__) */
-  DBUG_RETURN(r);
+#endif
+  return 0;
 }
 
 my_bool
@@ -527,7 +689,7 @@ void vio_in_addr(Vio *vio, struct in_addr *in)
 
 
 /* Return 0 if there is data to be read */
-
+/*
 my_bool vio_poll_read(Vio *vio,uint timeout)
 {
 #ifndef HAVE_POLL
@@ -541,10 +703,11 @@ my_bool vio_poll_read(Vio *vio,uint timeout)
   fds.revents=0;
   if ((res=poll(&fds,1,(int) timeout*1000)) <= 0)
   {
-    DBUG_RETURN(res < 0 ? 0 : 1); /* Don't return 1 on errors */
+    DBUG_RETURN(res < 0 ? 0 : 1); 
   }
   DBUG_RETURN(fds.revents & POLLIN ? 0 : 1);
 #endif
 }
+*/
 
 #endif /* HAVE_VIO */

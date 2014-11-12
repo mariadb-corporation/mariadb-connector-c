@@ -142,7 +142,7 @@ static int test_conc70(MYSQL *my)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE t1 (a LONGBLOB)");
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a LONGBLOB) engine=MyISAM");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (REPEAT('A', 1024 * 1024 * 20))");
@@ -188,7 +188,7 @@ static int test_conc68(MYSQL *my)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE t1 (a LONGBLOB)");
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a LONGBLOB) ENGINE=MyISAM");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (REPEAT('A', 1024 * 1024 * 20))");

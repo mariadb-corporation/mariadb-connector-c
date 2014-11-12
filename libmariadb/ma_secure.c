@@ -25,6 +25,8 @@
 #include <ma_secure.h>
 #include <errmsg.h>
 #include <violite.h>
+#include <mysql_async.h>
+#include <my_context.h>
 
 static my_bool my_ssl_initialized= FALSE;
 static SSL_CTX *SSL_context= NULL;
@@ -395,7 +397,7 @@ int my_ssl_connect(SSL *ssl)
 
   /* Set socket to blocking if not already set */
   if (!(blocking= vio_is_blocking(mysql->net.vio)))
-    vio_blocking(mysql->net.vio, TRUE);
+    vio_blocking(mysql->net.vio, TRUE, 0);
 
   SSL_clear(ssl);
   SSL_SESSION_set_timeout(SSL_get_session(ssl),
@@ -407,7 +409,7 @@ int my_ssl_connect(SSL *ssl)
     my_SSL_error(mysql);
     /* restore blocking mode */
     if (!blocking)
-      vio_blocking(mysql->net.vio, FALSE);
+      vio_blocking(mysql->net.vio, FALSE, 0);
     DBUG_RETURN(1);
   }
 
@@ -489,8 +491,11 @@ size_t my_ssl_write(Vio *vio, const uchar* buf, size_t size)
 {
   size_t written;
   DBUG_ENTER("my_ssl_write");
-
-  written= SSL_write((SSL*) vio->ssl, buf, size);
+  if (vio->async_context && vio->async_context->active)
+    written= my_ssl_write_async(vio->async_context, (SSL *)vio->ssl, buf,
+                            size);
+  else
+    written= SSL_write((SSL*) vio->ssl, buf, size);
   DBUG_RETURN(written);
 }
 
@@ -511,7 +516,10 @@ size_t my_ssl_read(Vio *vio, uchar* buf, size_t size)
   size_t read;
   DBUG_ENTER("my_ssl_read");
 
-  read= SSL_read((SSL*) vio->ssl, buf, size);
+  if (vio->async_context && vio->async_context->active)
+    read= my_ssl_read_async(vio->async_context, (SSL *)vio->ssl, buf, size);
+  else
+    read= SSL_read((SSL*) vio->ssl, buf, size);
   DBUG_RETURN(read);
 }
 

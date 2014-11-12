@@ -79,7 +79,7 @@ wait_for_mysql(MYSQL *mysql, int status)
 #else
   struct pollfd pfd;
   int timeout;
-  int res;
+  int res= -1;
 
   pfd.fd= mysql_get_socket(mysql);
   pfd.events=
@@ -87,10 +87,12 @@ wait_for_mysql(MYSQL *mysql, int status)
     (status & MYSQL_WAIT_WRITE ? POLLOUT : 0) |
     (status & MYSQL_WAIT_EXCEPT ? POLLPRI : 0);
   if (status & MYSQL_WAIT_TIMEOUT)
-    timeout= 1000*mysql_get_timeout_value(mysql);
+    timeout= mysql_get_timeout_value_ms(mysql);
   else
     timeout= -1;
-  res= poll(&pfd, 1, timeout);
+  do {
+    res= poll(&pfd, 1, timeout);
+  } while (res == -1 && errno == EINTR);
   if (res == 0)
     return MYSQL_WAIT_TIMEOUT;
   else if (res < 0)
@@ -121,60 +123,70 @@ static int async1(MYSQL *my)
   MYSQL_RES *res;
   MYSQL_ROW row;
   int status;
+  uint default_timeout;
+  int i;
 
-  mysql_init(&mysql);
-  mysql_options(&mysql, MYSQL_OPT_NONBLOCK, 0);
-  mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp");
-
-  /* Returns 0 when done, else flag for what to wait for when need to block. */
-  status= mysql_real_connect_start(&ret, &mysql, hostname, username, password, NULL,
-                                   0, NULL, 0);
-  while (status)
+  for (i=0; i < 100; i++)
   {
-    status= wait_for_mysql(&mysql, status);
-    status= mysql_real_connect_cont(&ret, &mysql, status);
-  }
 
-  FAIL_IF(!ret, "Failed to mysql_real_connect()");
+    mysql_init(&mysql);
+    mysql_options(&mysql, MYSQL_OPT_NONBLOCK, 0);
 
-  status= mysql_real_query_start(&err, &mysql, SL("SHOW STATUS"));
-  while (status)
-  {
-    status= wait_for_mysql(&mysql, status);
-    status= mysql_real_query_cont(&err, &mysql, status);
-  }
-  FAIL_IF(err, "mysql_real_query() returns error");
+    /* set timeouts to 300 microseconds */
+    default_timeout= 300;
+    mysql_options(&mysql, MYSQL_OPT_READ_TIMEOUT, &default_timeout);
+    mysql_options(&mysql, MYSQL_OPT_CONNECT_TIMEOUT, &default_timeout);
+    mysql_options(&mysql, MYSQL_OPT_WRITE_TIMEOUT, &default_timeout);
+    mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp");
 
-  /* This method cannot block. */
-  res= mysql_use_result(&mysql);
-  FAIL_IF(!res, "mysql_use_result() returns error");
-
-  for (;;)
-  {
-    status= mysql_fetch_row_start(&row, res);
+    /* Returns 0 when done, else flag for what to wait for when need to block. */
+    status= mysql_real_connect_start(&ret, &mysql, hostname, username, password, NULL,
+                                     0, NULL, 0);
     while (status)
     {
       status= wait_for_mysql(&mysql, status);
-      status= mysql_fetch_row_cont(&row, res, status);
+      status= mysql_real_connect_cont(&ret, &mysql, status);
     }
-    if (!row)
-      break;
-    diag("%s: %s", row[0], row[1]);
-  }
-  FAIL_IF(mysql_errno(&mysql), "Got error while retrieving rows");
-  mysql_free_result(res);
+    FAIL_IF(!ret, "Failed to mysql_real_connect()");
 
-  /*
-    mysql_close() sends a COM_QUIT packet, and so in principle could block
-    waiting for the socket to accept the data.
-    In practise, for many applications it will probably be fine to use the
-    blocking mysql_close().
-   */
-  status= mysql_close_start(&mysql);
-  while (status)
-  {
-    status= wait_for_mysql(&mysql, status);
-    status= mysql_close_cont(&mysql, status);
+    status= mysql_real_query_start(&err, &mysql, SL("SHOW STATUS"));
+    while (status)
+    {
+      status= wait_for_mysql(&mysql, status);
+      status= mysql_real_query_cont(&err, &mysql, status);
+    }
+    FAIL_IF(err, "mysql_real_query() returns error");
+
+    /* This method cannot block. */
+    res= mysql_use_result(&mysql);
+    FAIL_IF(!res, "mysql_use_result() returns error");
+
+    for (;;)
+    {
+      status= mysql_fetch_row_start(&row, res);
+      while (status)
+      {
+        status= wait_for_mysql(&mysql, status);
+        status= mysql_fetch_row_cont(&row, res, status);
+      }
+      if (!row)
+        break;
+    }
+    FAIL_IF(mysql_errno(&mysql), "Got error while retrieving rows");
+    mysql_free_result(res);
+
+    /*
+      mysql_close() sends a COM_QUIT packet, and so in principle could block
+      waiting for the socket to accept the data.
+      In practise, for many applications it will probably be fine to use the
+      blocking mysql_close().
+     */
+    status= mysql_close_start(&mysql);
+    while (status)
+    {
+      status= wait_for_mysql(&mysql, status);
+      status= mysql_close_cont(&mysql, status);
+    }
   }
   return OK;
 }

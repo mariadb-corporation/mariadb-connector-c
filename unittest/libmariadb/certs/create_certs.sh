@@ -12,6 +12,4 @@ openssl req -x509 -newkey rsa:1024 \
 openssl rsa -in client-key-enc.pem -out client-key.pem \
 -passin pass:qwerty -passout pass:
 
-cat server-cert.pem client-cert.pem > ca.pem
-
-cat client-key.pem client-cert.pem ca.pem > combined.pem
+cat server-cert.pem client-cert.pem > ca-cert.pem

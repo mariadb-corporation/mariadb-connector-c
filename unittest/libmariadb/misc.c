@@ -922,6 +922,14 @@ static int test_connect_attrs(MYSQL *my)
   }
 
   result= mysql_store_result(my);
+  /* MariaDB Connector/C already sent connection attrs after handshake. So if the table is
+     empty, it indicates that the performance schema is disabled */
+  if (!mysql_num_rows(result))
+  {
+    diag("skip: performance_schema not enabled");
+    mysql_free_result(result);
+    return SKIP;
+  }
   mysql_free_result(result);
 
   mysql= mysql_init(NULL);
