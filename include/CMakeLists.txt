@@ -2,7 +2,6 @@ SET(MARIADB_CLIENT_INCLUDES config-win.h
                             dbug.h
                             errmsg.h
                             getopt.h
-                            global.h
                             hash.h
                             ma_common.h
                             m_ctype.h

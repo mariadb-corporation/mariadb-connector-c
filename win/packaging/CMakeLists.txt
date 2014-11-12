@@ -2,8 +2,9 @@ SET(CLIENT_LIB_DIR ${CMAKE_BINARY_DIR}/libmariadb/${CMAKE_BUILD_TYPE})
 SET(CLIENT_DBG_DIR ${CMAKE_BINARY_DIR}/libmariadb/Debug)
 SET(CLIENT_INC_DIR ${CMAKE_SOURCE_DIR}/include)
 
-SET(PRODUCT_NAME "MariaDB C Client Library")
-SET(PRODUCT_MANUFACTURER "MariaDB")
+SET(PRODUCT_NAME "MariaDB Connectorr/C")
+SET(PRODUCT_INSTALL_DIR "MariaDB")
+SET(PRODUCT_MANUFACTURER "MariaDB Corporation")
 SET(PRODUCT_VERSION "${CPACK_PACKAGE_VERSION}")
 
 MESSAGE(STATUS "sizeof ${CMAKE_SIZEOF_VOID_P}")
@@ -48,9 +49,9 @@ IF(NOT WIX_DIR)
   SET(WIX_DIR $ENV{WIX}/bin)
 ENDIF()
 
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/packaging/mariadb-native-client.xml.in
-  ${CMAKE_BINARY_DIR}/win/packaging/mariadb-native-client.xml)
-SET(MSI_PACKAGE "mariadb-native-client-${PRODUCT_VERSION}-${PLATFORM}.msi")
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
+  ${CMAKE_BINARY_DIR}/win/packaging/mariadb-connector-c.xml)
+SET(MSI_PACKAGE "mariadb-connector-c-${PRODUCT_VERSION}-${PLATFORM}.msi")
 
 IF(WITH_SIGNCODE)
   ADD_CUSTOM_TARGET(SIGNMSI
@@ -62,12 +63,13 @@ ENDIF()
 
 ADD_CUSTOM_TARGET(
         ${MSI_PACKAGE}
-        DEPENDS mariadb-native-client.wixobj
-        COMMAND ${WIX_DIR}/light.exe -ext WixUIExtension mariadb-native-client.wixobj -o ${MSI_PACKAGE})
+        DEPENDS WIXOBJ
+#mariadb-connector-c.wixobj
+        COMMAND ${WIX_DIR}/light.exe -ext WixUIExtension mariadb-connector-c.wixobj -o ${MSI_PACKAGE})
 
 ADD_CUSTOM_TARGET(WIXOBJ
-        DEPENDS mariadb-native-client.xml
-        COMMAND ${WIX_DIR}/candle.exe mariadb-native-client.xml -o mariadb-native-client.wixobj)
+        DEPENDS mariadb-connector-c.xml
+        COMMAND ${WIX_DIR}/candle.exe mariadb-connector-c.xml -o mariadb-connector-c.wixobj)
 
 SET_TARGET_PROPERTIES(${MSI_PACKAGE} PROPERTIES EXCLUDE_FROM_ALL OFF)
 SET_TARGET_PROPERTIES(${WIXOBJ} PROPERTIES EXCLUDE_FROM_ALL OFF)
