@@ -69,6 +69,7 @@
 #include <poll.h>
 #endif
 #include <ma_dyncol.h>
+#include <mysql_async.h>
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
 
