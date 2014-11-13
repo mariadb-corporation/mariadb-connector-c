@@ -138,7 +138,7 @@ typedef char *(*mysql_authentication_dialog_ask_t)(struct st_mysql *mysql,
   @retval
   a pointer to the loaded plugin, or NULL in case of a failure
 */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_load_plugin(struct st_mysql *mysql, const char *name, int type,
                   int argc, ...);
 
@@ -159,7 +159,7 @@ mysql_load_plugin(struct st_mysql *mysql, const char *name, int type,
   @retval
   a pointer to the loaded plugin, or NULL in case of a failure
 */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_load_plugin_v(struct st_mysql *mysql, const char *name, int type,
                     int argc, va_list args);
 
@@ -174,7 +174,7 @@ mysql_load_plugin_v(struct st_mysql *mysql, const char *name, int type,
   @retval
   a pointer to the plugin, or NULL in case of a failure
 */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_client_find_plugin(struct st_mysql *mysql, const char *name, int type);
 
 /**
@@ -191,7 +191,7 @@ mysql_client_find_plugin(struct st_mysql *mysql, const char *name, int type);
   @retval
   a pointer to the plugin, or NULL in case of a failure
 */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_client_register_plugin(struct st_mysql *mysql,
                              struct st_mysql_client_plugin *plugin);
 

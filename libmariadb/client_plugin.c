@@ -306,7 +306,7 @@ void mysql_client_plugin_deinit()
 /************* public facing functions, for client consumption *********/
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_client_register_plugin(MYSQL *mysql,
                              struct st_mysql_client_plugin *plugin)
 {
@@ -335,7 +335,7 @@ mysql_client_register_plugin(MYSQL *mysql,
 
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
                     int argc, va_list args)
 {
@@ -423,7 +423,7 @@ err:
 
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_load_plugin(MYSQL *mysql, const char *name, int type, int argc, ...)
 {
   struct st_mysql_client_plugin *p;
@@ -436,7 +436,7 @@ mysql_load_plugin(MYSQL *mysql, const char *name, int type, int argc, ...)
 
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin *
+struct st_mysql_client_plugin * STDCALL
 mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
 {
   struct st_mysql_client_plugin *p;

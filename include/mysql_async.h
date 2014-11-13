@@ -18,10 +18,6 @@
 #ifndef MYSQL_ASYNC_H
 #define MYSQL_ASYNC_H
 
-#ifdef _WIN32
-typedef SSIZE_T ssize_t;
-#endif
-
 extern int my_connect_async(struct mysql_async_context *b, my_socket fd,
                             const struct sockaddr *name, uint namelen,
                             int vio_timeout);
