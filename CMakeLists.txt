@@ -2,7 +2,7 @@
 
 
 # This is the LGPL libmariadb project.
-PROJECT(mariadb-client C)
+PROJECT(mariadb-connector-c C)
 
 SET(CPACK_PACKAGE_VERSION_MAJOR 2)
 SET(CPACK_PACKAGE_VERSION_MINOR 1)

@@ -29,8 +29,8 @@
 	<Fragment>
 		<Directory Id="TARGETDIR" Name="SourceDir">
 			<Directory Id="@FOLDER@">
-        <Directory Id="Mariadb" Name="@PRODUCT_NAME@">
-          <Directory Id="INSTALLFOLDER" Name="@PRODUCT_INSTALL_DIR@" >
+        <Directory Id="Mariadb" Name="@PRODUCT_INSTALL_DIR@">
+          <Directory Id="INSTALLFOLDER" Name="@PRODUCT_NAME@" >
             <Directory Id="instlib" Name="lib">
               <Directory Id="instlib_debug" Name="debug"/>
             </Directory>
