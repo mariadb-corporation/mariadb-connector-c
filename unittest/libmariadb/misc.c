@@ -24,7 +24,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "ma_common.h"
 
-
+#include <mysql/client_plugin.h>
 
 
 /*
@@ -971,7 +971,19 @@ static int test_connect_attrs(MYSQL *my)
   return OK;
 }
 
+static int test_conc_114(MYSQL *mysql)
+{
+  if (mysql_client_find_plugin(mysql, "foo", 0))
+  {
+    diag("Null pointer expected");
+    return FAIL;
+  }
+  diag("Error: %s", mysql_error(mysql));
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc49", test_conc49, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28075", test_bug28075, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
