@@ -1,3 +1,5 @@
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include)
+
 # Dialog plugin
 SET(DIALOG_SOURCES dialog.c ${CMAKE_SOURCE_DIR}/libmariadb/get_password.c)
 IF(WIN32)
