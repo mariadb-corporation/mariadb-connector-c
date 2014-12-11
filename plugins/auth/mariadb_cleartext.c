@@ -47,7 +47,8 @@ static int clear_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (!vio || !mysql || !mysql->passwd)
     return CR_ERROR;
 
-  return vio->write_packet(vio, (const unsigned char *) mysql->passwd, strlen(mysql->passwd)) ?
+  /* write password including terminating zero character */
+  return vio->write_packet(vio, (const unsigned char *) mysql->passwd, strlen(mysql->passwd) + 1) ?
          CR_ERROR : CR_OK;
 }
 /* }}} */
