@@ -33,6 +33,7 @@
           <Directory Id="INSTALLFOLDER" Name="@PRODUCT_NAME@" >
             <Directory Id="instlib" Name="lib">
               <Directory Id="instlib_debug" Name="debug"/>
+              <Directory Id="instlib_plugin" Name="plugin"/>
             </Directory>
             <Directory Id="instinclude" Name="include" />
           </Directory>  
@@ -57,6 +58,9 @@
         <File Id="dlibdll" Name="libmariadb.dll"  DiskId="1"  Source="@CLIENT_DBG_DIR@/libmariadb.dll" />
         <File Id="dlibdllimp" Name="libmariadb.lib"  DiskId="1"  Source="@CLIENT_DBG_DIR@/libmariadb.lib" />
         <File Id="dlibstatic" Name="mariadbclient.lib"  DiskId="1"  Source="@CLIENT_DBG_DIR@/mariadbclient.lib" />
+      </Component>
+      <Component Id="Plugins" Guid="" KeyPath="yes" DiskId="1" Directory="instlib_plugin" Win64="@IS_WIN64@">
+        @MARIADB_PLUGINS@
       </Component>
       <Component Id="Debug" Guid="FFAFCCCC-4E0C-4A87-840C-53B63C8A427A" KeyPath="yes" Directory="instlib" DiskId="1" Win64="@IS_WIN64@">
         <File Id="libdllpdb" Name="libmariadb.pdb"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.pdb" />

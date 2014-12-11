@@ -8,6 +8,7 @@
                 "@extra_dynamic_LDFLAGS@"
 #define CFLAGS  INCLUDE " @CMAKE_C_FLAGS@"
 #define VERSION "@MYSQL_CLIENT_VERSION@"
+#define PLUGIN_DIR "@PREFIX_INSTALL_DIR@/@PLUGIN_INSTALL_DIR@"
 #define SOCKET  "@MYSQL_UNIX_ADDR@"
 #define PORT "@MYSQL_PORT@"
 
@@ -21,6 +22,7 @@ static struct option long_options[]=
   {"version", no_argument, 0, 'f'},
   {"socket", no_argument, 0, 'g'},
   {"port", no_argument, 0, 'h'},
+  {"plugindir", no_argument, 0, 'p'},
   {NULL, 0, 0, 0}
 };
 
@@ -33,7 +35,8 @@ static char *values[]=
   LIBS,
   VERSION,
   SOCKET,
-  PORT
+  PORT,
+  PLUGIN_DIR
 };
   
 void usage(void)
@@ -89,6 +92,9 @@ int main(int argc, char **argv)
       break;
     case 'h':
       puts(PORT);
+      break;
+    case 'p':
+      puts(PLUGINDIR);
       break;
     default:
       exit(0);

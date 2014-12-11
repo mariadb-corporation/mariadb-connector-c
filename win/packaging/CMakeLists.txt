@@ -38,7 +38,12 @@ IF (WITH_SIGNCODE)
     COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/libmariadb.lib)
   EXECUTE_PROCESS(
     COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/mariadbclient.lib)
+  EXECUTE_PROCESS(
+    COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll)
 ENDIF()
+
+SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"dialog.dll\" Name=\"dialog.dll\" DiskId=\"1\" Source=\"${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll\"/>\n")
+
 
 FOREACH(src ${MARIADB_CLIENT_INCLUDES})
   STRING(REPLACE "-" "_" src_id ${src})

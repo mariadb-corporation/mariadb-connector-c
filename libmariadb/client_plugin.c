@@ -346,6 +346,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   char dlpath[FN_REFLEN+1];
   void *sym, *dlhandle;
   struct st_mysql_client_plugin *plugin;
+  char *env_plugin_dir= getenv("MARIADB_PLUGIN_DIR");
 
   if (is_not_initialized(mysql, name))
     return NULL;
@@ -362,7 +363,8 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   /* Compile dll path */
   strxnmov(dlpath, sizeof(dlpath) - 1,
            mysql->options.extension && mysql->options.extension->plugin_dir ?
-           mysql->options.extension->plugin_dir : PLUGINDIR, "/",
+           mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
+           PLUGINDIR, "/",
            name, SO_EXT, NullS);
    
   /* Open new dll handle */

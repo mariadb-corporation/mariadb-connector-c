@@ -173,8 +173,9 @@ enum enum_server_command
                                  CLIENT_MULTI_STATEMENTS |\
                                  CLIENT_MULTI_RESULTS |\
                                  CLIENT_PROGRESS |\
-		                             CLIENT_SSL_VERIFY_SERVER_CERT |\
+		                 CLIENT_SSL_VERIFY_SERVER_CERT |\
                                  CLIENT_REMEMBER_OPTIONS |\
+                                 CLIENT_PLUGIN_AUTH |\
                                  CLIENT_CONNECT_ATTRS)
 
 #define CLIENT_CAPABILITIES	(CLIENT_LONG_PASSWORD |\
@@ -384,7 +385,6 @@ char *scramble_323(char *to,const char *message,const char *password);
 void my_scramble_41(const unsigned char *buffer, const char *scramble, const char *password);
 my_bool check_scramble(const char *, const char *message,
 		       unsigned long *salt,my_bool old_ver);
-char *get_tty_password(char *opt_message);
 void hash_password(unsigned long *result, const char *password, size_t len);
 
 /* Some other useful functions */
