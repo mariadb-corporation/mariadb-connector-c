@@ -3,32 +3,33 @@
   <Product Id="*" Name="@PRODUCT_NAME@" Language="1033" 
     Version="@PRODUCT_VERSION@"
     Manufacturer="@PRODUCT_MANUFACTURER@" UpgradeCode="@PRODUCT_UPGRADE_CODE@">
-		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="@WIXPLATFORM@"/>
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="@WIXPLATFORM@"/>
 
-		<MajorUpgrade DowngradeErrorMessage="A newer version of @PRODUCT_NAME@ is already installed." />
-		<MediaTemplate EmbedCab="yes" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of @PRODUCT_NAME@ is already installed." />
+    <MediaTemplate EmbedCab="yes" />
 
     <UIRef Id="WixUI_Mondo" />
     <WixVariable Id="WixUILicenseRtf" Value="@CMAKE_SOURCE_DIR@/win/packaging/license.rtf" />
     <WixVariable Id="WixUIBannerBmp" Value="@CMAKE_SOURCE_DIR@/win/packaging/WixUIBannerBmp.jpg" />
     <WixVariable Id="WixUIDialogBmp" Value="@CMAKE_SOURCE_DIR@/win/packaging/WixUIDialogBmp.jpg" />
 
-		<Feature Id="ProductFeature" Title="@PRODUCT_NAME@ @PRODUCT_VERSION@" Level="1">
-			<ComponentRef Id="RegistryKeys" />
+    <Feature Id="ProductFeature" Title="@PRODUCT_NAME@ @PRODUCT_VERSION@" Level="1">
+      <ComponentRef Id="RegistryKeys" />
       <ComponentRef Id="Library"/>
-        <ComponentRef Id="DebugLibrary" />
+      <ComponentRef Id="Plugins"/>
+      <ComponentRef Id="DebugLibrary" />
       <Feature Id="DebugFeature" Title="Debug Information" Level="2">
         <ComponentRef Id="Debug" />
       </Feature>
-		</Feature>
+    </Feature>
     <Feature Id="IncludeFeature" Title="Include Files" Level="1">
       <ComponentRef Id="Includes"/>
-		</Feature>
-	</Product>
+    </Feature>
+  </Product>
 
-	<Fragment>
-		<Directory Id="TARGETDIR" Name="SourceDir">
-			<Directory Id="@FOLDER@">
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="@FOLDER@">
         <Directory Id="Mariadb" Name="@PRODUCT_INSTALL_DIR@">
           <Directory Id="INSTALLFOLDER" Name="@PRODUCT_NAME@" >
             <Directory Id="instlib" Name="lib">
@@ -38,16 +39,16 @@
             <Directory Id="instinclude" Name="include" />
           </Directory>  
         </Directory>
-			</Directory>
-		</Directory>
-	</Fragment>
+      </Directory>
+    </Directory>
+  </Fragment>
 
   <Fragment>
-		<!--<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">-->
+    <!--<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">-->
       <Component Id="RegistryKeys" Guid="755726EA-9706-413D-86B3-E70582FF2819" DiskId="1" Directory="INSTALLFOLDER" Win64="@IS_WIN64@">
         <RegistryKey Id="Version" Root="HKLM" Key="SOFTWARE\@PRODUCT_MANUFACTURER@\@PRODUCT_NAME@" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
-            <RegistryValue Name="Version" Type="string" Value="@PRODUCT_VERSION@"/>
-          </RegistryKey>
+          <RegistryValue Name="Version" Type="string" Value="@PRODUCT_VERSION@"/>
+        </RegistryKey>
       </Component>
       <Component Id="Library" Guid="89E28283-23AE-4F10-B743-B5FA485E9F9A" KeyPath="yes" DiskId="1" Directory="instlib" Win64="@IS_WIN64@">
         <File Id="libdll" Name="libmariadb.dll"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.dll" />
@@ -67,8 +68,8 @@
         <File Id="libstaticpdb" Name="mariadbclient.pdb"  DiskId="1"  Source="@CLIENT_LIB_DIR@/mariadbclient.pdb" />
       </Component>
       <Component Id="Includes" Guid="5CFB93CC-FC30-4E13-B665-E52690AB56E3" KeyPath="yes" Directory="instinclude" DiskId="1" Win64="@IS_WIN64@">
-@MARIADB_INCLUDE_FILES@
+        @MARIADB_INCLUDE_FILES@
       </Component>
-	<!--	</ComponentGroup> -->
-	</Fragment>
+      <!--	</ComponentGroup> -->
+  </Fragment>
 </Wix>
