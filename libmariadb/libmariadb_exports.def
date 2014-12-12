@@ -1,5 +1,4 @@
 EXPORTS
- get_tty_password
  load_defaults
  mariadb_connection
  mariadb_convert_string
