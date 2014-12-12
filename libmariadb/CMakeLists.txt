@@ -35,7 +35,6 @@ my_vsnprintf.c
 errors.c
 getopt1.c
 getopt.c 
-get_password.c
 int2str.c
 is_prefix.c
 libmariadb.c
