@@ -40,19 +40,21 @@ IF (WITH_SIGNCODE)
     COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/mariadbclient.lib)
   EXECUTE_PROCESS(
     COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll)
 ENDIF()
 
 SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"dialog.dll\" Name=\"dialog.dll\" DiskId=\"1\" Source=\"${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll\"/>\n")
-SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"mysql_clear_password.dll\" Name=\"mysql_clear_password.dll\" DiskId=\"1\" Source=\"${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll\"/>\n")
 
 
 FOREACH(src ${MARIADB_CLIENT_INCLUDES})
   STRING(REPLACE "-" "_" src_id ${src})
-  STRING(REPLACE "/" "_" src_id ${src_id})
-  SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
+  STRING(REPLACE "mysql/" "" src_id ${src_id})
+  IF(${src} MATCHES "mysql/")
+    SET(MARIADB_INCLUDEMYSQL_FILES "${MARIADB_INCLUDEMYSQL_FILES} <File Id=\"${src_id}\" Name=\"${src_id}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
+  ELSE()
+    SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src_id}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
+  ENDIF()
 ENDFOREACH()
+
 
 IF(NOT WIX_DIR)
   SET(WIX_DIR $ENV{WIX}/bin)
@@ -84,4 +86,5 @@ SET_TARGET_PROPERTIES(${MSI_PACKAGE} PROPERTIES EXCLUDE_FROM_ALL OFF)
 SET_TARGET_PROPERTIES(${WIXOBJ} PROPERTIES EXCLUDE_FROM_ALL OFF)
 ADD_DEPENDENCIES(${MSI_PACKAGE} WIXOBJ)
 ADD_DEPENDENCIES(WIXOBJ libmariadb mariadbclient) 
+
 
