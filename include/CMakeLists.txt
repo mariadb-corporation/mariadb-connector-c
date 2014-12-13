@@ -31,4 +31,7 @@ SET(MARIADB_CLIENT_INCLUDES config-win.h
                             sha1.h
                             thr_alarm.h
                             violite.h
+                            mysql/client_plugin.h
+                            mysql/plugin_auth_common.h
+                            mysql/plugin_auth.h
                             PARENT_SCOPE)
