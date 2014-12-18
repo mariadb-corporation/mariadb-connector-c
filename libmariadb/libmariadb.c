@@ -3112,6 +3112,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       }
     }
     break;
+  case MYSQL_ENABLE_CLEARTEXT_PLUGIN:
+    break;
   case MYSQL_SECURE_AUTH:
     mysql->options.secure_auth= *(my_bool *)arg1;
     break;
