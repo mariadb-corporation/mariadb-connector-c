@@ -18,7 +18,7 @@ INSTALL(TARGETS
 # Dialog plugin
 SET(CTEXT_SOURCES mariadb_cleartext.c)
 IF(WIN32)
-  SET(CTEXT ${CTEXT_SOURCES} ${CMAKE_SOURCE_DIR}/plugins/plugin.def)
+  SET(CTEXT_SOURCES ${CTEXT_SOURCES} ${CMAKE_SOURCE_DIR}/plugins/plugin.def)
 ENDIF()
 ADD_LIBRARY(mysql_clear_password SHARED ${CTEXT_SOURCES})
 SET_TARGET_PROPERTIES(mysql_clear_password PROPERTIES PREFIX "")
