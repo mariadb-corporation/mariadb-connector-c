@@ -982,7 +982,27 @@ static int test_conc_114(MYSQL *mysql)
   return OK;
 }
 
+/* run with valgrind */
+static int test_conc117(MYSQL *mysql)
+{
+  MYSQL *my= mysql_init(NULL);
+  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(my));
+  
+  mysql_kill(my, mysql_thread_id(my));
+  sleep(5);
+
+  strcpy(my->host, "A");
+  my->reconnect= 1;
+
+  mysql_query(my, "SET @a:=1");
+  mysql_close(my);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc49", test_conc49, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
@@ -1002,7 +1022,7 @@ struct my_tests_st my_tests[] = {
   {"test_ldi_path", test_ldi_path, TEST_CONNECTION_NEW, 0, NULL, NULL},
 #ifdef _WIN32
   {"test_conc44", test_conc44, TEST_CONNECTION_NEW, 0, NULL, NULL},
-#endif
+#endif 
   {NULL, NULL, 0, 0, NULL, 0}
 };
 

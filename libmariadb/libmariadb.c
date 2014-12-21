@@ -2030,6 +2030,7 @@ static my_bool mysql_reconnect(MYSQL *mysql)
     my_set_error(mysql, tmp_mysql.net.last_errno, 
                         tmp_mysql.net.sqlstate, 
                         tmp_mysql.net.last_error);
+    mysql_close(&tmp_mysql);
     DBUG_RETURN(1);
   }
 
