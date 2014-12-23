@@ -135,7 +135,7 @@ DWORD WINAPI thread_conc27(void)
   check_mysql_rc(rc, mysql);
   pthread_mutex_unlock(&LOCK_test);
   check_mysql_rc(rc, mysql);
-  if (res= mysql_store_result(mysql))
+  if ((res= mysql_store_result(mysql)))
     mysql_free_result(res);
   mysql_close(mysql);
 end:
