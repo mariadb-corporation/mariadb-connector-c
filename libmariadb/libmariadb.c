@@ -3484,7 +3484,7 @@ ulong STDCALL mysql_hex_string(char *to, const char *from,
                                unsigned long len)
 {
   char *start= to;
-  char hexdigits[]= "012345679ABCDEF";
+  char hexdigits[]= "0123456789ABCDEF";
 
   while (len--)
   {
