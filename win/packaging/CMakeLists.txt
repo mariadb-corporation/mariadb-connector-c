@@ -51,10 +51,11 @@ SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"mysql_clear_password.dll\" Na
 FOREACH(src ${MARIADB_CLIENT_INCLUDES})
   STRING(REPLACE "-" "_" src_id ${src})
   STRING(REPLACE "mysql/" "" src_id ${src_id})
+  STRING(REPLACE "mysql/" "" src_name ${src})
   IF(${src} MATCHES "mysql/")
-    SET(MARIADB_INCLUDEMYSQL_FILES "${MARIADB_INCLUDEMYSQL_FILES} <File Id=\"${src_id}\" Name=\"${src_id}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
+    SET(MARIADB_INCLUDEMYSQL_FILES "${MARIADB_INCLUDEMYSQL_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
   ELSE()
-    SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src_id}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
+    SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
   ENDIF()
 ENDFOREACH()
 
