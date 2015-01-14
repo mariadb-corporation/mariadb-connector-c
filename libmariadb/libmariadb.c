@@ -2022,11 +2022,12 @@ static my_bool mysql_reconnect(MYSQL *mysql)
   }
 
   tmp_mysql.reconnect= mysql->reconnect;
-  bzero((char*) &mysql->options,sizeof(mysql->options));
   if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
 			  mysql->db, mysql->port, mysql->unix_socket,
 			  mysql->client_flag | CLIENT_REMEMBER_OPTIONS))
   {
+    /* don't free options (CONC-118) */
+    memset(&tmp_mysql.options, 0, sizeof(struct st_mysql_options));
     my_set_error(mysql, tmp_mysql.net.last_errno, 
                         tmp_mysql.net.sqlstate, 
                         tmp_mysql.net.last_error);
@@ -2046,14 +2047,16 @@ static my_bool mysql_reconnect(MYSQL *mysql)
       stmt->state= MYSQL_STMT_INITTED;
       SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     }
-    else
-      tmp_mysql.stmts= list_add(tmp_mysql.stmts, &stmt->list);
   }
 
+  tmp_mysql.free_me= mysql->free_me;
+  tmp_mysql.stmts= mysql->stmts;
+
+  /* Don't free options, we moved them to tmp_mysql */
+  memset(&mysql->options, 0, sizeof(mysql->options));
   mysql->free_me=0;
   mysql->stmts= NULL;
   mysql_close(mysql);
-  memset(&mysql->options, 0, sizeof(mysql->options));
   *mysql=tmp_mysql;
   mysql->reconnect= 1;
   net_clear(&mysql->net);

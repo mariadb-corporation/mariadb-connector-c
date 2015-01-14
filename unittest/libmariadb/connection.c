@@ -638,7 +638,39 @@ int test_connection_timeout(MYSQL *my)
   return OK;
 }
 
+/* test should run with valgrind */
+static int test_conc118(MYSQL *mysql)
+{
+  int rc;
+
+  mysql->reconnect= 1;
+  mysql->options.unused_1= 1;
+
+  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  sleep(2);
+
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql->options.unused_1 != 1, "options got lost");
+
+  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  sleep(2);
+
+  mysql->host= "foo";
+
+  rc= mysql_query(mysql, "SET @a:=1");
+  FAIL_IF(!rc, "error expected");
+
+  mysql->host= hostname;
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc118", test_conc118, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc66", test_conc66, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
