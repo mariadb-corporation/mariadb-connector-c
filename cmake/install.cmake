@@ -45,8 +45,8 @@ SET(INSTALL_LAYOUT ${INSTALL_LAYOUT} CACHE
 IF(UNIX)
   IF(INSTALL_LAYOUT MATCHES "RPM")
     SET(libmariadb_prefix "/usr")
-  ELSE()
-    SET(libmariadb_prefix "/usr/local")
+  ELSEIF(INSTALL_LAYOUT MATCHES "DEFAULT")
+    SET(libmariadb_prefix ${CMAKE_INSTALL_PREFIX})
   ENDIF()
 ENDIF()
 
