@@ -17,6 +17,7 @@
   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
  *************************************************************************************/
+unsigned int mariadb_deinitialize_ssl= 1;
 #ifdef HAVE_OPENSSL
 
 #include <my_global.h>
@@ -30,7 +31,6 @@
 
 static my_bool my_ssl_initialized= FALSE;
 static SSL_CTX *SSL_context= NULL;
-uint mariadb_deinitialize_ssl= 1;
 
 #define MAX_SSL_ERR_LEN 100
 
