@@ -2043,7 +2043,6 @@ static my_bool mysql_reconnect(MYSQL *mysql)
 
     if (stmt->state != MYSQL_STMT_INITTED)
     {
-      stmt->mysql= NULL;
       stmt->state= MYSQL_STMT_INITTED;
       SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     }
@@ -2051,6 +2050,7 @@ static my_bool mysql_reconnect(MYSQL *mysql)
 
   tmp_mysql.free_me= mysql->free_me;
   tmp_mysql.stmts= mysql->stmts;
+  mysql->stmts= NULL;
 
   /* Don't free options, we moved them to tmp_mysql */
   memset(&mysql->options, 0, sizeof(mysql->options));
@@ -2245,6 +2245,7 @@ void mysql_close_slow_part(MYSQL *mysql)
 void STDCALL
 mysql_close(MYSQL *mysql)
 {
+   MYSQL_STMT *stmt;
   DBUG_ENTER("mysql_close");
   if (mysql)					/* Some simple safety */
   {
@@ -2257,7 +2258,7 @@ mysql_close(MYSQL *mysql)
        todo: check stmt->mysql in mysql_stmt* functions ! */
     for (;li_stmt;li_stmt= li_stmt->next)
     {
-      MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
+      stmt= (MYSQL_STMT *)li_stmt->data;
       stmt->mysql= NULL;
       SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     }

@@ -27,8 +27,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 static int test_conc97(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   int rc;
+
+  diag("Please run this test manually");
+  return SKIP;
+  stmt= mysql_stmt_init(mysql);
 
   mysql_close(mysql);
 
@@ -43,16 +47,19 @@ static int test_conc97(MYSQL *mysql)
   return OK;
 }
 
-static int test_conc83(MYSQL *mysql)
+static int test_conc83(MYSQL *my)
 {
   MYSQL_STMT *stmt;
   int rc;
+  MYSQL *mysql= mysql_init(NULL);
 
   char *query= "SELECT 1,2,3 FROM DUAL";
 
   stmt= mysql_stmt_init(mysql);
 
   mysql->reconnect= 1;
+  FAIL_IF(!(mysql_real_connect(mysql, hostname, username, password,
+                           schema, port, socketname, 0)), "mysql_real_connect failed");
 
   /* 1. Status is inited, so prepare should work */
 
@@ -4863,7 +4870,7 @@ int test_notrunc(MYSQL *mysql)
 
 struct my_tests_st my_tests[] = {
   {"test_conc97", test_conc97, TEST_CONNECTION_NEW, 0, NULL, NULL},
-  {"test_conc83", test_conc83, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_conc83", test_conc83, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc60", test_conc60, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_notrunc", test_notrunc, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_fracseconds", test_fracseconds, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
