@@ -30,6 +30,7 @@
 
 static my_bool my_ssl_initialized= FALSE;
 static SSL_CTX *SSL_context= NULL;
+uint mariadb_deinitialize_ssl= 1;
 
 #define MAX_SSL_ERR_LEN 100
 
@@ -94,9 +95,20 @@ static void my_cb_locking(int mode, int n, const char *file, int line)
 }
 
 
-static int ssl_thread_init()
+static int ssl_crypto_init()
 {
-  int i, max= CRYPTO_num_locks();
+  int i, rc= 1, max= CRYPTO_num_locks();
+
+#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
+  CRYPTO_set_id_callback(my_cb_threadid);
+#else
+  rc= CRYPTO_THREADID_set_callback(my_cb_threadid);
+#endif
+
+  /* if someone else already set callbacks 
+   * there is nothing do */
+  if (!rc)
+    return 0;
 
   if (LOCK_crypto == NULL)
   {
@@ -108,11 +120,6 @@ static int ssl_thread_init()
       pthread_mutex_init(&LOCK_crypto[i], NULL);
   }
 
-#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
-  CRYPTO_set_id_callback(my_cb_threadid);
-#else
-  CRYPTO_THREADID_set_callback(my_cb_threadid);
-#endif
   CRYPTO_set_locking_callback(my_cb_locking);
 
   return 0;
@@ -139,7 +146,7 @@ int my_ssl_start(MYSQL *mysql)
   pthread_mutex_lock(&LOCK_ssl_config);
   if (!my_ssl_initialized)
   {
-    if (ssl_thread_init())
+    if (ssl_crypto_init())
       goto end;
     SSL_library_init();
 
@@ -183,28 +190,34 @@ void my_ssl_end()
   if (my_ssl_initialized)
   {
     int i;
-    CRYPTO_set_locking_callback(NULL);
-    CRYPTO_set_id_callback(NULL);
 
-    for (i=0; i < CRYPTO_num_locks(); i++)
-      pthread_mutex_destroy(&LOCK_crypto[i]);
+    if (LOCK_crypto)
+    {
+      CRYPTO_set_locking_callback(NULL);
+      CRYPTO_set_id_callback(NULL);
 
-    my_free((gptr)LOCK_crypto, MYF(0));
-    LOCK_crypto= NULL;
+      for (i=0; i < CRYPTO_num_locks(); i++)
+        pthread_mutex_destroy(&LOCK_crypto[i]);
+
+      my_free((gptr)LOCK_crypto, MYF(0));
+      LOCK_crypto= NULL;
+    }
 
     if (SSL_context)
     {
       SSL_CTX_free(SSL_context);
       SSL_context= FALSE;
     }
-    ERR_remove_state(0);
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ERR_free_strings();
-    //ENGINE_cleanup();
-    CONF_modules_free();
-    CONF_modules_unload(1);
-    sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+    if (mariadb_deinitialize_ssl)
+    {
+      ERR_remove_state(0);
+      EVP_cleanup();
+      CRYPTO_cleanup_all_ex_data();
+      ERR_free_strings();
+      CONF_modules_free();
+      CONF_modules_unload(1);
+      sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+    }
     my_ssl_initialized= FALSE;
   }
   pthread_mutex_unlock(&LOCK_ssl_config);

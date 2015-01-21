@@ -80,6 +80,7 @@ typedef int my_socket;
 
 extern unsigned int mysql_port;
 extern char *mysql_unix_port;
+extern uint mariadb_deinitialize_ssl;
 
 #define IS_PRI_KEY(n)	((n) & PRI_KEY_FLAG)
 #define IS_NOT_NULL(n)	((n) & NOT_NULL_FLAG)
