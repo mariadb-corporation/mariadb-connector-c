@@ -231,10 +231,12 @@ SET(CPACK_SOURCE_PACKAGE_FILE_NAME "mariadb-connector-c-${CPACK_PACKAGE_VERSION}
 
 SET(CPACK_SOURCE_IGNORE_FILES
 .bzr/
+.bzrignore
 CMakeCache.txt
 cmake_dist.cmake
 CPackSourceConfig.cmake
 CPackConfig.cmake
+mariadb_config/mariadb_config.c$
 .build/
 html/
 unittest
