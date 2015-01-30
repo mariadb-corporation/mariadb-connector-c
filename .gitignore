@@ -11,3 +11,6 @@ examples/mysql_debug
 examples/test_output
 libmysql.so.*
 mysql_config/mysql_config
+
+# Keep empty directories:
+# Keep empty directories: >> .gitignore/.git*
