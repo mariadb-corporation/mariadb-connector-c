@@ -29,7 +29,6 @@ ELSE()
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
 
-OPTION(WITH_SQLITE "Enables Sqlite support" OFF)
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 
