@@ -330,14 +330,6 @@ IF(WIN32)
                          ${CMAKE_SOURCE_DIR}/win-iconv/win_iconv.c)
 ENDIF()
 
-IF(WITH_SQLITE)
-  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
-                         ${CMAKE_SOURCE_DIR}/plugins/sqlite/sqlite3.c
-                         ${CMAKE_SOURCE_DIR}/plugins/sqlite/sqlite_client_plugin.c)
-  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/plugins/sqlite)
-  ADD_DEFINITIONS(-DSQLITE_ENABLE_COLUMN_METADATA=1)
-ENDIF()
-
 IF(ZLIB_FOUND)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
   LINK_LIBRARIES(${ZLIB_LIBRARY})
