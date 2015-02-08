@@ -10,7 +10,7 @@ SET(MARIADB_CLIENT_INCLUDES config-win.h
                             ma_secure.h
                             my_alarm.h
                             my_base.h
-                            my_config.h
+                            my_config.h.in
                             my_dir.h
                             my_global.h
                             my_list.h
