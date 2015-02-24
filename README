@@ -12,7 +12,6 @@ The following are the main known limitations:
 - double to string conversion for prepared statements
   doesn't work correctly
 - support for dynamic columns is not integrated yet
-- Asynchronus interface is not integrated yet
 
 If you want to be part of this development effort, you can discuss this at
 maria-developers@lists.launchpad.org.
