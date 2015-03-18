@@ -26,6 +26,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <mysql/client_plugin.h>
 
+void *remote_plugin;
 
 /*
   Bug#28075 "COM_DEBUG crashes mysqld"
@@ -917,7 +918,7 @@ static int test_connect_attrs(MYSQL *my)
   rc= mysql_query(my, "SELECT * FROM performance_schema.session_connect_attrs LIMIT 1");
   if (rc != 0)
   {
-    diag("Server doesn't connection attributes");
+    diag("Server doesn't support connection attributes");
     return SKIP;
   }
 
@@ -1001,7 +1002,55 @@ static int test_conc117(MYSQL *mysql)
   return OK;
 }
 
+static int test_remote1(MYSQL *mysql)
+{
+  int rc;
+
+  remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MYSQL_CLIENT_REMOTEIO_PLUGIN);
+  if (!remote_plugin)
+  {
+    diag("skip - no remote io plugin available");
+    return SKIP;
+  }
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a text)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE 'http://www.example.com' INTO TABLE t1");
+  if (rc && mysql_errno(mysql) == 2058)
+  {
+    diag("remote_io plugin not available");
+    return SKIP;
+  }
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
+static int test_remote2(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  if (!remote_plugin)
+  {
+    diag("skip - no remote io plugin available");
+    return SKIP;
+  }
+
+  mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "http://localhost/test.cnf");
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "test");
+  mysql_real_connect(mysql, hostname, username, password, schema,
+                         0, socketname, 0), mysql_error(my);
+  diag("port: %d", mysql->port);
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

@@ -1,6 +1,5 @@
 # CMakeLists.txt
 
-
 # This is the LGPL libmariadb project.
 PROJECT(mariadb-connector-c C)
 

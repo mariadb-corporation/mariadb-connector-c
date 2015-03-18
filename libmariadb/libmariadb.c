@@ -32,6 +32,7 @@
 #include "mysql.h"
 #include "mysql_version.h"
 #include "mysqld_error.h"
+#include <mariadb/ma_io.h>
 #include "errmsg.h"
 #include <sys/stat.h>
 #include <signal.h>

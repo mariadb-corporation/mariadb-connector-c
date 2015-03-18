@@ -39,11 +39,14 @@
 #define MYSQL_CLIENT_DB_PLUGIN               0
 #define MYSQL_CLIENT_reserved                1
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2
+#define MYSQL_CLIENT_reserved22              3
+#define MYSQL_CLIENT_REMOTEIO_PLUGIN         4
 
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0100
 #define MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION  0x0100
+#define MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION 0x0100
 
-#define MYSQL_CLIENT_MAX_PLUGINS             3
+#define MYSQL_CLIENT_MAX_PLUGINS             5
 
 #define mysql_declare_client_plugin(X)          \
      struct st_mysql_client_plugin_ ## X        \
@@ -76,22 +79,6 @@ typedef struct st_mariadb_client_plugin_DB
   MYSQL_CLIENT_PLUGIN_HEADER
   /* functions */
   struct st_mysql_methods *methods;
-  /*
-  MYSQL * (*db_connect)(MYSQL *mysql,const char *host, const char *user,
-		                 const char *passwd, const char *db, uint port,
-                     const char *unix_socket,unsigned long client_flag);
-  void (*db_close)(MYSQL *mysql);
-  int (*db_query)(MYSQL *mysql, const char *query, size_t query_len);
-  int (*db_read_one_row)(MYSQL *mysql, uint fields, MYSQL_ROW row, 
-                         ulong *lengths);
-  MYSQL_DATA *(*db_read_all_rows)(MYSQL *mysql, 
-                                  MYSQL_FIELD *mysql_fields, uint fields);
-  void (*db_query_end)(MYSQL *mysql);
-  int (*db_stmt_prepare)(MYSQL_STMT *stmt, const char *stmt_str, ulong length);
-  my_bool (*db_stmt_close)(MYSQL_STMT *stmt);
-  my_bool (*is_supported_buffer_type)(enum enum_field_types type);
-  int (*db_stmt_fetch)(MYSQL_STMT *stmt);
-  int (*db_stmt_execute)(MYSQL_STMT *stmt); */
 } MARIADB_DB_PLUGIN;
 
 #define MARIADB_DB_DRIVER(a) ((a)->ext_db)
@@ -104,6 +91,7 @@ struct st_mysql_client_plugin_AUTHENTICATION
   MYSQL_CLIENT_PLUGIN_HEADER
   int (*authenticate_user)(MYSQL_PLUGIN_VIO *vio, struct st_mysql *mysql);
 };
+
 
 /**
   type of the mysql_authentication_dialog_ask function
@@ -123,6 +111,17 @@ struct st_mysql_client_plugin_AUTHENTICATION
 */
 typedef char *(*mysql_authentication_dialog_ask_t)(struct st_mysql *mysql,
                       int type, const char *prompt, char *buf, int buf_len);
+
+/********************** remote IO plugin **********************/
+#include <mariadb/ma_io.h>
+
+/* Remote IO plugin */
+struct st_mysql_client_plugin_REMOTEIO
+{
+  MYSQL_CLIENT_PLUGIN_HEADER
+  struct st_rio_methods *methods;
+};
+
 /******** using plugins ************/
 
 /**

@@ -21,7 +21,7 @@ do {\
   typedef char constraint[(A) ? 1 : -1];\
 } while (0);
 
-static auth_plugin_t native_password_client_plugin=
+auth_plugin_t native_password_client_plugin=
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
@@ -34,7 +34,7 @@ static auth_plugin_t native_password_client_plugin=
   native_password_auth_client
 };
 
-static auth_plugin_t old_password_client_plugin=
+auth_plugin_t old_password_client_plugin=
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
@@ -45,21 +45,6 @@ static auth_plugin_t old_password_client_plugin=
   NULL,
   NULL,
   old_password_auth_client
-};
-typedef struct st_mariadb_client_plugin_DBAPI dbapi_plugin_t;
-
-#ifdef HAVE_SQLITE
-extern dbapi_plugin_t sqlite3_plugin;
-#endif
-
-struct st_mysql_client_plugin *mysql_client_builtins[]=
-{
-  (struct st_mysql_client_plugin *)&old_password_client_plugin,
-  (struct st_mysql_client_plugin *)&native_password_client_plugin,
-#ifdef HAVE_SQLITE
-  (struct st_mysql_client_plugin *)&sqlite3_plugin,
-#endif
-  0
 };
 
 typedef struct {

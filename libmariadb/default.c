@@ -41,6 +41,8 @@
 #include <ctype.h>
 #include "m_ctype.h"
 #include <my_dir.h>
+#include <mysql.h>
+#include <mariadb/ma_io.h>
 
 char *defaults_extra_file=0;
 
@@ -225,42 +227,49 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
 				   const char *ext, TYPELIB *group)
 {
   char name[FN_REFLEN+10],buff[4096],*ptr,*end,*value,*tmp;
-  FILE *fp;
+  MA_FILE *file;
   uint line=0;
   my_bool read_values= 0, found_group= 0, is_escaped= 0, is_quoted= 0;
 
-  if ((dir ? strlen(dir) : 0 )+strlen(config_file) >= FN_REFLEN-3)
-    return 0;					/* Ignore wrong paths */
-  if (dir)
+  if (!strstr(config_file, "://"))
   {
-    strmov(name,dir);
-    convert_dirname(name);
-    if (dir[0] == FN_HOMELIB)		/* Add . to filenames in home */
-      strcat(name,".");
-    strxmov(strend(name),config_file,ext,NullS);
-  }
-  else
-  {
-    strmov(name,config_file);
-  }
-  fn_format(name,name,"","",4);
-#if !defined(_WIN32) && !defined(OS2)
-  {
-    MY_STAT stat_info;
-    if (!my_stat(name,&stat_info,MYF(0)))
-      return 0;
-    if (stat_info.st_mode & S_IWOTH) /* ignore world-writeable files */
+    if ((dir ? strlen(dir) : 0 )+strlen(config_file) >= FN_REFLEN-3)
+      return 0;					/* Ignore wrong paths */
+    if (dir)
     {
-      fprintf(stderr, "warning: World-writeable config file %s is ignored\n",
-              name);
-      return 0;
+      strmov(name,dir);
+      convert_dirname(name);
+      if (dir[0] == FN_HOMELIB)		/* Add . to filenames in home */
+        strcat(name,".");
+      strxmov(strend(name),config_file,ext,NullS);
     }
-  }
+    else
+    {
+      strmov(name,config_file);
+    }
+    fn_format(name,name,"","",4);
+#if !defined(_WIN32) && !defined(OS2)
+    {
+      MY_STAT stat_info;
+      if (!my_stat(name,&stat_info,MYF(0)))
+        return 0;
+      if (stat_info.st_mode & S_IWOTH) /* ignore world-writeable files */
+      {
+        fprintf(stderr, "warning: World-writeable config file %s is ignored\n",
+                name);
+        return 0;
+      }
+    }
 #endif
-  if (!(fp = my_fopen(fn_format(name,name,"","",4),O_RDONLY,MYF(0))))
-    return 0;					/* Ignore wrong files */
+    if (!(file = ma_open(fn_format(name,name,"","",4),"r", NULL)))
+      return 0;
+  }
+  else {
+    if (!(file = ma_open(config_file, "r", NULL)))
+      return 0;
+  }
 
-  while (fgets(buff,sizeof(buff)-1,fp))
+  while (ma_gets(buff,sizeof(buff)-1,file))
   {
     line++;
     /* Ignore comment and empty lines */
@@ -372,11 +381,11 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
       *ptr=0;
     }
   }
-  my_fclose(fp,MYF(0));
+  ma_close(file);
   return(0);
 
  err:
-  my_fclose(fp,MYF(0));
+  ma_close(file);
   return 1;
 }
 

@@ -62,7 +62,25 @@ static uint plugin_version[MYSQL_CLIENT_MAX_PLUGINS]=
 {
   MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION, /* these two are taken by Connector/C */
   0, /* these two are taken by Connector/C */
-  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
+  0,
+  MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION
+};
+
+typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
+extern auth_plugin_t old_password_client_plugin;
+extern auth_plugin_t native_password_client_plugin;
+
+/* built in plugins:
+   These plugins are part of Connector/C, so no need to
+   load them
+*/
+
+struct st_mysql_client_plugin *mysql_client_builtins[]=
+{
+  (struct st_mysql_client_plugin *)&old_password_client_plugin,
+  (struct st_mysql_client_plugin *)&native_password_client_plugin,
+  0
 };
 
 /*
@@ -85,7 +103,7 @@ static int is_not_initialized(MYSQL *mysql, const char *name)
 
   my_set_error(mysql, CR_AUTH_PLUGIN_CANNOT_LOAD,
                SQLSTATE_UNKNOWN, ER(CR_AUTH_PLUGIN_CANNOT_LOAD),
-               name, "not initialized");
+               name ? name : "unknown" , "not initialized");
   return 1;
 }
 
@@ -112,12 +130,13 @@ static struct st_mysql_client_plugin *find_plugin(const char *name, int type)
 
   for (p= plugin_list[type]; p; p= p->next)
   {
+    if (!name)
+      return p->plugin;
     if (strcmp(p->plugin->name, name) == 0)
       return p->plugin;
   }
   return NULL;
 }
-
 
 /**
   verifies the plugin and adds it to the list
@@ -266,6 +285,7 @@ int mysql_client_plugin_init()
 
   for (builtin= mysql_client_builtins; *builtin; builtin++)
     add_plugin(&mysql, *builtin, 0, 0, unused);
+
   pthread_mutex_unlock(&LOCK_load_client_plugin);
 
   load_env_plugins(&mysql);
@@ -456,7 +476,8 @@ mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
     return p;
 
   /* not found, load it */
-  return mysql_load_plugin(mysql, name, type, 0);
+  if (name)
+    return mysql_load_plugin(mysql, name, type, 0);
 }
 
 
