@@ -400,6 +400,7 @@ int my_ssl_connect(SSL *ssl)
 {
   my_bool blocking;
   MYSQL *mysql;
+  int rc;
 
   DBUG_ENTER("my_ssl_connect");
 
@@ -423,6 +424,18 @@ int my_ssl_connect(SSL *ssl)
     /* restore blocking mode */
     if (!blocking)
       vio_blocking(mysql->net.vio, FALSE, 0);
+    DBUG_RETURN(1);
+  }
+
+  rc= SSL_get_verify_result(ssl);
+  if (rc != X509_V_OK)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+                 ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
+    /* restore blocking mode */
+    if (!blocking)
+      vio_blocking(mysql->net.vio, FALSE, 0);
+
     DBUG_RETURN(1);
   }
 

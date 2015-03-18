@@ -356,11 +356,31 @@ static int test_conc50_2(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/dummy.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/not-found.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_conc127(MYSQL *my)
+{
+  MYSQL *mysql;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  FAIL_IF(!mysql, "Can't allocate memory");
+
+  mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/dummy.pem", NULL, NULL);
+
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
+           port, socketname, 0);
+  FAIL_IF(mysql_errno(mysql) == 0, "Error expected (invalid certificate)");
   mysql_close(mysql);
 
   return OK;
@@ -598,6 +618,7 @@ static int test_conc_102(MYSQL *mysql)
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_1", test_conc50_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_2", test_conc50_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
