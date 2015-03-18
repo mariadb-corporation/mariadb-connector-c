@@ -53,7 +53,7 @@ gptr my_malloc(size_t Size, myf MyFlags)
 	/* Free memory allocated with my_malloc */
 	/*ARGSUSED*/
 
-void my_no_flags_free(gptr ptr)
+void my_no_flags_free(void *ptr)
 {
   DBUG_ENTER("my_free");
   DBUG_PRINT("my",("ptr: %lx",ptr));

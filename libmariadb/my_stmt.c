@@ -702,7 +702,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
 mem_error:
   SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-  my_free((gptr)start, MYF(MY_ALLOW_ZERO_PTR));
+  my_free(start);
   *request_len= 0;
   DBUG_RETURN(NULL);
 }
@@ -992,8 +992,8 @@ my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
     mysql_stmt_reset(stmt);
   net_stmt_close(stmt, 1);
 
-  my_free((char *)stmt->extension, MYF(MY_ALLOW_ZERO_PTR));
-  my_free((char *)stmt, MYF(MY_WME));
+  my_free(stmt->extension);
+  my_free(stmt);
 
   DBUG_RETURN(0);
 }
@@ -1133,7 +1133,7 @@ MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
       !(stmt->extension= (MADB_STMT_EXTENSION *)my_malloc(sizeof(MADB_STMT_EXTENSION),
                                                          MYF(MY_WME | MY_ZEROFILL))))
   {
-    my_free((gptr)stmt, MYF(MY_ALLOW_ZERO_PTR));
+    my_free(stmt);
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(NULL);
   }
@@ -1490,7 +1490,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   ret= test(simple_command(mysql, MYSQL_COM_STMT_EXECUTE, request, request_len, 1, stmt) || 
       (mysql && mysql->methods->db_read_stmt_result && mysql->methods->db_read_stmt_result(mysql)));
   if (request)
-    my_free(request, MYF(0));
+    my_free(request);
 
   /* if a reconnect occured, our connection handle is invalid */
   if (!stmt->mysql)
@@ -1821,7 +1821,7 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
     memcpy(cmd_buff + STMT_ID_LENGTH + 2, data, length);
     stmt->params[param_number].long_data_used= 1;
     ret= simple_command(stmt->mysql,MYSQL_COM_STMT_SEND_LONG_DATA, (char *)cmd_buff, packet_len, 1, stmt);
-    my_free((gptr)cmd_buff, MYF(MY_WME));
+    my_free(cmd_buff);
     DBUG_RETURN(ret); 
   } 
   DBUG_RETURN(1);

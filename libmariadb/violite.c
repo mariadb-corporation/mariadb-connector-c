@@ -167,7 +167,7 @@ Vio *vio_new(my_socket sd, enum enum_vio_type type, my_bool localhost)
   }
   if (!(vio->cache= my_malloc(VIO_CACHE_SIZE, MYF(MY_WME))))
   {
-    my_free((gptr)vio, MYF(0));
+    my_free(vio);
     vio= NULL;
   }
   vio->cache_size= 0;
@@ -200,8 +200,8 @@ void vio_delete(Vio * vio)
   {
     if (vio->type != VIO_CLOSED)
       vio_close(vio);
-    my_free((gptr) vio->cache, MYF(0));
-    my_free((gptr) vio,MYF(0));
+    my_free(vio->cache);
+    my_free(vio);
   }
 }
 

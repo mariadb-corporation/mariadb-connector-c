@@ -99,7 +99,7 @@ int my_fclose(FILE *fd, myf MyFlags)
   if ((uint) file < MY_NFILE && my_file_info[file].type != UNOPEN)
   {
     my_file_info[file].type = UNOPEN;
-    my_free(my_file_info[file].name, MYF(MY_ALLOW_ZERO_PTR));
+    my_free(my_file_info[file].name);
   }
   pthread_mutex_unlock(&THR_LOCK_open);
   DBUG_RETURN(err);

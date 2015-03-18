@@ -199,7 +199,7 @@ void my_ssl_end()
       for (i=0; i < CRYPTO_num_locks(); i++)
         pthread_mutex_destroy(&LOCK_crypto[i]);
 
-      my_free((gptr)LOCK_crypto, MYF(0));
+      my_free(LOCK_crypto);
       LOCK_crypto= NULL;
     }
 

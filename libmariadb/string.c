@@ -121,7 +121,7 @@ void dynstr_free(DYNAMIC_STRING *str)
 {
   if (str->str)
   {
-    my_free(str->str,MYF(MY_WME));
+    my_free(str->str);
     str->str=0;
   }
 }

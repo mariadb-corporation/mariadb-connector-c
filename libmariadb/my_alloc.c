@@ -116,13 +116,13 @@ void free_root(MEM_ROOT *root, myf MyFlags)
   {
     old=next; next= next->next ;
     if (old != root->pre_alloc)
-      my_free((gptr) old,MYF(0));
+      my_free(old);
   }
   for (next= root->free ; next ; )
   {
     old=next; next= next->next ;
     if (old != root->pre_alloc)
-      my_free((gptr) old,MYF(0));
+      my_free(old);
   }
   root->used=root->free=0;
   if (root->pre_alloc)

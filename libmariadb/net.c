@@ -141,7 +141,7 @@ int my_net_init(NET *net, Vio* vio)
 
 void net_end(NET *net)
 {
-  my_free((gptr) net->buff,MYF(MY_ALLOW_ZERO_PTR));
+  my_free(net->buff);
   net->buff=0;
 }
 
@@ -492,7 +492,7 @@ net_real_write(NET *net,const char *packet,size_t  len)
 #endif
 #ifdef HAVE_COMPRESS
   if (net->compress)
-    my_free((char*) packet,MYF(0));
+    my_free((void *)packet);
 #endif
   if (thr_alarm_in_use(&alarmed))
   {

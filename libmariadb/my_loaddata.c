@@ -110,7 +110,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
     }
     if (Length == 0)
     {
-      my_free((gptr)w_filename, MYF(0));
+      my_free(w_filename);
       info->error_no= CR_UNKNOWN_ERROR;
       my_snprintf((char *)info->error_msg, sizeof(info->error_msg), 
                   "Character conversion error: %d", GetLastError());
@@ -118,7 +118,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
     }
     info->fd= _wsopen(w_filename, _O_RDONLY | _O_BINARY, _SH_DENYNO , _S_IREAD | _S_IWRITE);
     my_errno= errno;
-    my_free((gptr)w_filename, MYF(0));
+    my_free(w_filename);
   }
 #endif
 
@@ -186,7 +186,7 @@ void mysql_local_infile_end(void *ptr)
   {
     if (info->fd >= 0)
       close(info->fd);
-    my_free((gptr)ptr, MYF(0));
+    my_free(ptr);
   }		
   DBUG_VOID_RETURN;
 }
@@ -297,7 +297,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
 
 infile_error:
   conn->options.local_infile_end(info);
-  my_free((char *)buf, MYF(0));
+  my_free(buf);
   DBUG_RETURN(result);
 }
 /* }}} */

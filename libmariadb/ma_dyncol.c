@@ -3606,21 +3606,13 @@ dynamic_column_update_many_fmt(DYNAMIC_COLUMN *str,
                                      &header, &new_header,
                                      convert);
 end:
-#ifndef LIBMARIADB
   my_free(alloc_plan);
-#else
-  my_free((gptr)alloc_plan, MYF(0));
-#endif
   return rc;
 
 create_new_string:
   /* There is no columns from before, so let's just add the new ones */
   rc= ER_DYNCOL_OK;
-#ifndef LIBMARIADB
   my_free(alloc_plan);
-#else
-  my_free((gptr)alloc_plan, MYF(0));
-#endif
   if (not_null != 0)
     rc= dynamic_column_create_many_internal_fmt(str, add_column_count,
                                                 (uint*)column_keys, values,
@@ -3935,11 +3927,7 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
         if (quote)
           rc= dynstr_append_mem(str, &quote, 1);
         if (alloc)
-#ifndef LIBMARIADB
           my_free(alloc);
-#else
-          my_free((gptr)alloc, MYF(0));
-#endif
         if (rc)
           return ER_DYNCOL_RESOURCE;
         break;
@@ -4364,20 +4352,12 @@ mariadb_dyncol_unpack(DYNAMIC_COLUMN *str,
 err:
   if (*vals)
   {
-#ifndef LIBMARIADB
     my_free(*vals);
-#else
-    my_free((gptr)*vals, MYF(0));
-#endif
     *vals= 0;
   }
   if (*names)
   {
-#ifndef LIBMARIADB
     my_free(*names);
-#else
-    my_free((gptr)*names, MYF(0));
-#endif
     *names= 0;
   }
   return rc;

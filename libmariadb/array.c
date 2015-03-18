@@ -145,7 +145,7 @@ void delete_dynamic(DYNAMIC_ARRAY *array)
 {
   if (array->buffer)
   {
-    my_free(array->buffer,MYF(MY_WME));
+    my_free(array->buffer);
     array->buffer=0;
     array->elements=array->max_element=0;
   }

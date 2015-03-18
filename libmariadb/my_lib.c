@@ -75,7 +75,7 @@ void my_dirend(MY_DIR *buffer)
 {
   DBUG_ENTER("my_dirend");
   if (buffer)
-    my_free((gptr) buffer,MYF(0));
+    my_free(buffer);
   DBUG_VOID_RETURN;
 } /* my_dirend */
 
@@ -601,7 +601,7 @@ MY_STAT *my_stat(const char *path, MY_STAT *stat_area, myf my_flags)
     DBUG_RETURN(stat_area);
   my_errno=errno;
   if (m_used)					/* Free if new area */
-    my_free((gptr) stat_area,MYF(0));
+    my_free(stat_area);
 
 error:
   if (my_flags & (MY_FAE+MY_WME))

@@ -63,8 +63,8 @@ void list_free(LIST *root, unsigned int free_data)
   {
     next=root->next;
     if (free_data)
-      my_free((gptr) root->data,MYF(0));
-    my_free((gptr) root,MYF(0));
+      my_free(root->data);
+    my_free(root);
     root=next;
   }
 }
