@@ -25,6 +25,7 @@ CHARSET_INFO *default_charset_info = (CHARSET_INFO *)&compiled_charsets[5];
 CHARSET_INFO *my_charset_bin= (CHARSET_INFO *)&compiled_charsets[32];
 CHARSET_INFO *my_charset_latin1= (CHARSET_INFO *)&compiled_charsets[5];
 CHARSET_INFO *my_charset_utf8_general_ci= (CHARSET_INFO *)&compiled_charsets[21];
+CHARSET_INFO *my_charset_utf16le_general_ci= (CHARSET_INFO *)&compiled_charsets[68];
 
 CHARSET_INFO * STDCALL mysql_get_charset_by_nr(uint cs_number)
 {

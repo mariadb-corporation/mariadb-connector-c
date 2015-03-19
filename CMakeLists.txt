@@ -90,6 +90,11 @@ IF(NOT MYSQL_UNIX_ADDR)
   SET(MYSQL_UNIX_ADDR "/tmp/mysql.sock")
 ENDIF()
 
+FIND_PACKAGE(CURL)
+IF(CURL_FOUND)
+  ADD_DEFINITIONS(-DHAVE_CURL=1)
+ENDIF()
+
 INCLUDE("${CMAKE_SOURCE_DIR}/cmake/install.cmake")
 
 # todo: we don't character sets in share - all is compiled in

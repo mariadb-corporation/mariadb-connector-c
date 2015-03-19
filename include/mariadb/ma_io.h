@@ -1,7 +1,9 @@
 #ifndef _ma_io_h_
 #define _ma_io_h_
 
+#ifdef HAVE_CURL
 #include <curl/curl.h>
+#endif
 
 enum enum_file_type {
   MA_FILE_NONE=0,
