@@ -2191,6 +2191,10 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->db_driver);
     my_free(mysql->options.extension->ssl_crl);
     my_free(mysql->options.extension->ssl_crlpath);
+    if (mysql->options.extension->async_context){
+      my_context_destroy(&mysql->options.extension->async_context->async_context);
+      my_free(mysql->options.extension->async_context);
+    }
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
   }
