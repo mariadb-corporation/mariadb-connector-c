@@ -856,7 +856,8 @@ static int test_ldi_path(MYSQL *mysql)
                          "FIELDS TERMINATED BY '.' LINES TERMINATED BY '\r\n'");
 #endif
   FAIL_IF(rc== 0, "Error expected");
-  FAIL_IF(mysql_errno(mysql) != 2, "Error code 2 expected");
+  diag("Error: %d", mysql_errno(mysql));
+  FAIL_IF(mysql_errno(mysql) == 0, "Error expected");
 
   rc= mysql_query(mysql, "DROP TABLE t1");
   check_mysql_rc(rc, mysql);

@@ -43,27 +43,31 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
 
 #ifdef _WIN32
   if (mysql && mysql->charset)
-    CodePage= madb_get_windows_cp(mysql->charset);
+    CodePage= madb_get_windows_cp(mysql->charset->csname);
 #endif
   if (CodePage == -1)
+  {
     if (!(fp= fopen(location, mode)))
     {
-#ifdef WIN32
+#ifdef _WIN32
       my_errno= GetLastError();
 #else
       my_errno= errno;
 #endif
       return NULL;
     }
-#ifdef WIN32
+  }
+#ifdef _WIN32
   /* See CONC-44: we need to support non ascii filenames too, so we convert
      current character set to wchar_t and try to open the file via _wsopen */
   else
-  {
-    wchar_t *filename= NULL;
+   {
+    wchar_t *w_filename= NULL;
+    wchar_t *w_mode= NULL;
     int len;
+    DWORD Length;
 
-    len= MultiByteToWideChar(CodePage, 0, location, (int)strlen(location), NULL, 0)M;
+    len= MultiByteToWideChar(CodePage, 0, location, (int)strlen(location), NULL, 0);
     if (!len)
       return NULL;
     if (!(w_filename= (wchar_t *)my_malloc((len + 1) * sizeof(wchar_t), MYF(MY_ZEROFILL))))
@@ -71,6 +75,7 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
       my_set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return NULL;
     }
+    Length= len;
     len= MultiByteToWideChar(CodePage, 0, location, (int)strlen(location), w_filename, (int)Length);
     if (!len)
     {
@@ -78,10 +83,28 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
       my_free(w_filename);
       return NULL;
     }
-    fp= _wfopen(w_filename, mode);
+    len= strlen(mode);
+    if (!(w_mode= (wchar_t *)my_malloc((len + 1) * sizeof(wchar_t), MYF(MY_ZEROFILL))))
+    {
+      my_set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      my_free(w_filename);
+      return NULL;
+    }
+    Length= len;
+    len= MultiByteToWideChar(CodePage, 0, mode, (int)strlen(mode), w_mode, (int)Length);
+    if (!len)
+    {
+      /* todo: error handling */
+      my_free(w_filename);
+      my_free(w_mode);
+      return NULL;
+    }
+    fp= _wfopen(w_filename, w_mode);
     my_errno= GetLastError();
     my_free(w_filename);
+    my_free(w_mode);
   }
+
 #endif
   if (fp)
   {
