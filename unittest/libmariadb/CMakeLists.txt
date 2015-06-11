@@ -21,8 +21,19 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
+# Get finger print from server certificate 
+EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs
+                OUTPUT_VARIABLE FINGER_PRINT)
+STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT ${FINGER_PRINT})
+STRING(REPLACE "\n" "" FINGER_PRINT ${FINGER_PRINT})
+STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT ${FINGER_PRINT})
+MESSAGE(STATUS "FINGER_PRINT ${SSL_CERT_FINGER_PRINT}")
+
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
                ${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c)
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
+               ${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
 
 SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
               "sp" "result" "connection" "misc" "ssl" "ps_new" "sqlite3" "thread" "dyncol") 

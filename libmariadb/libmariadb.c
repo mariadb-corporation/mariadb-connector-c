@@ -844,6 +844,7 @@ static const char *default_options[]=
   "ssl-cipher", "max-allowed-packet", "protocol", "shared-memory-base-name",
   "multi-results", "multi-statements", "multi-queries", "secure-auth",
   "report-data-truncation", "plugin-dir", "default-auth", "database-type",
+  "ssl-fp", "ssl-fp-list",
   NULL
 };
 
@@ -857,7 +858,8 @@ enum option_val
   OPT_connect_timeout, OPT_local_infile, OPT_disable_local_infile,
   OPT_ssl_cipher, OPT_max_allowed_packet, OPT_protocol, OPT_shared_memory_base_name,
   OPT_multi_results, OPT_multi_statements, OPT_multi_queries, OPT_secure_auth,
-  OPT_report_data_truncation, OPT_plugin_dir, OPT_default_auth, OPT_db_type
+  OPT_report_data_truncation, OPT_plugin_dir, OPT_default_auth, OPT_db_type,
+  OPT_ssl_fp, OPT_ssl_fp_list
 };
 
 #define CHECK_OPT_EXTENSION_SET(OPTS)\
@@ -990,7 +992,7 @@ static void mysql_read_default_options(struct st_mysql_options *options,
       	case OPT_return_found_rows:
       	  options->client_flag|=CLIENT_FOUND_ROWS;
       	  break;
-      #ifdef HAVE_OPENSSL
+#ifdef HAVE_OPENSSL
       	case OPT_ssl_key:
       	  my_free(options->ssl_key);
           options->ssl_key = my_strdup(opt_arg, MYF(MY_WME));
@@ -1009,12 +1011,20 @@ static void mysql_read_default_options(struct st_mysql_options *options,
           break;
         case OPT_ssl_cipher:
           break;
+        case OPT_ssl_fp:
+          OPT_SET_EXTENDED_VALUE(options, ssl_fp, opt_arg, 1);
+          break;
+        case OPT_ssl_fp_list:
+          OPT_SET_EXTENDED_VALUE(options, ssl_fp_list, opt_arg, 1);
+          break;
 #else
       	case OPT_ssl_key:
       	case OPT_ssl_cert:
       	case OPT_ssl_ca:
       	case OPT_ssl_capath:
         case OPT_ssl_cipher:
+        case OPT_ssl_fp:
+        case OPT_ssl_fp_list:
           break;
 #endif /* HAVE_OPENSSL */
       	case OPT_charset_dir:
@@ -2190,6 +2200,8 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->db_driver);
     my_free(mysql->options.extension->ssl_crl);
     my_free(mysql->options.extension->ssl_crlpath);
+    my_free(mysql->options.extension->ssl_fp);
+    my_free(mysql->options.extension->ssl_fp_list);
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
   }
@@ -3035,6 +3047,12 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MYSQL_OPT_SSL_CRLPATH:
     OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crlpath, (char *)arg1, 1);
     break;
+  case MARIADB_OPT_SSL_FP:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_fp, (char *)arg1, 1);
+    break;
+  case MARIADB_OPT_SSL_FP_LIST:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_fp_list, (char *)arg1, 1);
+    break;
   case MYSQL_OPT_CONNECT_ATTR_DELETE:
     {
       uchar *p;
@@ -3492,8 +3510,8 @@ ulong STDCALL mysql_hex_string(char *to, const char *from,
 
   while (len--)
   {
-    *to++= hexdigits[*from >> 4];
-    *to++= hexdigits[*from & 0x0F];
+    *to++= hexdigits[((unsigned char)*from) >> 4];
+    *to++= hexdigits[((unsigned char)*from) & 0x0F];
     from++;
   }
   *to= 0;
