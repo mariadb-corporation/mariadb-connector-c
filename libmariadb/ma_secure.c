@@ -298,7 +298,28 @@ error:
   DBUG_RETURN(1);
 }
 
-static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
+static unsigned int ma_get_cert_fingerprint(X509 *cert, EVP_MD *digest, 
+                                            unsigned char *fingerprint, unsigned int *fp_length)
+{
+  if (*fp_length < EVP_MD_size(digest))
+    return 0;
+  if (!X509_digest(cert, digest, fingerprint, fp_length))
+    return 0;
+  return *fp_length;
+} 
+
+static my_bool ma_check_fingerprint(char *fp1, unsigned int fp1_len,
+                                    char *fp2, unsigned int fp2_len)
+{
+  char hexstr[fp1_len * 2 + 1];
+
+  fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
+  if (strncasecmp(hexstr, fp2, fp1_len) != 0)
+   return 1;
+  return 0;
+}
+
+int my_verify_callback(int ok, X509_STORE_CTX *ctx)
 {
   X509 *check_cert;
   SSL *ssl;
@@ -400,7 +421,7 @@ int my_ssl_connect(SSL *ssl)
 {
   my_bool blocking;
   MYSQL *mysql;
-  int rc;
+  long rc;
 
   DBUG_ENTER("my_ssl_connect");
 
@@ -441,6 +462,89 @@ int my_ssl_connect(SSL *ssl)
 
   vio_reset(mysql->net.vio, VIO_TYPE_SSL, mysql->net.vio->sd, 0, 0);
   mysql->net.vio->ssl= ssl;
+  DBUG_RETURN(0);
+}
+
+int ma_ssl_verify_fingerprint(SSL *ssl)
+{
+  X509 *cert= SSL_get_peer_certificate(ssl);
+  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ssl);
+  unsigned char fingerprint[EVP_MAX_MD_SIZE];
+  EVP_MD *digest;
+  unsigned int fp_length;
+
+  DBUG_ENTER("ma_ssl_verify_fingerprint");
+
+  if (!cert)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Unable to get server certificate");
+    DBUG_RETURN(1);
+  }
+
+  digest= (EVP_MD *)EVP_sha1();
+  fp_length= sizeof(fingerprint);
+
+  if (!ma_get_cert_fingerprint(cert, digest, fingerprint, &fp_length))
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Unable to get finger print of server certificate");
+    DBUG_RETURN(1);
+  }
+
+  /* single finger print was specified */
+  if (mysql->options.extension->ssl_fp)
+  {
+    if (ma_check_fingerprint(fingerprint, fp_length, mysql->options.extension->ssl_fp,
+                             strlen(mysql->options.extension->ssl_fp)))
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                          ER(CR_SSL_CONNECTION_ERROR), 
+                          "invalid finger print of server certificate");
+      DBUG_RETURN(1);
+    }
+  }
+
+  /* white list of finger prints was specified */
+  if (mysql->options.extension->ssl_fp_list)
+  {
+    FILE *fp;
+    char buff[255];
+
+    if (!(fp = my_fopen(mysql->options.extension->ssl_fp_list ,O_RDONLY, MYF(0))))
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                          ER(CR_SSL_CONNECTION_ERROR), 
+                          "Can't open finger print list");
+      DBUG_RETURN(1);
+    }
+
+    while (fgets(buff, sizeof(buff)-1, fp))
+    {
+      /* remove trailing new line character */
+      char *pos= strchr(buff, '\r');
+      if (!pos)
+        pos= strchr(buff, '\n');
+      if (pos)
+        *pos= '\0';
+        
+      if (!ma_check_fingerprint(fingerprint, fp_length, buff, strlen(buff)))
+      {
+        /* finger print is valid: close file and exit */
+        my_fclose(fp, MYF(0));
+        DBUG_RETURN(0);
+      }
+    }
+
+    /* No finger print matched - close file and return error */
+    my_fclose(fp, MYF(0));
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                 ER(CR_SSL_CONNECTION_ERROR), 
+                 "invalid finger print of server certificate");
+    DBUG_RETURN(1);
+  }
   DBUG_RETURN(0);
 }
 

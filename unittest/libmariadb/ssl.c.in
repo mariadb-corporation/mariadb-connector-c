@@ -380,6 +380,7 @@ static int test_conc127(MYSQL *my)
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
+  diag("Error: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) == 0, "Error expected (invalid certificate)");
   mysql_close(mysql);
 
@@ -615,10 +616,63 @@ static int test_conc_102(MYSQL *mysql)
   return OK;
 }
 
+const char *ssl_cert_finger_print= "@SSL_CERT_FINGER_PRINT@";
+
+static int test_ssl_fp(MYSQL *unused)
+{
+  MYSQL *my;
+  char  *cipher;
+  
+  if (check_skip_ssl())
+    return SKIP;
+
+  my= mysql_init(NULL);
+  FAIL_IF(!my, "mysql_init() failed");
+
+  mysql_ssl_set(my,0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
+
+  mysql_options(my, MARIADB_OPT_SSL_FP, ssl_cert_finger_print);
+
+  FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  cipher= (char *)mysql_get_ssl_cipher(my);
+  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+  mysql_close(my);
+  return OK;
+}
+
+static int test_ssl_fp_list(MYSQL *unused)
+{
+  MYSQL *my;
+  char  *cipher;
+  
+  if (check_skip_ssl())
+    return SKIP;
+
+  my= mysql_init(NULL);
+  FAIL_IF(!my, "mysql_init() failed");
+
+  mysql_ssl_set(my,0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
+
+  mysql_options(my, MARIADB_OPT_SSL_FP_LIST, "./fingerprint.list");
+
+  FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  cipher= (char *)mysql_get_ssl_cipher(my);
+  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+  mysql_close(my);
+  return OK;
+}
+
+
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_ssl_fp", test_ssl_fp, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_ssl_fp_list", test_ssl_fp_list, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_1", test_conc50_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_2", test_conc50_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},

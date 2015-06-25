@@ -209,12 +209,15 @@ extern unsigned int mariadb_deinitialize_ssl;
     /* MariaDB specific */
     MYSQL_PROGRESS_CALLBACK=5999,
     MYSQL_OPT_NONBLOCK,
-    MYSQL_DATABASE_DRIVER=7000
+    /* MariaDB Connector/C specific */
+    MYSQL_DATABASE_DRIVER=7000,
+    MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
+    MARIADB_OPT_SSL_FP_LIST         /* finger print white list for server certificate verification */
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
                       MYSQL_STATUS_GET_RESULT,
-          MYSQL_STATUS_USE_RESULT,
+                      MYSQL_STATUS_USE_RESULT,
                       MYSQL_STATUS_QUERY_SENT,
                       MYSQL_STATUS_SENDING_LOAD_DATA,
                       MYSQL_STATUS_FETCHING_DATA,
