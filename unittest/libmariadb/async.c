@@ -191,9 +191,19 @@ static int async1(MYSQL *my)
   return OK;
 }
 
+static int test_conc131(MYSQL *my)
+{
+  /* this test needs to run under valgrind */
+  MYSQL *mysql=mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_NONBLOCK, 0);
+  mysql_close(mysql);
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
   {"async1", async1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"test_conc131", test_conc131, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
