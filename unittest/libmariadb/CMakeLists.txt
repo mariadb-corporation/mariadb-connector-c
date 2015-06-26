@@ -21,22 +21,45 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
-# Get finger print from server certificate 
-EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs
-                OUTPUT_VARIABLE FINGER_PRINT)
-STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT "${FINGER_PRINT}")
-STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
-STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
-MESSAGE(STATUS "FINGER_PRINT ${SSL_CERT_FINGER_PRINT}")
-
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
-               ${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c)
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
-               ${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
-
 SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
-              "sp" "result" "connection" "misc" "ssl" "ps_new" "sqlite3" "thread" "dyncol") 
+              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "dyncol") 
+
+# Get finger print from server certificate 
+IF(WITH_OPENSSL)
+
+  #create certificates
+  IF(EXISTS "${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
+    MESSAGE(STATUS "certificates already exist")
+  ELSE()
+    MESSAGE(STATUS "cerating certificates")
+    EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout server-key-enc.pem -out server-cert.pem -subj "/DC=com/DC=example/CN=server" -passout pass:qwerty
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+    EXECUTE_PROCESS(COMMAND openssl rsa -in server-key-enc.pem -out server-key.pem -passin pass:qwerty -passout pass:
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+    EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout client-key-enc.pem -out client-cert.pem -subj "/DC=com/DC=example/CN=client" -passout pass:qwerty
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+    EXECUTE_PROCESS(COMMAND openssl rsa -in client-key-enc.pem -out client-key.pem -passin pass:qwerty -passout pass:
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+    EXECUTE_PROCESS(COMMAND "cat server-cert.pem client-cert.pem"
+                    OUTPUT_FILE "ca-cert.pem"
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+
+  ENDIF()
+
+  EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
+                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs
+                  OUTPUT_VARIABLE FINGER_PRINT)
+  STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT "${FINGER_PRINT}")
+  STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
+  STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
+  MESSAGE(STATUS "FINGER_PRINT ${SSL_CERT_FINGER_PRINT}")
+
+  CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
+                 ${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c)
+  CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
+                 ${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
+  SET(API_TESTS ${API_TESTS} "ssl")
+ENDIF()
 
 FOREACH(API_TEST ${API_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
