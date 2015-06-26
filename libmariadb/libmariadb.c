@@ -2195,6 +2195,7 @@ static void mysql_close_options(MYSQL *mysql)
   my_free(mysql->options.ssl_cipher);
   if (mysql->options.extension)
   {
+    struct mysql_async_context *ctxt;
     my_free(mysql->options.extension->plugin_dir);
     my_free(mysql->options.extension->default_auth);
     my_free(mysql->options.extension->db_driver);
@@ -2204,6 +2205,12 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->ssl_fp_list);
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
+    if ((ctxt = mysql->options.extension->async_context) != 0)
+    {
+      my_context_destroy(&ctxt->async_context);
+      my_free(ctxt);
+    }
+
   }
   my_free(mysql->options.extension);
   /* clear all pointer */
