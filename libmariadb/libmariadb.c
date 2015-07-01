@@ -3551,7 +3551,7 @@ mysql_get_socket(const MYSQL *mysql)
 {
   if (mysql->net.vio)
     return vio_fd(mysql->net.vio);
-  return INVALID_SOCKET;
+  return MARIADB_INVALID_SOCKET;
 }
 
 /*

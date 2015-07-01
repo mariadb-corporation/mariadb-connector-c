@@ -331,6 +331,7 @@ typedef struct st_mysql_time
 
 #define AUTO_SEC_PART_DIGITS 31
 #define SEC_PART_DIGITS 6
+#define MARIADB_INVALID_SOCKET -1
 
 /* Ansynchronous API constants */
 #define MYSQL_WAIT_READ      1
