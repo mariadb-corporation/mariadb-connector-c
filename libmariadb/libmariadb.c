@@ -1789,7 +1789,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   end= (char *)net->read_pos;
   end_pkt= (char *)net->read_pos + pkt_length;
 
-  /* Check if version of protocoll matches current one */
+  /* Check if version of protocol matches current one */
 
   mysql->protocol_version= end[0];
   end++;
@@ -1954,7 +1954,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     }
   }  
 
-  DBUG_PRINT("info",("Server version = '%s'  capabilites: %ld  status: %d  client_flag: %d",
+  DBUG_PRINT("info",("Server version = '%s'  capabilities: %ld  status: %d  client_flag: %d",
 		     mysql->server_version,mysql->server_capabilities,
 		     mysql->server_status, client_flag));
 
@@ -2012,7 +2012,7 @@ static my_bool mysql_reconnect(MYSQL *mysql)
   if (!mysql->reconnect ||
       (mysql->server_status & SERVER_STATUS_IN_TRANS) || !mysql->host_info)
   {
-   /* Allov reconnect next time */
+   /* Allow reconnect next time */
     mysql->server_status&= ~SERVER_STATUS_IN_TRANS;
     my_set_error(mysql, CR_SERVER_GONE_ERROR, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
@@ -2298,7 +2298,7 @@ mysql_close(MYSQL *mysql)
 
 /**************************************************************************
 ** Do a query. If query returned rows, free old rows.
-** Read data by mysql_store_result or by repeat call of mysql_fetch_row
+** Read data by mysql_store_result or by repeating calls to mysql_fetch_row
 **************************************************************************/
 
 int STDCALL
@@ -2622,7 +2622,7 @@ mysql_list_dbs(MYSQL *mysql, const char *wild)
 
 /*****************************************************************************
 ** List all tables in a database
-** If wild is given then only the tables matching wild is returned
+** If wild is given then only the tables matching wild are returned
 *****************************************************************************/
 
 MYSQL_RES * STDCALL
@@ -2640,7 +2640,7 @@ mysql_list_tables(MYSQL *mysql, const char *wild)
 
 /**************************************************************************
 ** List all fields in a table
-** If wild is given then only the fields matching wild is returned
+** If wild is given then only the fields matching wild are returned
 ** Instead of this use query:
 ** show fields in 'table' like "wild"
 **************************************************************************/

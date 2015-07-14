@@ -361,7 +361,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   }
 #endif /* HAVE_OPENSSL */
 
-  DBUG_PRINT("info",("Server version = '%s'  capabilites: %lu  status: %u  client_flag: %lu",
+  DBUG_PRINT("info",("Server version = '%s'  capabilities: %lu  status: %u  client_flag: %lu",
 		     mysql->server_version, mysql->server_capabilities,
 		     mysql->server_status, mysql->client_flag));
 
