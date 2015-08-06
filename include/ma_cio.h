@@ -1,5 +1,6 @@
 #ifndef _ma_cio_h_
 #define _ma_cio_h_
+#define cio_defined
 
 #ifdef HAVE_SSL
 #include <ma_ssl.h>
@@ -15,8 +16,11 @@
 struct st_ma_cio_methods;
 typedef struct st_ma_cio_methods CIO_METHODS;
 
+#ifndef ssl_defined
+#define ssl_defined
 struct st_ma_cio_ssl;
 typedef struct st_ma_cio_ssl MARIADB_SSL;
+#endif
 
 enum enum_cio_timeout {
   CIO_CONNECT_TIMEOUT= 0,
@@ -49,7 +53,7 @@ typedef struct st_cio_callback {
   struct st_cio_callback *next;
 } CIO_CALLBACK;
 
-typedef struct st_ma_cio {
+struct st_ma_cio {
   void *data;
   /* read ahead cache */
   uchar *cache;
@@ -65,7 +69,7 @@ typedef struct st_ma_cio {
   FILE *fp;
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
   void (*callback)(MARIADB_CIO *cio, my_bool is_read, const char *buffer, size_t length);
-} MARIADB_CIO;
+};
 
 typedef struct st_ma_cio_cinfo
 {

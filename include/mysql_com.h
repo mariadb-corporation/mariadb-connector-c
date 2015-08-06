@@ -209,16 +209,10 @@ enum enum_server_command
 #define NET_WRITE_TIMEOUT	60		/* Timeout on write */
 #define NET_WAIT_TIMEOUT	8*60*60		/* Wait for new query */
 
-#ifndef Vio_defined
-#define Vio_defined
-#ifdef HAVE_VIO
-class Vio;					/* Fill Vio class in C++ */
-#else
-struct st_vio;					/* Only C */
-typedef struct st_vio Vio;
+#ifndef cio_defined
+#define cio_defined
 struct st_ma_cio;
 typedef struct st_ma_cio MARIADB_CIO;
-#endif
 #endif
 
 #define MAX_CHAR_WIDTH		255	/* Max length for a CHAR colum */
