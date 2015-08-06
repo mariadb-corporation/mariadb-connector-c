@@ -94,6 +94,7 @@ mysql_declare_client_plugin(REMOTEIO)
   "Georg Richter",
   "Remote IO plugin",
   {0,1,0},
+  "LGPL",
   ma_rio_init, 
   ma_rio_deinit,
   &ma_rio_methods

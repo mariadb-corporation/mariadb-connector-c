@@ -216,6 +216,8 @@ class Vio;					/* Fill Vio class in C++ */
 #else
 struct st_vio;					/* Only C */
 typedef struct st_vio Vio;
+struct st_ma_cio;
+typedef struct st_ma_cio MARIADB_CIO;
 #endif
 #endif
 
@@ -233,7 +235,7 @@ typedef struct st_vio Vio;
 
 
 typedef struct st_net {
-  Vio *vio;
+  MARIADB_CIO *cio;
   unsigned char *buff;
   unsigned char *buff_end,*write_pos,*read_pos;
   my_socket fd;					/* For Perl DBI/dbd */
@@ -324,7 +326,7 @@ extern unsigned long net_buffer_length;
 
 #define net_new_transaction(net) ((net)->pkt_nr=0)
 
-int	my_net_init(NET *net, Vio *vio);
+int	my_net_init(NET *net, MARIADB_CIO *cio);
 void	net_end(NET *net);
 void	net_clear(NET *net);
 int	net_flush(NET *net);

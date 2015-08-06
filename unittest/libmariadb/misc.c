@@ -177,35 +177,6 @@ static int test_bug31418(MYSQL *mysql)
   return OK;
 }
 
-/*
-  Altough mysql_create_db(), mysql_rm_db() are deprecated since 4.0 they
-  should not crash server and should not hang in case of errors.
-
-  Since those functions can't be seen in modern API (unless client library
-  was compiled with USE_OLD_FUNCTIONS define) we use simple_command() macro.
-*/
-static int test_bug6081(MYSQL *mysql)
-{
-  int rc;
-
-  if (mysql_get_server_version(mysql) < 50100) {
-    diag("Test requires MySQL Server version 5.1 or above");
-    return SKIP;
-  }
-
-  rc= simple_command(mysql, MYSQL_COM_DROP_DB, (char*) schema,
-                     (ulong)strlen(schema), 0U, NULL);
-  FAIL_IF(!rc, "Error expected");
-
-  rc= simple_command(mysql, MYSQL_COM_CREATE_DB, (char*) schema,
-                     (ulong)strlen(schema), 0U, NULL);
-  FAIL_IF(!rc, "Error expected");
-  
-  rc= mysql_select_db(mysql, schema);
-  check_mysql_rc(rc, mysql);
-  return OK;
-}
-
 /* Query processing */
 
 static int test_debug_example(MYSQL *mysql)
@@ -1051,8 +1022,8 @@ static int test_remote2(MYSQL *my)
 
 struct my_tests_st my_tests[] = {
   {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
-  {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL},
-  {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
+  {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
+  {"test_conc117", test_conc117, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc49", test_conc49, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
@@ -1061,7 +1032,6 @@ struct my_tests_st my_tests[] = {
   {"test_debug_example", test_debug_example, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug29692", test_bug29692, TEST_CONNECTION_NEW, CLIENT_FOUND_ROWS,  NULL, NULL},
   {"test_bug31418", test_bug31418, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
-  {"test_bug6081", test_bug6081, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_frm_bug", test_frm_bug, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_1", test_wl4166_1, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_wl4166_2", test_wl4166_2, TEST_CONNECTION_NEW, 0,  NULL, NULL},

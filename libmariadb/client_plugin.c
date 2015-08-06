@@ -61,26 +61,10 @@ static MEM_ROOT mem_root;
 static uint plugin_version[MYSQL_CLIENT_MAX_PLUGINS]=
 {
   MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION, /* these two are taken by Connector/C */
-  0, /* these two are taken by Connector/C */
+  MYSQL_CLIENT_CIO_PLUGIN_INTERFACE_VERSION, /* these two are taken by Connector/C */
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
-  0,
+  MYSQL_CLIENT_TRACE_PLUGIN_INTERFACE_VERSION,
   MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION
-};
-
-typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
-extern auth_plugin_t old_password_client_plugin;
-extern auth_plugin_t native_password_client_plugin;
-
-/* built in plugins:
-   These plugins are part of Connector/C, so no need to
-   load them
-*/
-
-struct st_mysql_client_plugin *mysql_client_builtins[]=
-{
-  (struct st_mysql_client_plugin *)&old_password_client_plugin,
-  (struct st_mysql_client_plugin *)&native_password_client_plugin,
-  0
 };
 
 /*
@@ -96,6 +80,26 @@ struct st_client_plugin_int *plugin_list[MYSQL_CLIENT_MAX_PLUGINS];
 static pthread_mutex_t LOCK_load_client_plugin;
 #endif
 
+extern struct st_mysql_client_plugin old_password_client_plugin;
+extern struct st_mysql_client_plugin native_password_client_plugin;
+
+extern MARIADB_CIO_PLUGIN cio_socket_plugin;
+#ifdef HAVE_SSL
+extern MARIADB_CIO_PLUGIN SSL_PLUGIN;
+#endif
+
+struct st_mysql_client_plugin *mysql_client_builtins[]=
+{
+  (struct st_mysql_client_plugin *)&old_password_client_plugin,
+  (struct st_mysql_client_plugin *)&native_password_client_plugin,
+  (struct st_mysql_client_plugin *)&cio_socket_plugin,
+#ifdef HAVE_SSL
+  (struct st_mysql_client_plugin *)&SSL_PLUGIN,
+#endif
+  0
+};
+
+
 static int is_not_initialized(MYSQL *mysql, const char *name)
 {
   if (initialized)
@@ -103,7 +107,7 @@ static int is_not_initialized(MYSQL *mysql, const char *name)
 
   my_set_error(mysql, CR_AUTH_PLUGIN_CANNOT_LOAD,
                SQLSTATE_UNKNOWN, ER(CR_AUTH_PLUGIN_CANNOT_LOAD),
-               name ? name : "unknown" , "not initialized");
+               name, "not initialized");
   return 1;
 }
 
@@ -130,9 +134,12 @@ static struct st_mysql_client_plugin *find_plugin(const char *name, int type)
 
   for (p= plugin_list[type]; p; p= p->next)
   {
-    if (!name)
-      return p->plugin;
-    if (strcmp(p->plugin->name, name) == 0)
+    if (name)
+    {
+      if (strcmp(p->plugin->name, name) == 0)
+        return p->plugin;
+    }
+    else if (p->plugin->type == type)
       return p->plugin;
   }
   return NULL;
@@ -207,10 +214,10 @@ err2:
   if (plugin->deinit)
     plugin->deinit();
 err1:
-  if (dlhandle)
-    (void)dlclose(dlhandle);
   my_set_error(mysql, CR_AUTH_PLUGIN_CANNOT_LOAD, SQLSTATE_UNKNOWN,
                ER(CR_AUTH_PLUGIN_CANNOT_LOAD), plugin->name, errmsg);
+  if (dlhandle)
+    (void)dlclose(dlhandle);
   return NULL;
 }
 
@@ -282,7 +289,6 @@ int mysql_client_plugin_init()
   initialized= 1;
 
   pthread_mutex_lock(&LOCK_load_client_plugin);
-
   for (builtin= mysql_client_builtins; *builtin; builtin++)
     add_plugin(&mysql, *builtin, 0, 0, unused);
 
@@ -386,7 +392,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
            mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
            PLUGINDIR, "/",
            name, SO_EXT, NullS);
-   
+
   /* Open new dll handle */
   if (!(dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))
   {
@@ -403,7 +409,8 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
     goto err;
   }
 
-  if (!(sym= dlsym(dlhandle, plugin_declarations_sym)))
+
+  if (!(sym= (int *)dlsym(dlhandle, plugin_declarations_sym)))
   {
     errmsg= "not a plugin";
     (void)dlclose(dlhandle);

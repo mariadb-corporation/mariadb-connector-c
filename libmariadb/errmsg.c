@@ -55,25 +55,25 @@ const char *client_errors[]=
 const char *client_errors[]=
 {
   "Erro desconhecido do MySQL",
-  "Não pode criar 'UNIX socket' (%d)",
-  "Não pode se conectar ao servidor MySQL local através do 'socket' '%-.64s' (%d)", 
-  "Não pode se conectar ao servidor MySQL em '%-.64s' (%d)",
-  "Não pode criar 'socket TCP/IP' (%d)",
+  "Nï¿½o pode criar 'UNIX socket' (%d)",
+  "Nï¿½o pode se conectar ao servidor MySQL local atravï¿½s do 'socket' '%-.64s' (%d)", 
+  "Nï¿½o pode se conectar ao servidor MySQL em '%-.64s' (%d)",
+  "Nï¿½o pode criar 'socket TCP/IP' (%d)",
   "'Host' servidor MySQL '%-.64s' (%d) desconhecido", 
   "Servidor MySQL desapareceu",
-  "Incompatibilidade de protocolos. Versão do Servidor: %d - Versão do Cliente: %d",
-  "Cliente do MySQL com falta de memória",
-  "Informação inválida de 'host'",
+  "Incompatibilidade de protocolos. Versï¿½o do Servidor: %d - Versï¿½o do Cliente: %d",
+  "Cliente do MySQL com falta de memï¿½ria",
+  "Informaï¿½ï¿½o invï¿½lida de 'host'",
   "Localhost via 'UNIX socket'",
   "%-.64s via 'TCP/IP'",
-  "Erro na negociação de acesso ao servidor",
-  "Conexão perdida com servidor MySQL durante 'query'",
-  "Comandos fora de sincronismo. Você não pode executar este comando agora",
+  "Erro na negociaï¿½ï¿½o de acesso ao servidor",
+  "Conexï¿½o perdida com servidor MySQL durante 'query'",
+  "Comandos fora de sincronismo. Vocï¿½ nï¿½o pode executar este comando agora",
   "%-.64s via 'named pipe'",
-  "Não pode esperar pelo 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
-  "Não pode abrir 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
-  "Não pode estabelecer o estado do 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
-  "Não pode inicializar conjunto de caracteres %-.64s (caminho %-.64s)",
+  "Nï¿½o pode esperar pelo 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
+  "Nï¿½o pode abrir 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
+  "Nï¿½o pode estabelecer o estado do 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
+  "Nï¿½o pode inicializar conjunto de caracteres %-.64s (caminho %-.64s)",
   "Obteve pacote maior do que 'max_allowed_packet'"
 };
 
@@ -117,8 +117,8 @@ const char *client_errors[]=
 /* 2034 */  "",
 /* 2035 */  "",
 /* 2036 */  "Buffer type is not supported",
-/* 2037 */  "",
-/* 2038 */  "",
+/* 2037 */  "Shared memory: %-.64s",
+/* 2038 */  "Shared memory connection failed during %s. (%lu)",
 /* 2039 */  "",
 /* 2040 */  "",
 /* 2041 */  "",
@@ -145,6 +145,12 @@ const char *client_errors[]=
 };
 #endif
 
+const char *mariadb_client_errors[] =
+{
+  /* 5000 */ "Creating an event failed (Errorcode: %d)",
+  /* 5001 */ "Bind to local interface '-.%64s' failed (Errorcode: %d)",
+  ""
+};
 
 void init_client_errs(void)
 {

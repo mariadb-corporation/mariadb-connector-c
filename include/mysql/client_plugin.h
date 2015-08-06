@@ -36,14 +36,17 @@
 #endif
 
 /* known plugin types */
-#define MYSQL_CLIENT_DB_PLUGIN               0
-#define MYSQL_CLIENT_reserved                1
-#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2
-#define MYSQL_CLIENT_reserved22              3
+#define MYSQL_CLIENT_GENERIC_PLUGIN          0
+#define MYSQL_CLIENT_CIO_PLUGIN              1 /* communication IO */
+#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2 /* authentication   */
+#define MYSQL_CLIENT_TRACE_PLUGIN            3 /* cio trace        */
 #define MYSQL_CLIENT_REMOTEIO_PLUGIN         4
 
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0100
 #define MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION  0x0100
+#define MYSQL_CLIENT_CIO_PLUGIN_INTERFACE_VERSION  0x0100
+#define MYSQL_CLIENT_SSL_INTERFACE_VERSION  0x0100
+#define MYSQL_CLIENT_TRACE_PLUGIN_INTERFACE_VERSION 0x01000
 #define MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION 0x0100
 
 #define MYSQL_CLIENT_MAX_PLUGINS             5
@@ -63,9 +66,9 @@
   const char *author;                                   \
   const char *desc;                                     \
   unsigned int version[3];                              \
+  const char *license;                                  \
   int (*init)(char *, size_t, int, va_list);            \
-  int (*deinit)(void);
-
+  int (*deinit)();
 struct st_mysql_client_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER
@@ -83,6 +86,18 @@ typedef struct st_mariadb_client_plugin_DB
 
 #define MARIADB_DB_DRIVER(a) ((a)->ext_db)
 
+/*******************  Communication IO plugin *****************/
+#include <ma_cio.h>
+#include <ma_ssl.h>
+
+typedef struct st_mariadb_client_plugin_CIO
+{
+  MYSQL_CLIENT_PLUGIN_HEADER
+  struct st_ma_cio_methods *methods;
+  struct st_ma_cio_ssl_methods *ssl_methods;
+  void *compress_methods;
+} MARIADB_CIO_PLUGIN;
+
 /******** authentication plugin specific declarations *********/
 #include <mysql/plugin_auth_common.h>
 
@@ -92,6 +107,11 @@ struct st_mysql_client_plugin_AUTHENTICATION
   int (*authenticate_user)(MYSQL_PLUGIN_VIO *vio, struct st_mysql *mysql);
 };
 
+/******** trace plugin *******/
+struct st_mysql_client_plugin_TRACE
+{
+  MYSQL_CLIENT_PLUGIN_HEADER
+};
 
 /**
   type of the mysql_authentication_dialog_ask function

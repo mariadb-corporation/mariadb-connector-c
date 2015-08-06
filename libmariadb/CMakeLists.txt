@@ -8,7 +8,9 @@ ADD_DEFINITIONS(-D LIBMARIADB)
 ADD_DEFINITIONS(-D THREAD)
 
 SET(EXPORT_SYMBOLS
+ client_errors
  load_defaults
+ ma_cio_register_callback
  mariadb_connection
  mariadb_convert_string
  mariadb_deinitialize_ssl
@@ -247,7 +249,8 @@ bmove.c
 bmove_upp.c 
 my_charset.c
 hash.c
-violite.c 
+ma_cio.c
+ma_ssl.c
 net.c
 charset.c
 ma_time.c
@@ -321,9 +324,14 @@ my_stmt.c
 my_loaddata.c
 my_stmt_codec.c
 client_plugin.c
-my_auth.c
-ma_secure.c
+# built in plugins
+${CMAKE_SOURCE_DIR}/plugins/builtin/my_auth.c
+${CMAKE_SOURCE_DIR}/plugins/builtin/cio_socket.c
 )
+
+IF(SSL_SOURCES)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${SSL_SOURCES})
+ENDIF()
 
 IF(WIN32)
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)
