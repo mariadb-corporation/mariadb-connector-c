@@ -35,7 +35,7 @@
 #include <my_global.h>
 #include <my_sys.h>
 #include <ma_common.h>
-#include <ma_secure.h>
+//#include <ma_secure.h>
 #include <errmsg.h>
 #include <ma_cio.h>
 #include <ma_ssl.h>

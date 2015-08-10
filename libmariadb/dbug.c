@@ -1811,7 +1811,7 @@ static int DoTrace(CODE_STATE *cs)
     case INCLUDE:         return DO_TRACE;
     case MATCHED|SUBDIR:
     case NOT_MATCHED|SUBDIR:
-    case MATCHED:         return framep_trace_flag(cs, cs->framep) ?
+    case MATCHED:         return (framep_trace_flag(cs, cs->framep)) ?
                                            DO_TRACE : DONT_TRACE;
     case EXCLUDE:
     case NOT_MATCHED:     return DONT_TRACE;

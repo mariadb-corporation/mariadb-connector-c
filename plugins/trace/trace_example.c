@@ -52,6 +52,7 @@ mysql_declare_client_plugin(TRACE)
   "LGPL",
   &trace_init,
   &trace_deinit,
+  NULL
 mysql_end_client_plugin;
 
 static char *commands[]= {

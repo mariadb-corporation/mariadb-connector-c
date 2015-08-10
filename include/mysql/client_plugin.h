@@ -77,7 +77,7 @@ struct st_mysql_client_plugin
 struct st_mysql;
 
 /********* database api plugin specific declarations **********/
-typedef struct st_mariadb_client_plugin_DB
+struct st_mariadb_client_plugin_DB
 {
   MYSQL_CLIENT_PLUGIN_HEADER
   /* functions */

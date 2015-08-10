@@ -8,7 +8,6 @@ ADD_DEFINITIONS(-D LIBMARIADB)
 ADD_DEFINITIONS(-D THREAD)
 
 SET(EXPORT_SYMBOLS
- client_errors
  load_defaults
  ma_cio_register_callback
  mariadb_connection
@@ -249,8 +248,6 @@ bmove.c
 bmove_upp.c 
 my_charset.c
 hash.c
-ma_cio.c
-ma_ssl.c
 net.c
 charset.c
 ma_time.c
@@ -266,8 +263,9 @@ is_prefix.c
 libmariadb.c
 list.c
 llstr.c
-longlong2str.c
-ma_io.c
+longlong2str.c 
+ma_cio.c
+ma_ssl.c
 mf_dirname.c 
 mf_fn_ext.c 
 mf_format.c
@@ -324,7 +322,7 @@ my_stmt.c
 my_loaddata.c
 my_stmt_codec.c
 client_plugin.c
-# built in plugins
+ma_io.c
 ${CMAKE_SOURCE_DIR}/plugins/builtin/my_auth.c
 ${CMAKE_SOURCE_DIR}/plugins/builtin/cio_socket.c
 )

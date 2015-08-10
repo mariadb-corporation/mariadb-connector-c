@@ -545,21 +545,6 @@ mysql_debug(const char *debug __attribute__((unused)))
 
 
 /**************************************************************************
-** Close the server connection if we get a SIGPIPE
-   ARGSUSED
-**************************************************************************/
-
-static sig_handler
-pipe_sig_handler(int sig __attribute__((unused)))
-{
-  DBUG_PRINT("info",("Hit by signal %d",sig));
-#ifdef DONT_REMEMBER_SIGNAL
-  (void) signal(SIGPIPE,pipe_sig_handler);
-#endif
-}
-
-
-/**************************************************************************
 ** Shut down connection
 **************************************************************************/
 
@@ -1142,10 +1127,6 @@ mysql_init(MYSQL *mysql)
   mysql->charset= default_charset_info;
   strmov(mysql->net.sqlstate, "00000");
   mysql->net.last_error[0]= mysql->net.last_errno= 0;
-#if defined(SIGPIPE) && defined(THREAD) && !defined(_WIN32)
-  if (!((mysql)->client_flag & CLIENT_IGNORE_SIGPIPE))
-    (void) signal(SIGPIPE,pipe_sig_handler);
-#endif
 
 /*
   Only enable LOAD DATA INFILE by default if configured with
@@ -1685,13 +1666,13 @@ static my_bool mysql_reconnect(MYSQL *mysql)
   tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
 
   /* make sure that we reconnect with the same character set */
- /* if (!tmp_mysql.options.charset_name ||
+  if (!tmp_mysql.options.charset_name ||
       strcmp(tmp_mysql.options.charset_name, mysql->charset->csname))
   {
     my_free(tmp_mysql.options.charset_name);
     tmp_mysql.options.charset_name= my_strdup(mysql->charset->csname, MYF(MY_WME));
   }
-*/
+
   tmp_mysql.reconnect= mysql->reconnect;
   if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
 			  mysql->db, mysql->port, mysql->unix_socket,

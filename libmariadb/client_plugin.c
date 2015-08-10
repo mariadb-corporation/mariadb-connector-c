@@ -132,14 +132,12 @@ static struct st_mysql_client_plugin *find_plugin(const char *name, int type)
   if (type < 0 || type >= MYSQL_CLIENT_MAX_PLUGINS)
     return 0;
 
+  if (!name)
+    return plugin_list[type]->plugin;
+
   for (p= plugin_list[type]; p; p= p->next)
   {
-    if (name)
-    {
-      if (strcmp(p->plugin->name, name) == 0)
-        return p->plugin;
-    }
-    else if (p->plugin->type == type)
+    if (strcmp(p->plugin->name, name) == 0)
       return p->plugin;
   }
   return NULL;
@@ -274,7 +272,7 @@ int mysql_client_plugin_init()
   MYSQL mysql;
   struct st_mysql_client_plugin **builtin;
   va_list unused;
-  LINT_INIT_STRUCT(unused);
+  LINT_INIT_STRUCT(unused); 
 
   if (initialized)
     return 0;
@@ -410,7 +408,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   }
 
 
-  if (!(sym= (int *)dlsym(dlhandle, plugin_declarations_sym)))
+  if (!(sym= dlsym(dlhandle, plugin_declarations_sym)))
   {
     errmsg= "not a plugin";
     (void)dlclose(dlhandle);
@@ -463,7 +461,6 @@ mysql_load_plugin(MYSQL *mysql, const char *name, int type, int argc, ...)
   return p;
 }
 
-
 /* see <mysql/client_plugin.h> for a full description */
 struct st_mysql_client_plugin * STDCALL
 mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
@@ -483,8 +480,7 @@ mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
     return p;
 
   /* not found, load it */
-  if (name)
-    return mysql_load_plugin(mysql, name, type, 0);
+  return mysql_load_plugin(mysql, name, type, 0);
 }
 
 
