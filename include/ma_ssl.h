@@ -5,12 +5,6 @@ struct st_ma_cio_ssl_methods;
 typedef struct st_ma_cio_ssl_methods CIO_SSL_METHODS;
 extern int ssl_default_plugin;
 
-#ifndef ssl_defined
-#define ssl_defined
-struct st_ma_cio_ssl;
-typedef struct st_ma_cio_ssl MARIADB_SSL;
-#endif
-
 enum enum_cio_ssl_type {
   SSL_TYPE_DEFAULT=0,
 #ifdef _WIN32
@@ -20,13 +14,13 @@ enum enum_cio_ssl_type {
   SSL_TYPE_GNUTLS
 };
 
-struct st_ma_cio_ssl {
+typedef struct st_ma_cio_ssl {
   void *data;
   enum enum_cio_ssl_type type;
   MARIADB_CIO *cio;
   CIO_SSL_METHODS *methods;
   void *ssl;
-};
+} MARIADB_SSL;
 
 struct st_ma_cio_ssl_methods
 {
