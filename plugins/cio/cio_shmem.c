@@ -59,6 +59,7 @@ MARIADB_CIO_PLUGIN _mysql_client_plugin_declaration_ =
   "Georg Richter",
   "MariaDB communication IO plugin for named pipe communication",
   {1, 0, 0},
+  "LGPL",
   NULL,
   NULL,
   &cio_shm_methods,

@@ -243,6 +243,22 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mpvio->db)
     mysql->client_flag|= CLIENT_CONNECT_WITH_DB;
 
+  /* if server doesn't support SSL and verification of server certificate
+     was set to mandatory, we need to return an error */
+  if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
+  {
+    if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) ||
+        (mysql->options.extension && (mysql->options.extension->ssl_fp || 
+                                      mysql->options.extension->ssl_fp_list)))
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                          ER(CR_SSL_CONNECTION_ERROR), 
+                          "Server doesn't support SSL");
+      goto error;
+    }
+  }
+
+
   /* Remove options that server doesn't support */
   mysql->client_flag= mysql->client_flag &
                        (~(CLIENT_COMPRESS | CLIENT_SSL | CLIENT_PROTOCOL_41) 

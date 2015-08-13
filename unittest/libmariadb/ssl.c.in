@@ -33,8 +33,8 @@ pthread_mutex_t LOCK_test;
 
 int check_skip_ssl()
 {
-#ifndef HAVE_OPENSSL
-  diag("client library built without OpenSSL support -> skip");
+#ifndef HAVE_SSL
+  diag("client library built without SSL support -> skip");
   return 1;
 #endif
   if (skip_ssl)
@@ -92,7 +92,11 @@ static int test_ssl_cipher(MYSQL *unused)
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
+#ifdef HAVE_OPENSSL
   FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+#elif defined(HAVE_HNUTLS)
+  FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
+#endif
   mysql_close(my);
   return OK;
 }
@@ -174,7 +178,11 @@ static int test_multi_ssl_connections(MYSQL *unused)
     }
 
     cipher= (char *)mysql_get_ssl_cipher(mysql[i]);
+#ifdef HAVE_OPENSSL
     FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+#elif defined(HAVE_HNUTLS)
+    FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
+#endif
   }
   for (i=0; i < 50; i++)
     mysql_close(mysql[i]);
@@ -637,7 +645,11 @@ static int test_ssl_fp(MYSQL *unused)
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
+#ifdef HAVE_OPENSSL
   FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+#elif defined(HAVE_HNUTLS)
+  FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
+#endif
   mysql_close(my);
   return OK;
 }
@@ -660,8 +672,11 @@ static int test_ssl_fp_list(MYSQL *unused)
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
                          port, socketname, 0), mysql_error(my));
 
-  cipher= (char *)mysql_get_ssl_cipher(my);
+#ifdef HAVE_OPENSSL
   FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+#elif defined(HAVE_HNUTLS)
+  FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
+#endif
   mysql_close(my);
   return OK;
 }

@@ -62,10 +62,10 @@
 #define INADDR_NONE -1
 #endif
 #include <sha1.h>
-#include <ma_cio.h>
 #ifndef _WIN32
 #include <poll.h>
 #endif
+#include <ma_cio.h>
 #include <ma_dyncol.h>
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)

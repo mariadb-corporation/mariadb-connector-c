@@ -84,18 +84,12 @@ extern struct st_mysql_client_plugin old_password_client_plugin;
 extern struct st_mysql_client_plugin native_password_client_plugin;
 
 extern MARIADB_CIO_PLUGIN cio_socket_plugin;
-#ifdef HAVE_SSL
-extern MARIADB_CIO_PLUGIN SSL_PLUGIN;
-#endif
 
 struct st_mysql_client_plugin *mysql_client_builtins[]=
 {
   (struct st_mysql_client_plugin *)&old_password_client_plugin,
   (struct st_mysql_client_plugin *)&native_password_client_plugin,
   (struct st_mysql_client_plugin *)&cio_socket_plugin,
-#ifdef HAVE_SSL
-  (struct st_mysql_client_plugin *)&SSL_PLUGIN,
-#endif
   0
 };
 

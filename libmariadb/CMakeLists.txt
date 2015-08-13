@@ -325,11 +325,10 @@ client_plugin.c
 ma_io.c
 ${CMAKE_SOURCE_DIR}/plugins/builtin/my_auth.c
 ${CMAKE_SOURCE_DIR}/plugins/builtin/cio_socket.c
+${SSL_SOURCES}
 )
 
-IF(SSL_SOURCES)
-  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${SSL_SOURCES})
-ENDIF()
+MESSAGE(STATUS "${LIBMARIADB_SOURCES}")
 
 IF(WIN32)
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)

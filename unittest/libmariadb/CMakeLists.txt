@@ -25,7 +25,7 @@ SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view
               "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "dyncol") 
 
 # Get finger print from server certificate 
-IF(WITH_OPENSSL)
+IF(WITH_SSL)
 
   #create certificates
   IF(EXISTS "${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")

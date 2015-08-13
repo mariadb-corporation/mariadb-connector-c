@@ -116,7 +116,7 @@ MARIADB_CIO *ma_cio_init(MA_CIO_CINFO *cinfo)
     cio->methods->set_timeout(cio, CIO_WRITE_TIMEOUT, cinfo->mysql->options.write_timeout);
   }
 
-  if (!(cio->cache= my_malloc(CIO_READ_AHEAD_CACHE_SIZE, MYF(MY_WME))))
+  if (!(cio->cache= my_malloc(CIO_READ_AHEAD_CACHE_SIZE, MYF(MY_ZEROFILL))))
   {
     CIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
     return NULL;
@@ -405,7 +405,9 @@ my_bool ma_cio_start_ssl(MARIADB_CIO *cio)
     return 1;
   CLEAR_CLIENT_ERROR(cio->mysql);
   if (!(cio->cssl= ma_cio_ssl_init(cio->mysql)))
+  {
     return 1;
+  }
   if (ma_cio_ssl_connect(cio->cssl))
   {
     my_free((gptr)cio->cssl);
@@ -416,6 +418,16 @@ my_bool ma_cio_start_ssl(MARIADB_CIO *cio)
         (cio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
          ma_cio_ssl_verify_server_cert(cio->cssl))
     return 1;
+
+  if (cio->mysql->options.extension &&
+      (cio->mysql->options.extension->ssl_fp || cio->mysql->options.extension->ssl_fp_list))
+  {
+
+    if (ma_cio_ssl_check_fp(cio->cssl, 
+          cio->mysql->options.extension->ssl_fp,
+          cio->mysql->options.extension->ssl_fp_list))
+      return 1;
+  }
 
   return 0;
 }
