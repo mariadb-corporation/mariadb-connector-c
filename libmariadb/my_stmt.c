@@ -1811,7 +1811,7 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
     DBUG_RETURN(1);
   }
 
-  if (stmt->mysql->status== MYSQL_STATUS_READY && (length || !stmt->params[param_number].long_data_used))
+  if (length || !stmt->params[param_number].long_data_used)
   {
     int ret;
     size_t packet_len;
@@ -1824,7 +1824,7 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
     my_free(cmd_buff);
     DBUG_RETURN(ret); 
   } 
-  DBUG_RETURN(1);
+  DBUG_RETURN(0);
 }
 
 my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt)
