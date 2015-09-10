@@ -67,7 +67,8 @@ static int test_ssl(MYSQL *mysql)
 
   if (!skip_ssl)
   {
-    rc= mysql_query(mysql, "DROP USER 'ssluser'@'localhost'");
+    rc= mysql_query(mysql, "DROP USER 'ssluser'@'%'");
+    rc= mysql_query(mysql, "GRANT ALL ON test.* TO 'ssluser'@'%' IDENTIFIED BY 'sslpw' REQUIRE SSL");
     rc= mysql_query(mysql, "GRANT ALL ON test.* TO 'ssluser'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE SSL");
     rc= mysql_query(mysql, "FLUSH PRVILEGES");
   }
@@ -92,11 +93,7 @@ static int test_ssl_cipher(MYSQL *unused)
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
-#ifdef HAVE_OPENSSL
-  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
-#elif defined(HAVE_HNUTLS)
-  FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
-#endif
+  FAIL_IF(cipher == NULL, "used cipher is NULL");
   mysql_close(my);
   return OK;
 }
@@ -109,7 +106,9 @@ static int test_conc95(MYSQL *my)
   if (check_skip_ssl())
     return SKIP;
 
+  rc= mysql_query(my, "DROP USER 'ssluser1'@'%'");
   rc= mysql_query(my, "DROP USER 'ssluser1'@'localhost'");
+  rc= mysql_query(my, "GRANT ALL ON test.* TO 'ssluser1'@'%' IDENTIFIED BY 'sslpw' REQUIRE X509");
   rc= mysql_query(my, "GRANT ALL ON test.* TO 'ssluser1'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE X509");
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
@@ -117,8 +116,8 @@ static int test_conc95(MYSQL *my)
 
   mysql= mysql_init(NULL);
   mysql_ssl_set(mysql, 
-                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-key.pem", 
-                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-cert.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-key.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem", 
                 "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 
                 NULL, 
                 NULL);
@@ -126,6 +125,7 @@ static int test_conc95(MYSQL *my)
   if (!mysql_real_connect(mysql, hostname, "ssluser1", sslpw, schema,
            port, socketname, 0))
   {
+    diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
     diag("could not establish x509 connection");
     return FAIL;
@@ -178,11 +178,7 @@ static int test_multi_ssl_connections(MYSQL *unused)
     }
 
     cipher= (char *)mysql_get_ssl_cipher(mysql[i]);
-#ifdef HAVE_OPENSSL
-    FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
-#elif defined(HAVE_HNUTLS)
-    FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
-#endif
+    FAIL_IF(cipher == NULL, "used cipher is NULL");
   }
   for (i=0; i < 50; i++)
     mysql_close(mysql[i]);
@@ -404,8 +400,11 @@ static int test_conc50_3(MYSQL *my)
   if (check_skip_ssl())
     return SKIP;
 
-  mysql_query(my, "DROP USER 'ssltest'@'localhost'");
+  mysql_query(my, "DROP USER 'ssltest'@'%'");
 
+  sprintf(query, "GRANT ALL ON %s.* TO 'ssltest'@'%' REQUIRE SSL", schema ? schema : "*");
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
   sprintf(query, "GRANT ALL ON %s.* TO 'ssltest'@'localhost' REQUIRE SSL", schema ? schema : "*");
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
@@ -489,7 +488,7 @@ static int test_bug62743(MYSQL *my)
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, "dummykey", NULL, NULL, NULL, NULL);
+  mysql_ssl_set(mysql, "dummykey", "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem", NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
@@ -596,6 +595,8 @@ static int test_conc_102(MYSQL *mysql)
   rc= mysql_query(mysql, "INSERT INTO t_conc102 VALUES (0)");
   check_mysql_rc(rc, mysql);
 
+  pthread_mutex_init(&LOCK_test, 0);
+
   for (i=0; i < 50; i++)
   {
 #ifndef WIN32
@@ -613,7 +614,8 @@ static int test_conc_102(MYSQL *mysql)
 #else
     WaitForSingleObject(hthreads[i], INFINITE);
 #endif
-  } 
+  }
+  pthread_mutex_destroy(&LOCK_test);
   rc= mysql_query(mysql, "SELECT a FROM t_conc102");
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
@@ -645,11 +647,7 @@ static int test_ssl_fp(MYSQL *unused)
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
-#ifdef HAVE_OPENSSL
-  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
-#elif defined(HAVE_HNUTLS)
-  FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
-#endif
+  FAIL_IF(cipher == NULL, "used cipher is NULL");
   mysql_close(my);
   return OK;
 }
@@ -672,19 +670,43 @@ static int test_ssl_fp_list(MYSQL *unused)
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
                          port, socketname, 0), mysql_error(my));
 
-#ifdef HAVE_OPENSSL
-  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
-#elif defined(HAVE_HNUTLS)
-  FAIL_IF(strcmp(cipher, "AES-256-CBC") != 0, "Cipher != AES-256-CBC");
-#endif
+  cipher= mysql_get_ssl_cipher(my);
+  FAIL_IF(cipher == NULL, "used cipher is NULL");
   mysql_close(my);
   return OK;
 }
 
+static int test_ssl_long_msg(MYSQL *unused)
+{
+  MYSQL *my;
+  char buffer[20000];
+  int rc;
+  
+  if (check_skip_ssl())
+    return SKIP;
 
+  my= mysql_init(NULL);
+  FAIL_IF(!my, "mysql_init() failed");
+
+  mysql_ssl_set(my,0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
+
+  mysql_options(my, MARIADB_OPT_SSL_FP, ssl_cert_finger_print);
+
+  FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  memset(buffer, 0, 20000);
+  strcpy(buffer, "SET @a:=");
+  memset(buffer + strlen(buffer), '0', 19000);
+
+  rc= mysql_query(my, buffer);
+  check_mysql_rc(rc, my);
+  mysql_close(my);
+}
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_ssl_long_msg", test_ssl_long_msg, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp", test_ssl_fp, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp_list", test_ssl_fp_list, TEST_CONNECTION_NEW, 0,  NULL,  NULL},

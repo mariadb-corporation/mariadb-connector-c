@@ -49,6 +49,7 @@
 
 /* Errors should be handled via cio callback function */
 my_bool ma_ssl_initialized= FALSE;
+unsigned int mariadb_deinitialize_ssl= 1;
 
 MARIADB_SSL *ma_cio_ssl_init(MYSQL *mysql)
 {
@@ -106,10 +107,14 @@ const char *ma_cio_ssl_cipher(MARIADB_SSL *cssl)
 static my_bool ma_cio_ssl_compare_fp(char *fp1, unsigned int fp1_len,
                                    char *fp2, unsigned int fp2_len)
 {
-  char hexstr[fp1_len * 2 + 1];
+  char hexstr[64];
 
   fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
+#ifdef WIN32
+  if (strnicmp(hexstr, fp2, fp1_len) != 0)
+#else
   if (strncasecmp(hexstr, fp2, fp1_len) != 0)
+#endif
    return 1;
   return 0;
 }
@@ -121,9 +126,8 @@ my_bool ma_cio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_li
   MYSQL *mysql;
   my_bool rc=1;
 
-  if (ma_ssl_get_finger_print(cssl, cert_fp, cert_fp_len) < 1)
+  if ((cert_fp_len= ma_ssl_get_finger_print(cssl, cert_fp, cert_fp_len)) < 1)
     goto end;
-
   if (fp)
     rc= ma_cio_ssl_compare_fp(cert_fp, cert_fp_len, fp, strlen(fp));
   else if (fp_list)

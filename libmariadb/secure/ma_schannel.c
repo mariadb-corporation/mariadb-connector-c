@@ -20,8 +20,75 @@
 
  *************************************************************************************/
 #include "ma_schannel.h"
+#include <assert.h>
 
 #define SC_IO_BUFFER_SIZE 0x4000
+#define MAX_SSL_ERR_LEN 100
+
+#define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage - (A).cbHeader - (A).cbTrailer
+
+/* {{{ void ma_schannel_set_sec_error */
+void ma_schannel_set_sec_error(MARIADB_CIO *cio, DWORD ErrorNo)
+{
+  MYSQL *mysql= cio->mysql;
+  switch(ErrorNo) {
+  case SEC_E_UNTRUSTED_ROOT:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Untrusted root certificate");
+    break;
+  case SEC_E_BUFFER_TOO_SMALL:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Buffer too small");
+    break;
+  case SEC_E_CRYPTO_SYSTEM_INVALID:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Cipher is not supported");
+    break;
+  case SEC_E_INSUFFICIENT_MEMORY:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Out of memory");
+    break;
+  case SEC_E_OUT_OF_SEQUENCE:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Invalid message sequence");
+    break;
+  case SEC_E_DECRYPT_FAILURE:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "An error occured during decrypting data");
+    break;
+  case SEC_I_INCOMPLETE_CREDENTIALS:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Incomplete credentials");
+    break;
+  case SEC_E_ENCRYPT_FAILURE:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "An error occured during encrypting data");
+    break;
+  case SEC_I_CONTEXT_EXPIRED:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Context expired: ");
+  case SEC_E_OK:
+    break;
+  default:
+    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error (%d)", ErrorNo);
+  }
+}
+/* }}} */
+
+/* {{{ void ma_schnnel_set_win_error */
+void ma_schannel_set_win_error(MARIADB_CIO *cio)
+{
+  ulong ssl_errno= GetLastError();
+  char  ssl_error[MAX_SSL_ERR_LEN];
+  char *ssl_error_reason= NULL;
+
+  if (!ssl_errno)
+  {
+    cio->set_error(cio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
+    return;
+  }
+  /* todo: obtain error messge */
+  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL, ssl_errno, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &ssl_error_reason, 0, NULL );
+  cio->set_error(cio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ssl_error_reason);
+
+  if (ssl_error_reason)
+    LocalFree(ssl_error_reason);
+  return;
+}
+/* }}} */
 
 /* {{{ LPBYTE ma_schannel_load_pem(const char *PemFileName, DWORD *buffer_len) */
 /*
@@ -44,7 +111,7 @@
      LPBYTE *              a pointer to a binary der object
                            buffer_len will contain the length of binary der object
 */
-static LPBYTE ma_schannel_load_pem(const char *PemFileName, DWORD *buffer_len)
+static LPBYTE ma_schannel_load_pem(MARIADB_CIO *cio, const char *PemFileName, DWORD *buffer_len)
 {
   HANDLE hfile;
   char   *buffer= NULL;
@@ -57,32 +124,53 @@ static LPBYTE ma_schannel_load_pem(const char *PemFileName, DWORD *buffer_len)
     return NULL;
 
   
-  if ((hfile= CreateFile(PemFileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, 
+  if ((hfile= CreateFile(PemFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 
                           FILE_ATTRIBUTE_NORMAL, NULL )) == INVALID_HANDLE_VALUE)
+  {
+    ma_schannel_set_win_error(cio);
     return NULL;
+  }
 
   if (!(*buffer_len = GetFileSize(hfile, NULL)))
+  {
+     cio->set_error(cio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Invalid pem format");
      goto end;
+  }
 
   if (!(buffer= LocalAlloc(0, *buffer_len + 1)))
+  {
+    cio->set_error(cio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
     goto end;
+  }
 
   if (!ReadFile(hfile, buffer, *buffer_len, &dwBytesRead, NULL))
+  {
+    ma_schannel_set_win_error(cio);
     goto end;
+  }
 
   CloseHandle(hfile);
 
   /* calculate the length of DER binary */
   if (!CryptStringToBinaryA(buffer, *buffer_len, CRYPT_STRING_BASE64HEADER,
                             NULL, &der_buffer_length, NULL, NULL))
+  {
+    ma_schannel_set_win_error(cio);
     goto end;
+  }
   /* allocate DER binary buffer */
   if (!(der_buffer= (LPBYTE)LocalAlloc(0, der_buffer_length)))
+  {
+    cio->set_error(cio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
     goto end;
+  }
   /* convert to DER binary */
   if (!CryptStringToBinaryA(buffer, *buffer_len, CRYPT_STRING_BASE64HEADER,
                             der_buffer, &der_buffer_length, NULL, NULL))
+  {
+    ma_schannel_set_win_error(cio);
     goto end;
+  }
 
   *buffer_len= der_buffer_length;
   LocalFree(buffer);
@@ -101,12 +189,13 @@ end:
 }
 /* }}} */
 
-/* {{{ CERT_CONTEXT *ma_schannel_create_cert_context(const char *pem_file) */
+/* {{{ CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_CIO *cio, const char *pem_file) */
 /*
   Create a certification context from ca or cert file
 
   SYNOPSIS
     ma_schannel_create_cert_context()
+    cio                    cio object
     pem_file               name of certificate or ca file
 
   DESCRIPTION
@@ -119,7 +208,7 @@ end:
     NULL                   If loading of the file or creating context failed
     CERT_CONTEXT *         A pointer to a certification context structure
 */
-CERT_CONTEXT *ma_schannel_create_cert_context(const char *pem_file)
+CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_CIO *cio, const char *pem_file)
 {
   DWORD der_buffer_length;
   LPBYTE der_buffer= NULL;
@@ -127,10 +216,12 @@ CERT_CONTEXT *ma_schannel_create_cert_context(const char *pem_file)
   CERT_CONTEXT *ctx= NULL;
 
   /* create DER binary object from ca/certification file */
-  if (!(der_buffer= ma_schannel_load_pem(pem_file, (DWORD *)&der_buffer_length)))
+  if (!(der_buffer= ma_schannel_load_pem(cio, pem_file, (DWORD *)&der_buffer_length)))
     goto end;
-  ctx= CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                                    der_buffer, der_buffer_length);
+  if (!(ctx= CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+                                    der_buffer, der_buffer_length)))
+    ma_schannel_set_win_error(cio);
+
 end:
   if (der_buffer)
     LocalFree(der_buffer);
@@ -138,7 +229,7 @@ end:
 }
 /* }}} */
 
-/* {{{ PCCRL_CONTEXT ma_schannel_create_crl_context(const char *pem_file) */
+/* {{{ PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_CIO *cio, const char *pem_file) */
 /*
   Create a crl context from crlfile
 
@@ -156,7 +247,7 @@ end:
     NULL                   If loading of the file or creating context failed
     PCCRL_CONTEXT          A pointer to a certification context structure
 */
-PCCRL_CONTEXT ma_schannel_create_crl_context(const char *pem_file)
+PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_CIO *cio, const char *pem_file)
 {
   DWORD der_buffer_length;
   LPBYTE der_buffer= NULL;
@@ -164,10 +255,11 @@ PCCRL_CONTEXT ma_schannel_create_crl_context(const char *pem_file)
   PCCRL_CONTEXT ctx= NULL;
 
   /* load ca pem file into memory */
-  if (!(der_buffer= ma_schannel_load_pem(pem_file, (DWORD *)&der_buffer_length)))
+  if (!(der_buffer= ma_schannel_load_pem(cio, pem_file, (DWORD *)&der_buffer_length)))
     goto end;
-  ctx= CertCreateCRLContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                                    der_buffer, der_buffer_length);
+  if (!(ctx= CertCreateCRLContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+                                    der_buffer, der_buffer_length)))
+    ma_schannel_set_win_error(cio);
 end:
   if (der_buffer)
     LocalFree(der_buffer);
@@ -175,7 +267,7 @@ end:
 }
 /* }}} */
 
-/* {{{ my_bool ma_schannel_load_private_key(CERT_CONTEXT *ctx, char *key_file) */
+/* {{{ my_bool ma_schannel_load_private_key(MARIADB_CIO *cio, CERT_CONTEXT *ctx, char *key_file) */
 /*
   Load privte key into context
 
@@ -195,7 +287,7 @@ end:
     PCCRL_CONTEXT          A pointer to a certification context structure
 */
 
-my_bool ma_schannel_load_private_key(CERT_CONTEXT *ctx, char *key_file)
+my_bool ma_schannel_load_private_key(MARIADB_CIO *cio, CERT_CONTEXT *ctx, char *key_file)
 {
    DWORD der_buffer_len= 0;
    LPBYTE der_buffer= NULL;
@@ -203,11 +295,11 @@ my_bool ma_schannel_load_private_key(CERT_CONTEXT *ctx, char *key_file)
    LPBYTE priv_key= NULL;
    HCRYPTPROV  crypt_prov= NULL;
    HCRYPTKEY  crypt_key= NULL;
-   CRYPT_KEY_PROV_INFO kpi;
+   CERT_KEY_CONTEXT kpi;
    my_bool rc= 0;
 
    /* load private key into der binary object */
-   if (!(der_buffer= ma_schannel_load_pem(key_file, &der_buffer_len)))
+   if (!(der_buffer= ma_schannel_load_pem(cio, key_file, &der_buffer_len)))
      return 0;
 
    /* determine required buffer size for decoded private key */
@@ -216,11 +308,17 @@ my_bool ma_schannel_load_private_key(CERT_CONTEXT *ctx, char *key_file)
                             der_buffer, der_buffer_len,
                             0, NULL,
                             NULL, &priv_key_len))
+   {
+     ma_schannel_set_win_error(cio);
      goto end;
+   }
 
    /* allocate buffer for decoded private key */
    if (!(priv_key= LocalAlloc(0, priv_key_len)))
+   {
+     cio->set_error(cio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
      goto end;
+   }
 
    /* decode */
    if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
@@ -228,24 +326,37 @@ my_bool ma_schannel_load_private_key(CERT_CONTEXT *ctx, char *key_file)
                             der_buffer, der_buffer_len,
                             0, NULL,
                             priv_key, &priv_key_len))
+   {
+     ma_schannel_set_win_error(cio);
      goto end;
+   }
 
-   /* Acquire context */
+   /* Acquire context:
+      If cio_schannel context doesn't exist, create a new one */
    if (!CryptAcquireContext(&crypt_prov, "cio_schannel", MS_ENHANCED_PROV, PROV_RSA_FULL, 0))
+   if (!CryptAcquireContext(&crypt_prov, "cio_schannel", MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+   {
+     ma_schannel_set_win_error(cio);
      goto end;
-
+   }
    /* ... and import the private key */
    if (!CryptImportKey(crypt_prov, priv_key, priv_key_len, NULL, 0, &crypt_key))
+   {
+     ma_schannel_set_win_error(cio);
      goto end;
+   }
 
    SecureZeroMemory(&kpi, sizeof(kpi));
-   kpi.pwszContainerName = "cio-schanel";
+   kpi.hCryptProv= crypt_prov;
    kpi.dwKeySpec = AT_KEYEXCHANGE;
-   kpi.dwFlags = CRYPT_MACHINE_KEYSET;
+   kpi.cbSize= sizeof(kpi);
 
    /* assign private key to certificate context */
-   if (CertSetCertificateContextProperty(ctx, CERT_KEY_PROV_INFO_PROP_ID, 0, &kpi))
+   if (CertSetCertificateContextProperty(ctx, CERT_KEY_CONTEXT_PROP_ID, 0, &kpi))
      rc= 1;
+   else
+     ma_schannel_set_win_error(cio);
+
 end:
   if (der_buffer)
     LocalFree(der_buffer);
@@ -285,7 +396,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_CIO *cio, my_bool InitialRead
   PUCHAR          IoBuffer;
   BOOL            fDoRead;
   MARIADB_SSL     *cssl= cio->cssl;
-  SC_CTX          *sctx= (SC_CTX *)cssl->data;
+  SC_CTX          *sctx= (SC_CTX *)cssl->ssl;
 
 
   dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
@@ -416,6 +527,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_CIO *cio, my_bool InitialRead
         pExtraData->cbBuffer= 0;
       }
     break;
+ 
     case SEC_I_INCOMPLETE_CREDENTIALS:
       /* Provided credentials didn't contain a valid client certificate.
          We will try to connect anonymously, using current credentials */
@@ -425,7 +537,10 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_CIO *cio, my_bool InitialRead
       break;
     default:
       if (FAILED(rc))
+      {
+        ma_schannel_set_sec_error(cio, rc);
         goto loopend;
+      }
       break;
     }
 
@@ -472,21 +587,23 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
   SecBuffer ExtraData;
   DWORD SFlags= ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT |
                 ISC_REQ_CONFIDENTIALITY | ISC_RET_EXTENDED_ERROR | 
+                ISC_REQ_USE_SUPPLIED_CREDS |
                 ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
   
   SecBufferDesc	BufferIn, BufferOut;
   SecBuffer  BuffersOut[1], BuffersIn[2];
 
-  if (!cssl || !cssl->cio || !cssl->data)
+  if (!cssl || !cssl->cio)
     return 1;
 
   cio= cssl->cio;
-  sctx= (SC_CTX *)cssl->data;
+  sctx= (SC_CTX *)cssl->ssl;
 
   /* Initialie securifty context */
   BuffersOut[0].BufferType= SECBUFFER_TOKEN;
   BuffersOut[0].cbBuffer= 0;
   BuffersOut[0].pvBuffer= NULL;
+
 
   BufferOut.cBuffers= 1;
   BufferOut.pBuffers= BuffersOut;
@@ -506,7 +623,18 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
                                     NULL);
 
   if(sRet != SEC_I_CONTINUE_NEEDED)
+  {
+    ma_schannel_set_sec_error(cio, sRet);
     return sRet;
+  }
+
+  /* Allocate IO-Buffer */
+  sctx->IoBufferSize= 2 * net_buffer_length;
+  if (!(sctx->IoBuffer= (PUCHAR)LocalAlloc(LMEM_ZEROINIT, sctx->IoBufferSize)))
+  {
+    sRet= SEC_E_INSUFFICIENT_MEMORY;
+    goto end;
+  }
   
   /* send client hello packaet */
   if(BuffersOut[0].cbBuffer != 0 && BuffersOut[0].pvBuffer != NULL)
@@ -518,51 +646,26 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
       goto end;
     }
   }
-  return ma_schannel_handshake_loop(cio, TRUE, &ExtraData);
+  sRet= ma_schannel_handshake_loop(cio, TRUE, &ExtraData);
 
+  /* Reallocate IO-Buffer for write operations: After handshake
+  was successfull, we are able now to calculate payload */
+  QueryContextAttributes( &sctx->ctxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes );
+  sctx->IoBufferSize= SCHANNEL_PAYLOAD(sctx->Sizes);
+  sctx->IoBuffer= LocalReAlloc(sctx->IoBuffer, sctx->IoBufferSize, LMEM_ZEROINIT);
+    
+  return sRet;
 end:
+  LocalFree(sctx->IoBuffer);
+  sctx->IoBufferSize= 0;
   FreeContextBuffer(BuffersOut[0].pvBuffer);
   DeleteSecurityContext(&sctx->ctxt);
   return sRet;
 }
 /* }}} */
 
-/* {{{ static PUCHAR ma_schannel_alloc_iobuffer(CtxtHandle *Context, DWORD *BufferLength) */
-/* 
-   alloates an IO Buffer for ssl communication
-
-   SYNOPSUS
-     ma_schannel_alloc_iobuffer()
-     Context             SChannel context handle
-     BufferLength        a pointer for the buffer length
-
-   DESCRIPTION
-     calculates the required buffer length and allocates a memory buffer for en- and
-     decryption. The calculated buffer length will be returned in BufferLength pointer.
-     The allocated buffer needs to be freed at end of the connection.
-
-   RETURN
-     NULL                if an error occured
-     PUCHAR              an IO Buffer
-*/ 
-static PUCHAR ma_schannel_alloc_iobuffer(CtxtHandle *Context, DWORD *BufferLength)
-{
-  SecPkgContext_StreamSizes StreamSizes;
-
-  PUCHAR Buffer= NULL;
-
-  if (!BufferLength || QueryContextAttributes(Context, SECPKG_ATTR_STREAM_SIZES, &StreamSizes) != SEC_E_OK)
-    return NULL;
-
-  /* Calculate BufferLength */
-  *BufferLength= StreamSizes.cbHeader + StreamSizes.cbTrailer + StreamSizes.cbMaximumMessage;
-
-  Buffer= LocalAlloc(LMEM_FIXED, *BufferLength);
-  return Buffer;
-}
-/* }}} */
-
-/* {{{ SECURITY_STATUS ma_schannel_read(MARIADB_CIO *cio, PCredHandle phCreds, CtxtHandle * phContext) */
+/* {{{ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_CIO *cio, PCredHandle phCreds, CtxtHandle * phContext,
+                                                DWORD DecryptLength, uchar *ReadBuffer, DWORD ReadBufferSize) */
 /*
   Reads encrypted data from a SSL stream and decrypts it.
 
@@ -583,44 +686,34 @@ static PUCHAR ma_schannel_alloc_iobuffer(CtxtHandle *Context, DWORD *BufferLengt
     SEC_E_*          if an error occured
 */  
 
-SECURITY_STATUS ma_schannel_read(MARIADB_CIO *cio,
-                                 PCredHandle phCreds,
-                                 CtxtHandle * phContext,
-                                 DWORD *DecryptLength,
-                                 uchar *ReadBuffer,
-                                 DWORD ReadBufferSize)
+SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_CIO *cio,
+                                         PCredHandle phCreds,
+                                         CtxtHandle * phContext,
+                                         DWORD *DecryptLength,
+                                         uchar *ReadBuffer,
+                                         DWORD ReadBufferSize)
 {
   DWORD dwBytesRead= 0;
   DWORD dwOffset= 0;
   SC_CTX *sctx;
   SECURITY_STATUS sRet= 0;
-  SecBuffersDesc Msg;
+  SecBufferDesc Msg;
   SecBuffer Buffers[4],
             ExtraBuffer,
             *pData, *pExtra;
   int i;
 
-  if (!cio || !cio->methods || !cio->methods->read || !cio->cssl || !cio->cssl->data | !DecryptLength)
+  if (!cio || !cio->methods || !cio->methods->read || !cio->cssl || !DecryptLength)
     return SEC_E_INTERNAL_ERROR;
 
-  sctx= (SC_CTX *)cio->cssl->data;
+  sctx= (SC_CTX *)cio->cssl->ssl;
   *DecryptLength= 0;
-
-  /* Allocate IoBuffer */
-  if (!sctx->IoBuffer)
-  {
-    if (!(sctx->IoBuffer= ma_schannel_alloc_iobuffer(&sctx->ctxt, &sctx->IoBufferSize)))
-    {
-      /* todo: error */
-      return NULL;
-    }
-  }
 
   while (1)
   {
-    if (!dwOffset || sRet == SEC_E_INCOMPLETE_MESSAGE)
+    if (!dwBytesRead || sRet == SEC_E_INCOMPLETE_MESSAGE)
     {
-      dwBytesRead= cio->methods->read(cio, sctx->IoBuffer + dwOffset, cbIoBufferLength - dwOffset);
+      dwBytesRead= cio->methods->read(cio, sctx->IoBuffer + dwOffset, sctx->IoBufferSize - dwOffset);
       if (dwBytesRead == 0)
       {
         /* server closed connection */
@@ -633,8 +726,9 @@ SECURITY_STATUS ma_schannel_read(MARIADB_CIO *cio,
         printf("Socket error\n");
         return NULL;
       }
+      dwOffset+= dwBytesRead;
     }
-    ZeroMem(Buffers, sizeof(SecBuffer) * 4);
+    ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
     Buffers[0].pvBuffer= sctx->IoBuffer;
     Buffers[0].cbBuffer= dwOffset;
 
@@ -652,9 +746,9 @@ SECURITY_STATUS ma_schannel_read(MARIADB_CIO *cio,
     /* Check for possible errors: we continue in case context has 
        expired or renogitiation is required */
     if (sRet != SEC_E_OK && sRet != SEC_I_CONTEXT_EXPIRED &&
-        sRet != SEC_I_RENEGOTIARE)
+        sRet != SEC_I_RENEGOTIATE && sRet != SEC_E_INCOMPLETE_MESSAGE)
     {
-      // set error
+      ma_schannel_set_sec_error(cio, sRet);
       return sRet;
     }
 
@@ -668,11 +762,12 @@ SECURITY_STATUS ma_schannel_read(MARIADB_CIO *cio,
       if (pData && pExtra)
         break;
     }
-
+    
     if (pData && pData->cbBuffer)
     {
-      memcpy(ReadBuffer + *DecrypthLength, pData->pvBuffer, pData->cbBuffer);
+      memcpy(ReadBuffer + *DecryptLength, pData->pvBuffer, pData->cbBuffer);
       *DecryptLength+= pData->cbBuffer;
+      return sRet;
     }
 
     if (pExtra)
@@ -684,4 +779,129 @@ SECURITY_STATUS ma_schannel_read(MARIADB_CIO *cio,
       dwOffset= 0;
   }    
 }
+
+my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
+{
+  SECURITY_STATUS sRet;
+  DWORD flags;
+  MARIADB_CIO *cio= sctx->mysql->net.cio;
+  PCCERT_CONTEXT pServerCert= NULL;
+
+  if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
+  {
+    ma_schannel_set_sec_error(cio, sRet);
+    return 0;
+  }
+
+  flags= CERT_STORE_SIGNATURE_FLAG |
+         CERT_STORE_TIME_VALIDITY_FLAG;
+
+
+    
+  if (sctx->client_ca_ctx)
+  {
+ 	  if (!(sRet= CertVerifySubjectCertificateContext(pServerCert,
+                                                    sctx->client_ca_ctx,
+                                                    &flags)))
+    {
+      ma_schannel_set_win_error(cio);
+      return 0;
+    }
+
+    if (flags)
+    {
+      if ((flags & CERT_STORE_SIGNATURE_FLAG) != 0)
+        cio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Client certificate signature check failed");
+      else if ((flags & CERT_STORE_REVOCATION_FLAG) != 0)
+        cio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Client certificate was revoked");
+      else if ((flags & CERT_STORE_TIME_VALIDITY_FLAG) != 0)
+        cio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Client certificate has expired");
+      else
+        cio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown error during client certificate validation");
+      return 0;
+    }
+  }
+
+  /* Check if none of the certificates in the certificate chain have been revoked. */
+  if (sctx->client_crl_ctx)
+  {
+    PCRL_INFO Info[1];
+
+    Info[0]= sctx->client_crl_ctx->pCrlInfo;
+    if (!(CertVerifyCRLRevocation(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+                                  pServerCert->pCertInfo,
+                                  1, Info))                               )
+    {
+      cio->set_error(cio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CRL Revocation failed");
+      return 0;
+    }
+  }
+  return 1;
+}
+
+
+/* {{{ size_t ma_schannel_write_encrypt(MARIADB_CIO *cio, PCredHandle phCreds, CtxtHandle * phContext) */
+/*
+  Decrypts data and write to SSL stream
+  SYNOPSIS
+    ma_schannel_write_decrypt
+    cio              pointer to Communication IO structure
+    phContext        a context handle
+    DecryptLength    size of decrypted buffer
+    ReadBuffer       Buffer for decrypted data
+    ReadBufferSize   size of ReadBuffer
+
+  DESCRIPTION
+    Write encrypted data to SSL stream.
+
+  RETURN
+    SEC_E_OK         on success
+    SEC_E_*          if an error occured
+*/ 
+size_t ma_schannel_write_encrypt(MARIADB_CIO *cio,
+                                 uchar *WriteBuffer,
+                                 size_t WriteBufferSize)
+{
+  SECURITY_STATUS scRet;
+  SecBufferDesc Message;
+  SecBuffer Buffers[4];
+  DWORD cbMessage, cbData;
+  PBYTE pbMessage;
+  SC_CTX *sctx= (SC_CTX *)cio->cssl->ssl;
+  size_t payload;
+
+
+  payload= MIN(WriteBufferSize, sctx->IoBufferSize);
+
+  memcpy(&sctx->IoBuffer[sctx->Sizes.cbHeader], WriteBuffer, payload);
+  pbMessage = sctx->IoBuffer + sctx->Sizes.cbHeader; 
+  cbMessage = payload;
+  
+  Buffers[0].pvBuffer     = sctx->IoBuffer;
+  Buffers[0].cbBuffer     = sctx->Sizes.cbHeader;
+  Buffers[0].BufferType   = SECBUFFER_STREAM_HEADER;    // Type of the buffer
+
+  Buffers[1].pvBuffer     = &sctx->IoBuffer[sctx->Sizes.cbHeader];
+  Buffers[1].cbBuffer     = payload;
+  Buffers[1].BufferType   = SECBUFFER_DATA;
+
+  Buffers[2].pvBuffer     = &sctx->IoBuffer[sctx->Sizes.cbHeader] + payload;
+  Buffers[2].cbBuffer     = sctx->Sizes.cbTrailer;
+  Buffers[2].BufferType   = SECBUFFER_STREAM_TRAILER;
+
+  Buffers[3].pvBuffer     = SECBUFFER_EMPTY;                    // Pointer to buffer 4
+  Buffers[3].cbBuffer     = SECBUFFER_EMPTY;                    // length of buffer 4
+  Buffers[3].BufferType   = SECBUFFER_EMPTY;                    // Type of the buffer 4
+
+
+  Message.ulVersion       = SECBUFFER_VERSION;
+  Message.cBuffers        = 4;
+  Message.pBuffers        = Buffers;
+  if ((scRet = EncryptMessage(&sctx->ctxt, 0, &Message, 0))!= SEC_E_OK)
+    return -1;
+  
+  if (cio->methods->write(cio, sctx->IoBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer))
+    return payload;
+}
 /* }}} */
+

@@ -1145,13 +1145,15 @@ int STDCALL
 mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
         const char *ca, const char *capath, const char *cipher)
 {
-  mysql->options.ssl_key = key==0 ? 0 : my_strdup(key,MYF(0));
-  mysql->options.ssl_cert = cert==0 ? 0 : my_strdup(cert,MYF(0));
-  mysql->options.ssl_ca = ca==0 ? 0 : my_strdup(ca,MYF(0));
-  mysql->options.ssl_capath = capath==0 ? 0 : my_strdup(capath,MYF(0));
-  mysql->options.ssl_cipher = cipher==0 ? 0 : my_strdup(cipher,MYF(0));
-/* todo: add crl stuff */
+#ifdef HAVE_SSL
+  return (mysql_optionsv(mysql, MYSQL_OPT_SSL_KEY, key) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CERT, cert) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CA, ca) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CAPATH, capath) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CIPHER, cipher)) ? 1 : 0;
+#else
   return 0;
+#endif
 }
 
 /**************************************************************************
@@ -2674,23 +2676,23 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_SSL_KEY:
     my_free(mysql->options.ssl_key);
-    mysql->options.ssl_key=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_key=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CERT:
     my_free(mysql->options.ssl_cert);
-    mysql->options.ssl_cert=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_cert=my_strdup((char *)arg1,MYF(MY_WME  | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CA:
     my_free(mysql->options.ssl_ca);
-    mysql->options.ssl_ca=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_ca=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CAPATH:
     my_free(mysql->options.ssl_capath);
-    mysql->options.ssl_capath=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_capath=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CIPHER:
     my_free(mysql->options.ssl_cipher);
-    mysql->options.ssl_cipher=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_cipher=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CRL:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_crl, (char *)arg1);
@@ -2788,6 +2790,12 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MYSQL_OPT_BIND:
     my_free(mysql->options.bind_address);
     mysql->options.bind_address= my_strdup(arg1, MYF(MY_WME));
+    break;
+  case MARIADB_OPT_SSL_FP:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp, (char *)arg1);
+    break;
+  case MARIADB_OPT_SSL_FP_LIST:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp_list, (char *)arg1);
     break;
   default:
     va_end(ap);

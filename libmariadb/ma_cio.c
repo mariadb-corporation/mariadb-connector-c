@@ -283,7 +283,7 @@ size_t ma_cio_cache_read(MARIADB_CIO *cio, uchar *buffer, size_t length)
       }
       memcpy(buffer, cio->cache, r);
     }
-  } 
+  }
   return r;
 }
 /* }}} */

@@ -133,5 +133,6 @@ my_bool ma_cio_ssl_close(MARIADB_SSL *cssl);
 int ma_cio_ssl_verify_server_cert(MARIADB_SSL *cssl);
 const char *ma_cio_ssl_cipher(MARIADB_SSL *cssl);
 my_bool ma_cio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list);
+my_bool ma_cio_start_ssl(MARIADB_CIO *cio);
 
 #endif /* _ma_ssl_h_ */

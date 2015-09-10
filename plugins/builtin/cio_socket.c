@@ -436,6 +436,7 @@ int cio_socket_wait_io_or_timeout(MARIADB_CIO *cio, my_bool is_read, int timeout
   csock= (struct st_cio_socket *)cio->data;
   {
 #ifndef _WIN32
+    memset(&p_fd, 0, sizeof(p_fd));
     p_fd.fd= csock->socket;
     p_fd.events= (is_read) ? POLLIN : POLLOUT;
 

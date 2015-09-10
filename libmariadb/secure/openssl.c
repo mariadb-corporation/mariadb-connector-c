@@ -287,10 +287,9 @@ static int ma_ssl_set_certs(MYSQL *mysql)
 
     if ((certstore= SSL_CTX_get_cert_store(SSL_context)))
     {
-      if (X509_STORE_load_locations(certstore, mysql->options.ssl_ca,
-                                     mysql->options.ssl_capath) == 0 ||
-			    X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK |
-                                         X509_V_FLAG_CRL_CHECK_ALL) == 0)
+      if (X509_STORE_load_locations(certstore, mysql->options.extension->ssl_crl,
+                                               mysql->options.extension->ssl_crlpath) == 0 ||
+          X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL) == 0)
         goto error;
     }
   }

@@ -143,7 +143,6 @@ static int create_dyncol_num(MYSQL *mysql)
   rc= mariadb_dyncol_unpack(&dyncol, &my_count, &my_keys, &my_vals);
   diag("unpack: %d %d", rc, my_count);
 
-  diag("---------------__");
   for(i=0; i < 5; i++)
   {
     diag("%s %d", my_keys[i].str, my_keys[i].length);
@@ -200,7 +199,7 @@ static int mdev_x1(MYSQL *mysql)
 
   for (i=0; i < unpack_columns; i++)
     if (memcmp(unpack_vals[i].x.string.value.str, vals[i].x.string.value.str, vals[i].x.string.value.length))
-      printf("Error1: key: %1s val: %s %s\n", unpack_keys[i].str, unpack_vals[i].x.string.value.str, vals[i].x.string.value.str);
+      diag("Error1: key: %1s val: %s %s", unpack_keys[i].str, unpack_vals[i].x.string.value.str, vals[i].x.string.value.str);
 
   free(unpack_keys);
   free(unpack_vals);

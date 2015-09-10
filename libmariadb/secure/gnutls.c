@@ -386,7 +386,7 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
     return 0;
   }
 
-  if (gnutls_fingerprint(GNUTLS_DIG_MD5, &cert_list[0], fp, &fp_len) > 0)
+  if (gnutls_fingerprint(GNUTLS_DIG_SHA1, &cert_list[0], fp, &fp_len) == 0)
     return fp_len;
   else
   {
