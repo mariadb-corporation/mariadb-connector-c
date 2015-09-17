@@ -3868,7 +3868,46 @@ static int test_conc_5(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc141(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_RES *res;
+  char *query= "CALL p_conc141";
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc141");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE conc141 (KeyVal int not null primary key)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO conc141 VALUES(1)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p_conc141");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE PROCEDURE p_conc141()\n"
+                   "BEGIN\n"
+                     "select * from conc141;\n"
+                     "insert into conc141(KeyVal) VALUES(1);\n"
+                   "END");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+  /* skip first result */
+  rc= mysql_stmt_next_result(stmt);
+  FAIL_IF(rc==-1, "No more results and error expected");
+  mysql_stmt_free_result(stmt);
+  FAIL_IF(mysql_stmt_errno(stmt), "No Error expected");
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc141", test_conc141, TEST_CONNECTION_NEW, 0, NULL , NULL},
   {"test_conc67", test_conc67, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_conc_5", test_conc_5, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1115", test_bug1115, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
