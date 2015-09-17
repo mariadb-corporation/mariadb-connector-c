@@ -454,7 +454,7 @@ typedef SOCKET_SIZE_TYPE size_socket;
 #ifdef _WIN32
 #define NO_DIR_LIBRARY		/* Not standar dir-library */
 #define USE_MY_STAT_STRUCT	/* For my_lib */
-#ifdef (_MSVC)
+#ifdef _MSVC
 typedef SSIZE_T ssize_t;
 #endif
 #endif
