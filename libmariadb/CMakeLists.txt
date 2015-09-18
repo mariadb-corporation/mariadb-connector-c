@@ -362,10 +362,17 @@ IF(UNIX)
   SET_TARGET_PROPERTIES(mariadb_obj PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
 ENDIF()
 
-ADD_LIBRARY(mariadbclient STATIC $<TARGET_OBJECTS:mariadb_obj> ${EXPORT_LINK})
+# Xcode doesn't support targets that have only object files,
+# so let's add an empty file to keep Xcode happy
+IF(CMAKE_GENERATOR MATCHES Xcode)
+  FILE(WRITE ${CMAKE_SOURCE_DIR}/libmariadb/empty.c "")
+  SET(EMPTY_FILE ${CMAKE_SOURCE_DIR}/libmariadb/empty.c)
+ENDIF()
+
+ADD_LIBRARY(mariadbclient STATIC $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
 
-ADD_LIBRARY(libmariadb SHARED $<TARGET_OBJECTS:mariadb_obj> ${EXPORT_LINK})
+ADD_LIBRARY(libmariadb SHARED $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
 IF(UNIX)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
@@ -387,33 +394,18 @@ SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
 #
 # Installation
 #
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/symlink.cmake)
+
 
 # There are still several projects which don't make use
 # of the config program. To make sure these programs can
 # use mariadb client library we provide libmysql symlinks
 IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
-  ADD_CUSTOM_COMMAND(OUTPUT "libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                            "libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                            "libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                            "libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
-                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}
-                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX} libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}
-                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}
-                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX} libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}
-                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
-                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX} libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}
-                     COMMAND ${CMAKE_COMMAND} ARGS -E remove -f libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}
-                     COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink libmariadbclient${CMAKE_STATIC_LIBRARY_SUFFIX} libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}
-                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libmariadb
-                    DEPENDS libmariadb mariadbclient)
-
-ADD_CUSTOM_TARGET(LIBMYSQL_SYMLINKS
-                  ALL
-                  DEPENDS "libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                          "libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                          "libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                          "libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
-                  VERBATIM)
+  SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
+  create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
+  create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
+  create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
+  create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
 ENDIF()
 
 
@@ -422,14 +414,6 @@ INSTALL(TARGETS
           RUNTIME DESTINATION "${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}"
           LIBRARY DESTINATION "${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}"
           ARCHIVE DESTINATION "${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}")
-
-IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
-  INSTALL(FILES "${CMAKE_BINARY_DIR}/libmariadb/libmysql${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX}"
-                "${CMAKE_BINARY_DIR}/libmariadb/libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX}"
-                DESTINATION ${LIB_INSTALL_DIR}/mariadb)
-ENDIF()
 
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
         DESTINATION ${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})

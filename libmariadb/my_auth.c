@@ -263,7 +263,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     mysql->client_flag|= CLIENT_SSL;
 
   /* if server doesn't support SSL and verification of server certificate
-     was set to mandator, we need to return an error */
+     was set to mandatory, we need to return an error */
   if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
   {
     if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) ||

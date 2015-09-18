@@ -164,7 +164,11 @@ static my_bool net_realloc(NET *net, size_t length)
     DBUG_RETURN(1);
   }
   pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
-  if (!(buff=(uchar*) my_realloc((char*) net->buff, pkt_length + 1, MYF(MY_WME))))
+  /* reallocate buffer:
+     size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
+  if (!(buff=(uchar*) my_realloc((char*) net->buff, 
+                                 pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE,
+                                 MYF(MY_WME))))
   {
     DBUG_PRINT("info", ("Out of memory"));
     net->error=1;

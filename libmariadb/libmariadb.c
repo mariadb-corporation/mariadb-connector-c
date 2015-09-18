@@ -1376,13 +1376,16 @@ int STDCALL
 mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
         const char *ca, const char *capath, const char *cipher)
 {
-  mysql->options.ssl_key = key==0 ? 0 : my_strdup(key,MYF(0));
-  mysql->options.ssl_cert = cert==0 ? 0 : my_strdup(cert,MYF(0));
-  mysql->options.ssl_ca = ca==0 ? 0 : my_strdup(ca,MYF(0));
-  mysql->options.ssl_capath = capath==0 ? 0 : my_strdup(capath,MYF(0));
-  mysql->options.ssl_cipher = cipher==0 ? 0 : my_strdup(cipher,MYF(0));
-/* todo: add crl stuff */
+  #ifdef HAVE_SSL
+  return (mysql_optionsv(mysql, MYSQL_OPT_SSL_KEY, key) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CERT, cert) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CA, ca) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CAPATH, capath) |
+          mysql_optionsv(mysql, MYSQL_OPT_SSL_CIPHER, cipher)) ? 1 : 0;
+#else
   return 0;
+#endif
+
 }
 
 /**************************************************************************
@@ -1711,10 +1714,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
         if (mysql->options.extension && mysql->options.extension->async_context &&
              mysql->options.extension->async_context->active)
           break;
-        else if (socket_block(sock, 1) == SOCKET_ERROR)
+        else if (socket_block(sock, 0) == SOCKET_ERROR)
         {
-        closesocket(sock);
-        continue;
+          closesocket(sock);
+          continue;
         }
         break; /* success! */
       }
@@ -1739,7 +1742,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       goto error;
     }
   }
-
   /* set timeouts */
   net->vio->read_timeout= mysql->options.read_timeout;
   net->vio->write_timeout= mysql->options.write_timeout;
@@ -1767,8 +1769,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     vio_write_timeout(net->vio, mysql->options.read_timeout);
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
-  if (mysql->options.connect_timeout >= 0 &&
-      vio_wait_or_timeout(net->vio, FALSE, mysql->options.connect_timeout * 1000) < 1)
+  if (mysql->options.connect_timeout  &&
+      vio_wait_or_timeout(net->vio, TRUE, mysql->options.connect_timeout * 1000) < 1)
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
@@ -3031,23 +3033,23 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_SSL_KEY:
     my_free(mysql->options.ssl_key);
-    mysql->options.ssl_key=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_key=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CERT:
     my_free(mysql->options.ssl_cert);
-    mysql->options.ssl_cert=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_cert=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CA:
     my_free(mysql->options.ssl_ca);
-    mysql->options.ssl_ca=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_ca=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CAPATH:
     my_free(mysql->options.ssl_capath);
-    mysql->options.ssl_capath=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_capath=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CIPHER:
     my_free(mysql->options.ssl_cipher);
-    mysql->options.ssl_cipher=my_strdup((char *)arg1,MYF(MY_WME));
+    mysql->options.ssl_cipher=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CRL:
     OPT_SET_EXTENDED_VALUE(&mysql->options, ssl_crl, (char *)arg1, 1);

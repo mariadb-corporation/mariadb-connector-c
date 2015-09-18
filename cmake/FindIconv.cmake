@@ -19,6 +19,7 @@ IF(APPLE)
                /opt/local/lib/
                /usr/lib/
                NO_CMAKE_SYSTEM_PATH)
+    SET(ICONV_EXTERNAL TRUE)
 ELSE()
   find_library(ICONV_LIBRARIES NAMES iconv libiconv libiconv-2)
   IF(ICONV_LIBRARIES)
