@@ -27,6 +27,7 @@ ELSE()
   OPTION(WITH_SIGNCODE "digitally sign files" OFF)
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
+OPTION(WITH_REMOTEIO "enables remote io support (requires libcurl)" OFF)
 
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
@@ -90,9 +91,8 @@ IF(NOT MYSQL_UNIX_ADDR)
   SET(MYSQL_UNIX_ADDR "/tmp/mysql.sock")
 ENDIF()
 
-FIND_PACKAGE(CURL)
-IF(CURL_FOUND)
-  ADD_DEFINITIONS(-DHAVE_CURL=1)
+IF(WITH_REMOTEIO)
+  ADD_DEFINITIONS(-DHAVE_REMOTEIO)
 ENDIF()
 
 INCLUDE("${CMAKE_SOURCE_DIR}/cmake/install.cmake")

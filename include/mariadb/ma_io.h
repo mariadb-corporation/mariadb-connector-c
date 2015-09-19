@@ -18,6 +18,7 @@
 #ifndef _ma_io_h_
 #define _ma_io_h_
 
+
 #ifdef HAVE_CURL
 #include <curl/curl.h>
 #endif
@@ -34,6 +35,7 @@ typedef struct
   void *ptr;
 } MA_FILE;
 
+#ifdef HAVE_REMOTEIO
 struct st_rio_methods {
   MA_FILE *(*open)(const char *url, const char *mode);
   int (*close)(MA_FILE *ptr);
@@ -41,6 +43,7 @@ struct st_rio_methods {
   size_t (*read)(void *ptr, size_t size, size_t nmemb, MA_FILE *file);
   char * (*gets)(char *ptr, size_t size, MA_FILE *file);
 };
+#endif
 
 /* function prototypes */
 MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql);

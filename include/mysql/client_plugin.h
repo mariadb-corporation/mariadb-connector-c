@@ -40,13 +40,16 @@
 #define MYSQL_CLIENT_reserved                1
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2
 #define MYSQL_CLIENT_reserved22              3
-#define MYSQL_CLIENT_REMOTEIO_PLUGIN         4
-
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0100
 #define MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION  0x0100
-#define MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION 0x0100
 
+#ifdef HAVE_REMOTEIO
+#define MYSQL_CLIENT_REMOTEIO_PLUGIN         4
 #define MYSQL_CLIENT_MAX_PLUGINS             5
+#define MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION 0x0100
+#else
+#define MYSQL_CLIENT_MAX_PLUGINS             4
+#endif
 
 #define mysql_declare_client_plugin(X)          \
      struct st_mysql_client_plugin_ ## X        \
@@ -113,6 +116,7 @@ typedef char *(*mysql_authentication_dialog_ask_t)(struct st_mysql *mysql,
                       int type, const char *prompt, char *buf, int buf_len);
 
 /********************** remote IO plugin **********************/
+#ifdef HAVE_REMOTEIO
 #include <mariadb/ma_io.h>
 
 /* Remote IO plugin */
@@ -121,6 +125,7 @@ struct st_mysql_client_plugin_REMOTEIO
   MYSQL_CLIENT_PLUGIN_HEADER
   struct st_rio_methods *methods;
 };
+#endif
 
 /******** using plugins ************/
 

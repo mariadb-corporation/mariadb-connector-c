@@ -26,7 +26,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <mysql/client_plugin.h>
 
-void *remote_plugin;
 
 /*
   Bug#28075 "COM_DEBUG crashes mysqld"
@@ -1003,6 +1002,8 @@ static int test_conc117(MYSQL *mysql)
   return OK;
 }
 
+#ifdef HAVE_REMOTEIO
+void *remote_plugin;
 static int test_remote1(MYSQL *mysql)
 {
   int rc;
@@ -1048,10 +1049,13 @@ static int test_remote2(MYSQL *my)
   mysql_close(mysql);
   return OK;
 }
+#endif
 
 struct my_tests_st my_tests[] = {
+#ifdef HAVE_REMOTEIO
   {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL},
+#endif
   {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

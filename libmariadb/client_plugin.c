@@ -64,7 +64,9 @@ static uint plugin_version[MYSQL_CLIENT_MAX_PLUGINS]=
   0, /* these two are taken by Connector/C */
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   0,
+#ifdef HAVE_REMOTEIO
   MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION
+#endif
 };
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;

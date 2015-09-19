@@ -23,10 +23,13 @@
 #include <errmsg.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
+#include <mariadb/ma_io.h>
 #include <stdio.h>
 #include <string.h>
 
+#ifdef HAVE_REMOTEIO
 struct st_mysql_client_plugin_REMOTEIO *rio_plugin= NULL;
+#endif
 
 /* {{{ ma_open */
 MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
@@ -37,9 +40,10 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
 
   if (!location || !location[0])
     return NULL;
-
+#ifdef HAVE_REMOTEIO
   if (strstr(location, "://"))
     goto remote;
+#endif
 
 #ifdef _WIN32
   if (mysql && mysql->charset)
@@ -118,6 +122,7 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
     ma_file->ptr= (void *)fp;
   }
   return ma_file;
+#ifdef HAVE_REMOTEIO
 remote:
   /* check if plugin for remote io is available and try
    * to open location */
@@ -128,6 +133,7 @@ remote:
       return rio_plugin->methods->open(location, mode);
     return NULL;
   }
+#endif
 }
 /* }}} */
 
@@ -143,9 +149,11 @@ int ma_close(MA_FILE *file)
     rc= fclose((FILE *)file->ptr);
     my_free(file);
     break;
+#ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:
     rc= rio_plugin->methods->close(file);
     break;
+#endif
   default:
     return -1;
   }
@@ -163,9 +171,11 @@ int ma_feof(MA_FILE *file)
   case MA_FILE_LOCAL:
     return feof((FILE *)file->ptr);
     break;
+#ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:
     return rio_plugin->methods->feof(file);
     break;
+#endif
   default:
     return -1;
   }
@@ -184,9 +194,11 @@ size_t ma_read(void *ptr, size_t size, size_t nmemb, MA_FILE *file)
     s= fread(ptr, size, nmemb, (FILE *)file->ptr);
     return s;
     break;
+#ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:
     return rio_plugin->methods->read(ptr, size, nmemb, file);
     break;
+#endif
   default:
     return -1;
   }
@@ -203,9 +215,11 @@ char *ma_gets(char *ptr, size_t size, MA_FILE *file)
   case MA_FILE_LOCAL:
     return fgets(ptr, size, (FILE *)file->ptr);
     break;
+#ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:
     return rio_plugin->methods->gets(ptr, size, file);
     break;
+#endif
   default:
     return NULL;
   }
