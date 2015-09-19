@@ -1714,7 +1714,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
         if (mysql->options.extension && mysql->options.extension->async_context &&
              mysql->options.extension->async_context->active)
           break;
-        else if (socket_block(sock, 0) == SOCKET_ERROR)
+        else if (socket_block(sock, 1) == SOCKET_ERROR)
         {
           closesocket(sock);
           continue;
@@ -1769,8 +1769,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     vio_write_timeout(net->vio, mysql->options.read_timeout);
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
-  if (mysql->options.connect_timeout  &&
-      vio_wait_or_timeout(net->vio, TRUE, mysql->options.connect_timeout * 1000) < 1)
+  if (mysql->options.connect_timeout >= 0 &&
+      vio_wait_or_timeout(net->vio, FALSE, mysql->options.connect_timeout * 1000) < 1)
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
