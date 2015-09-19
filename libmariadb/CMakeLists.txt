@@ -221,6 +221,12 @@ SET(EXPORT_SYMBOLS
  mysql_use_result
  mysql_warning_count)
 
+# some gcc versions fail to compile asm parts of my_context.c,
+# if build type is "Release" (see CONC-133), so we need to add -g flag
+IF(CMAKE_COMPILER_IS_GNUCC AND CMAKE_BUILD_TYPE MATCHES "Release")
+  SET_SOURCE_FILES_PROPERTIES(my_context.c PROPERTIES COMPILE_FLAGS -g)
+ENDIF()
+
 IF(WIN32)
   SET(EXPORT_CONTENT "EXPORTS\n")
   FOREACH(SYMBOL ${EXPORT_SYMBOLS})
