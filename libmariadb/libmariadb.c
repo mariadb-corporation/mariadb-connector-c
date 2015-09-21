@@ -1713,7 +1713,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
         if (mysql->options.extension && mysql->options.extension->async_context &&
              mysql->options.extension->async_context->active)
           break;
-        else if (socket_block(sock, 0) == SOCKET_ERROR)
+        else if (socket_block(sock, 1) == SOCKET_ERROR)
         {
           closesocket(sock);
           continue;
