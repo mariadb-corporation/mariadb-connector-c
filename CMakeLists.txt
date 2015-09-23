@@ -256,8 +256,9 @@ unittest
 /CMakeFiles/
 /version_resources/
 /_CPack_Packages/
-$\\\\.*gz
-$\\\\.*zip
+\\\\.gz$
+\\\\.zip$
+mariadb_config/mariadb_config
 /CMakeFiles/
 /version_resources/
 /_CPack_Packages/
