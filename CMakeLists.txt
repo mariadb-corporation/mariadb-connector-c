@@ -241,35 +241,28 @@ INCLUDE(cmake/ConnectorName.cmake)
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME "mariadb-connector-c-${CPACK_PACKAGE_VERSION}-src")
 
 SET(CPACK_SOURCE_IGNORE_FILES
-.bzr/
-.bzrignore
-CMakeCache.txt
-cmake_dist.cmake
-CPackSourceConfig.cmake
-CPackConfig.cmake
-mariadb_config/mariadb_config.c$
-.build/
+\\\\.git/
+\\\\.gitignore
+CMakeCache\\\\.txt
+cmake_dist\\\\.cmake
+CPackConfig\\\\.cmake
+mariadb_config/mariadb_config\\\\.c$
+\\\\.build/
 html/
 unittest
 /cmake_install.cmake
 /CTestTestfile.cmake
+/CPackSourceConfig.cmake
 /CMakeFiles/
 /version_resources/
 /_CPack_Packages/
-.*gz$
-.*zip$
-.*so$
-.*so.*$
-.*dll$
-.*a$
-.*pdb$
+$\\\\.*gz
+$\\\\.*zip
 /CMakeFiles/
 /version_resources/
 /_CPack_Packages/
 Makefile$
-include/my_config.h$
-/autom4te.cache/
-errmsg.sys$
+include/my_config\\\\.h$
 )
 
 IF(WIN32)
