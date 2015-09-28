@@ -364,7 +364,7 @@ typedef struct
 /* Local infile support functions */
 #define LOCAL_INFILE_ERROR_LEN 512
 
-#include <my_stmt.h>
+#include "my_stmt.h"
 
 void STDCALL mysql_set_local_infile_handler(MYSQL *mysql,
         int (*local_infile_init)(void **, const char *, void *),
