@@ -124,7 +124,7 @@ remote:
   {
     MYSQL mysql;
     if (rio_plugin ||(rio_plugin= (struct st_mysql_client_plugin_REMOTEIO *)
-                      mysql_client_find_plugin(&mysql, NULL, MYSQL_CLIENT_REMOTEIO_PLUGIN)))
+                      mysql_client_find_plugin(&mysql, NULL, MARIADB_CLIENT_REMOTEIO_PLUGIN)))
       return rio_plugin->methods->open(location, mode);
     return NULL;
   }

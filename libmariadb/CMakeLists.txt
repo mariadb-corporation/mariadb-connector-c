@@ -12,7 +12,6 @@ SET(EXPORT_SYMBOLS
  ma_cio_register_callback
  mariadb_connection
  mariadb_convert_string
- mariadb_deinitialize_ssl
  mariadb_dyncol_check
  mariadb_dyncol_column_cmp_named
  mariadb_dyncol_column_count
@@ -221,6 +220,9 @@ SET(EXPORT_SYMBOLS
  mysql_thread_safe
  mysql_use_result
  mysql_warning_count)
+IF(WITH_SSL)
+  SET(EXPORTS ${EXPORTS} mariadb_deinitialize_ssl)
+ENDIF()
 
 IF(WIN32)
   SET(EXPORT_CONTENT "EXPORTS\n")
@@ -240,7 +242,7 @@ ENDIF()
 
 FILE(WRITE ${EXPORT_FILE} ${EXPORT_CONTENT})
 
-SET(LIBMARIADB_SOURCES 
+SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
 array.c 
 ma_dyncol.c
 bchange.c 
@@ -321,14 +323,11 @@ sha1.c
 my_stmt.c
 my_loaddata.c
 my_stmt_codec.c
-client_plugin.c
+${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c
 ma_io.c
-${CMAKE_SOURCE_DIR}/plugins/builtin/my_auth.c
-${CMAKE_SOURCE_DIR}/plugins/builtin/cio_socket.c
 ${SSL_SOURCES}
 )
 
-MESSAGE(STATUS "${LIBMARIADB_SOURCES}")
 
 IF(WIN32)
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)

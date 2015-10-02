@@ -67,6 +67,7 @@
 #endif
 #include <ma_cio.h>
 #include <ma_dyncol.h>
+#include <mysql/client_plugin.h>
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
 
@@ -342,7 +343,6 @@ void free_rows(MYSQL_DATA *cur)
   }
 }
 
-
 int
 mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 	       size_t length, my_bool skipp_check, void *opt_arg)
@@ -353,6 +353,13 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   DBUG_ENTER("mthd_my_send_command");
 
   DBUG_PRINT("info", ("server_command: %d  packet_size: %u", command, length));
+
+  if (mysql->net.conn_hdlr && mysql->net.conn_hdlr->data)
+  {
+    result= mysql->net.conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
+    if (result== -1)
+      DBUG_RETURN(result);
+  }
 
   if (mysql->net.cio == 0)
   {						/* Do reconnect if possible */
@@ -552,6 +559,9 @@ static void
 end_server(MYSQL *mysql)
 {
   DBUG_ENTER("end_server");
+
+  /* if net->error 2 and reconnect is activated, we need to inforn
+     connection handler */
   if (mysql->net.cio != 0)
   {
     ma_cio_close(mysql->net.cio);
@@ -1300,6 +1310,35 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 		      db ? db : "(Null)",
 		      user ? user : "(Null)"));
 
+  if (!mysql->methods)
+    mysql->methods= &MARIADB_DEFAULT_METHODS;
+  /* special case:
+   * If hostname contains "://", e.g. "repl://localhost", we need to process connection
+   * by connection plugin 
+   */
+  if (host && (end= strstr(host, "://")))
+  {
+    MARIADB_CONNECTION_PLUGIN *plugin;
+    char plugin_name[64];
+
+    bzero(plugin_name, 64);
+    strncpy(plugin_name, host, MIN(end - host, 63));
+    end+= 3;
+    if (!(plugin= (MARIADB_CONNECTION_PLUGIN *)mysql_client_find_plugin(mysql, plugin_name, MARIADB_CLIENT_CONNECTION_PLUGIN)))
+      DBUG_RETURN(NULL);
+
+    if (!(mysql->net.conn_hdlr= (MA_CONNECTION_HANDLER *)my_malloc(sizeof(MA_CONNECTION_HANDLER), MYF(MY_ZEROFILL))))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      DBUG_RETURN(NULL);
+    }
+
+    mysql->net.conn_hdlr->plugin= plugin; 
+
+    if (plugin->connect)
+      return plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
+  }
+
   ma_set_connect_attrs(mysql);
 
   if (net->cio)  /* check if we are already connected */
@@ -1871,8 +1910,6 @@ static void mysql_close_memory(MYSQL *mysql)
   mysql->host_info= mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
 }
 
-
-
 void my_set_error(MYSQL *mysql,
                   unsigned int error_nr,
                   const char *sqlstate,
@@ -1908,11 +1945,19 @@ void mysql_close_slow_part(MYSQL *mysql)
 void STDCALL
 mysql_close(MYSQL *mysql)
 {
-   MYSQL_STMT *stmt;
+  MYSQL_STMT *stmt;
   DBUG_ENTER("mysql_close");
   if (mysql)					/* Some simple safety */
   {
     LIST *li_stmt= mysql->stmts;
+
+    if (mysql->net.conn_hdlr && mysql->net.conn_hdlr->data)
+    {
+      void *p= (void *)mysql->net.conn_hdlr;
+      mysql->net.conn_hdlr->plugin->close(mysql);
+      my_free(p);
+      DBUG_VOID_RETURN;
+    }
 
     if (mysql->methods)
       mysql->methods->db_close(mysql);
@@ -1931,6 +1976,10 @@ mysql_close(MYSQL *mysql)
    
     /* Clear pointers for better safety */
     bzero((char*) &mysql->options,sizeof(mysql->options));
+
+    if (mysql->extension)
+      my_free(mysql->extension);
+
     mysql->net.cio= 0;
     if (mysql->free_me)
       my_free(mysql);
@@ -2797,6 +2846,11 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_SSL_FP_LIST:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp_list, (char *)arg1);
     break;
+  case MARIADB_OPT_CONNECTION_READ_ONLY:
+    if (mysql->net.conn_hdlr)
+      DBUG_RETURN(mysql->net.conn_hdlr->plugin->options(mysql, MARIADB_OPT_CONNECTION_READ_ONLY, arg1));
+    else
+      return -1;
   default:
     va_end(ap);
     DBUG_RETURN(-1);

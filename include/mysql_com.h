@@ -227,6 +227,14 @@ typedef struct st_ma_cio MARIADB_CIO;
 #define MAX_INT_WIDTH        10
 #define MAX_BIGINT_WIDTH     20
 
+struct st_ma_connection_plugin;
+
+typedef struct st_connection_handler
+{
+  struct st_ma_connection_plugin *plugin;
+  void *data;
+  my_bool free_data;
+} MA_CONNECTION_HANDLER;
 
 typedef struct st_net {
   MARIADB_CIO *cio;
@@ -245,11 +253,11 @@ typedef struct st_net {
   my_bool unused_1, unused_2;
   my_bool compress;
   my_bool unused_3;
-  unsigned char *unused_4;
+  MA_CONNECTION_HANDLER *conn_hdlr;
   unsigned int last_errno;
   unsigned char error;
+  my_bool unused_4;
   my_bool unused_5;
-  my_bool unused_6;
   
   char last_error[MYSQL_ERRMSG_SIZE];
   char sqlstate[SQLSTATE_LENGTH+1];

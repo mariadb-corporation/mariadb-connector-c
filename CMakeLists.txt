@@ -34,6 +34,8 @@ IF(WITH_RTC)
   SET(RTC_OPTIONS "/RTC1 /RTCc")
 ENDIF()
 
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/plugins.cmake)
+
 IF(MSVC)
   # Speedup system tests
   INCLUDE(${CMAKE_SOURCE_DIR}/cmake/WindowsCache.cmake)

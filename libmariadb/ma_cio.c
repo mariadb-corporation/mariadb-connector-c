@@ -90,7 +90,7 @@ MARIADB_CIO *ma_cio_init(MA_CIO_CINFO *cinfo)
   if (!(cio_plugin= (MARIADB_CIO_PLUGIN *)
                  mysql_client_find_plugin(cinfo->mysql,
                                           cio_plugins[type], 
-                                          MYSQL_CLIENT_CIO_PLUGIN)))
+                                          MARIADB_CLIENT_CIO_PLUGIN)))
   {
     /* error handling */
     return NULL;

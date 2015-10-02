@@ -44,15 +44,22 @@ int (*register_callback)(my_bool register_callback,
                          void (*callback_function)(int mode, MYSQL *mysql, const uchar *buffer, size_t length));
 void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length);
 
-mysql_declare_client_plugin(TRACE)
+#ifndef HAVE_TRACE_EXAMPLE_PLUGIN_DYNAMIC
+struct st_mysql_client_plugin trace_example_plugin=
+#else
+struct st_mysql_client_plugin _mysql_client_plugin_declare_=
+#endif
+{
+  MARIADB_CLIENT_TRACE_PLUGIN,
+  MARIADB_CLIENT_TRACE_PLUGIN_INTERFACE_VERSION,
   "trace_example",
   "Georg Richter",
   "Trace example plugin",
   {1,0,0},
   "LGPL",
   &trace_init,
-  &trace_deinit,
-mysql_end_client_plugin;
+  &trace_deinit
+};
 
 static char *commands[]= {
   "MYSQL_COM_SLEEP",
@@ -222,7 +229,7 @@ static void trace_set_command(TRACE_INFO *info, char *buffer, size_t size)
 
 void dump_buffer(uchar *buffer, size_t len)
 {
-  char *p= buffer;
+  uchar *p= buffer;
   while (p < buffer + len)
   {
     printf("%02x ", *p);
@@ -267,7 +274,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
    * and set thread_id */
   if (!thread_id && mode == READ)
   {
-    char *p= buffer;
+    char *p= (char *)buffer;
     p+= 4; /* packet length */
     if (*p != 0xFF) /* protocol version 0xFF indicates error */
     {
@@ -279,7 +286,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
   }
   else
   {
-    char *p= buffer;
+    char *p= (char *)buffer;
     info= get_trace_info(thread_id);
 
     if (info->last_command == -1)
@@ -300,7 +307,6 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
          *  36  username (zero terminated)
          *      len (1 byte) + password or
          */
-        int len;
 
         p+= 4;
         info->client_flags= uint4korr(p);
@@ -329,7 +335,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
       }
     }
     else {
-      char *p= buffer;
+      char *p= (char *)buffer;
       int len;
 
       if (mode == WRITE)

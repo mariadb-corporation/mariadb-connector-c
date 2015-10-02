@@ -101,10 +101,14 @@ struct st_ma_cio_methods cio_socket_methods= {
   cio_socket_is_alive
 };
 
+#ifndef HAVE_SOCKET_DYNAMIC
 MARIADB_CIO_PLUGIN cio_socket_plugin=
+#else
+MARIADB_CIO_PLUGIN _mysql_client_plugin_declare_
+#endif
 {
-  MYSQL_CLIENT_CIO_PLUGIN,
-  MYSQL_CLIENT_CIO_PLUGIN_INTERFACE_VERSION,
+  MARIADB_CLIENT_CIO_PLUGIN,
+  MARIADB_CLIENT_CIO_PLUGIN_INTERFACE_VERSION,
   "cio_socket",
   "Georg Richter",
   "MariaDB communication IO plugin for socket communication",
@@ -112,9 +116,7 @@ MARIADB_CIO_PLUGIN cio_socket_plugin=
   "LGPL",
   &cio_socket_init,
   &cio_socket_end,
-  &cio_socket_methods,
-  NULL,
-  NULL
+  &cio_socket_methods
 };
 
 struct st_cio_socket {

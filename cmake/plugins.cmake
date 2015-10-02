@@ -15,17 +15,26 @@ ENDMACRO()
 MARK_AS_ADVANCED(PLUGINS)
 
 # CIO
-REGISTER_PLUGIN("SOCKET" "${CMAKE_SOURCE_DIR}/plugins/builtin/cio_socket.c" "cio_socket_plugin" "STATIC" 0)
+REGISTER_PLUGIN("SOCKET" "${CMAKE_SOURCE_DIR}/plugins/cio/cio_socket.c" "cio_socket_plugin" "STATIC" 0)
 IF(WIN32)
   REGISTER_PLUGIN("NPIPE" "${CMAKE_SOURCE_DIR}/plugins/cio/cio_npipe.c" "cio_npipe_plugin" "DYNAMIC" 1)
   REGISTER_PLUGIN("SHMEM" "${CMAKE_SOURCE_DIR}/plugins/cio/cio_shmem.c" "cio_shmem_plugin" "DYNAMIC" 1)
 ENDIF()
 
 # AUTHENTICATION
-REGISTER_PLUGIN("AUTH_NATIVE" "${CMAKE_SOURCE_DIR}/plugins/builtin/my_auth.c" "native_password_client_plugin" "STATIC" 0)
-REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CMAKE_SOURCE_DIR}/plugins/builtin/my_auth.c" "old_password_client_plugin" "STATIC" "0")
-REGISTER_PLUGIN("AUTH_DIALOG" "${CMAKE_SOURCE_DIR}/plugins/auth/dialog.c" "" "DYNAMIC" 0)
-REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CMAKE_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "" "DYNAMIC" 0)
+REGISTER_PLUGIN("AUTH_NATIVE" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "native_password_client_plugin" "STATIC" 0)
+REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "old_password_client_plugin" "STATIC" 0)
+REGISTER_PLUGIN("AUTH_DIALOG" "${CMAKE_SOURCE_DIR}/plugins/auth/dialog.c" "auth_dialog_plugin" "DYNAMIC" 1)
+REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CMAKE_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "auth_cleartext_plugin" "DYNAMIC" 1)
+
+#Remote_IO
+REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" 1)
+
+#Trace
+REGISTER_PLUGIN("TRACE_EXAMPLE" "${CMAKE_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" 1)
+
+#Connection
+REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "STATIC" 1)
 
 # Allow registration of additional plugins
 IF(PLUGIN_CONF_FILE)
@@ -50,7 +59,7 @@ FOREACH(PLUGIN ${PLUGINS})
 ENDFOREACH()
 
 # since some files contain multiple plugins, remove duplicates from source files 
-LIST(REMOvE_DUPLICATES LIBMARIADB_SOURCES)
+LIST(REMOVE_DUPLICATES LIBMARIADB_SOURCES)
 
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/libmariadb/client_plugin.c.in
                ${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c)

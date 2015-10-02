@@ -978,8 +978,7 @@ static int test_remote1(MYSQL *mysql)
 {
   int rc;
 
-  void *myplugin= (void *)mysql_client_find_plugin(mysql, "trace_example", MYSQL_CLIENT_TRACE_PLUGIN);
-  remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MYSQL_CLIENT_REMOTEIO_PLUGIN);
+  remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MARIADB_CLIENT_REMOTEIO_PLUGIN);
   if (!remote_plugin)
   {
     diag("skip - no remote io plugin available");

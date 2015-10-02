@@ -1,3 +1,25 @@
+/************************************************************************************
+    Copyright (C) 2015 MariaDB Corporation AB
+   
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Library General Public
+   License as published by the Free Software Foundation; either
+   version 2 of the License, or (at your option) any later version.
+   
+   This library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Library General Public License for more details.
+   
+   You should have received a copy of the GNU Library General Public
+   License along with this library; if not see <http://www.gnu.org/licenses>
+   or write to the Free Software Foundation, Inc., 
+   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
+
+   Part of this code includes code from the PHP project which
+   is freely available from http://www.php.net
+*************************************************************************************/
+
 /* MariaDB Communication IO (CIO) plugin for named pipe communication */
 
 #ifdef _WIN32
@@ -10,13 +32,13 @@
 #include <string.h>
 #include <m_string.h>
 
-#ifndef HAVE_NPIPE_DEFAULT
+#ifdef HAVE_NPIPE_DYNAMIC
 #define my_malloc(A, B) malloc((A))
 #undef my_free
 #define my_free(A,B) free(((A)))
 #endif
 
-
+/* Function prototypes */
 my_bool cio_npipe_set_timeout(MARIADB_CIO *cio, enum enum_cio_timeout type, int timeout);
 int cio_npipe_get_timeout(MARIADB_CIO *cio, enum enum_cio_timeout type);
 size_t cio_npipe_read(MARIADB_CIO *cio, uchar *buffer, size_t length);
@@ -45,10 +67,14 @@ struct st_ma_cio_methods cio_npipe_methods= {
   cio_npipe_is_blocking
 };
 
+#ifndef HAVE_NPIPE_DYNAMIC
+MARIADB_CIO_PLUGIN cio_npipe_plugin =
+#else
 MARIADB_CIO_PLUGIN _mysql_client_plugin_declaration_ =
+#endif
 {
-  MYSQL_CLIENT_CIO_PLUGIN,
-  MYSQL_CLIENT_CIO_PLUGIN_INTERFACE_VERSION,
+  MARIADB_CLIENT_CIO_PLUGIN,
+  MARIADB_CLIENT_CIO_PLUGIN_INTERFACE_VERSION,
   "cio_npipe",
   "Georg Richter",
   "MariaDB communication IO plugin for named pipe communication",

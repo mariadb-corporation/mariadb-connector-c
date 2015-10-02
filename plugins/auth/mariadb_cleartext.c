@@ -53,14 +53,22 @@ static int clear_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 }
 /* }}} */
 
-mysql_declare_client_plugin(AUTHENTICATION)
+#ifndef HAVE_DIALOG_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION auth_cleartext_plugin=
+#else
+struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+#endif
+{
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   "mysql_clear_password",
   "Georg Richter",
   "MariaDB clear password authentication plugin",
   {0,1,0},
+  "LGPL",
   NULL,
   NULL,
   clear_password_auth_client
-mysql_end_client_plugin;
+};
 
 

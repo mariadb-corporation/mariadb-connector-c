@@ -718,12 +718,12 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_CIO *cio,
       {
         /* server closed connection */
         // todo: error 
-        printf("Server closed connection\n");
         return NULL;
       }
       if (dwBytesRead < 0)
       {
-        printf("Socket error\n");
+        /* socket error */
+        // todo: error
         return NULL;
       }
       dwOffset+= dwBytesRead;

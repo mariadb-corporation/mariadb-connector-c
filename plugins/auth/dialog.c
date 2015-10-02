@@ -41,15 +41,23 @@ static int auth_dialog_init(char *unused1,
 
 mysql_authentication_dialog_ask_t auth_dialog_func;
 
-mysql_declare_client_plugin(AUTHENTICATION)
+#ifndef HAVE_DIALOG_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION auth_dialog_plugin=
+#else
+struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+#endif
+{
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   "dialog",
   "Sergei Golubchik, Georg Richter",
   "Dialog Client Authentication Plugin",
   {0,1,0},
+  "LGPL",
   auth_dialog_init,
   NULL,
   auth_dialog_open
-mysql_end_client_plugin;
+};
 
 
 /* {{{ static char *auth_dialog_native_prompt */
