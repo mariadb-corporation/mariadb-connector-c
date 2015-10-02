@@ -1887,6 +1887,7 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
 
   if (mysql_next_result(stmt->mysql))
   {
+    stmt->state= MYSQL_STMT_FETCH_DONE;
     SET_CLIENT_STMT_ERROR(stmt, stmt->mysql->net.last_errno, stmt->mysql->net.sqlstate,
         stmt->mysql->net.last_error);
     DBUG_RETURN(1);

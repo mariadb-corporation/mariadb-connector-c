@@ -1380,8 +1380,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     unix_socket=mysql->options.unix_socket;
 
 
-  /*  Since 5.0.3 reconnect is not enabled by default!!
-  mysql->reconnect=1; */
   mysql->server_status=SERVER_STATUS_AUTOCOMMIT;
 
 
@@ -2729,7 +2727,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_SSL_CERT:
     my_free(mysql->options.ssl_cert);
-    mysql->options.ssl_cert=my_strdup((char *)arg1,MYF(MY_WME  | MY_ALLOW_ZERO_PTR));
+    mysql->options.ssl_cert=my_strdup((char *)arg1,MYF(MY_WME | MY_ALLOW_ZERO_PTR));
     break;
   case MYSQL_OPT_SSL_CA:
     my_free(mysql->options.ssl_ca);

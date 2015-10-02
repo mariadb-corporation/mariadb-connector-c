@@ -79,12 +79,10 @@ my_string my_strdup(const char *from, myf MyFlags)
   gptr ptr;
   uint length;
   
-  if (MyFlags & MY_ALLOW_ZERO_PTR)
-    if (!from)
-      return NULL;
+  if ((MyFlags & MY_ALLOW_ZERO_PTR) && !from)
+    return NULL;
 
   length=(uint) strlen(from)+1;
-
   if ((ptr=my_malloc(length,MyFlags)) != 0)
     memcpy((unsigned char*) ptr, (unsigned char*) from,(size_t) length);
   return((my_string) ptr);

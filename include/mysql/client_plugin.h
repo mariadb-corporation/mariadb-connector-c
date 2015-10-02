@@ -144,6 +144,7 @@ typedef char *(*mysql_authentication_dialog_ask_t)(struct st_mysql *mysql,
                       int type, const char *prompt, char *buf, int buf_len);
 
 /********************** remote IO plugin **********************/
+#ifdef HAVE_REMOTEIO
 #include <mariadb/ma_io.h>
 
 /* Remote IO plugin */
@@ -152,6 +153,7 @@ struct st_mysql_client_plugin_REMOTEIO
   MYSQL_CLIENT_PLUGIN_HEADER
   struct st_rio_methods *methods;
 };
+#endif
 
 /******** using plugins ************/
 

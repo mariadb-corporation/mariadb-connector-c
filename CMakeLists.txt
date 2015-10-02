@@ -4,8 +4,8 @@
 # This is the LGPL libmariadb project.
 PROJECT(mariadb-connector-c C)
 
-SET(CPACK_PACKAGE_VERSION_MAJOR 3)
-SET(CPACK_PACKAGE_VERSION_MINOR 0)
+SET(CPACK_PACKAGE_VERSION_MAJOR 2)
+SET(CPACK_PACKAGE_VERSION_MINOR 2)
 SET(CPACK_PACKAGE_VERSION_PATCH 0)
 SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
@@ -26,6 +26,7 @@ ELSE()
   OPTION(WITH_SIGNCODE "digitally sign files" OFF)
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
+OPTION(WITH_REMOTEIO "enables remote io support (requires libcurl)" OFF)
 
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
@@ -204,15 +205,18 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 IF(WIN32)
   SET(SYSTEM_LIBS ws2_32 advapi32 kernel32)
 ELSE()
-  SET(SYSTEM_LIBS ${LIBPTHREAD} ${LIBDL} ${LIBM} ${LIBICONV})
+  SET(SYSTEM_LIBS ${LIBPTHREAD} ${LIBDL} ${LIBM})
+  IF(ICONV_EXTERNAL)
+    SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${ICONV_LIBRARIES})
+  ENDIF()
 ENDIF()
 IF(WITH_SSL)
   SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${SSL_LIBRARIES})
 ENDIF()
 
 ADD_SUBDIRECTORY(include)
-ADD_SUBDIRECTORY(plugins)
 ADD_SUBDIRECTORY(libmariadb)
+ADD_SUBDIRECTORY(plugins)
 IF(NOT WIN32)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
@@ -246,35 +250,29 @@ INCLUDE(cmake/ConnectorName.cmake)
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME "mariadb-connector-c-${CPACK_PACKAGE_VERSION}-src")
 
 SET(CPACK_SOURCE_IGNORE_FILES
-.bzr/
-.bzrignore
-CMakeCache.txt
-cmake_dist.cmake
-CPackSourceConfig.cmake
-CPackConfig.cmake
-mariadb_config/mariadb_config.c$
-.build/
+\\\\.git/
+\\\\.gitignore
+CMakeCache\\\\.txt
+cmake_dist\\\\.cmake
+CPackConfig\\\\.cmake
+mariadb_config/mariadb_config\\\\.c$
+\\\\.build/
 html/
 unittest
 /cmake_install.cmake
 /CTestTestfile.cmake
+/CPackSourceConfig.cmake
 /CMakeFiles/
 /version_resources/
 /_CPack_Packages/
-.*gz$
-.*zip$
-.*so$
-.*so.*$
-.*dll$
-.*a$
-.*pdb$
+\\\\.gz$
+\\\\.zip$
+mariadb_config/mariadb_config
 /CMakeFiles/
 /version_resources/
 /_CPack_Packages/
 Makefile$
-include/my_config.h$
-/autom4te.cache/
-errmsg.sys$
+include/my_config\\\\.h$
 )
 
 IF(WIN32)

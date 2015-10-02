@@ -58,6 +58,7 @@ static MEM_ROOT mem_root;
 
 #define plugin_declarations_sym "_mysql_client_plugin_declaration_"
 
+
 static uint valid_plugins[][2]= {
   {MYSQL_CLIENT_AUTHENTICATION_PLUGIN, MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION},
   {MARIADB_CLIENT_CIO_PLUGIN, MARIADB_CLIENT_CIO_PLUGIN_INTERFACE_VERSION},
@@ -138,7 +139,6 @@ static struct st_mysql_client_plugin *find_plugin(const char *name, int type)
   int plugin_nr= get_plugin_nr(type);
 
   DBUG_ASSERT(initialized);
-  DBUG_ASSERT(plugin_nr != -1);
   if (plugin_nr == -1)
     return 0;
 
@@ -472,7 +472,7 @@ struct st_mysql_client_plugin * STDCALL
 mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
 {
   struct st_mysql_client_plugin *p;
-  int plugin_nr= find_plugin(name, type);
+  int plugin_nr= get_plugin_nr(type);
 
   if (is_not_initialized(mysql, name))
     return NULL;

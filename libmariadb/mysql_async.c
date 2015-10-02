@@ -825,7 +825,7 @@ mysql_close_start(MYSQL *sock)
   int res;
 
   /* It is legitimate to have NULL sock argument, which will do nothing. */
-  if (sock)
+  if (sock && sock->net.cio)
   {
     res= mysql_close_slow_part_start(sock);
     /* If we need to block, return now and do the rest in mysql_close_cont(). */

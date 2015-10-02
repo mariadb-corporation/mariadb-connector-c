@@ -200,10 +200,17 @@ static int test_conc131(MYSQL *my)
   return OK;
 }
 
+static int test_conc129(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  FAIL_IF(mysql_close_start(mysql), "No error expected");
+}
+
 
 struct my_tests_st my_tests[] = {
   {"async1", async1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc131", test_conc131, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+  {"test_conc129", test_conc129, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
