@@ -29,7 +29,10 @@
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <m_string.h>
+
+#ifndef WIN32
 #include <sys/time.h>
+#endif
 
 /* function prototypes */
 MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd,
@@ -129,10 +132,14 @@ my_bool repl_parse_url(const char *url, REPL_DATA *data)
     data->host[MARIADB_SLAVE]= slaves[0];
   else 
   {
-    struct timeval tp;
     int random_nr;
+#ifndef WIN32
+    struct timeval tp;
     gettimeofday(&tp,NULL);
     srand(tp.tv_usec / 1000 + tp.tv_sec * 1000);
+#else
+    srand(GetTickCount());
+#endif
 
     random_nr= rand() % num_slaves;
     data->host[MARIADB_SLAVE]= slaves[random_nr];

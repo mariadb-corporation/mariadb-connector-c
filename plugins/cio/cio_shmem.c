@@ -84,8 +84,7 @@ MARIADB_CIO_PLUGIN _mysql_client_plugin_declaration_=
   NULL,
   NULL,
   &cio_shm_methods,
-  NULL,
-  NULL
+ 
 };
 
 enum enum_shm_events

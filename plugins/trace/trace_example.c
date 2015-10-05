@@ -47,7 +47,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length);
 #ifndef HAVE_TRACE_EXAMPLE_PLUGIN_DYNAMIC
 struct st_mysql_client_plugin trace_example_plugin=
 #else
-struct st_mysql_client_plugin _mysql_client_plugin_declare_=
+struct st_mysql_client_plugin _mysql_client_plugin_declaration_ =
 #endif
 {
   MARIADB_CLIENT_TRACE_PLUGIN,

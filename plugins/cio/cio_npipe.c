@@ -82,9 +82,7 @@ MARIADB_CIO_PLUGIN _mysql_client_plugin_declaration_ =
   "LGPL",
   NULL,
   NULL,
-  &cio_npipe_methods,
-  NULL,
-  NULL
+  &cio_npipe_methods
 };
 
 struct st_cio_npipe {
