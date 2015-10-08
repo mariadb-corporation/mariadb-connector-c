@@ -1138,14 +1138,18 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSE
     *errorcode= EINVAL;
     return rc;
   }
-  snprintf(to_encoding, 128, "%s//TRANSLIT", to_cs->encoding);
+  /* UTF16 does not work form iconv, while UTF-16 does.
+     Besides we don't want iconv to generate BOM, thus we used either UTF-16LE or BE by default
+     TODO: Need to do the same for UTF-32(at leased re BOM) */
+  snprintf(to_encoding, 128, "%s//TRANSLIT", strncmp(to_cs->encoding, "UTF16", 5) == 0
+                                             ? (strcmp(to_cs->encoding + 5, "LE") == 0 ? "UTF-16LE" : "UTF-16BE")
+                                             : to_cs->encoding);
 
   if ((conv= iconv_open(to_encoding, from_cs->encoding)) == (iconv_t)-1)
   {
     *errorcode= errno;
     goto error;
   }
-
   if ((rc= iconv(conv, (char **)&from, from_len, &to, to_len)) == -1)
   {
     *errorcode= errno;
