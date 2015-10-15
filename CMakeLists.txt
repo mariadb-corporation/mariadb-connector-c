@@ -246,7 +246,7 @@ SET(CPACK_SOURCE_IGNORE_FILES
 CMakeCache\\\\.txt
 cmake_dist\\\\.cmake
 CPackConfig\\\\.cmake
-mariadb_config/mariadb_config\\\\.c$
+mariadb_config\\\\.c$
 \\\\.build/
 html/
 unittest
@@ -258,7 +258,7 @@ unittest
 /_CPack_Packages/
 \\\\.gz$
 \\\\.zip$
-mariadb_config/mariadb_config
+mariadb_config/mariadb_config$
 /CMakeFiles/
 /version_resources/
 /_CPack_Packages/
