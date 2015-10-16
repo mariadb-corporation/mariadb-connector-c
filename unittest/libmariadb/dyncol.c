@@ -146,7 +146,7 @@ static int create_dyncol_num(MYSQL *mysql)
   diag("---------------__");
   for(i=0; i < 5; i++)
   {
-    diag("%s %d", my_keys[i].str, my_keys[i].length);
+    diag("%s %lu", my_keys[i].str, (unsigned long)my_keys[i].length);
   }
   free(my_keys);
   free(my_vals);
@@ -224,7 +224,7 @@ static int mdev_x1(MYSQL *mysql)
   diag("Columns: %d", unpack_columns);
 
   for (i=0; i < unpack_columns; i++)
-    diag("Key: %s Len: %d", unpack_keys[i].str, unpack_keys[i].length);
+    diag("Key: %s Len: %lu", unpack_keys[i].str, (unsigned long)unpack_keys[i].length);
 
 
   free(unpack_keys);
