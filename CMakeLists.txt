@@ -221,6 +221,8 @@ IF(NOT WIN32)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
 
+ADD_SUBDIRECTORY(client)
+
 IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
   ADD_SUBDIRECTORY(unittest/mytap)
   ADD_SUBDIRECTORY(unittest/libmariadb)
