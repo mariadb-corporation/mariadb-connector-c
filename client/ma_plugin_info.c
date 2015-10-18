@@ -33,7 +33,7 @@ static struct st_plugin_type plugin_types[]=
   {0, "unknown"}
 };
 
-void usage(void)
+static void usage(void)
 {
   int i=0;
   puts("Copyright 2015 MariaDB Corporation AB");
@@ -46,7 +46,7 @@ void usage(void)
   }
 }
 
-char *get_type_name(int type)
+static char *get_type_name(int type)
 {
   int i=0;
   while (plugin_types[i].type)
@@ -58,7 +58,7 @@ char *get_type_name(int type)
   return plugin_types[i].typename;
 }
 
-void show_plugin_info(struct st_mysql_client_plugin *plugin, my_bool builtin)
+static void show_plugin_info(struct st_mysql_client_plugin *plugin, my_bool builtin)
 {
   printf("Type: %s\n", get_type_name(plugin->type));
   printf("Name: %s\n", plugin->name);
@@ -71,7 +71,7 @@ void show_plugin_info(struct st_mysql_client_plugin *plugin, my_bool builtin)
   printf("\n");
 }
 
-void show_builtin()
+static void show_builtin()
 {
   struct st_mysql_client_plugin **builtin;
 
@@ -79,7 +79,7 @@ void show_builtin()
     show_plugin_info(*builtin, TRUE);
 }
 
-void show_file(char *filename)
+static void show_file(char *filename)
 {
   char dlpath[FN_REFLEN+1];
   void *sym, *dlhandle;
@@ -103,7 +103,7 @@ void show_file(char *filename)
   }
 }
 
-void show_dynamic()
+static void show_dynamic()
 {
   MY_DIR *dir= NULL;
   int i;
@@ -130,8 +130,8 @@ void show_dynamic()
 int main(int argc, char *argv[])
 {
   int option_index= 0;
+  int c;
   my_progname= argv[0];
-  char c;
 
   if (argc <= 1)
   {
@@ -142,14 +142,14 @@ int main(int argc, char *argv[])
   c= getopt_long(argc, argv, "bdap", long_options, &option_index);
 
   switch(c) {
-  case 'a': /* builtin */
+  case 'a': /* all */
     show_builtin();
     show_dynamic();
     break;
   case 'b': /* builtin */
     show_builtin();
     break;
-  case 'd': /* builtin */
+  case 'd': /* dynamic */
     show_dynamic();
     break;
   case 'p':
