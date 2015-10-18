@@ -222,8 +222,12 @@ size_t cio_socket_read(MARIADB_CIO *cio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
+#ifdef __APPLE__
+  int read_flags= 0;
+#else
   /* don't ignore SIGPIPE globally like in libmysql!! */
   int read_flags= MSG_NOSIGNAL;
+#endif
 #endif
   struct st_cio_socket *csock= NULL;
 
@@ -294,7 +298,11 @@ size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t lengt
 {
   ssize_t r= -1;
 #ifndef _WIN32
+#ifdef __APPLE__
+  int read_flags= MSG_DONTWAIT;
+#else
   int read_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
+#endif
 #endif
   struct st_cio_socket *csock= NULL;
 
@@ -335,8 +343,12 @@ size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t lengt
 size_t cio_socket_async_write(MARIADB_CIO *cio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
-#ifndef WIN32
+#ifndef _WIN32
+#ifdef __APPLE__
+  int write_flags= MSG_DONTWAIT;
+#else
   int write_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
+#endif
 #endif
   struct st_cio_socket *csock= NULL;
 
@@ -378,7 +390,11 @@ size_t cio_socket_write(MARIADB_CIO *cio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
-  int send_flags= MSG_NOSIGNAL;
+#ifdef __APPLE__
+  int send_flags= MSG_DONTWAIT;
+#else
+  int send_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
+#endif
 #endif
   struct st_cio_socket *csock= NULL;
   if (!cio || !cio->data)
@@ -541,7 +557,6 @@ static int cio_socket_internal_connect(MARIADB_CIO *cio,
   cio_socket_blocking(cio, 0, 0);
 
 #ifndef _WIN32
-
   do {
     rc= connect(csock->socket, (struct sockaddr*) name, (int)namelen);
   } while (rc == -1 && errno == EINTR);
@@ -563,6 +578,13 @@ static int cio_socket_internal_connect(MARIADB_CIO *cio,
         return error;
     }
   }
+#ifdef __APPLE__
+  if (csock->socket)
+  {
+    int val= 1;
+    setsockopt(csock->socket, SOL_SOCKET, SO_NOSIGPIPE, (void *)&val, sizeof(int));
+  }
+#endif
 #else
   rc= connect(csock->socket, (struct sockaddr*) name, (int)namelen);
   if (rc == SOCKET_ERROR)
@@ -575,6 +597,7 @@ static int cio_socket_internal_connect(MARIADB_CIO *cio,
     }
   }
 #endif
+
   return rc;
 }
 
