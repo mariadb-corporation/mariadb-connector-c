@@ -17,6 +17,22 @@ static struct option long_options[]=
   {NULL, 0, 0, 0}
 };
 
+struct st_plugin_type
+{
+  int type;
+  char *typename;
+};
+
+static struct st_plugin_type plugin_types[]=
+{
+  {MYSQL_CLIENT_AUTHENTICATION_PLUGIN, "authentication"},
+  {MARIADB_CLIENT_CIO_PLUGIN, "client/server protocol"},
+  {MARIADB_CLIENT_TRACE_PLUGIN, "trace"},
+  {MARIADB_CLIENT_REMOTEIO_PLUGIN, "remote file access"},
+  {MARIADB_CLIENT_CONNECTION_PLUGIN, "connection handler"},
+  {0, "unknown"}
+};
+
 void usage(void)
 {
   int i=0;
@@ -30,15 +46,28 @@ void usage(void)
   }
 }
 
+char *get_type_name(int type)
+{
+  int i=0;
+  while (plugin_types[i].type)
+  {
+    if (type== plugin_types[i].type)
+      return plugin_types[i].typename;
+    i++;
+  }
+  return plugin_types[i].typename;
+}
+
 void show_plugin_info(struct st_mysql_client_plugin *plugin, my_bool builtin)
 {
-  printf("Type: %s\n", builtin ? "builtin" : "dynamic");
+  printf("Type: %s\n", get_type_name(plugin->type));
   printf("Name: %s\n", plugin->name);
   printf("Desc: %s\n", plugin->desc);
   printf("Author: %s\n", plugin->author);
   printf("License: %s\n", plugin->license);
   printf("Version: %d.%d.%d\n", plugin->version[0], plugin->version[1], plugin->version[2]);
   printf("API Version: 0x%04X\n", plugin->interface_version);
+  printf("Build type: %s\n", builtin ? "builtin" : "dynamic");
   printf("\n");
 }
 
@@ -56,14 +85,11 @@ void show_file(char *filename)
   void *sym, *dlhandle;
   struct st_mysql_client_plugin *plugin;
   char *env_plugin_dir= getenv("MARIADB_PLUGIN_DIR");
+  char *has_so_ext= strstr(filename, SO_EXT);
 
-#ifdef _WIN32
-  if (!strchr(filename, '\\'))
-#else
-  if (!strchr(filename, '/'))
-#endif
+  if (!strchr(filename, FN_LIBCHAR))
     strxnmov(dlpath, sizeof(dlpath) - 1,
-             (env_plugin_dir) ? env_plugin_dir : PLUGINDIR, "/", filename, SO_EXT, NullS);
+             (env_plugin_dir) ? env_plugin_dir : PLUGINDIR, "/", filename, has_so_ext ? "" : SO_EXT, NullS);
   else
     strcpy(dlpath, filename);
   if ((dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))

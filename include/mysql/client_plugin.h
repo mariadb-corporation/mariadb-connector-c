@@ -36,6 +36,8 @@
 #define PLUGINDIR "lib/plugin"
 #endif
 
+#define plugin_declarations_sym "_mysql_client_plugin_declaration_"
+
 /* known plugin types */
 #define MYSQL_CLIENT_PLUGIN_RESERVED         0 
 #define MYSQL_CLIENT_PLUGIN_RESERVED2        1

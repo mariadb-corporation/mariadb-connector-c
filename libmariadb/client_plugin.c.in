@@ -56,9 +56,6 @@ struct st_client_plugin_int {
 static my_bool initialized= 0;
 static MEM_ROOT mem_root;
 
-#define plugin_declarations_sym "_mysql_client_plugin_declaration_"
-
-
 static uint valid_plugins[][2]= {
   {MYSQL_CLIENT_AUTHENTICATION_PLUGIN, MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION},
   {MARIADB_CLIENT_CIO_PLUGIN, MARIADB_CLIENT_CIO_PLUGIN_INTERFACE_VERSION},
