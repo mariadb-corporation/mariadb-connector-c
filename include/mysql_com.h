@@ -209,14 +209,10 @@ enum enum_server_command
 #define NET_WRITE_TIMEOUT	60		/* Timeout on write */
 #define NET_WAIT_TIMEOUT	8*60*60		/* Wait for new query */
 
-#ifndef Vio_defined
-#define Vio_defined
-#ifdef HAVE_VIO
-class Vio;					/* Fill Vio class in C++ */
-#else
-struct st_vio;					/* Only C */
-typedef struct st_vio Vio;
-#endif
+#ifndef cio_defined
+#define cio_defined
+struct st_ma_cio;
+typedef struct st_ma_cio MARIADB_CIO;
 #endif
 
 #define MAX_CHAR_WIDTH		255	/* Max length for a CHAR colum */
@@ -231,9 +227,17 @@ typedef struct st_vio Vio;
 #define MAX_INT_WIDTH        10
 #define MAX_BIGINT_WIDTH     20
 
+struct st_ma_connection_plugin;
+
+typedef struct st_connection_handler
+{
+  struct st_ma_connection_plugin *plugin;
+  void *data;
+  my_bool free_data;
+} MA_CONNECTION_HANDLER;
 
 typedef struct st_net {
-  Vio *vio;
+  MARIADB_CIO *cio;
   unsigned char *buff;
   unsigned char *buff_end,*write_pos,*read_pos;
   my_socket fd;					/* For Perl DBI/dbd */
@@ -249,11 +253,11 @@ typedef struct st_net {
   my_bool unused_1, unused_2;
   my_bool compress;
   my_bool unused_3;
-  unsigned char *unused_4;
+  MA_CONNECTION_HANDLER *conn_hdlr;
   unsigned int last_errno;
   unsigned char error;
+  my_bool unused_4;
   my_bool unused_5;
-  my_bool unused_6;
   
   char last_error[MYSQL_ERRMSG_SIZE];
   char sqlstate[SQLSTATE_LENGTH+1];
@@ -324,7 +328,7 @@ extern unsigned long net_buffer_length;
 
 #define net_new_transaction(net) ((net)->pkt_nr=0)
 
-int	my_net_init(NET *net, Vio *vio);
+int	my_net_init(NET *net, MARIADB_CIO *cio);
 void	net_end(NET *net);
 void	net_clear(NET *net);
 int	net_flush(NET *net);

@@ -507,7 +507,9 @@ void run_tests(struct my_tests_st *test) {
             return; /* default doesn't work anymore */
       }
       else if (mysql && !(test[i].connection & TEST_CONNECTION_DONT_CLOSE))
+      {
           mysql_close(mysql);
+      }
     } else {
       skip(1, "%s", test[i].skipmsg);
     }

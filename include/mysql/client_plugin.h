@@ -31,25 +31,33 @@
 #include <stdlib.h>
 #endif
 
+
 #ifndef PLUGINDIR
 #define PLUGINDIR "lib/plugin"
 #endif
 
-/* known plugin types */
-#define MYSQL_CLIENT_DB_PLUGIN               0
-#define MYSQL_CLIENT_reserved                1
-#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2
-#define MYSQL_CLIENT_reserved22              3
-#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0100
-#define MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION  0x0100
+#define plugin_declarations_sym "_mysql_client_plugin_declaration_"
 
-#ifdef HAVE_REMOTEIO
-#define MYSQL_CLIENT_REMOTEIO_PLUGIN         4
-#define MYSQL_CLIENT_MAX_PLUGINS             5
-#define MYSQL_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION 0x0100
-#else
-#define MYSQL_CLIENT_MAX_PLUGINS             4
-#endif
+/* known plugin types */
+#define MYSQL_CLIENT_PLUGIN_RESERVED         0 
+#define MYSQL_CLIENT_PLUGIN_RESERVED2        1
+#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2 /* authentication   */
+
+#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0100
+#define MYSQL_CLIENT_MAX_PLUGINS             3
+
+/* Connector/C specific plugin types */
+#define MARIADB_CLIENT_REMOTEIO_PLUGIN       100 /* communication IO */
+#define MARIADB_CLIENT_CIO_PLUGIN            101
+#define MARIADB_CLIENT_TRACE_PLUGIN          102
+#define MARIADB_CLIENT_CONNECTION_PLUGIN     103
+
+#define MARIADB_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION 0x0100
+#define MARIADB_CLIENT_CIO_PLUGIN_INTERFACE_VERSION 0x0100
+#define MARIADB_CLIENT_TRACE_PLUGIN_INTERFACE_VERSION 0x0100
+#define MARIADB_CLIENT_CONNECTION_PLUGIN_INTERFACE_VERSION 0x0100
+
+#define MARIADB_CLIENT_MAX_PLUGINS             4
 
 #define mysql_declare_client_plugin(X)          \
      struct st_mysql_client_plugin_ ## X        \
@@ -66,9 +74,9 @@
   const char *author;                                   \
   const char *desc;                                     \
   unsigned int version[3];                              \
+  const char *license;                                  \
   int (*init)(char *, size_t, int, va_list);            \
-  int (*deinit)(void);
-
+  int (*deinit)();
 struct st_mysql_client_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER
@@ -76,15 +84,32 @@ struct st_mysql_client_plugin
 
 struct st_mysql;
 
-/********* database api plugin specific declarations **********/
-typedef struct st_mariadb_client_plugin_DB
+/********* connection handler plugin specific declarations **********/
+typedef struct st_ma_connection_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER
   /* functions */
-  struct st_mysql_methods *methods;
-} MARIADB_DB_PLUGIN;
+  MYSQL *(*connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd,
+		    const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
+  void (*close)(MYSQL *mysql);
+  int (*options)(MYSQL *mysql, enum mysql_option, void *arg);
+  int (*set_connection)(MYSQL *mysql,enum enum_server_command command, const char *arg,
+                        size_t length, my_bool skipp_check, void *opt_arg);
+} MARIADB_CONNECTION_PLUGIN;
 
 #define MARIADB_DB_DRIVER(a) ((a)->ext_db)
+
+/*******************  Communication IO plugin *****************/
+#include <ma_cio.h>
+#ifdef HAVE_SSL
+#include <ma_ssl.h>
+#endif
+
+typedef struct st_mariadb_client_plugin_CIO
+{
+  MYSQL_CLIENT_PLUGIN_HEADER
+  struct st_ma_cio_methods *methods;
+} MARIADB_CIO_PLUGIN;
 
 /******** authentication plugin specific declarations *********/
 #include <mysql/plugin_auth_common.h>
@@ -95,6 +120,11 @@ struct st_mysql_client_plugin_AUTHENTICATION
   int (*authenticate_user)(MYSQL_PLUGIN_VIO *vio, struct st_mysql *mysql);
 };
 
+/******** trace plugin *******/
+struct st_mysql_client_plugin_TRACE
+{
+  MYSQL_CLIENT_PLUGIN_HEADER
+};
 
 /**
   type of the mysql_authentication_dialog_ask function

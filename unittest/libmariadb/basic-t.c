@@ -61,6 +61,7 @@ static int test_conc75(MYSQL *my)
     rc= mysql_query(mysql, "load data local infile './nonexistingfile.csv' into table a (`a`)");
     FAIL_IF(!test(mysql->options.client_flag | CLIENT_LOCAL_FILES), "client_flags not correct");
     FAIL_IF(thread_id == mysql_thread_id(mysql), "new thread id expected");
+    diag("cs: %s", mysql->charset->csname);
     FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "wrong character set");
   }
   mysql_close(mysql);

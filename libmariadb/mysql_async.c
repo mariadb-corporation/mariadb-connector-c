@@ -30,8 +30,9 @@
 #include "ma_common.h"
 #endif
 #include "my_context.h"
-#include "violite.h"
+#include "ma_cio.h"
 #include "mysql_async.h"
+#include <string.h>
 
 
 #ifdef _WIN32
@@ -41,7 +42,7 @@
 */
 #define WIN_SET_NONBLOCKING(mysql) { \
     my_bool old_mode; \
-    if ((mysql)->net.vio) vio_blocking((mysql)->net.vio, FALSE, &old_mode); \
+    if ((mysql)->net.cio) ma_cio_blocking((mysql)->net.cio, FALSE, &old_mode); \
   }
 #else
 #define WIN_SET_NONBLOCKING(mysql)
@@ -62,19 +63,18 @@ my_context_install_suspend_resume_hook(struct mysql_async_context *b,
 
 /* Asynchronous connect(); socket must already be set non-blocking. */
 int
-my_connect_async(struct mysql_async_context *b, my_socket fd,
+my_connect_async(MARIADB_CIO *cio,
                  const struct sockaddr *name, uint namelen, int vio_timeout)
 {
   int res;
   size_socket s_err_size;
+  struct mysql_async_context *b= cio->mysql->options.extension->async_context;
+  my_socket sock;
+
+  ma_cio_get_handle(cio, &sock);
 
   /* Make the socket non-blocking. */
-#ifdef _WIN32
-  ulong arg= 1;
-  ioctlsocket(fd, FIONBIO, (void *)&arg);
-#else
-  fcntl(fd, F_SETFL, O_NONBLOCK);
-#endif
+  ma_cio_blocking(cio, 0, 0);
 
   b->events_to_wait_for= 0;
   /*
@@ -83,7 +83,7 @@ my_connect_async(struct mysql_async_context *b, my_socket fd,
     application context. The application will then resume us when the socket
     polls ready for write, indicating that the connection attempt completed.
   */
-  res= connect(fd, name, namelen);
+  res= connect(sock, name, namelen);
   if (res != 0)
   {
 #ifdef _WIN32
@@ -113,7 +113,7 @@ my_connect_async(struct mysql_async_context *b, my_socket fd,
       return -1;
 
     s_err_size= sizeof(res);
-    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*) &res, &s_err_size) != 0)
+    if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*) &res, &s_err_size) != 0)
       return -1;
     if (res)
     {
@@ -135,14 +135,15 @@ my_connect_async(struct mysql_async_context *b, my_socket fd,
 #endif
 
 ssize_t
-my_recv_async(struct mysql_async_context *b, int fd,
-              unsigned char *buf, size_t size, int timeout)
+my_recv_async(MARIADB_CIO *cio, const unsigned char *buf, size_t size, int timeout)
 {
   ssize_t res;
-
+  struct mysql_async_context *b= cio->async_context;
   for (;;)
   {
-    res= recv(fd, buf, size, IF_WIN(0, MSG_DONTWAIT));
+    /* todo: async */
+    if (cio->methods->async_read)
+      res= cio->methods->async_read(cio, buf, size);
     if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_READ;
@@ -163,14 +164,15 @@ my_recv_async(struct mysql_async_context *b, int fd,
 
 
 ssize_t
-my_send_async(struct mysql_async_context *b, int fd,
-              const unsigned char *buf, size_t size, int timeout)
+my_send_async(MARIADB_CIO *cio, const unsigned char *buf, size_t size, int timeout)
 {
   ssize_t res;
+  struct mysql_async_context *b= cio->async_context;
 
   for (;;)
   {
-    res= send(fd, buf, size, IF_WIN(0, MSG_DONTWAIT));
+    if (cio->methods->async_write)
+      res= cio->methods->async_write(cio, buf, size);
     if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_WRITE;
@@ -191,7 +193,7 @@ my_send_async(struct mysql_async_context *b, int fd,
 
 
 my_bool
-my_io_wait_async(struct mysql_async_context *b, enum enum_vio_io_event event,
+my_io_wait_async(struct mysql_async_context *b, enum enum_cio_io_event event,
                  int timeout)
 {
   switch (event)
@@ -221,9 +223,9 @@ my_io_wait_async(struct mysql_async_context *b, enum enum_vio_io_event event,
 }
 
 
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL_FIXME
 static my_bool
-my_ssl_async_check_result(int res, struct mysql_async_context *b, SSL *ssl)
+my_ssl_async_check_result(int res, struct mysql_async_context *b, MARIADB_SSL *cssl)
 {
   int ssl_err;
   b->events_to_wait_for= 0;
@@ -496,18 +498,36 @@ MK_ASYNC_INTERNAL_BODY(
 int STDCALL
 mysql_real_query_start(int *ret, MYSQL *mysql, const char *stmt_str, unsigned long length)
 {
-MK_ASYNC_START_BODY(
-  mysql_real_query,
-  mysql,
+  int res;                                                                    
+  struct mysql_async_context *b;                                              
+  struct mysql_real_query_params parms;                                               
+                                                                              
+  b= mysql->options.extension->async_context;  
   {
     WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.stmt_str= stmt_str;
     parms.length= length;
-  },
-  1,
-  r_int,
-  /* Nothing */)
+  }
+                                                                              
+  b->active= 1;                                                               
+  res= my_context_spawn(&b->async_context, mysql_real_query_start_internal, &parms);
+  b->active= b->suspended= 0;                                                 
+  if (res > 0)                                                                
+  {                                                                           
+    /* Suspended. */                                                          
+    b->suspended= 1;                                                          
+    return b->events_to_wait_for;                                             
+  }                                                                           
+  if (res < 0)                                                                
+  {                                                                           
+    set_mysql_error((mysql), CR_OUT_OF_MEMORY, unknown_sqlstate);         
+    *ret= 1;                                                            
+  }                                                                           
+  else                                                                        
+    *ret= b->ret_result.r_int;                                              
+  return 0;
+
 }
 int STDCALL
 mysql_real_query_cont(int *ret, MYSQL *mysql, int ready_status)
@@ -805,7 +825,7 @@ mysql_close_start(MYSQL *sock)
   int res;
 
   /* It is legitimate to have NULL sock argument, which will do nothing. */
-  if (sock && sock->net.vio)
+  if (sock && sock->net.cio)
   {
     res= mysql_close_slow_part_start(sock);
     /* If we need to block, return now and do the rest in mysql_close_cont(). */

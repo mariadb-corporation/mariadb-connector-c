@@ -25,6 +25,7 @@ extern "C" {
 #endif
 void	init_client_errs(void);
 extern const char *client_errors[];	/* Error messages */
+extern const char *mariadb_client_errors[];	/* Error messages */
 #ifdef	__cplusplus
 }
 #endif
@@ -32,11 +33,10 @@ extern const char *client_errors[];	/* Error messages */
 
 #define CR_MIN_ERROR		2000	/* For easier client code */
 #define CR_MAX_ERROR		2999
-#if defined(OS2) && defined( MYSQL_SERVER)
-#define CER(X) client_errors[(X)-CR_MIN_ERROR]
-#else
+#define CER_MIN_ERROR           5000
+#define CER_MAX_ERROR           5999
+#define CER(X) mariadb_client_errors[(X)-CER_MIN_ERROR]
 #define ER(X) client_errors[(X)-CR_MIN_ERROR]
-#endif
 #define CLIENT_ERRMAP		2	/* Errormap used by my_error() */
 
 #define CR_UNKNOWN_ERROR	2000
@@ -66,6 +66,11 @@ extern const char *client_errors[];	/* Error messages */
 #define CR_PARAMS_NOT_BOUND     2031
 #define CR_INVALID_PARAMETER_NO  2034
 #define CR_UNSUPPORTED_PARAM_TYPE 2036
+
+#define CR_SHARED_MEMORY_CONNECTION 2037
+#define CR_SHARED_MEMORY_CONNECT_ERROR 2038
+
+
 #define CR_SECURE_AUTH          2049
 #define CR_NO_DATA              2051
 #define CR_NO_STMT_METADATA     2052
@@ -75,6 +80,9 @@ extern const char *client_errors[];	/* Error messages */
 #define CR_AUTH_PLUGIN_CANNOT_LOAD 2058
 #define CR_ALREADY_CONNECTED    2059
 #define CR_PLUGIN_FUNCTION_NOT_SUPPORTED 2060
+
+#define CR_EVENT_CREATE_FAILED 5000
+#define CR_BIND_ADDR_FAILED    5001
 
 #define SQLSTATE_UNKNOWN "HY000"
 

@@ -25,7 +25,7 @@ SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view
               "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "dyncol") 
 
 # Get finger print from server certificate 
-IF(WITH_OPENSSL)
+IF(WITH_SSL)
 
   #create certificates
   IF(EXISTS "${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
@@ -62,7 +62,7 @@ ENDIF()
 
 FOREACH(API_TEST ${API_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
-  TARGET_LINK_LIBRARIES(${API_TEST} mytap mariadbclient ${EXTRA_LIBS})
+  TARGET_LINK_LIBRARIES(${API_TEST} mytap mariadbclient )
   ADD_TEST(${API_TEST} ${EXECUTABLE_OUTPUT_PATH}/${API_TEST})
   SET_TESTS_PROPERTIES(${API_TEST} PROPERTIES TIMEOUT 120)
 ENDFOREACH(API_TEST)

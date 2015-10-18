@@ -89,11 +89,20 @@ typedef struct
  
 CURLM *multi_handle= NULL;
 
-mysql_declare_client_plugin(REMOTEIO)
+#ifndef HAVE_REMOTE_IO_DYNAMIC
+struct st_mysql_client_plugin remote_io_plugin=
+{
+#else
+struct st_mysql_client_plugin _mysql_client_plugin_declare_ =
+#endif
+{
+  MARIADB_CLIENT_REMOTEIO_PLUGIN,
+  MARIADB_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION,
   "remote_io",
   "Georg Richter",
   "Remote IO plugin",
   {0,1,0},
+  "LGPL",
   ma_rio_init, 
   ma_rio_deinit,
   &ma_rio_methods

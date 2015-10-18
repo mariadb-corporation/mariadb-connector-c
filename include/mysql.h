@@ -212,7 +212,8 @@ extern unsigned int mariadb_deinitialize_ssl;
     /* MariaDB Connector/C specific */
     MYSQL_DATABASE_DRIVER=7000,
     MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
-    MARIADB_OPT_SSL_FP_LIST         /* finger print white list for server certificate verification */
+    MARIADB_OPT_SSL_FP_LIST,        /* finger print white list for server certificate verification */
+    MARIADB_OPT_CONNECTION_READ_ONLY
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -230,8 +231,6 @@ extern unsigned int mariadb_deinitialize_ssl;
     MYSQL_PROTOCOL_DEFAULT, MYSQL_PROTOCOL_TCP, MYSQL_PROTOCOL_SOCKET,
     MYSQL_PROTOCOL_PIPE, MYSQL_PROTOCOL_MEMORY
   };
-
-struct st_mysql_options_extension;
 
 struct st_mysql_options {
     unsigned int connect_timeout, read_timeout, write_timeout;
@@ -251,7 +250,7 @@ struct st_mysql_options {
     my_bool compress,named_pipe;
     my_bool unused_1, unused_2, unused_3, unused_4;
     enum mysql_option methods_to_use;
-    char *client_ip;
+    char *bind_address;
     my_bool secure_auth;
     my_bool report_data_truncation; 
     /* function pointers for local infile support */
@@ -627,6 +626,7 @@ struct st_mysql_methods {
   int (*db_stmt_fetch)(MYSQL_STMT *stmt, unsigned char **row);
   int (*db_stmt_fetch_to_bind)(MYSQL_STMT *stmt, unsigned char *row);
   void (*db_stmt_flush_unbuffered)(MYSQL_STMT *stmt);
+  void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
 };
 
 /* synonyms/aliases functions */

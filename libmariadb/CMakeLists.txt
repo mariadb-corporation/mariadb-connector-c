@@ -9,9 +9,9 @@ ADD_DEFINITIONS(-D THREAD)
 
 SET(EXPORT_SYMBOLS
  load_defaults
+ ma_cio_register_callback
  mariadb_connection
  mariadb_convert_string
- mariadb_deinitialize_ssl
  mariadb_dyncol_check
  mariadb_dyncol_column_cmp_named
  mariadb_dyncol_column_count
@@ -220,6 +220,9 @@ SET(EXPORT_SYMBOLS
  mysql_thread_safe
  mysql_use_result
  mysql_warning_count)
+IF(WITH_SSL)
+  SET(EXPORTS ${EXPORTS} mariadb_deinitialize_ssl)
+ENDIF()
 
 # some gcc versions fail to compile asm parts of my_context.c,
 # if build type is "Release" (see CONC-133), so we need to add -g flag
@@ -245,7 +248,7 @@ ENDIF()
 
 FILE(WRITE ${EXPORT_FILE} ${EXPORT_CONTENT})
 
-SET(LIBMARIADB_SOURCES 
+SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
 array.c 
 ma_dyncol.c
 bchange.c 
@@ -253,7 +256,6 @@ bmove.c
 bmove_upp.c 
 my_charset.c
 hash.c
-violite.c 
 net.c
 charset.c
 ma_time.c
@@ -269,8 +271,9 @@ is_prefix.c
 libmariadb.c
 list.c
 llstr.c
-longlong2str.c
-ma_io.c
+longlong2str.c 
+ma_cio.c
+ma_ssl.c
 mf_dirname.c 
 mf_fn_ext.c 
 mf_format.c
@@ -326,10 +329,11 @@ sha1.c
 my_stmt.c
 my_loaddata.c
 my_stmt_codec.c
-client_plugin.c
-my_auth.c
-ma_secure.c
+${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c
+ma_io.c
+${SSL_SOURCES}
 )
+
 
 IF(WIN32)
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)

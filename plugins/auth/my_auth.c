@@ -1,36 +1,10 @@
-/************************************************************************************
-    Copyright (C) 2012-2015 Monty Program AB, MariaDB Corporation AB,
-                  
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public
-   License as published by the Free Software Foundation; either
-   version 2 of the License, or (at your option) any later version.
-   
-   This library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
-   
-   You should have received a copy of the GNU Library General Public
-   License along with this library; if not see <http://www.gnu.org/licenses>
-   or write to the Free Software Foundation, Inc., 
-   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
-
-   Part of this code includes code from the PHP project which
-   is freely available from http://www.php.net
-
-   Originally written by Sergei Golubchik
-*************************************************************************************/
 #include <my_global.h>
 #include <my_sys.h>
 #include <m_string.h>
 #include <errmsg.h>
 #include <ma_common.h>
 #include <mysql/client_plugin.h>
-#include <violite.h>
-#ifdef HAVE_OPENSSL
-#include <ma_secure.h>
-#endif
+#include <ma_cio.h>
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
@@ -39,10 +13,12 @@ static int old_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 extern void read_user_name(char *name);
 extern uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer);
 
+/*
 #define compile_time_assert(A) \
 do {\
   typedef char constraint[(A) ? 1 : -1];\
 } while (0);
+*/
 
 auth_plugin_t native_password_client_plugin=
 {
@@ -52,6 +28,7 @@ auth_plugin_t native_password_client_plugin=
   "R.J.Silk, Sergei Golubchik",
   "Native MySQL authentication",
   {1, 0, 0},
+  "LGPL",
   NULL,
   NULL,
   native_password_auth_client
@@ -65,6 +42,7 @@ auth_plugin_t old_password_client_plugin=
   "R.J.Silk, Sergei Golubchik",
   "Old MySQL-3.23 authentication",
   {1, 0, 0},
+  "LGPL",
   NULL,
   NULL,
   old_password_auth_client
@@ -254,13 +232,16 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->client_flag & CLIENT_MULTI_STATEMENTS)
     mysql->client_flag|= CLIENT_MULTI_RESULTS;
 
-#if defined(HAVE_OPENSSL) && !defined(EMBEDDED_LIBRARY)
+#if defined(HAVE_SSL) && !defined(EMBEDDED_LIBRARY)
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
       mysql->options.ssl_cipher)
     mysql->options.use_ssl= 1;
   if (mysql->options.use_ssl)
     mysql->client_flag|= CLIENT_SSL;
+#endif /* HAVE_SSL && !EMBEDDED_LIBRARY*/
+  if (mpvio->db)
+    mysql->client_flag|= CLIENT_CONNECT_WITH_DB;
 
   /* if server doesn't support SSL and verification of server certificate
      was set to mandatory, we need to return an error */
@@ -276,10 +257,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       goto error;
     }
   }
-  
-#endif /* HAVE_OPENSSL && !EMBEDDED_LIBRARY*/
-  if (mpvio->db)
-    mysql->client_flag|= CLIENT_CONNECT_WITH_DB;
+
 
   /* Remove options that server doesn't support */
   mysql->client_flag= mysql->client_flag &
@@ -305,7 +283,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     int3store(buff+2, net->max_packet_size);
     end= buff+5;
   }
-#ifdef HAVE_OPENSSL
+#ifdef HAVE_SSL
   if (mysql->options.ssl_key ||
       mysql->options.ssl_cert ||
       mysql->options.ssl_ca ||
@@ -318,11 +296,9 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 #endif
       )
     mysql->options.use_ssl= 1;
-
   if (mysql->options.use_ssl &&
       (mysql->client_flag & CLIENT_SSL))
   {
-    SSL *ssl;
     /*
       Send mysql->client_flag, max_packet_size - unencrypted otherwise
       the server does not know we want to do SSL
@@ -335,37 +311,14 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                           errno);
       goto error;
     }
-
-    /* Create SSL */
-    if (!(ssl= my_ssl_init(mysql)))
-      goto error; 
-
-    /* Connect to the server */
-    if (my_ssl_connect(ssl))
-    {
-      SSL_free(ssl);
-      goto error;
-    }
-
-    if (mysql->options.extension &&
-        (mysql->options.extension->ssl_fp || mysql->options.extension->ssl_fp_list))
-    {
-      if (ma_ssl_verify_fingerprint(ssl))
-        goto error;
-    }
-
-    if ((mysql->options.ssl_ca || mysql->options.ssl_capath) &&
-        (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
-         my_ssl_verify_server_cert(ssl))
+    if (ma_cio_start_ssl(mysql->net.cio))
       goto error;
   }
-#endif /* HAVE_OPENSSL */
+#endif /* HAVE_SSL */
 
-  DBUG_PRINT("info",("Server version = '%s'  capabilities: %lu  status: %u  client_flag: %lu",
+  DBUG_PRINT("info",("Server version = '%s'  capabilites: %lu  status: %u  client_flag: %lu",
 		     mysql->server_version, mysql->server_capabilities,
 		     mysql->server_status, mysql->client_flag));
-
-  compile_time_assert(MYSQL_USERNAME_LENGTH == USERNAME_LENGTH);
 
   /* This needs to be changed as it's not useful with big packets */
   if (mysql->user[0])
@@ -527,18 +480,19 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
   connection
 */
 
-void mpvio_info(Vio *vio, MYSQL_PLUGIN_VIO_INFO *info)
+void mpvio_info(MARIADB_CIO *cio, MYSQL_PLUGIN_VIO_INFO *info)
 {
   bzero(info, sizeof(*info));
-  switch (vio->type) {
-  case VIO_TYPE_TCPIP:
+  switch (cio->type) {
+  case CIO_TYPE_SOCKET:
     info->protocol= MYSQL_VIO_TCP;
-    info->socket= vio->sd;
+    ma_cio_get_handle(cio, &info->socket);
     return;
-  case VIO_TYPE_SOCKET:
+  case CIO_TYPE_UNIXSOCKET:
     info->protocol= MYSQL_VIO_SOCKET;
-    info->socket= vio->sd;
+    ma_cio_get_handle(cio, &info->socket);
     return;
+    /*
   case VIO_TYPE_SSL:
     {
       struct sockaddr addr;
@@ -550,11 +504,14 @@ void mpvio_info(Vio *vio, MYSQL_PLUGIN_VIO_INFO *info)
       info->socket= vio->sd;
       return;
     }
+    */
 #ifdef _WIN32
+    /*
   case VIO_TYPE_NAMEDPIPE:
     info->protocol= MYSQL_VIO_PIPE;
     info->handle= vio->hPipe;
     return;
+    */
 /* not supported yet
   case VIO_TYPE_SHARED_MEMORY:
     info->protocol= MYSQL_VIO_MEMORY;
@@ -570,7 +527,7 @@ static void client_mpvio_info(MYSQL_PLUGIN_VIO *vio,
                               MYSQL_PLUGIN_VIO_INFO *info)
 {
   MCPVIO_EXT *mpvio= (MCPVIO_EXT*)vio;
-  mpvio_info(mpvio->mysql->net.vio, info);
+  mpvio_info(mpvio->mysql->net.cio, info);
 }
 
 /**
@@ -637,8 +594,6 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
 
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);
 
-  compile_time_assert(CR_OK == -1);
-  compile_time_assert(CR_ERROR == 0);
   if (res > CR_OK && mysql->net.read_pos[0] != 254)
   {
     /*
