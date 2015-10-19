@@ -204,6 +204,7 @@ static int test_conc129(MYSQL *my)
 {
   MYSQL *mysql= mysql_init(NULL);
   FAIL_IF(mysql_close_start(mysql), "No error expected");
+  return OK;
 }
 
 

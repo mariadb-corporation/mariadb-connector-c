@@ -245,7 +245,7 @@ void repl_close(MYSQL *mysql)
   my_free(data->url);
   my_free(data);
   mysql->net.conn_hdlr->data= NULL;
-  return mysql_close(mysql);
+  mysql_close(mysql);
 }
 
 static my_bool is_slave_command(const char *buffer, size_t buffer_len)

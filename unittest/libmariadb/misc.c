@@ -802,7 +802,7 @@ static int test_conc49(MYSQL *mysql)
   rc= mysql_query(mysql, "SELECT a FROM conc49");
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
-  rc= mysql_num_rows(res);
+  rc= (int)mysql_num_rows(res);
   mysql_free_result(res);
   FAIL_IF(rc != 3, "3 rows expected");
   return OK;
@@ -922,7 +922,7 @@ static int test_connect_attrs(MYSQL *my)
   rc= mysql_query(mysql, "SELECT * FROM performance_schema.session_connect_attrs where attr_name like 'foo%'");
   check_mysql_rc(rc, mysql);
   result= mysql_store_result(mysql);
-  rc= mysql_num_rows(result);
+  rc= (int)mysql_num_rows(result);
   mysql_free_result(result);
 
   mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_RESET, NULL);

@@ -117,7 +117,6 @@ char* get_tty_password(char *prompt, char *buffer, int length)
   HANDLE Hdl;
   int    Offset= 0;
   DWORD  CharsProcessed=  0;
-  char   inChar;
 
   if (prompt)
     fprintf(stderr, "%s", prompt);

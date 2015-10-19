@@ -314,7 +314,7 @@ size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t lengt
 #ifndef _WIN32
   r= recv(csock->socket,(void *)buffer, length, read_flags);
 #else
-  r= recv(csock->socket, buffer, length, 0);
+  r= recv(csock->socket, (char *)buffer, length, 0);
 #endif
   return r;
 }

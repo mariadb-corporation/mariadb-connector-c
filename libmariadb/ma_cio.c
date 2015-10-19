@@ -133,6 +133,7 @@ my_bool ma_cio_is_alive(MARIADB_CIO *cio)
 {
   if (cio->methods->is_alive)
     return cio->methods->is_alive(cio);
+  return FALSE;
 }
 /* }}} */
 

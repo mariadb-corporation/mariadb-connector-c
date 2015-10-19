@@ -216,6 +216,7 @@ static int trace_deinit()
     trace_info= trace_info->next;
   }
   register_callback(FALSE, trace_callback);
+  return 0;
 }
 
 static void trace_set_command(TRACE_INFO *info, char *buffer, size_t size)
@@ -250,7 +251,7 @@ static void dump_reference(TRACE_INFO *info, my_bool is_error)
 
 static void dump_command(TRACE_INFO *info, my_bool is_error)
 {
-  int i;
+  size_t i;
   printf("%8d: %s(",  info->thread_id, commands[info->last_command]);
   for (i= 0; info->command && i < strlen(info->command); i++)
     if (info->command[i] == '\n')

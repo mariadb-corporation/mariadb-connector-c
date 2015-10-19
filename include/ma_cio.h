@@ -116,5 +116,6 @@ my_bool ma_cio_is_blocking(MARIADB_CIO *cio);
 int ma_cio_wait_io_or_timeout(MARIADB_CIO *cio, my_bool is_read, int timeout);
 my_bool ma_cio_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo);
 my_bool ma_cio_is_alive(MARIADB_CIO *cio);
+my_bool ma_cio_get_handle(MARIADB_CIO *cio, void *handle);
 
 #endif /* _ma_cio_h_ */
