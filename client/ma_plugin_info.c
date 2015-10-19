@@ -6,7 +6,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <my_dir.h>
-#include <string.h>
+#include <m_string.h>
 
 static struct option long_options[]=
 {
@@ -106,7 +106,7 @@ static void show_file(char *filename)
 static void show_dynamic()
 {
   MY_DIR *dir= NULL;
-  int i;
+  unsigned int i;
   char *env_plugin_dir= getenv("MARIADB_PLUGIN_DIR");
 
   dir= my_dir(env_plugin_dir ? env_plugin_dir : PLUGINDIR, 0);

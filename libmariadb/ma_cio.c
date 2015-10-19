@@ -263,7 +263,7 @@ size_t ma_cio_cache_read(MARIADB_CIO *cio, uchar *buffer, size_t length)
 
   if (cio->cache + cio->cache_size > cio->cache_pos)
   {
-    r= MIN(length, cio->cache + cio->cache_size - cio->cache_pos);
+    r= MIN(length, (size_t)(cio->cache + cio->cache_size - cio->cache_pos));
     memcpy(buffer, cio->cache_pos, r);
     cio->cache_pos+= r;
   }
