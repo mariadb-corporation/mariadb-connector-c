@@ -26,7 +26,7 @@
 #include <my_global.h>
 #include <my_sys.h>
 #include <ma_common.h>
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #include <errmsg.h>
 
 
@@ -59,6 +59,7 @@ struct st_schannel {
   CERT_CONTEXT *client_ca_ctx;
   CRL_CONTEXT *client_crl_ctx;
   CredHandle CredHdl;
+  my_bool FreeCredHdl;
   PUCHAR IoBuffer;
   DWORD IoBufferSize;
 /*  PUCHAR EncryptBuffer;
@@ -76,15 +77,16 @@ struct st_schannel {
 
 typedef struct st_schannel SC_CTX;
 
-CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_CIO *cio, const char *pem_file);
-SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_CIO *cio, my_bool InitialRead, SecBuffer *pExtraData);
-my_bool ma_schannel_load_private_key(MARIADB_CIO *cio, CERT_CONTEXT *ctx, char *key_file);
-PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_CIO *cio, const char *pem_file);
+CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file);
+SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl);
+SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData);
+my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char *key_file);
+PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem_file);
 my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags);
-size_t ma_schannel_write_encrypt(MARIADB_CIO *cio,
+size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
                                  size_t WriteBufferSize);
- size_t ma_schannel_read_decrypt(MARIADB_CIO *cio,
+ size_t ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
                                  PCredHandle phCreds,
                                  CtxtHandle * phContext,
                                  DWORD *DecryptLength,

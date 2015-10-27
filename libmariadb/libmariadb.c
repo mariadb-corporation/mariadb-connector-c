@@ -65,7 +65,7 @@
 #ifndef _WIN32
 #include <poll.h>
 #endif
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #include <ma_dyncol.h>
 #include <mysql/client_plugin.h>
 
@@ -88,7 +88,7 @@ extern const CHARSET_INFO * mysql_find_charset_name(const char * const name);
 extern int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                            const char *data_plugin, const char *db);
 
-extern LIST *cio_callback;
+extern LIST *pvio_callback;
 
 /* prepare statement methods from my_stmt.c */
 extern my_bool mthd_supported_buffer_type(enum enum_field_types type);
@@ -178,7 +178,7 @@ net_safe_read(MYSQL *mysql)
   ulong len=0;
 
 restart:
-  if (net->cio != 0)
+  if (net->pvio != 0)
     len=my_net_read(net);
 
   if (len == packet_error || len == 0)
@@ -361,7 +361,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
       DBUG_RETURN(result);
   }
 
-  if (mysql->net.cio == 0)
+  if (mysql->net.pvio == 0)
   {						/* Do reconnect if possible */
     if (mysql_reconnect(mysql))
     {
@@ -562,10 +562,10 @@ end_server(MYSQL *mysql)
 
   /* if net->error 2 and reconnect is activated, we need to inforn
      connection handler */
-  if (mysql->net.cio != 0)
+  if (mysql->net.pvio != 0)
   {
-    ma_cio_close(mysql->net.cio);
-    mysql->net.cio= 0;    /* Marker */
+    ma_pvio_close(mysql->net.pvio);
+    mysql->net.pvio= 0;    /* Marker */
   }
   net_end(&mysql->net);
   free_old_query(mysql);
@@ -1129,7 +1129,7 @@ mysql_init(MYSQL *mysql)
     if (!(mysql=(MYSQL*) my_malloc(sizeof(*mysql),MYF(MY_WME | MY_ZEROFILL))))
       return 0;
     mysql->free_me=1;
-    mysql->net.cio= 0;
+    mysql->net.pvio= 0;
   }
   else
     bzero((char*) (mysql),sizeof(*(mysql)));
@@ -1173,9 +1173,9 @@ const char * STDCALL
 mysql_get_ssl_cipher(MYSQL *mysql)
 {
 #ifdef HAVE_SSL
-  if (mysql->net.cio && mysql->net.cio->cssl)
+  if (mysql->net.pvio && mysql->net.pvio->cssl)
   {
-    return ma_cio_ssl_cipher(mysql->net.cio->cssl);
+    return ma_pvio_ssl_cipher(mysql->net.pvio->cssl);
   }
 #endif
   return(NULL);
@@ -1297,8 +1297,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   char		buff[NAME_LEN+USERNAME_LENGTH+100];
   char		*end, *end_pkt, *host_info,
                 *charset_name= NULL;
-  MA_CIO_CINFO  cinfo= {NULL, NULL, 0, -1, NULL};
-  MARIADB_CIO   *cio= NULL;
+  MA_PVIO_CINFO  cinfo= {NULL, NULL, 0, -1, NULL};
+  MARIADB_PVIO   *pvio= NULL;
   char    *scramble_data;
   const char *scramble_plugin;
   uint pkt_length, scramble_len, pkt_scramble_len= 0;
@@ -1341,7 +1341,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
   ma_set_connect_attrs(mysql);
 
-  if (net->cio)  /* check if we are already connected */
+  if (net->pvio)  /* check if we are already connected */
   {
     SET_CLIENT_ERROR(mysql, CR_ALREADY_CONNECTED, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(NULL);
@@ -1383,7 +1383,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   mysql->server_status=SERVER_STATUS_AUTOCOMMIT;
 
 
-  /* try to connect via cio_init */
+  /* try to connect via pvio_init */
   cinfo.host= host;
   cinfo.unix_socket= unix_socket;
   cinfo.port= port;
@@ -1400,7 +1400,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     cinfo.host= LOCAL_HOST;
     cinfo.unix_socket= (unix_socket) ? unix_socket : mysql_unix_port;
-    cinfo.type= CIO_TYPE_UNIXSOCKET;
+    cinfo.type= PVIO_TYPE_UNIXSOCKET;
     sprintf(host_info=buff,ER(CR_LOCALHOST_CONNECTION),cinfo.host);
   }
   else
@@ -1414,7 +1414,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
      !have_tcpip) &&
       mysql->options.protocol != MYSQL_PROTOCOL_TCP)
   {
-    cinfo.type= CIO_TYPE_NAMEDPIPE;
+    cinfo.type= PVIO_TYPE_NAMEDPIPE;
     sprintf(host_info=buff,ER(CR_NAMEDPIPE_CONNECTION),cinfo.host);
   }
   else
@@ -1427,30 +1427,30 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       host=LOCAL_HOST;
     cinfo.host= host;
     cinfo.port= port;
-    cinfo.type= CIO_TYPE_SOCKET;
+    cinfo.type= PVIO_TYPE_SOCKET;
     sprintf(host_info=buff,ER(CR_TCP_CONNECTION), cinfo.host);
   }
-  /* Initialize and load cio plugin */
-  if (!(cio= ma_cio_init(&cinfo)))
+  /* Initialize and load pvio plugin */
+  if (!(pvio= ma_pvio_init(&cinfo)))
     goto error;
 
   /* try to connect */
-  if (ma_cio_connect(cio, &cinfo) != 0)
+  if (ma_pvio_connect(pvio, &cinfo) != 0)
   {
-    ma_cio_close(cio);
+    ma_pvio_close(pvio);
     goto error;
   }
 
-  if (my_net_init(net, cio))
+  if (my_net_init(net, pvio))
     goto error;
 
-  ma_cio_keepalive(net->cio);
+  ma_pvio_keepalive(net->pvio);
   strmov(mysql->net.sqlstate, "00000"); 
 
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
 /*
-  if (ma_cio_wait_io_or_timeout(net->cio, FALSE, 0) < 1)
+  if (ma_pvio_wait_io_or_timeout(net->pvio, FALSE, 0) < 1)
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
@@ -1930,7 +1930,7 @@ void my_set_error(MYSQL *mysql,
 
 void mysql_close_slow_part(MYSQL *mysql)
 {
-  if (mysql->net.cio)
+  if (mysql->net.pvio)
   {
     free_old_query(mysql);
     mysql->status=MYSQL_STATUS_READY; /* Force command */
@@ -1978,7 +1978,7 @@ mysql_close(MYSQL *mysql)
     if (mysql->extension)
       my_free(mysql->extension);
 
-    mysql->net.cio= 0;
+    mysql->net.pvio= 0;
     if (mysql->free_me)
       my_free(mysql);
   }
@@ -2711,8 +2711,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         goto end;
       }
     mysql->options.extension->async_context= ctxt;
-    if (mysql->net.cio)
-      mysql->net.cio->async_context= ctxt;
+    if (mysql->net.pvio)
+      mysql->net.pvio->async_context= ctxt;
     break;
 
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
@@ -3170,7 +3170,7 @@ void STDCALL mysql_server_end()
 
   mysql_client_plugin_deinit();
 
-  list_free(cio_callback, 0);
+  list_free(pvio_callback, 0);
   if (my_init_done)
     my_end(0);
   mysql_client_init= 0;
@@ -3247,9 +3247,9 @@ my_socket STDCALL
 mysql_get_socket(const MYSQL *mysql)
 {
   my_socket sock;
-  if (mysql->net.cio)
+  if (mysql->net.pvio)
   {
-    ma_cio_get_handle(mysql->net.cio, &sock);
+    ma_pvio_get_handle(mysql->net.pvio, &sock);
     return sock;
   }
   return INVALID_SOCKET;

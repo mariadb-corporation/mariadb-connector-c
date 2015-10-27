@@ -48,12 +48,12 @@
 
 /* Connector/C specific plugin types */
 #define MARIADB_CLIENT_REMOTEIO_PLUGIN       100 /* communication IO */
-#define MARIADB_CLIENT_CIO_PLUGIN            101
+#define MARIADB_CLIENT_PVIO_PLUGIN            101
 #define MARIADB_CLIENT_TRACE_PLUGIN          102
 #define MARIADB_CLIENT_CONNECTION_PLUGIN     103
 
 #define MARIADB_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION 0x0100
-#define MARIADB_CLIENT_CIO_PLUGIN_INTERFACE_VERSION 0x0100
+#define MARIADB_CLIENT_PVIO_PLUGIN_INTERFACE_VERSION 0x0100
 #define MARIADB_CLIENT_TRACE_PLUGIN_INTERFACE_VERSION 0x0100
 #define MARIADB_CLIENT_CONNECTION_PLUGIN_INTERFACE_VERSION 0x0100
 
@@ -100,16 +100,16 @@ typedef struct st_ma_connection_plugin
 #define MARIADB_DB_DRIVER(a) ((a)->ext_db)
 
 /*******************  Communication IO plugin *****************/
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #ifdef HAVE_SSL
 #include <ma_ssl.h>
 #endif
 
-typedef struct st_mariadb_client_plugin_CIO
+typedef struct st_mariadb_client_plugin_PVIO
 {
   MYSQL_CLIENT_PLUGIN_HEADER
-  struct st_ma_cio_methods *methods;
-} MARIADB_CIO_PLUGIN;
+  struct st_ma_pvio_methods *methods;
+} MARIADB_PVIO_PLUGIN;
 
 /******** authentication plugin specific declarations *********/
 #include <mysql/plugin_auth_common.h>

@@ -53,7 +53,7 @@
 #include "mysql_version.h"
 #include "mysqld_error.h"
 #include "errmsg.h"
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #include <sys/stat.h>
 #include <signal.h>
 #include <time.h>
@@ -988,7 +988,7 @@ my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
 {
   DBUG_ENTER("mysql_stmt_close");
 
-  if (stmt && stmt->mysql && stmt->mysql->net.cio)
+  if (stmt && stmt->mysql && stmt->mysql->net.pvio)
     mysql_stmt_reset(stmt);
   net_stmt_close(stmt, 1);
 

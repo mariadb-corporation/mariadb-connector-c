@@ -179,7 +179,7 @@ static void delete_trace_info(unsigned long thread_id)
       unused4
 
   DESCRIPTION
-    Init function registers a callback handler for CIO interface.
+    Init function registers a callback handler for PVIO interface.
 
   RETURN
     0           success
@@ -192,12 +192,12 @@ static int trace_init(char *errormsg,
   void *func;
 
 #ifdef WIN32
-  if (!(func= GetProcAddress(GetModuleHandle(NULL), "ma_cio_register_callback")))
+  if (!(func= GetProcAddress(GetModuleHandle(NULL), "ma_pvio_register_callback")))
 #else
-  if (!(func= dlsym(RTLD_DEFAULT, "ma_cio_register_callback")))
+  if (!(func= dlsym(RTLD_DEFAULT, "ma_pvio_register_callback")))
 #endif
   {
-    strncpy(errormsg, "Can't find ma_cio_register_callback function", errormsg_size);
+    strncpy(errormsg, "Can't find ma_pvio_register_callback function", errormsg_size);
     return 1;
   }
   register_callback= func;

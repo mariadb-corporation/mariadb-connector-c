@@ -8,13 +8,30 @@
 #include <my_dir.h>
 #include <m_string.h>
 
+#define CLIENT_PLUGIN_INFO_VERSION "1.0.0"
+
 static struct option long_options[]=
 {
+  {"all", no_argument, 0, 'a'},
   {"builtin", no_argument, 0, 'b'},
   {"dynamic", no_argument, 0, 'd'},
-  {"all", no_argument, 0, 'a'},
-  {"plugin", 1, 0, 'p'},
+  {"directory", 1, 0, 'p'},
+  {"plugin_name", 1, 0, 'n'},
+  {"version", no_argument, 0, 'v'},
+  {"help", no_argument, 0, '?'},
   {NULL, 0, 0, 0}
+};
+
+static char *values[] =
+{
+  "show information for all plugins",
+  "show informaion for builtin plugins",
+  "show information for dynamic plugins",
+  "show information for dynamic plugins in specified directory",
+  "show information for specified plugin",
+  "show version information",
+  "display this help and exit",
+  NULL
 };
 
 struct st_plugin_type
@@ -23,25 +40,33 @@ struct st_plugin_type
   char *typename;
 };
 
+int my_errno=0;
+
 static struct st_plugin_type plugin_types[]=
 {
   {MYSQL_CLIENT_AUTHENTICATION_PLUGIN, "authentication"},
-  {MARIADB_CLIENT_CIO_PLUGIN, "client/server protocol"},
+  {MARIADB_CLIENT_PVIO_PLUGIN, "virtual IO"},
   {MARIADB_CLIENT_TRACE_PLUGIN, "trace"},
   {MARIADB_CLIENT_REMOTEIO_PLUGIN, "remote file access"},
   {MARIADB_CLIENT_CONNECTION_PLUGIN, "connection handler"},
   {0, "unknown"}
 };
 
+static void version()
+{
+  printf("%s Version %s\n", my_progname, CLIENT_PLUGIN_INFO_VERSION);
+}
+
 static void usage(void)
 {
   int i=0;
+  printf("%s Version %s\n", my_progname, CLIENT_PLUGIN_INFO_VERSION);
   puts("Copyright 2015 MariaDB Corporation AB");
   puts("Show client plugin information for MariaDB Connector/C.");
   printf("Usage: %s [OPTIONS] [plugin_name]\n", my_progname);
   while (long_options[i].name)
   {
-    printf("  --%-12s -%c\n", long_options[i].name, long_options[i].val);
+    printf("  --%-12s -%s\n", long_options[i].name, values[i]);
     i++;
   }
 }
@@ -60,8 +85,8 @@ static char *get_type_name(int type)
 
 static void show_plugin_info(struct st_mysql_client_plugin *plugin, my_bool builtin)
 {
-  printf("Type: %s\n", get_type_name(plugin->type));
   printf("Name: %s\n", plugin->name);
+  printf("Type: %s\n", get_type_name(plugin->type));
   printf("Desc: %s\n", plugin->desc);
   printf("Author: %s\n", plugin->author);
   printf("License: %s\n", plugin->license);
@@ -103,18 +128,23 @@ static void show_file(char *filename)
   }
 }
 
-static void show_dynamic()
+static void show_dynamic(const char *directory)
 {
   MY_DIR *dir= NULL;
   unsigned int i;
-  char *env_plugin_dir= getenv("MARIADB_PLUGIN_DIR");
+  char *plugin_dir= directory ? (char *)directory : getenv("MARIADB_PLUGIN_DIR");
 
-  dir= my_dir(env_plugin_dir ? env_plugin_dir : PLUGINDIR, 0);
+  if (!plugin_dir)
+    plugin_dir= PLUGINDIR;
 
-  if (!dir->number_off_files)
+  printf("plugin_dir %s\n", plugin_dir);
+
+  dir= my_dir(plugin_dir, 0);
+
+  if (!dir || !dir->number_off_files)
   {
-    printf("No plugins found in %s\n", env_plugin_dir ? env_plugin_dir : PLUGINDIR);
-    return;
+    printf("No plugins found in %s\n", plugin_dir);
+    goto end;
   }
 
   for (i=0; i < dir->number_off_files; i++)
@@ -123,6 +153,7 @@ static void show_dynamic()
     if (p)
       show_file(dir->dir_entry[i].name);
   }
+end:
   if (dir)
     my_dirend(dir);
 }
@@ -133,34 +164,44 @@ int main(int argc, char *argv[])
   int c;
   my_progname= argv[0];
 
+  mysql_server_init(0, NULL, NULL);
+
   if (argc <= 1)
   {
     usage();
     exit(1);
   }
 
-  c= getopt_long(argc, argv, "bdap", long_options, &option_index);
+  c= getopt_long(argc, argv, "bdapvgh?", long_options, &option_index);
 
   switch(c) {
   case 'a': /* all */
     show_builtin();
-    show_dynamic();
+    show_dynamic(NULL);
     break;
   case 'b': /* builtin */
     show_builtin();
     break;
   case 'd': /* dynamic */
-    show_dynamic();
+    show_dynamic(NULL);
+    break;
+  case 'v':
+    version();
+    break;
+  case 'n':
+    if (argc > 2)
+      show_file(argv[2]);
     break;
   case 'p':
     if (argc > 2)
-    {
-      show_file(argv[2]);
-      break;
-    }
-  default:
+      show_dynamic(argv[2]);
+    break;
+  case '?':
     usage();
+    break;
+  default:
+    printf("unrecocognized option: %s", argv[1]);
     exit(1);
   }
-
+  exit(0);
 }

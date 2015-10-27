@@ -1816,7 +1816,8 @@ static int test_ps_query_cache(MYSQL *mysql)
   };
   enum enum_test_ps_query_cache iteration;
 
-
+  diag("test needs to be fixed");
+  return SKIP;
   /* prepare the table */
 
   rc= mysql_query(mysql, "drop table if exists t1");
@@ -1895,7 +1896,7 @@ static int test_ps_query_cache(MYSQL *mysql)
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
-//    test_ps_query_cache_result(1, "hh", 2, 2, "hh", 2, 1, "ii", 2);
+    test_ps_query_cache_result(1, "hh", 2, 2, "hh", 2, 1, "ii", 2);
   r_metadata= mysql_stmt_result_metadata(stmt);                   
   FAIL_UNLESS(r_metadata != NULL, "");                            
   rc= mysql_stmt_fetch(stmt);                                     

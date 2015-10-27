@@ -20,7 +20,7 @@
 #include <my_global.h>
 #include <my_sys.h>
 #include <ma_common.h>
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #include <errmsg.h>
 #include <string.h>
 #include <mysql/client_plugin.h>
@@ -54,21 +54,21 @@ static void ma_ssl_set_error(MYSQL *mysql)
   ulong ssl_errno= ERR_get_error();
   char  ssl_error[MAX_SSL_ERR_LEN];
   const char *ssl_error_reason;
-  MARIADB_CIO *cio= mysql->net.cio;
+  MARIADB_PVIO *pvio= mysql->net.pvio;
 
   if (!ssl_errno)
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
     return;
   }
   if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                    0, ssl_error_reason);
     return;
   }
   snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
-  cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, ssl_error);
+  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, ssl_error);
   return;
 }
 
@@ -367,15 +367,15 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   SSL *ssl = (SSL *)cssl->ssl;
   my_bool blocking;
   MYSQL *mysql;
-  MARIADB_CIO *cio;
+  MARIADB_PVIO *pvio;
   int rc;
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
-  cio= mysql->net.cio;
+  pvio= mysql->net.pvio;
 
   /* Set socket to blocking if not already set */
-  if (!(blocking= cio->methods->is_blocking(cio)))
-    cio->methods->blocking(cio, TRUE, 0);
+  if (!(blocking= pvio->methods->is_blocking(pvio)))
+    pvio->methods->blocking(pvio, TRUE, 0);
 
   SSL_clear(ssl);
   SSL_SESSION_set_timeout(SSL_get_session(ssl),
@@ -387,7 +387,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
     ma_ssl_set_error(mysql);
     /* restore blocking mode */
     if (!blocking)
-      cio->methods->blocking(cio, FALSE, 0);
+      pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
   }
   rc= SSL_get_verify_result(ssl);
@@ -397,12 +397,12 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
                  ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
     /* restore blocking mode */
     if (!blocking)
-      cio->methods->blocking(cio, FALSE, 0);
+      pvio->methods->blocking(pvio, FALSE, 0);
 
     return 1;
   }
 
-  cio->cssl->ssl= cssl->ssl= (void *)ssl;
+  pvio->cssl->ssl= cssl->ssl= (void *)ssl;
 
   return 0;
 }
@@ -442,7 +442,7 @@ int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
 {
   X509 *cert;
   MYSQL *mysql;
-  MARIADB_CIO *cio;
+  MARIADB_PVIO *pvio;
   SSL *ssl;
   char *p1, *p2, buf[256];
 
@@ -451,18 +451,18 @@ int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
   ssl= (SSL *)cssl->ssl;
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
-  cio= mysql->net.cio;
+  pvio= mysql->net.pvio;
 
   if (!mysql->host)
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
                         "Invalid (empty) hostname");
     return 1;
   }
 
   if (!(cert= SSL_get_peer_certificate(ssl)))
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
                         "Unable to get server certificate");
     return 1;
   }
@@ -480,7 +480,7 @@ int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
     if (!strcmp(mysql->host, p1))
       return(0);
   }
-  cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
+  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
                        "Validation of SSL server certificate failed");
   return 1;
 }
@@ -497,10 +497,10 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
   EVP_MD *digest= (EVP_MD *)EVP_sha1();
   X509 *cert;
   MYSQL *mysql;
-  unsigned int *fp_len;
+  unsigned int fp_len;
 
   if (!cssl || !cssl->ssl)
-    return NULL;
+    return 0;
 
   mysql= SSL_get_app_data(cssl->ssl);
 
@@ -519,8 +519,8 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
                         "Finger print buffer too small");
     return 0;
   }
-  *fp_len= len;
-  if (!X509_digest(cert, digest, fp, fp_len))
+  fp_len= len;
+  if (!X509_digest(cert, digest, fp, &fp_len))
   {
     my_free(fp);
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
@@ -528,5 +528,5 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
                         "invalid finger print of server certificate");
     return 0;
   }
-  return (*fp_len);
+  return (fp_len);
 }

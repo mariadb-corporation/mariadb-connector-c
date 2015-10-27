@@ -1,5 +1,5 @@
 /************************************************************************************
-    Copyright (C) 2015 MariaDB Corporation AB,
+   Copyright (C) 2015 MariaDB Corporation AB,
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -18,7 +18,7 @@
 *************************************************************************************/
 
 /* 
-   MariaDB Communication IO (CIO) plugin for socket communication:
+   MariaDB virtual IO plugin for socket communication:
 
    The plugin handles connections via unix and network sockets. it is enabled by
    default and compiled into Connector/C.
@@ -61,150 +61,149 @@
 
 
 /* Function prototypes */
-my_bool cio_socket_set_timeout(MARIADB_CIO *cio, enum enum_cio_timeout type, int timeout);
-int cio_socket_get_timeout(MARIADB_CIO *cio, enum enum_cio_timeout type);
-size_t cio_socket_read(MARIADB_CIO *cio, const uchar *buffer, size_t length);
-size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t length);
-size_t cio_socket_write(MARIADB_CIO *cio, const uchar *buffer, size_t length);
-size_t cio_socket_async_write(MARIADB_CIO *cio, const uchar *buffer, size_t length);
-int cio_socket_wait_io_or_timeout(MARIADB_CIO *cio, my_bool is_read, int timeout);
-my_bool cio_socket_blocking(MARIADB_CIO *cio, my_bool value, my_bool *old_value);
-my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo);
-my_bool cio_socket_close(MARIADB_CIO *cio);
-int cio_socket_fast_send(MARIADB_CIO *cio);
-int cio_socket_keepalive(MARIADB_CIO *cio);
-my_bool cio_socket_get_handle(MARIADB_CIO *cio, void *handle);
-my_bool cio_socket_is_blocking(MARIADB_CIO *cio);
-my_bool cio_socket_is_alive(MARIADB_CIO *cio);
+my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
+int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
+size_t pvio_socket_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+size_t pvio_socket_async_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
+my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
+my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
+my_bool pvio_socket_close(MARIADB_PVIO *pvio);
+int pvio_socket_fast_send(MARIADB_PVIO *pvio);
+int pvio_socket_keepalive(MARIADB_PVIO *pvio);
+my_bool pvio_socket_get_handle(MARIADB_PVIO *pvio, void *handle);
+my_bool pvio_socket_is_blocking(MARIADB_PVIO *pvio);
+my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio);
 
-static int cio_socket_init(char *unused1, 
+static int pvio_socket_init(char *unused1, 
                            size_t unused2, 
                            int unused3, 
                            va_list);
-static int cio_socket_end(void);
+static int pvio_socket_end(void);
 
-struct st_ma_cio_methods cio_socket_methods= {
-  cio_socket_set_timeout,
-  cio_socket_get_timeout,
-  cio_socket_read,
-  cio_socket_async_read,
-  cio_socket_write,
-  cio_socket_async_write,
-  cio_socket_wait_io_or_timeout,
-  cio_socket_blocking,
-  cio_socket_connect,
-  cio_socket_close,
-  cio_socket_fast_send,
-  cio_socket_keepalive,
-  cio_socket_get_handle,
-  cio_socket_is_blocking,
-  cio_socket_is_alive
+struct st_ma_pvio_methods pvio_socket_methods= {
+  pvio_socket_set_timeout,
+  pvio_socket_get_timeout,
+  pvio_socket_read,
+  pvio_socket_async_read,
+  pvio_socket_write,
+  pvio_socket_async_write,
+  pvio_socket_wait_io_or_timeout,
+  pvio_socket_blocking,
+  pvio_socket_connect,
+  pvio_socket_close,
+  pvio_socket_fast_send,
+  pvio_socket_keepalive,
+  pvio_socket_get_handle,
+  pvio_socket_is_blocking,
+  pvio_socket_is_alive
 };
 
 #ifndef HAVE_SOCKET_DYNAMIC
-MARIADB_CIO_PLUGIN cio_socket_plugin=
+MARIADB_PVIO_PLUGIN pvio_socket_plugin=
 #else
-MARIADB_CIO_PLUGIN _mysql_client_plugin_declare_
+MARIADB_PVIO_PLUGIN _mysql_client_plugin_declare_
 #endif
 {
-  MARIADB_CLIENT_CIO_PLUGIN,
-  MARIADB_CLIENT_CIO_PLUGIN_INTERFACE_VERSION,
-  "cio_socket",
+  MARIADB_CLIENT_PVIO_PLUGIN,
+  MARIADB_CLIENT_PVIO_PLUGIN_INTERFACE_VERSION,
+  "pvio_socket",
   "Georg Richter",
-  "MariaDB communication IO plugin for socket communication",
+  "MariaDB virtual IO plugin for socket communication",
   {1, 0, 0},
   "LGPL",
-  &cio_socket_init,
-  &cio_socket_end,
-  &cio_socket_methods
+  &pvio_socket_init,
+  &pvio_socket_end,
+  &pvio_socket_methods
 };
 
-struct st_cio_socket {
+struct st_pvio_socket {
   my_socket socket;
   int fcntl_mode;
   MYSQL *mysql;
 };
 
-static my_bool cio_socket_initialized= FALSE;
+static my_bool pvio_socket_initialized= FALSE;
 
-
-static int cio_socket_init(char *errmsg,
+static int pvio_socket_init(char *errmsg,
                            size_t errmsg_length, 
                            int unused, 
                            va_list va)
 {
-  cio_socket_initialized= TRUE;
+  pvio_socket_initialized= TRUE;
   return 0;
 }
 
-static int cio_socket_end(void)
+static int pvio_socket_end(void)
 {
-  if (!cio_socket_initialized)
+  if (!pvio_socket_initialized)
     return 1;
   return 0;
 }
 
-/* {{{ cio_socket_set_timeout */
+/* {{{ pvio_socket_set_timeout */
 /*
    set timeout value
 
    SYNOPSIS
-     cio_socket_set_timeout
-     cio            CIO
+     pvio_socket_set_timeout
+     pvio            PVIO
      type           timeout type (connect, read, write)
      timeout        timeout in seconds
 
    DESCRIPTION
      Sets timeout values for connection-, read or write time out.
-     CIO internally stores all timeout values in milliseconds, but 
+     PVIO internally stores all timeout values in milliseconds, but 
      accepts and returns all time values in seconds (like api does).
 
    RETURNS
      0              Success
      1              Error
 */
-my_bool cio_socket_set_timeout(MARIADB_CIO *cio, enum enum_cio_timeout type, int timeout)
+my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout)
 {
-  if (!cio)
+  if (!pvio)
     return 1;
-  cio->timeout[type]= (timeout > 0) ? timeout * 1000 : -1;
+  pvio->timeout[type]= (timeout > 0) ? timeout * 1000 : -1;
   return 0;
 }
 /* }}} */
 
-/* {{{ cio_socket_get_timeout */
+/* {{{ pvio_socket_get_timeout */
 /*
    get timeout value
 
    SYNOPSIS
-     cio_socket_get_timeout
-     cio            CIO
+     pvio_socket_get_timeout
+     pvio            PVIO
      type           timeout type (connect, read, write)
 
    DESCRIPTION
      Returns timeout values for connection-, read or write time out.
-     CIO internally stores all timeout values in milliseconds, but 
+     PVIO internally stores all timeout values in milliseconds, but 
      accepts and returns all time values in seconds (like api does).
 
    RETURNS
       0...n         time out value
      -1             error
 */
-int cio_socket_get_timeout(MARIADB_CIO *cio, enum enum_cio_timeout type)
+int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
 {
-  if (!cio)
+  if (!pvio)
     return -1;
-  return cio->timeout[type] / 1000;
+  return pvio->timeout[type] / 1000;
 }
 /* }}} */
 
-/* {{{ cio_socket_read */
+/* {{{ pvio_socket_read */
 /*
    read from socket
 
    SYNOPSIS
-   cio_socket_read()
-     cio             CIO
+   pvio_socket_read()
+     pvio             PVIO
      buffer          read buffer
      length          buffer length
 
@@ -218,7 +217,7 @@ int cio_socket_get_timeout(MARIADB_CIO *cio, enum enum_cio_timeout type)
      -1              on error
                      
 */   
-size_t cio_socket_read(MARIADB_CIO *cio, const uchar *buffer, size_t length)
+size_t pvio_socket_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
@@ -229,12 +228,12 @@ size_t cio_socket_read(MARIADB_CIO *cio, const uchar *buffer, size_t length)
   int read_flags= MSG_NOSIGNAL;
 #endif
 #endif
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return -1;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
 
 #ifndef _WIN32
   do {
@@ -242,9 +241,9 @@ size_t cio_socket_read(MARIADB_CIO *cio, const uchar *buffer, size_t length)
   } while (r == -1 && errno == EINTR);
 
   while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)
-                      && cio->timeout[CIO_READ_TIMEOUT] > 0)
+                      && pvio->timeout[PVIO_READ_TIMEOUT] > 0)
   {
-    if (cio_socket_wait_io_or_timeout(cio, TRUE, cio->timeout[CIO_READ_TIMEOUT]) < 1)
+    if (pvio_socket_wait_io_or_timeout(pvio, TRUE, pvio->timeout[PVIO_READ_TIMEOUT]) < 1)
       return -1;
     do {
       r= recv(csock->socket, (void *)buffer, length, read_flags);
@@ -274,13 +273,13 @@ size_t cio_socket_read(MARIADB_CIO *cio, const uchar *buffer, size_t length)
 }
 /* }}} */
 
-/* {{{ cio_socket_async_read */
+/* {{{ pvio_socket_async_read */
 /*
    read from socket
 
    SYNOPSIS
-   cio_socket_async_read()
-     cio             CIO
+   pvio_socket_async_read()
+     pvio             PVIO
      buffer          read buffer
      length          buffer length
 
@@ -294,7 +293,7 @@ size_t cio_socket_read(MARIADB_CIO *cio, const uchar *buffer, size_t length)
      -1              on error
                      
 */   
-size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t length)
+size_t pvio_socket_async_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
@@ -304,12 +303,12 @@ size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t lengt
   int read_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
 #endif
 #endif
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return -1;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
 
 #ifndef _WIN32
   r= recv(csock->socket,(void *)buffer, length, read_flags);
@@ -320,13 +319,13 @@ size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t lengt
 }
 /* }}} */
 
-/* {{{ cio_socket_async_write */
+/* {{{ pvio_socket_async_write */
 /*
    write to socket
 
    SYNOPSIS
-   cio_socket_async_write()
-     cio             CIO
+   pvio_socket_async_write()
+     pvio             PVIO
      buffer          read buffer
      length          buffer length
 
@@ -340,7 +339,7 @@ size_t cio_socket_async_read(MARIADB_CIO *cio, const uchar *buffer, size_t lengt
      -1              on error
                      
 */   
-size_t cio_socket_async_write(MARIADB_CIO *cio, const uchar *buffer, size_t length)
+size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
@@ -350,12 +349,12 @@ size_t cio_socket_async_write(MARIADB_CIO *cio, const uchar *buffer, size_t leng
   int write_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
 #endif
 #endif
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return -1;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
 
 #ifndef WIN32
   r= send(csock->socket, buffer, length, write_flags);
@@ -366,13 +365,13 @@ size_t cio_socket_async_write(MARIADB_CIO *cio, const uchar *buffer, size_t leng
 }
 /* }}} */
 
-/* {{{ cio_socket_write */
+/* {{{ pvio_socket_write */
 /*
    write to socket
 
    SYNOPSIS
-   cio_socket_write()
-     cio             CIO
+   pvio_socket_write()
+     pvio             PVIO
      buffer          read buffer
      length          buffer length
 
@@ -386,7 +385,7 @@ size_t cio_socket_async_write(MARIADB_CIO *cio, const uchar *buffer, size_t leng
      -1              on error
                      
 */
-size_t cio_socket_write(MARIADB_CIO *cio, const uchar *buffer, size_t length)
+size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
@@ -396,11 +395,11 @@ size_t cio_socket_write(MARIADB_CIO *cio, const uchar *buffer, size_t length)
   int send_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
 #endif
 #endif
-  struct st_cio_socket *csock= NULL;
-  if (!cio || !cio->data)
+  struct st_pvio_socket *csock= NULL;
+  if (!pvio || !pvio->data)
     return -1;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
 
 #ifndef _WIN32
   do {
@@ -408,9 +407,9 @@ size_t cio_socket_write(MARIADB_CIO *cio, const uchar *buffer, size_t length)
   } while (r == -1 && errno == EINTR);
 
   while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) &&
-         cio->timeout[CIO_WRITE_TIMEOUT] != 0)
+         pvio->timeout[PVIO_WRITE_TIMEOUT] != 0)
   {
-    if (cio_socket_wait_io_or_timeout(cio, FALSE, cio->timeout[CIO_WRITE_TIMEOUT]) < 1)
+    if (pvio_socket_wait_io_or_timeout(pvio, FALSE, pvio->timeout[PVIO_WRITE_TIMEOUT]) < 1)
       return -1;
     do {
       r= send(csock->socket, buffer, length, send_flags);
@@ -436,10 +435,10 @@ size_t cio_socket_write(MARIADB_CIO *cio, const uchar *buffer, size_t length)
 }
 /* }}} */
 
-int cio_socket_wait_io_or_timeout(MARIADB_CIO *cio, my_bool is_read, int timeout)
+int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
   int rc;
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
 #ifndef _WIN32
   struct pollfd p_fd;
@@ -448,10 +447,10 @@ int cio_socket_wait_io_or_timeout(MARIADB_CIO *cio, my_bool is_read, int timeout
   fd_set fds, exc_fds;
 #endif
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return 0;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
   {
 #ifndef _WIN32
     memset(&p_fd, 0, sizeof(p_fd));
@@ -490,16 +489,16 @@ int cio_socket_wait_io_or_timeout(MARIADB_CIO *cio, my_bool is_read, int timeout
   return rc;
 }
 
-my_bool cio_socket_blocking(MARIADB_CIO *cio, my_bool block, my_bool *previous_mode)
+my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
 {
   int *sd_flags, save_flags;
   my_bool tmp;
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return 1;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
   sd_flags= &csock->fcntl_mode;
   save_flags= csock->fcntl_mode;
 
@@ -539,22 +538,22 @@ my_bool cio_socket_blocking(MARIADB_CIO *cio, my_bool block, my_bool *previous_m
   return 0;
 }
 
-static int cio_socket_internal_connect(MARIADB_CIO *cio,
+static int pvio_socket_internal_connect(MARIADB_PVIO *pvio,
                                        const struct sockaddr *name, 
                                        size_t namelen)
 {
   int rc= 0;
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
   int timeout;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return 1;
 
-  csock= (struct st_cio_socket *)cio->data;
-  timeout= cio->timeout[CIO_CONNECT_TIMEOUT];
+  csock= (struct st_pvio_socket *)pvio->data;
+  timeout= pvio->timeout[PVIO_CONNECT_TIMEOUT];
 
   /* set non blocking */
-  cio_socket_blocking(cio, 0, 0);
+  pvio_socket_blocking(pvio, 0, 0);
 
 #ifndef _WIN32
   do {
@@ -565,7 +564,7 @@ static int cio_socket_internal_connect(MARIADB_CIO *cio,
   if (timeout != 0 && rc == -1 && 
      (errno == EINPROGRESS || errno == EAGAIN))
   {
-    rc= cio_socket_wait_io_or_timeout(cio, FALSE, timeout);
+    rc= pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout);
     if (rc < 1)
       return -1;
     {
@@ -591,7 +590,7 @@ static int cio_socket_internal_connect(MARIADB_CIO *cio,
   {
     if (WSAGetLastError() == WSAEWOULDBLOCK)
     {
-      if (cio_socket_wait_io_or_timeout(cio, FALSE, timeout) < 0)
+      if (pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout) < 0)
         return -1;
       rc= 0;
     }
@@ -601,15 +600,15 @@ static int cio_socket_internal_connect(MARIADB_CIO *cio,
   return rc;
 }
 
-int cio_socket_keepalive(MARIADB_CIO *cio)
+int pvio_socket_keepalive(MARIADB_PVIO *pvio)
 {
   int opt= 1;
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return 1;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
 
   return setsockopt(csock->socket, SOL_SOCKET, SO_KEEPALIVE,
 #ifndef _WIN32
@@ -619,15 +618,15 @@ int cio_socket_keepalive(MARIADB_CIO *cio)
 #endif
 }
 
-int cio_socket_fast_send(MARIADB_CIO *cio)
+int pvio_socket_fast_send(MARIADB_PVIO *pvio)
 {
   int r= 0;
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return 1;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
 
 /* Setting IP_TOS is not recommended on Windows. See 
    http://msdn.microsoft.com/en-us/library/windows/desktop/ms738586(v=vs.85).aspx
@@ -656,59 +655,59 @@ int cio_socket_fast_send(MARIADB_CIO *cio)
 }
 
 static int
-cio_socket_connect_sync_or_async(MARIADB_CIO *cio,
+pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
                           const struct sockaddr *name, uint namelen)
 {
-  MYSQL *mysql= cio->mysql;
+  MYSQL *mysql= pvio->mysql;
   if (mysql->options.extension && mysql->options.extension->async_context &&
       mysql->options.extension->async_context->active)
   {
-    cio_socket_blocking(cio,0, 0);
-    return my_connect_async(cio, name, namelen, cio->timeout[CIO_CONNECT_TIMEOUT]);
+    pvio_socket_blocking(pvio,0, 0);
+    return my_connect_async(pvio, name, namelen, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
   }
 
-  return cio_socket_internal_connect(cio, name, namelen);
+  return pvio_socket_internal_connect(pvio, name, namelen);
 }
 
-my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo)
+my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 {
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
 
-  if (!cio || !cinfo)
+  if (!pvio || !cinfo)
     return 1;
 
-  if (!(csock= (struct st_cio_socket *)my_malloc(sizeof(struct st_cio_socket),
+  if (!(csock= (struct st_pvio_socket *)my_malloc(sizeof(struct st_pvio_socket),
                                       MYF(MY_WME | MY_ZEROFILL))))
   {
-    CIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
+    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
     return 1;
   }
-  cio->data= (void *)csock;
+  pvio->data= (void *)csock;
   csock->socket= -1;
-  cio->mysql= cinfo->mysql;
-  cio->type= cinfo->type;
+  pvio->mysql= cinfo->mysql;
+  pvio->type= cinfo->type;
 
-  if (cinfo->type == CIO_TYPE_UNIXSOCKET)
+  if (cinfo->type == PVIO_TYPE_UNIXSOCKET)
   {
 #ifndef _WIN32
 #ifdef HAVE_SYS_UN_H
     struct sockaddr_un UNIXaddr;
     if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == SOCKET_ERROR)
     {
-      CIO_SET_ERROR(cinfo->mysql, CR_SOCKET_CREATE_ERROR, unknown_sqlstate, 0, errno);
+      PVIO_SET_ERROR(cinfo->mysql, CR_SOCKET_CREATE_ERROR, unknown_sqlstate, 0, errno);
       goto error;
     }
     bzero((char*) &UNIXaddr,sizeof(UNIXaddr));
     UNIXaddr.sun_family = AF_UNIX;
     strmov(UNIXaddr.sun_path, cinfo->unix_socket);
-    if (cio_socket_connect_sync_or_async(cio, (struct sockaddr *) &UNIXaddr, 
+    if (pvio_socket_connect_sync_or_async(pvio, (struct sockaddr *) &UNIXaddr, 
                                     sizeof(UNIXaddr)))
     {
-      CIO_SET_ERROR(cinfo->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+      PVIO_SET_ERROR(cinfo->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                     ER(CR_CONNECTION_ERROR), cinfo->unix_socket, socket_errno);
       goto error;
     }
-    if (cio_socket_blocking(cio, 1, 0) == SOCKET_ERROR)
+    if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
     {
       goto error;
     }
@@ -716,7 +715,7 @@ my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo)
 /* todo: error, not supported */
 #endif
 #endif
-  } else if (cinfo->type == CIO_TYPE_SOCKET)
+  } else if (cinfo->type == PVIO_TYPE_SOCKET)
   {
     struct addrinfo hints, *save_res= 0, *bind_res= 0, *res= 0, *bres= 0;
     char server_port[NI_MAXSERV];
@@ -740,7 +739,7 @@ my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo)
                           &hints, &res);
       if (gai_rc != 0)
       {
-        CIO_SET_ERROR(cinfo->mysql, CR_BIND_ADDR_FAILED, SQLSTATE_UNKNOWN, 
+        PVIO_SET_ERROR(cinfo->mysql, CR_BIND_ADDR_FAILED, SQLSTATE_UNKNOWN, 
                      CER(CR_BIND_ADDR_FAILED), cinfo->mysql->options.bind_address, gai_rc);
         goto error;
       }
@@ -749,7 +748,7 @@ my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo)
     gai_rc= getaddrinfo(cinfo->host, server_port, &hints, &res);
     if (gai_rc != 0)
     {
-      CIO_SET_ERROR(cinfo->mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
+      PVIO_SET_ERROR(cinfo->mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
                    ER(CR_UNKNOWN_HOST), cinfo->host, gai_rc);
       if (bres)
         freeaddrinfo(bres);
@@ -780,13 +779,13 @@ my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo)
         }
       }
 
-      rc= cio_socket_connect_sync_or_async(cio, save_res->ai_addr, save_res->ai_addrlen);
+      rc= pvio_socket_connect_sync_or_async(pvio, save_res->ai_addr, save_res->ai_addrlen);
       if (!rc)
       {
 /*        if (mysql->options.extension && mysql->options.extension->async_context &&
              mysql->options.extension->async_context->active)
           break; */
-        if (cio_socket_blocking(cio, 1, 0) == SOCKET_ERROR)
+        if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
         {
           closesocket(csock->socket);
           continue;
@@ -800,7 +799,7 @@ my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo)
 
     if (csock->socket == SOCKET_ERROR)
     {
-      CIO_SET_ERROR(cinfo->mysql, CR_IPSOCK_ERROR, SQLSTATE_UNKNOWN, ER(CR_IPSOCK_ERROR),
+      PVIO_SET_ERROR(cinfo->mysql, CR_IPSOCK_ERROR, SQLSTATE_UNKNOWN, ER(CR_IPSOCK_ERROR),
                          socket_errno);
       goto error;
     }
@@ -808,84 +807,84 @@ my_bool cio_socket_connect(MARIADB_CIO *cio, MA_CIO_CINFO *cinfo)
     /* last call to connect 2 failed */
     if (rc)
     {
-      CIO_SET_ERROR(cinfo->mysql, CR_CONN_HOST_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONN_HOST_ERROR),
+      PVIO_SET_ERROR(cinfo->mysql, CR_CONN_HOST_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONN_HOST_ERROR),
                            cinfo->host, socket_errno);
       goto error;
     }
   }
 #ifdef _WIN32
   /* apply timeouts */
-  if (cio->timeout[CIO_WRITE_TIMEOUT] > 0)
-    setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&cio->timeout[CIO_WRITE_TIMEOUT], sizeof(int));
-  if (cio->timeout[CIO_READ_TIMEOUT] > 0)
-    setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&cio->timeout[CIO_READ_TIMEOUT], sizeof(int));
+  if (pvio->timeout[PVIO_WRITE_TIMEOUT] > 0)
+    setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&pvio->timeout[PVIO_WRITE_TIMEOUT], sizeof(int));
+  if (pvio->timeout[PVIO_READ_TIMEOUT] > 0)
+    setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&pvio->timeout[PVIO_READ_TIMEOUT], sizeof(int));
 #endif
   return 0;
 error:
-  if (cio->data)
+  if (pvio->data)
   {
-    my_free((gptr)cio->data);
-    cio->data= NULL;
+    my_free((gptr)pvio->data);
+    pvio->data= NULL;
   }
   return 1;
 }
 
-/* {{{ my_bool cio_socket_close() */
-my_bool cio_socket_close(MARIADB_CIO *cio)
+/* {{{ my_bool pvio_socket_close() */
+my_bool pvio_socket_close(MARIADB_PVIO *pvio)
 {
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
   int r= 0;
 
-  if (!cio)
+  if (!pvio)
     return 1;
 
-  if (cio->data)
+  if (pvio->data)
   {
-    csock= (struct st_cio_socket *)cio->data;
+    csock= (struct st_pvio_socket *)pvio->data;
     if (csock && csock->socket != -1)
     {
       r= shutdown(csock->socket ,2);
       r= closesocket(csock->socket);
       csock->socket= -1;
     }
-    my_free((gptr)cio->data);
-    cio->data= NULL;
+    my_free((gptr)pvio->data);
+    pvio->data= NULL;
   }
   return r;
 }
 /* }}} */
 
-/* {{{ my_socket cio_socket_get_handle */
-my_bool cio_socket_get_handle(MARIADB_CIO *cio, void *handle)
+/* {{{ my_socket pvio_socket_get_handle */
+my_bool pvio_socket_get_handle(MARIADB_PVIO *pvio, void *handle)
 {
-  if (cio && cio->data && handle)
+  if (pvio && pvio->data && handle)
   {
-    *(my_socket *)handle= ((struct st_cio_socket *)cio->data)->socket;
+    *(my_socket *)handle= ((struct st_pvio_socket *)pvio->data)->socket;
     return 0;
   }
   return 1;
 }
 /* }}} */
 
-/* {{{ my_bool cio_socket_is_blocking(MARIADB_CIO *cio) */
-my_bool cio_socket_is_blocking(MARIADB_CIO *cio)
+/* {{{ my_bool pvio_socket_is_blocking(MARIADB_PVIO *pvio) */
+my_bool pvio_socket_is_blocking(MARIADB_PVIO *pvio)
 {
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
   my_bool r;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return 0;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
   r = !(csock->fcntl_mode & O_NONBLOCK);
   return r;
 }
 /* }}} */
 
-/* {{{ my_bool cio_socket_is_alive(MARIADB_CIO *cio) */
-my_bool cio_socket_is_alive(MARIADB_CIO *cio)
+/* {{{ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio) */
+my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
 {
-  struct st_cio_socket *csock= NULL;
+  struct st_pvio_socket *csock= NULL;
  #ifndef _WIN32
   struct pollfd poll_fd;
 #else
@@ -894,10 +893,10 @@ my_bool cio_socket_is_alive(MARIADB_CIO *cio)
 #endif
   int res;
 
-  if (!cio || !cio->data)
+  if (!pvio || !pvio->data)
     return 0;
 
-  csock= (struct st_cio_socket *)cio->data;
+  csock= (struct st_pvio_socket *)pvio->data;
 #ifndef _WIN32
   memset(&poll_fd, 0, sizeof(struct pollfd));
   poll_fd.events= POLLPRI | POLLIN;

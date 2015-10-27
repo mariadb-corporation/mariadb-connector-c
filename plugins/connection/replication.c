@@ -74,7 +74,7 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
 };
 
 typedef struct st_conn_repl {
-  MARIADB_CIO *cio[2];
+  MARIADB_PVIO *pvio[2];
   MYSQL *slave_mysql;
   my_bool read_only;
   my_bool round_robin;
@@ -83,8 +83,8 @@ typedef struct st_conn_repl {
   int port[2];
 } REPL_DATA;
 
-#define SET_SLAVE(mysql, data) mysql->net.cio= data->cio[MARIADB_SLAVE]
-#define SET_MASTER(mysql, data) mysql->net.cio= data->cio[MARIADB_MASTER]
+#define SET_SLAVE(mysql, data) mysql->net.pvio= data->pvio[MARIADB_SLAVE]
+#define SET_MASTER(mysql, data) mysql->net.pvio= data->pvio[MARIADB_MASTER]
 
 
 /* parse url
@@ -182,7 +182,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
     return NULL;
   }
 
-  memset(data->cio, 0, 2 * sizeof(MARIADB_CIO *));
+  memset(data->pvio, 0, 2 * sizeof(MARIADB_PVIO *));
 
   if (repl_parse_url(host, data))
     goto error;
@@ -192,7 +192,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
                                    data->port[MARIADB_MASTER] ? data->port[MARIADB_MASTER] : port, unix_socket, clientflag)))
     goto error;
 
-  data->cio[MARIADB_MASTER]= mysql->net.cio;
+  data->pvio[MARIADB_MASTER]= mysql->net.pvio;
   hdlr->data= data;
 
   /* to allow immediate access without connection delay, we will start
@@ -205,12 +205,12 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
   {
     if (data->slave_mysql)
       mysql_close(data->slave_mysql);
-    data->cio[MARIADB_SLAVE]= NULL;
+    data->pvio[MARIADB_SLAVE]= NULL;
   }
   else
   {
-    data->cio[MARIADB_SLAVE]= data->slave_mysql->net.cio;
-    data->slave_mysql->net.cio->mysql= mysql;
+    data->pvio[MARIADB_SLAVE]= data->slave_mysql->net.pvio;
+    data->slave_mysql->net.pvio->mysql= mysql;
   }
   return mysql;
 error:
@@ -232,12 +232,12 @@ void repl_close(MYSQL *mysql)
   SET_MASTER(mysql, data);
 
   /* free slave information and close connection */
-  if (data->cio[MARIADB_SLAVE])
+  if (data->pvio[MARIADB_SLAVE])
   {
     /* restore mysql */
-    data->cio[MARIADB_SLAVE]->mysql= data->slave_mysql;
+    data->pvio[MARIADB_SLAVE]->mysql= data->slave_mysql;
     mysql_close(data->slave_mysql);
-    data->cio[MARIADB_SLAVE]= NULL;
+    data->pvio[MARIADB_SLAVE]= NULL;
     data->slave_mysql= NULL;
   }
 
@@ -286,7 +286,7 @@ int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
   REPL_DATA *data= (REPL_DATA *)mysql->net.conn_hdlr->data; 
 
   /* if we don't have slave or slave became unavailable root traffic to master */
-  if (!data->cio[MARIADB_SLAVE] || !data->read_only)
+  if (!data->pvio[MARIADB_SLAVE] || !data->read_only)
   {
     SET_MASTER(mysql, data);
     return 0;
@@ -301,7 +301,7 @@ int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
       break;
     case MYSQL_COM_STMT_EXECUTE:
     case MYSQL_COM_STMT_FETCH:
-      if (data->cio[MARIADB_SLAVE]->mysql->stmts && is_slave_stmt(data->cio[MARIADB_SLAVE]->mysql, arg))
+      if (data->pvio[MARIADB_SLAVE]->mysql->stmts && is_slave_stmt(data->pvio[MARIADB_SLAVE]->mysql, arg))
         SET_SLAVE(mysql, data);
       else
         SET_MASTER(mysql,data);

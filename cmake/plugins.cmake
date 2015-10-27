@@ -15,10 +15,10 @@ ENDMACRO()
 MARK_AS_ADVANCED(PLUGINS)
 
 # CIO
-REGISTER_PLUGIN("SOCKET" "${CMAKE_SOURCE_DIR}/plugins/cio/cio_socket.c" "cio_socket_plugin" "STATIC" 0)
+REGISTER_PLUGIN("SOCKET" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_socket.c" "pvio_socket_plugin" "STATIC" 0)
 IF(WIN32)
-  REGISTER_PLUGIN("NPIPE" "${CMAKE_SOURCE_DIR}/plugins/cio/cio_npipe.c" "cio_npipe_plugin" "DYNAMIC" 1)
-  REGISTER_PLUGIN("SHMEM" "${CMAKE_SOURCE_DIR}/plugins/cio/cio_shmem.c" "cio_shmem_plugin" "DYNAMIC" 1)
+  REGISTER_PLUGIN("NPIPE" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_npipe.c" "pvio_npipe_plugin" "DYNAMIC" 1)
+  REGISTER_PLUGIN("SHMEM" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "DYNAMIC" 1)
 ENDIF()
 
 # AUTHENTICATION

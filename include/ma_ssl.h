@@ -1,7 +1,7 @@
 #ifndef _ma_ssl_h_
 #define _ma_ssl_h_
 
-enum enum_cio_ssl_type {
+enum enum_pvio_ssl_type {
   SSL_TYPE_DEFAULT=0,
 #ifdef _WIN32
   SSL_TYPE_SCHANNEL,
@@ -10,9 +10,9 @@ enum enum_cio_ssl_type {
   SSL_TYPE_GNUTLS
 };
 
-typedef struct st_ma_cio_ssl {
+typedef struct st_ma_pvio_ssl {
   void *data;
-  MARIADB_CIO *cio;
+  MARIADB_PVIO *pvio;
   void *ssl;
 } MARIADB_SSL;
 
@@ -125,14 +125,14 @@ const char *ma_ssl_get_cipher(MARIADB_SSL *ssl);
 unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsigned int fp_len);
 
 /* Function prototypes */
-MARIADB_SSL *ma_cio_ssl_init(MYSQL *mysql);
-my_bool ma_cio_ssl_connect(MARIADB_SSL *cssl);
-size_t ma_cio_ssl_read(MARIADB_SSL *cssl, const uchar *buffer, size_t length);
-size_t ma_cio_ssl_write(MARIADB_SSL *cssl, const uchar *buffer, size_t length);
-my_bool ma_cio_ssl_close(MARIADB_SSL *cssl);
-int ma_cio_ssl_verify_server_cert(MARIADB_SSL *cssl);
-const char *ma_cio_ssl_cipher(MARIADB_SSL *cssl);
-my_bool ma_cio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list);
-my_bool ma_cio_start_ssl(MARIADB_CIO *cio);
+MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql);
+my_bool ma_pvio_ssl_connect(MARIADB_SSL *cssl);
+size_t ma_pvio_ssl_read(MARIADB_SSL *cssl, const uchar *buffer, size_t length);
+size_t ma_pvio_ssl_write(MARIADB_SSL *cssl, const uchar *buffer, size_t length);
+my_bool ma_pvio_ssl_close(MARIADB_SSL *cssl);
+int ma_pvio_ssl_verify_server_cert(MARIADB_SSL *cssl);
+const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl);
+my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list);
+my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
 
 #endif /* _ma_ssl_h_ */

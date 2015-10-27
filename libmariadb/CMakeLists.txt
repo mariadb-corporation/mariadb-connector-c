@@ -9,7 +9,7 @@ ADD_DEFINITIONS(-D THREAD)
 
 SET(EXPORT_SYMBOLS
  load_defaults
- ma_cio_register_callback
+ ma_pvio_register_callback
  mariadb_connection
  mariadb_convert_string
  mariadb_dyncol_check
@@ -272,7 +272,7 @@ libmariadb.c
 list.c
 llstr.c
 longlong2str.c 
-ma_cio.c
+ma_pvio.c
 ma_ssl.c
 mf_dirname.c 
 mf_fn_ext.c 

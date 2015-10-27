@@ -4,7 +4,7 @@
 #include <errmsg.h>
 #include <ma_common.h>
 #include <mysql/client_plugin.h>
-#include <ma_cio.h>
+#include <ma_pvio.h>
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
@@ -311,7 +311,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                           errno);
       goto error;
     }
-    if (ma_cio_start_ssl(mysql->net.cio))
+    if (ma_pvio_start_ssl(mysql->net.pvio))
       goto error;
   }
 #endif /* HAVE_SSL */
@@ -480,17 +480,17 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
   connection
 */
 
-void mpvio_info(MARIADB_CIO *cio, MYSQL_PLUGIN_VIO_INFO *info)
+void mpvio_info(MARIADB_PVIO *pvio, MYSQL_PLUGIN_VIO_INFO *info)
 {
   bzero(info, sizeof(*info));
-  switch (cio->type) {
-  case CIO_TYPE_SOCKET:
+  switch (pvio->type) {
+  case PVIO_TYPE_SOCKET:
     info->protocol= MYSQL_VIO_TCP;
-    ma_cio_get_handle(cio, &info->socket);
+    ma_pvio_get_handle(pvio, &info->socket);
     return;
-  case CIO_TYPE_UNIXSOCKET:
+  case PVIO_TYPE_UNIXSOCKET:
     info->protocol= MYSQL_VIO_SOCKET;
-    ma_cio_get_handle(cio, &info->socket);
+    ma_pvio_get_handle(pvio, &info->socket);
     return;
     /*
   case VIO_TYPE_SSL:
@@ -527,7 +527,7 @@ static void client_mpvio_info(MYSQL_PLUGIN_VIO *vio,
                               MYSQL_PLUGIN_VIO_INFO *info)
 {
   MCPVIO_EXT *mpvio= (MCPVIO_EXT*)vio;
-  mpvio_info(mpvio->mysql->net.cio, info);
+  mpvio_info(mpvio->mysql->net.pvio, info);
 }
 
 /**

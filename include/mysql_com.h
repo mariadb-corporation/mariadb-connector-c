@@ -209,10 +209,10 @@ enum enum_server_command
 #define NET_WRITE_TIMEOUT	60		/* Timeout on write */
 #define NET_WAIT_TIMEOUT	8*60*60		/* Wait for new query */
 
-#ifndef cio_defined
-#define cio_defined
-struct st_ma_cio;
-typedef struct st_ma_cio MARIADB_CIO;
+#ifndef pvio_defined
+#define pvio_defined
+struct st_ma_pvio;
+typedef struct st_ma_pvio MARIADB_PVIO;
 #endif
 
 #define MAX_CHAR_WIDTH		255	/* Max length for a CHAR colum */
@@ -237,7 +237,7 @@ typedef struct st_connection_handler
 } MA_CONNECTION_HANDLER;
 
 typedef struct st_net {
-  MARIADB_CIO *cio;
+  MARIADB_PVIO *pvio;
   unsigned char *buff;
   unsigned char *buff_end,*write_pos,*read_pos;
   my_socket fd;					/* For Perl DBI/dbd */
@@ -328,7 +328,7 @@ extern unsigned long net_buffer_length;
 
 #define net_new_transaction(net) ((net)->pkt_nr=0)
 
-int	my_net_init(NET *net, MARIADB_CIO *cio);
+int	my_net_init(NET *net, MARIADB_PVIO *pvio);
 void	net_end(NET *net);
 void	net_clear(NET *net);
 int	net_flush(NET *net);

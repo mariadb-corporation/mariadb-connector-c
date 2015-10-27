@@ -4,6 +4,8 @@ SET(MARIADB_CLIENT_INCLUDES config-win.h
                             getopt.h
                             hash.h
                             ma_common.h
+                            ma_pvio.h
+                            ma_ssl.h
                             m_ctype.h
                             m_string.h
                             ma_dyncol.h

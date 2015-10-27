@@ -25,7 +25,7 @@
 
 #include <my_global.h>
 #include <mysql.h>
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #include <my_sys.h>
 #include <m_string.h>
 #include "mysql.h"
@@ -33,7 +33,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #ifndef _WIN32
 #include <poll.h>
 #endif
@@ -113,13 +113,13 @@ static int net_write_buff(NET *net,const char *packet, size_t len);
 
 	/* Init with packet info */
 
-int my_net_init(NET *net, MARIADB_CIO* cio)
+int my_net_init(NET *net, MARIADB_PVIO* pvio)
 {
   if (!(net->buff=(uchar*) my_malloc(net_buffer_length,MYF(MY_WME | MY_ZEROFILL))))
     return 1;
   max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
-  net->cio = cio;
+  net->pvio = pvio;
   net->error=0; net->return_status=0;
   net->read_timeout=(uint) net_read_timeout;		/* Timeout for read */
   net->compress_pkt_nr= net->pkt_nr= 0;
@@ -130,11 +130,11 @@ int my_net_init(NET *net, MARIADB_CIO* cio)
   net->where_b = net->remain_in_buf=0;
   net->last_errno=0;
 
-  if (cio != 0)					/* If real connection */
+  if (pvio != 0)					/* If real connection */
   {
-    ma_cio_get_handle(cio, &net->fd);
-    ma_cio_blocking(cio, 1, 0);
-    ma_cio_fast_send(cio);
+    ma_pvio_get_handle(pvio, &net->fd);
+    ma_pvio_blocking(pvio, 1, 0);
+    ma_pvio_fast_send(pvio);
   }
   return 0;
 }
@@ -226,14 +226,14 @@ void net_clear(NET *net)
   my_socket sock;
   DBUG_ENTER("net_clear");
   
-  ma_cio_get_handle(net->cio, &sock);
+  ma_pvio_get_handle(net->pvio, &sock);
 
   /* see conc-71: we need to check the socket status first:
      if the socket is dead we set net->error, so net_flush
      will report an error */
   while (net_check_socket_status(sock))
   {
-    if ((ssize_t)ma_cio_cache_read(net->cio, (gptr)net->buff, (size_t) net->max_packet) <= 0)
+    if ((ssize_t)ma_pvio_cache_read(net->pvio, (gptr)net->buff, (size_t) net->max_packet) <= 0)
     {
       net->error= 2;
       DBUG_PRINT("info", ("socket disconnected"));
@@ -429,7 +429,7 @@ net_real_write(NET *net,const char *packet,size_t  len)
   pos=(char*) packet; end=pos+len;
   while (pos != end)
   {
-    if ((ssize_t) (length=ma_cio_write(net->cio,pos,(size_t) (end-pos))) <= 0)
+    if ((ssize_t) (length=ma_pvio_write(net->pvio,pos,(size_t) (end-pos))) <= 0)
     {
       net->error=2;				/* Close socket */
       net->last_errno= ER_NET_ERROR_ON_WRITE;
@@ -470,7 +470,7 @@ my_real_read(NET *net, size_t *complen)
       while (remain > 0)
       {
 	/* First read is done with non blocking mode */
-        if ((ssize_t) (length=ma_cio_cache_read(net->cio,(char*) pos,remain)) <= 0L)
+        if ((ssize_t) (length=ma_pvio_cache_read(net->pvio,(char*) pos,remain)) <= 0L)
         {
 	  len= packet_error;
 	  net->error=2;				/* Close socket */

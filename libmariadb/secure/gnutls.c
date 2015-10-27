@@ -24,7 +24,7 @@
 #include <my_global.h>
 #include <my_sys.h>
 #include <ma_common.h>
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #include <errmsg.h>
 #include <my_pthread.h>
 #include <mysql/client_plugin.h>
@@ -44,21 +44,21 @@ static void ma_ssl_set_error(MYSQL *mysql, int ssl_errno)
 {
   char  ssl_error[MAX_SSL_ERR_LEN];
   const char *ssl_error_reason;
-  MARIADB_CIO *cio= mysql->net.cio;
+  MARIADB_PVIO *pvio= mysql->net.pvio;
 
   if (!ssl_errno)
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
     return;
   }
   if ((ssl_error_reason= gnutls_strerror(ssl_errno)))
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, 
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, 
                    ssl_error_reason);
     return;
   }
   my_snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
-  cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                  ssl_error);
 }
 
@@ -217,27 +217,44 @@ error:
     gnutls_deinit(ssl);
   pthread_mutex_unlock(&LOCK_gnutls_config);
   return NULL;
-} 
+}
+
+ssize_t ma_ssl_push(gnutls_transport_ptr_t ptr, const void* data, size_t len)
+{
+  MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
+  ssize_t rc= pvio->methods->write(pvio, data, len);
+  return rc;
+}
+
+ssize_t ma_ssl_pull(gnutls_transport_ptr_t ptr, void* data, size_t len)
+{
+  MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
+  ssize_t rc= pvio->methods->read(pvio, data, len);
+  return rc;
+}
 
 my_bool ma_ssl_connect(MARIADB_SSL *cssl)
 {
   gnutls_session_t ssl = (gnutls_session_t)cssl->ssl;
   my_bool blocking;
   MYSQL *mysql;
-  MARIADB_CIO *cio;
+  MARIADB_PVIO *pvio;
   int ret;
   mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
 
   if (!mysql)
     return 1;
 
-  cio= mysql->net.cio;
+  pvio= mysql->net.pvio;
 
   /* Set socket to blocking if not already set */
-  if (!(blocking= cio->methods->is_blocking(cio)))
-    cio->methods->blocking(cio, TRUE, 0);
+  if (!(blocking= pvio->methods->is_blocking(pvio)))
+    pvio->methods->blocking(pvio, TRUE, 0);
 
-  gnutls_transport_set_int(ssl, mysql_get_socket(mysql));
+  /* we don't use GnuTLS read/write functions */
+  gnutls_transport_set_ptr(ssl, pvio);
+  gnutls_transport_set_push_function(ssl, ma_ssl_push);
+  gnutls_transport_set_pull_function(ssl, ma_ssl_pull);
   gnutls_handshake_set_timeout(ssl, mysql->options.connect_timeout);
 
   do {
@@ -249,7 +266,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
     ma_ssl_set_error(mysql, ret);
     /* restore blocking mode */
     if (!blocking)
-      cio->methods->blocking(cio, FALSE, 0);
+      pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
   }
   cssl->ssl= (void *)ssl;
@@ -296,7 +313,7 @@ static int my_verify_callback(gnutls_session_t ssl)
   unsigned int cert_list_size;
   int ret;
   MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
-  MARIADB_CIO *cio= mysql->net.cio;
+  MARIADB_PVIO *pvio= mysql->net.pvio;
   gnutls_x509_crt_t cert;
   const char *hostname;
 
@@ -313,7 +330,7 @@ static int my_verify_callback(gnutls_session_t ssl)
   ret = gnutls_certificate_verify_peers2 (ssl, &status);
   if (ret < 0)
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CA verification failed");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CA verification failed");
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
 
@@ -329,33 +346,33 @@ static int my_verify_callback(gnutls_session_t ssl)
    */
   if (gnutls_certificate_type_get (ssl) != GNUTLS_CRT_X509)
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Expected X509 certificate");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Expected X509 certificate");
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
   if (gnutls_x509_crt_init (&cert) < 0)
   {
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Error during certificate initialization");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Error during certificate initialization");
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
   cert_list = gnutls_certificate_get_peers (ssl, &cert_list_size);
   if (cert_list == NULL)
   {
     gnutls_x509_crt_deinit (cert);
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "No certificate found");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "No certificate found");
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
   if (gnutls_x509_crt_import (cert, &cert_list[0], GNUTLS_X509_FMT_DER) < 0)
   {
     gnutls_x509_crt_deinit (cert);
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
 
   if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
-      gnutls_x509_crt_check_hostname (cert, hostname) < 0)
+      !gnutls_x509_crt_check_hostname (cert, hostname))
   {
     gnutls_x509_crt_deinit (cert);
-    cio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Hostname in certificate doesn't match");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Hostname in certificate doesn't match");
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
   gnutls_x509_crt_deinit (cert);

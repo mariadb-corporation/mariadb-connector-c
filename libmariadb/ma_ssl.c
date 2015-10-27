@@ -38,7 +38,7 @@
 #include <string.h>
 //#include <ma_secure.h>
 #include <errmsg.h>
-#include <ma_cio.h>
+#include <ma_pvio.h>
 #include <ma_ssl.h>
 #include <mysql/client_plugin.h>
 
@@ -47,25 +47,25 @@
 #include <my_context.h>
 */
 
-/* Errors should be handled via cio callback function */
+/* Errors should be handled via pvio callback function */
 my_bool ma_ssl_initialized= FALSE;
 unsigned int mariadb_deinitialize_ssl= 1;
 
-MARIADB_SSL *ma_cio_ssl_init(MYSQL *mysql)
+MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
 {
   MARIADB_SSL *cssl= NULL;
 
   if (!ma_ssl_initialized)
     ma_ssl_start(mysql->net.last_error, MYSQL_ERRMSG_SIZE);
 
-  if (!(cssl= (MARIADB_SSL *)my_malloc(sizeof(MARIADB_CIO), 
+  if (!(cssl= (MARIADB_SSL *)my_malloc(sizeof(MARIADB_SSL), 
                                       MYF(MY_WME | MY_ZEROFILL))))
   {
     return NULL;
   }
 
   /* register error routine and methods */
-  cssl->cio= mysql->net.cio;
+  cssl->pvio= mysql->net.pvio;
   if (!(cssl->ssl= ma_ssl_init(mysql)))
   {
     my_free(cssl);
@@ -74,37 +74,37 @@ MARIADB_SSL *ma_cio_ssl_init(MYSQL *mysql)
   return cssl;
 }
 
-my_bool ma_cio_ssl_connect(MARIADB_SSL *cssl)
+my_bool ma_pvio_ssl_connect(MARIADB_SSL *cssl)
 {
   return ma_ssl_connect(cssl);
 }
 
-size_t ma_cio_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_pvio_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
 {
   return ma_ssl_read(cssl, buffer, length);
 }
 
-size_t ma_cio_ssl_write(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_pvio_ssl_write(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
 {
   return ma_ssl_write(cssl, buffer, length);
 }
 
-my_bool ma_cio_ssl_close(MARIADB_SSL *cssl)
+my_bool ma_pvio_ssl_close(MARIADB_SSL *cssl)
 {
   return ma_ssl_close(cssl);
 }
 
-int ma_cio_ssl_verify_server_cert(MARIADB_SSL *cssl)
+int ma_pvio_ssl_verify_server_cert(MARIADB_SSL *cssl)
 {
   return ma_ssl_verify_server_cert(cssl);
 }
 
-const char *ma_cio_ssl_cipher(MARIADB_SSL *cssl)
+const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl)
 {
   return ma_ssl_get_cipher(cssl);
 }
 
-static my_bool ma_cio_ssl_compare_fp(char *fp1, unsigned int fp1_len,
+static my_bool ma_pvio_ssl_compare_fp(char *fp1, unsigned int fp1_len,
                                    char *fp2, unsigned int fp2_len)
 {
   char hexstr[64];
@@ -119,7 +119,7 @@ static my_bool ma_cio_ssl_compare_fp(char *fp1, unsigned int fp1_len,
   return 0;
 }
 
-my_bool ma_cio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list)
+my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list)
 {
   unsigned int cert_fp_len= 64;
   unsigned char cert_fp[64];
@@ -129,7 +129,7 @@ my_bool ma_cio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_li
   if ((cert_fp_len= ma_ssl_get_finger_print(cssl, cert_fp, cert_fp_len)) < 1)
     goto end;
   if (fp)
-    rc= ma_cio_ssl_compare_fp(cert_fp, cert_fp_len, fp, strlen(fp));
+    rc= ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, fp, strlen(fp));
   else if (fp_list)
   {
     FILE *fp;
@@ -154,7 +154,7 @@ my_bool ma_cio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_li
       if (pos)
         *pos= '\0';
         
-      if (!ma_cio_ssl_compare_fp(cert_fp, cert_fp_len, buff, strlen(buff)))
+      if (!ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, buff, strlen(buff)))
       {
         /* finger print is valid: close file and exit */
         fclose(fp);

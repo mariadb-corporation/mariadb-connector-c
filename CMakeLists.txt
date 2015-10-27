@@ -176,7 +176,7 @@ IF(WIN32)
     MESSAGE(STATUS "SSL_TYPE ${SSL_TYPE}")
     ADD_DEFINITIONS(-DHAVE_SCHANNEL -DHAVE_SSL)
     SET(SSL_SOURCES "${CMAKE_SOURCE_DIR}/libmariadb/secure/schannel.c" "${CMAKE_SOURCE_DIR}/libmariadb/secure/ma_schannel.c")
-    INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/plugins/cio/")
+    INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/plugins/pvio/")
   ENDIF()
 ENDIF()
 

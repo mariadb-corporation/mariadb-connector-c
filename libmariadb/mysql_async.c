@@ -30,7 +30,7 @@
 #include "ma_common.h"
 #endif
 #include "my_context.h"
-#include "ma_cio.h"
+#include "ma_pvio.h"
 #include "mysql_async.h"
 #include <string.h>
 
@@ -42,7 +42,7 @@
 */
 #define WIN_SET_NONBLOCKING(mysql) { \
     my_bool old_mode; \
-    if ((mysql)->net.cio) ma_cio_blocking((mysql)->net.cio, FALSE, &old_mode); \
+    if ((mysql)->net.pvio) ma_pvio_blocking((mysql)->net.pvio, FALSE, &old_mode); \
   }
 #else
 #define WIN_SET_NONBLOCKING(mysql)
@@ -63,18 +63,18 @@ my_context_install_suspend_resume_hook(struct mysql_async_context *b,
 
 /* Asynchronous connect(); socket must already be set non-blocking. */
 int
-my_connect_async(MARIADB_CIO *cio,
+my_connect_async(MARIADB_PVIO *pvio,
                  const struct sockaddr *name, uint namelen, int vio_timeout)
 {
   int res;
   size_socket s_err_size;
-  struct mysql_async_context *b= cio->mysql->options.extension->async_context;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
   my_socket sock;
 
-  ma_cio_get_handle(cio, &sock);
+  ma_pvio_get_handle(pvio, &sock);
 
   /* Make the socket non-blocking. */
-  ma_cio_blocking(cio, 0, 0);
+  ma_pvio_blocking(pvio, 0, 0);
 
   b->events_to_wait_for= 0;
   /*
@@ -135,15 +135,15 @@ my_connect_async(MARIADB_CIO *cio,
 #endif
 
 ssize_t
-my_recv_async(MARIADB_CIO *cio, const unsigned char *buf, size_t size, int timeout)
+my_recv_async(MARIADB_PVIO *pvio, const unsigned char *buf, size_t size, int timeout)
 {
   ssize_t res;
-  struct mysql_async_context *b= cio->async_context;
+  struct mysql_async_context *b= pvio->async_context;
   for (;;)
   {
     /* todo: async */
-    if (cio->methods->async_read)
-      res= cio->methods->async_read(cio, buf, size);
+    if (pvio->methods->async_read)
+      res= pvio->methods->async_read(pvio, buf, size);
     if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_READ;
@@ -164,15 +164,15 @@ my_recv_async(MARIADB_CIO *cio, const unsigned char *buf, size_t size, int timeo
 
 
 ssize_t
-my_send_async(MARIADB_CIO *cio, const unsigned char *buf, size_t size, int timeout)
+my_send_async(MARIADB_PVIO *pvio, const unsigned char *buf, size_t size, int timeout)
 {
   ssize_t res;
-  struct mysql_async_context *b= cio->async_context;
+  struct mysql_async_context *b= pvio->async_context;
 
   for (;;)
   {
-    if (cio->methods->async_write)
-      res= cio->methods->async_write(cio, buf, size);
+    if (pvio->methods->async_write)
+      res= pvio->methods->async_write(pvio, buf, size);
     if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_WRITE;
@@ -193,7 +193,7 @@ my_send_async(MARIADB_CIO *cio, const unsigned char *buf, size_t size, int timeo
 
 
 my_bool
-my_io_wait_async(struct mysql_async_context *b, enum enum_cio_io_event event,
+my_io_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
                  int timeout)
 {
   switch (event)
@@ -825,7 +825,7 @@ mysql_close_start(MYSQL *sock)
   int res;
 
   /* It is legitimate to have NULL sock argument, which will do nothing. */
-  if (sock && sock->net.cio)
+  if (sock && sock->net.pvio)
   {
     res= mysql_close_slow_part_start(sock);
     /* If we need to block, return now and do the rest in mysql_close_cont(). */
