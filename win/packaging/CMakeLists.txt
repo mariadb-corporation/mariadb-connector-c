@@ -44,6 +44,8 @@ IF (WITH_SIGNCODE)
     COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll)
 ENDIF()
 
+FILE(READ ${CMAKE_BINARY_DIR}/win/packaging/plugin.conf MARIADB_PLUGINS)
+
 FOREACH(src ${MARIADB_CLIENT_INCLUDES})
   STRING(REPLACE "-" "_" src_id ${src})
   STRING(REPLACE "mysql/" "" src_id ${src_id})
