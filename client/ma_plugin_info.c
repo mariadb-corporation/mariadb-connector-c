@@ -40,7 +40,9 @@ struct st_plugin_type
   char *typename;
 };
 
+#ifndef _WIN32
 int my_errno=0;
+#endif
 
 static struct st_plugin_type plugin_types[]=
 {
