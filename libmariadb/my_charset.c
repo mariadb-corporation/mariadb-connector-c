@@ -51,6 +51,7 @@
 #endif
 #include <my_global.h>
 #include <m_ctype.h>
+#include <m_string.h>
 
 #include <iconv.h>
 
@@ -1121,13 +1122,55 @@ int madb_get_windows_cp(const char *charset)
 #endif
 /* }}} */
 
+
+/* {{{ map_charset_name
+   Changing charset name into something iconv understands, if necessary.
+   Another purpose it to avoid BOMs in result string, adding BE if necessary
+   e.g.UTF16 does not work form iconv, while UTF-16 does.
+ */
+static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffer, size_t buff_len)
+{
+  char *ptr= buffer, digits[3], endianness[3]= "BE";
+
+  if (sscanf(cs_name, "UTF%2[0-9]%2[LBE]", digits, endianness))
+  {
+    /* We should have at least digits. Endianness we write either default(BE), or what we found in the string */
+    ptr= strnmov(ptr, "UTF-", buff_len);
+    ptr= strnmov(ptr, digits, buff_len - (ptr - buffer));
+    ptr= strnmov(ptr, endianness, buff_len - (ptr - buffer));
+  }
+  else
+  {
+    /* Not our client - copy as is*/
+    ptr= strnmov(ptr, cs_name, buff_len);
+  }
+
+  if (target_cs)
+  {
+    strnmov(ptr, "//TRANSLIT", buff_len - (ptr - buffer));
+  }
+}
+/* }}} */
+
+/* {{{ mariadb_convert_string
+   Converts string from one charset to another, and writes converted string to given buffer
+   @param[in]     from
+   @param[in/out] from_len
+   @param[in]     from_cs
+   @param[out]    to
+   @param[in/out] to_len
+   @param[in]     to_cs
+   @param[out]    errorcode
+
+   @return -1 in case of error, bytes used in the "to" buffer, otherwise
+ */
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode)
 {
   iconv_t conv= 0;
   size_t rc= -1;
   size_t save_len= *to_len;
-  char to_encoding[128];
+  char to_encoding[128], from_encoding[128];
 
   *errorcode= 0;
 
@@ -1138,14 +1181,11 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSE
     *errorcode= EINVAL;
     return rc;
   }
-  /* UTF16 does not work form iconv, while UTF-16 does.
-     Besides we don't want iconv to generate BOM, thus we used either UTF-16LE or BE by default
-     TODO: Need to do the same for UTF-32(at leased re BOM) */
-  snprintf(to_encoding, 128, "%s//TRANSLIT", strncmp(to_cs->encoding, "UTF16", 5) == 0
-                                             ? (strcmp(to_cs->encoding + 5, "LE") == 0 ? "UTF-16LE" : "UTF-16BE")
-                                             : to_cs->encoding);
 
-  if ((conv= iconv_open(to_encoding, from_cs->encoding)) == (iconv_t)-1)
+  map_charset_name(to_cs->encoding, 1, to_encoding, sizeof(to_encoding));
+  map_charset_name(from_cs->encoding, 0, from_encoding, sizeof(from_encoding));
+
+  if ((conv= iconv_open(to_encoding, from_encoding)) == (iconv_t)-1)
   {
     *errorcode= errno;
     goto error;
@@ -1161,4 +1201,5 @@ error:
     iconv_close(conv);
   return rc;
 }
+/* }}} */
 

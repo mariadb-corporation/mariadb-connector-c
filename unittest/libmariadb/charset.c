@@ -656,6 +656,75 @@ static int test_bug_54100(MYSQL *mysql)
 }
 
 
+/* We need this internal function for the test */
+CHARSET_INFO * mysql_find_charset_name(const char *name); 
+
+static int test_utf16_utf32_noboms(MYSQL *mysql)
+{
+  char          *csname[]= {"utf16", "utf16le", "utf32", "utf8"};
+  CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
+
+  const int     UTF8= sizeof(csname)/sizeof(char*) - 1;
+
+  unsigned char in_string[][8]= {"\xd8\x02\xdc\x60\0",      /* utf16(be) */
+                                 "\x02\xd8\x60\xdc\0",      /* utf16le   */
+                                 "\x00\x01\x08\x60\0\0\0",  /* utf32(be) */
+                                 "\xF0\x90\xA1\xA0" };      /* utf8      */
+  size_t       in_oct_len[]= {6, 6, 8, 5};
+
+  char   buffer[8], as_hex[16];
+  int    i, error;
+  size_t rc, in_len, out_len;
+
+  for (i= 0; i < sizeof(csname)/sizeof(char*); ++i)
+  {
+    csinfo[i]= mysql_find_charset_name(csname[i]);
+
+    if (csinfo[i] == NULL)
+    {
+      diag("Could not get cs info for %s", csname[i]);
+      return FAIL;
+    }
+  }
+
+  for (i= 0; i < UTF8; ++i)
+  {
+    in_len=  in_oct_len[i];
+    out_len= sizeof(buffer);
+
+    diag("Converting %s->%s", csname[i], csname[UTF8]);
+    rc= mariadb_convert_string(in_string[i], &in_len, csinfo[i], buffer, &out_len, csinfo[UTF8], &error);
+
+    FAIL_IF(rc == -1, "Conversion failed");
+    FAIL_IF(rc != in_oct_len[UTF8], "Incorrect number of written bytes");
+
+    if (memcmp(buffer, in_string[UTF8], rc) != 0)
+    {
+      mysql_hex_string(as_hex, buffer, rc);
+      diag("Converted string(%s) does not match the expected one", as_hex);
+      return FAIL;
+    }
+
+    in_len=  in_oct_len[UTF8];
+    out_len= sizeof(buffer);
+
+    diag("Converting %s->%s", csname[UTF8], csname[i]);
+    rc= mariadb_convert_string(in_string[UTF8], &in_len, csinfo[UTF8], buffer, &out_len, csinfo[i], &error);
+
+    FAIL_IF(rc==-1, "Conversion failed");
+    FAIL_IF(rc != in_oct_len[i], "Incorrect number of written bytes");
+
+    if (memcmp(buffer, in_string[i], rc) != 0)
+    {
+      mysql_hex_string(as_hex, buffer, rc);
+      diag("Converted string(%s) does not match the expected one", as_hex);
+      return FAIL;
+    }
+  }
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"bug_8378: mysql_real_escape with gbk", bug_8378, TEST_CONNECTION_NEW, 0,  opt_bug8378,  NULL},
   {"test_client_character_set", test_client_character_set, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
@@ -667,6 +736,7 @@ struct my_tests_st my_tests[] = {
   {"test_bug30472", test_bug30472, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_ps_i18n", test_ps_i18n, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug_54100", test_bug_54100, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
+  {"test_utf16_utf32_noboms", test_utf16_utf32_noboms, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {NULL, NULL, 0, 0, NULL, 0}
 };
 
