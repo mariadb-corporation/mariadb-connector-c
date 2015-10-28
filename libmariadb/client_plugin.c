@@ -47,6 +47,10 @@
 #include "errmsg.h"
 #include <mysql/client_plugin.h>
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
+
 struct st_client_plugin_int {
   struct st_client_plugin_int *next;
   void   *dlhandle;

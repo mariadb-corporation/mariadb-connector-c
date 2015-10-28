@@ -3871,7 +3871,6 @@ static int test_conc_5(MYSQL *mysql)
 static int test_conc141(MYSQL *mysql)
 {
   int rc;
-  MYSQL_RES *res;
   char *query= "CALL p_conc141";
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
 
