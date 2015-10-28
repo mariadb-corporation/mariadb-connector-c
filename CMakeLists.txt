@@ -6,7 +6,7 @@ PROJECT(mariadb-connector-c C)
 
 SET(CPACK_PACKAGE_VERSION_MAJOR 2)
 SET(CPACK_PACKAGE_VERSION_MINOR 2)
-SET(CPACK_PACKAGE_VERSION_PATCH 0)
+SET(CPACK_PACKAGE_VERSION_PATCH 1)
 SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
 #Minimum required version is Cmake 2.8.8, since we need to build object libraries
@@ -237,8 +237,9 @@ INCLUDE(cmake/ConnectorName.cmake)
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME "mariadb-connector-c-${CPACK_PACKAGE_VERSION}-src")
 
 SET(CPACK_SOURCE_IGNORE_FILES
-.bzr/
-.bzrignore
+\\\\.git/
+\\\\.gitignore
+\\\\.gitattributes
 CMakeCache.txt
 cmake_dist.cmake
 CPackSourceConfig.cmake
