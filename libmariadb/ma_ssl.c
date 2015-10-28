@@ -123,13 +123,12 @@ my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_l
 {
   unsigned int cert_fp_len= 64;
   unsigned char cert_fp[64];
-  MYSQL *mysql;
   my_bool rc=1;
 
   if ((cert_fp_len= ma_ssl_get_finger_print(cssl, cert_fp, cert_fp_len)) < 1)
     goto end;
   if (fp)
-    rc= ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, fp, strlen(fp));
+    rc= ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, (char *)fp, strlen(fp));
   else if (fp_list)
   {
     FILE *fp;

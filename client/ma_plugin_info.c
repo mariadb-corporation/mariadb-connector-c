@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  c= getopt_long(argc, argv, "bdapvgh?", long_options, &option_index);
+  c= getopt_long(argc, argv, "bdapnvh?", long_options, &option_index);
 
   switch(c) {
   case 'a': /* all */

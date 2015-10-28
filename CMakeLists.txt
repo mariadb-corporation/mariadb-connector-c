@@ -258,6 +258,7 @@ SET(CPACK_SOURCE_PACKAGE_FILE_NAME "mariadb-connector-c-${CPACK_PACKAGE_VERSION}
 SET(CPACK_SOURCE_IGNORE_FILES
 \\\\.git/
 \\\\.gitignore
+\\\\.gitattributes
 CMakeCache\\\\.txt
 cmake_dist\\\\.cmake
 CPackConfig\\\\.cmake
