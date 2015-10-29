@@ -114,8 +114,8 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len, int count, va_list list)
     pthread_mutex_init(&LOCK_schannel_config,MY_MUTEX_INIT_FAST);
     pthread_mutex_lock(&LOCK_schannel_config);
     ma_ssl_initialized= TRUE;
+    pthread_mutex_unlock(&LOCK_schannel_config);
   }
-  pthread_mutex_unlock(&LOCK_schannel_config);
   return 0;
 }
 

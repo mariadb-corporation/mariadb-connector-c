@@ -209,11 +209,8 @@ enum enum_server_command
 #define NET_WRITE_TIMEOUT	60		/* Timeout on write */
 #define NET_WAIT_TIMEOUT	8*60*60		/* Wait for new query */
 
-#ifndef pvio_defined
-#define pvio_defined
 struct st_ma_pvio;
 typedef struct st_ma_pvio MARIADB_PVIO;
-#endif
 
 #define MAX_CHAR_WIDTH		255	/* Max length for a CHAR colum */
 #define MAX_BLOB_WIDTH		8192	/* Default width for blob */
