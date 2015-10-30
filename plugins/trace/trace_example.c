@@ -144,7 +144,7 @@ static void delete_trace_info(unsigned long thread_id)
   {
     if (current->thread_id == thread_id)
     {
-      printf("deleting thread %d\n", thread_id);
+      printf("deleting thread %lu\n", thread_id);
 
       if (last)
         last->next= current->next;
@@ -212,7 +212,7 @@ static int trace_deinit()
   /* unregister plugin */
   while(trace_info)
   {
-    printf("Warning: Connection for thread %d not properly closed\n", trace_info->thread_id);
+    printf("Warning: Connection for thread %lu not properly closed\n", trace_info->thread_id);
     trace_info= trace_info->next;
   }
   register_callback(FALSE, trace_callback);
@@ -241,12 +241,12 @@ void dump_buffer(uchar *buffer, size_t len)
 
 static void dump_simple(TRACE_INFO *info, my_bool is_error)
 {
-  printf("%8d: %s %s\n", info->thread_id, commands[info->last_command], TRACE_STATUS(is_error));
+  printf("%8lu: %s %s\n", info->thread_id, commands[info->last_command], TRACE_STATUS(is_error));
 }
 
 static void dump_reference(TRACE_INFO *info, my_bool is_error)
 {
-  printf("%8d: %s(%d) %s\n", info->thread_id, commands[info->last_command], info->refid, TRACE_STATUS(is_error));
+  printf("%8lu: %s(%lu) %s\n", info->thread_id, commands[info->last_command], info->refid, TRACE_STATUS(is_error));
 }
 
 static void dump_command(TRACE_INFO *info, my_bool is_error)
@@ -328,9 +328,9 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
       {
         p++;
         if (*p == 0xFF)
-          printf("%8d: CONNECT_ERROR(%d)\n", info->thread_id, uint4korr(p+1));
+          printf("%8lu: CONNECT_ERROR(%d)\n", info->thread_id, uint4korr(p+1));
         else
-          printf("%8d: CONNECT_SUCCESS(host=%s,user=%s,db=%s)\n", info->thread_id, 
+          printf("%8lu: CONNECT_SUCCESS(host=%s,user=%s,db=%s)\n", info->thread_id, 
                  mysql->host, info->username, info->db ? info->db : "'none'");
         info->last_command= MYSQL_COM_SLEEP;
       }
@@ -382,7 +382,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
             info->local_infile= 2;
           }
           else
-            printf("%8d: UNKNOWN_COMMAND: %d\n", info->thread_id, info->last_command);
+            printf("%8lu: UNKNOWN_COMMAND: %d\n", info->thread_id, info->last_command);
           break;
         }
       }
@@ -434,7 +434,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
           if (!*p)
           {
             unsigned long stmt_id= uint4korr(p+1);
-            printf("-> stmt_id(%d)\n", stmt_id);
+            printf("-> stmt_id(%lu)\n", stmt_id);
           }
           else
             printf("error\n");
