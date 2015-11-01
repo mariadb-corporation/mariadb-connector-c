@@ -8,8 +8,6 @@ SET(PRODUCT_INSTALL_DIR "MariaDB")
 SET(PRODUCT_MANUFACTURER "MariaDB Corporation")
 SET(PRODUCT_VERSION "${CPACK_PACKAGE_VERSION}")
 
-MESSAGE(STATUS "sizeof ${CMAKE_SIZEOF_VOID_P}")
-
 IF (${CMAKE_SIZEOF_VOID_P} EQUAL 8)
   SET(PRODUCT_NAME "${PRODUCT_NAME} 64-bit")
   SET(PLATFORM "win64")
@@ -25,27 +23,23 @@ ELSE()
   SET(FOLDER "ProgramFilesFolder")
 ENDIF()
 
-IF (WITH_SIGNCODE)
-  SET(SIGN_OPTIONS " /a /t http://timestamp.verisign.com/scripts/timstamp.dll ")
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/libmariadb.dll)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/libmariadb.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/mariadbclient.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/libmariadb.dll)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/libmariadb.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/mariadbclient.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll)
-ENDIF()
+#
+# process dynamic plugins
+#
+FOREACH(plugin ${PLUGINS})
+  IF(${${plugin}_PLUGIN_TYPE} STREQUAL "DYNAMIC")
+    SET(TARGET ${${plugin}_PLUGIN_TARGET})
+    # Get dependencies
+    SET(DYNAMIC_TARGETS ${DYNAMIC_TARGETS} ${TARGET})
 
-FILE(READ ${CMAKE_BINARY_DIR}/win/packaging/plugin.conf MARIADB_PLUGINS)
+    # build file list
+    SET(FILE ${${plugin}_PLUGIN_SOURCE})
+    GET_FILENAME_COMPONENT(FILE ${FILE} DIRECTORY)
+    STRING(REPLACE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} FILE ${FILE})
+    SET(FILE ${FILE}/RelWithDebInfo/${TARGET}.dll)
+    SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"${TARGET}.dll\" Name=\"${TARGET}.dll\" DiskId=\"1\" Source=\"${FILE}\"/>\n")
+  ENDIF()
+ENDFOREACH()
 
 FOREACH(src ${MARIADB_CLIENT_INCLUDES})
   STRING(REPLACE "-" "_" src_id ${src})
@@ -63,8 +57,6 @@ IF(NOT WIX_DIR)
   SET(WIX_DIR $ENV{WIX}/bin)
 ENDIF()
 
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
-  ${CMAKE_BINARY_DIR}/win/packaging/mariadb-connector-c.xml)
 SET(MSI_PACKAGE "mariadb-connector-c-${PRODUCT_VERSION}-${PLATFORM}.msi")
 
 IF(WITH_SIGNCODE)
@@ -82,12 +74,13 @@ ADD_CUSTOM_TARGET(
         COMMAND ${WIX_DIR}/light.exe -ext WixUIExtension mariadb-connector-c.wixobj -o ${MSI_PACKAGE})
 
 ADD_CUSTOM_TARGET(WIXOBJ
-        DEPENDS mariadb-connector-c.xml
+  DEPENDS mariadb-connector-c.xml}
         COMMAND ${WIX_DIR}/candle.exe mariadb-connector-c.xml -o mariadb-connector-c.wixobj)
 
 SET_TARGET_PROPERTIES(${MSI_PACKAGE} PROPERTIES EXCLUDE_FROM_ALL OFF)
 SET_TARGET_PROPERTIES(${WIXOBJ} PROPERTIES EXCLUDE_FROM_ALL OFF)
 ADD_DEPENDENCIES(${MSI_PACKAGE} WIXOBJ)
-ADD_DEPENDENCIES(WIXOBJ libmariadb mariadbclient dialog mysql_clear_password) 
+ADD_DEPENDENCIES(WIXOBJ libmariadb mariadbclient mariadb_client_plugin_info ${DYNAMIC_TARGETS}) 
 
-
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
+  ${CMAKE_BINARY_DIR}/win/packaging/mariadb-connector-c.xml)

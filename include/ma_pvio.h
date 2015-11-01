@@ -53,7 +53,7 @@ typedef struct st_pvio_callback {
   struct st_pvio_callback *next;
 } PVIO_CALLBACK;
 
-struct st_ma_pvio {
+typedef struct st_ma_pvio {
   void *data;
   /* read ahead cache */
   uchar *cache;
@@ -69,7 +69,7 @@ struct st_ma_pvio {
   FILE *fp;
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
   void (*callback)(MARIADB_PVIO *pvio, my_bool is_read, const char *buffer, size_t length);
-};
+} MARIADB_PVIO;
 
 typedef struct st_ma_pvio_cinfo
 {
@@ -84,8 +84,8 @@ struct st_ma_pvio_methods
 {
   my_bool (*set_timeout)(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
   int (*get_timeout)(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
-  size_t (*read)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
-  size_t (*async_read)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+  size_t (*read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+  size_t (*async_read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
   size_t (*write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
   size_t (*async_write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
   int (*wait_io_or_timeout)(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
@@ -103,7 +103,7 @@ struct st_ma_pvio_methods
 MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo);
 void ma_pvio_close(MARIADB_PVIO *pvio);
 size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t ma_pvio_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
 size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int ma_pvio_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
 my_bool ma_pvio_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);

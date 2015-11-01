@@ -22,7 +22,7 @@ extern int my_connect_async(MARIADB_PVIO *pvio,
                             const struct sockaddr *name, uint namelen,
                             int vio_timeout);
 extern ssize_t my_recv_async(MARIADB_PVIO *pvio,
-                             const unsigned char *buf, size_t size, int timeout);
+                             unsigned char *buf, size_t size, int timeout);
 extern ssize_t my_send_async(MARIADB_PVIO *pvio,
                              const unsigned char *buf, size_t size,
                              int timeout);

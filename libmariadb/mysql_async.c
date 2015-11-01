@@ -135,7 +135,7 @@ my_connect_async(MARIADB_PVIO *pvio,
 #endif
 
 ssize_t
-my_recv_async(MARIADB_PVIO *pvio, const unsigned char *buf, size_t size, int timeout)
+my_recv_async(MARIADB_PVIO *pvio, unsigned char *buf, size_t size, int timeout)
 {
   ssize_t res;
   struct mysql_async_context *b= pvio->async_context;
