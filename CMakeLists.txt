@@ -30,6 +30,13 @@ OPTION(WITH_REMOTEIO "enables remote io support (requires libcurl)" OFF)
 
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
+IF(WITH_SIGNCODE)
+  IF(WIN32)
+    SET(SIGN_OPTIONS /a /t http://timestamp.verisign.com/scripts/timstamp.dll)
+  ENDIF()
+  MARK_AS_ADVANCED(SIGN_OPTIONS)
+ENDIF()
+
 
 IF(WITH_RTC)
   SET(RTC_OPTIONS "/RTC1 /RTCc")

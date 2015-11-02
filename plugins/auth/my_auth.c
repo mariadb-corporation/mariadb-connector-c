@@ -4,15 +4,29 @@
 #include <errmsg.h>
 #include <ma_common.h>
 #include <mysql/client_plugin.h>
-#include <ma_pvio.h>
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
-static int old_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 extern void read_user_name(char *name);
 extern uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer);
 
+typedef struct {
+  int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
+  int (*write_packet)(struct st_plugin_vio *vio, const uchar *pkt, size_t pkt_len);
+  void (*info)(struct st_plugin_vio *vio, struct st_plugin_vio_info *info);
+  /* -= end of MYSQL_PLUGIN_VIO =- */
+  MYSQL *mysql;
+  auth_plugin_t *plugin;             /**< what plugin we're under */
+  const char *db;
+  struct {
+    uchar *pkt;                      /**< pointer into NET::buff */
+    uint pkt_len;
+  } cached_server_reply;
+  uint packets_read, packets_written; /**< counters for send/received packets */
+  my_bool mysql_change_user;          /**< if it's mysql_change_user() */
+  int last_read_packet_len;           /**< the length of the last *read* packet */
+} MCPVIO_EXT;
 /*
 #define compile_time_assert(A) \
 do {\
@@ -34,36 +48,6 @@ auth_plugin_t native_password_client_plugin=
   native_password_auth_client
 };
 
-auth_plugin_t old_password_client_plugin=
-{
-  MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
-  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
-  old_password_plugin_name,
-  "R.J.Silk, Sergei Golubchik",
-  "Old MySQL-3.23 authentication",
-  {1, 0, 0},
-  "LGPL",
-  NULL,
-  NULL,
-  old_password_auth_client
-};
-
-typedef struct {
-  int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
-  int (*write_packet)(struct st_plugin_vio *vio, const uchar *pkt, size_t pkt_len);
-  void (*info)(struct st_plugin_vio *vio, struct st_plugin_vio_info *info);
-  /* -= end of MYSQL_PLUGIN_VIO =- */
-  MYSQL *mysql;
-  auth_plugin_t *plugin;             /**< what plugin we're under */
-  const char *db;
-  struct {
-    uchar *pkt;                      /**< pointer into NET::buff */
-    uint pkt_len;
-  } cached_server_reply;
-  uint packets_read, packets_written; /**< counters for send/received packets */
-  my_bool mysql_change_user;          /**< if it's mysql_change_user() */
-  int last_read_packet_len;           /**< the length of the last *read* packet */
-} MCPVIO_EXT;
 
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
@@ -108,53 +92,6 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 }
 
 
-/**
-  client authentication plugin that does old MySQL authentication
-  using an 8-byte (4.0-) scramble
-*/
-
-static int old_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
-{
-  uchar *pkt;
-  int pkt_len;
-
-  if (((MCPVIO_EXT *)vio)->mysql_change_user)
-  {
-    /*
-      in mysql_change_user() the client sends the first packet.
-      we use the old scramble.
-    */
-    pkt= (uchar*)mysql->scramble_buff;
-    pkt_len= SCRAMBLE_LENGTH_323 + 1;
-  }
-  else
-  {
-    /* read the scramble */
-    if ((pkt_len= vio->read_packet(vio, &pkt)) < 0)
-      return CR_ERROR;
-
-    if (pkt_len != SCRAMBLE_LENGTH_323 + 1 &&
-        pkt_len != SCRAMBLE_LENGTH + 1)
-        return CR_SERVER_HANDSHAKE_ERR;
-
-    /* save it in MYSQL */
-    memcpy(mysql->scramble_buff, pkt, pkt_len);
-    mysql->scramble_buff[pkt_len] = 0;
-  }
-
-  if (mysql->passwd[0])
-  {
-    char scrambled[SCRAMBLE_LENGTH_323 + 1];
-    scramble_323(scrambled, (char*)pkt, mysql->passwd);
-    if (vio->write_packet(vio, (uchar*)scrambled, SCRAMBLE_LENGTH_323 + 1))
-      return CR_ERROR;
-  }
-  else
-    if (vio->write_packet(vio, 0, 0)) /* no password */
-      return CR_ERROR;
-
-  return CR_OK;
-}
 
 static int send_change_user_packet(MCPVIO_EXT *mpvio,
                                    const uchar *data, int data_len)
@@ -567,8 +504,14 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   }
   else
   {
-    auth_plugin= mysql->server_capabilities & CLIENT_PROTOCOL_41 ?
-      &native_password_client_plugin : &old_password_client_plugin;
+    if (mysql->server_capabilities & CLIENT_PROTOCOL_41)
+      auth_plugin= &native_password_client_plugin;
+    else
+    {
+      if (!(auth_plugin= (auth_plugin_t*)mysql_client_find_plugin(mysql,
+                         "old_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
+        return 1; /* not found */
+    }
     auth_plugin_name= auth_plugin->name;
   }
 

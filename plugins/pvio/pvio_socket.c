@@ -63,8 +63,8 @@
 /* Function prototypes */
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
-size_t pvio_socket_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
-size_t pvio_socket_async_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+size_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
 size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
@@ -217,7 +217,7 @@ int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
      -1              on error
                      
 */   
-size_t pvio_socket_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+size_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
@@ -293,7 +293,7 @@ size_t pvio_socket_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
      -1              on error
                      
 */   
-size_t pvio_socket_async_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32

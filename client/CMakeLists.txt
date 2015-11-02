@@ -4,3 +4,4 @@ TARGET_LINK_LIBRARIES(mariadb_client_plugin_info mariadbclient)
 
 INSTALL(TARGETS mariadb_client_plugin_info
         DESTINATION "bin")
+SIGN_TARGET(mariadb_client_plugin_info)
