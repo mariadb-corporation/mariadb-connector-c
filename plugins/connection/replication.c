@@ -292,15 +292,15 @@ int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
     return 0;
   }
   switch(command) {
-    case MYSQL_COM_QUERY:
-    case MYSQL_COM_STMT_PREPARE:
+    case COM_QUERY:
+    case COM_STMT_PREPARE:
       if (is_slave_command(arg, length))
         SET_SLAVE(mysql, data);
       else
         SET_MASTER(mysql,data);
       break;
-    case MYSQL_COM_STMT_EXECUTE:
-    case MYSQL_COM_STMT_FETCH:
+    case COM_STMT_EXECUTE:
+    case COM_STMT_FETCH:
       if (data->pvio[MARIADB_SLAVE]->mysql->stmts && is_slave_stmt(data->pvio[MARIADB_SLAVE]->mysql, arg))
         SET_SLAVE(mysql, data);
       else
