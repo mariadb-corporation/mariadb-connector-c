@@ -736,7 +736,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     if (cinfo->mysql->options.bind_address)
     {
       gai_rc= getaddrinfo(cinfo->mysql->options.bind_address, 0,
-                          &hints, &res);
+                          &hints, &bind_res);
       if (gai_rc != 0)
       {
         PVIO_SET_ERROR(cinfo->mysql, CR_BIND_ADDR_FAILED, SQLSTATE_UNKNOWN, 
