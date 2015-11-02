@@ -669,7 +669,80 @@ static int test_conc118(MYSQL *mysql)
   return OK;
 }
 
+static int test_wrong_bind_address(MYSQL *my)
+{
+  char *bind_addr= "100.188.111.112";
+  MYSQL *mysql;
+
+  if (!strcmp(hostname, "localhost"))
+  {
+    diag("test doesn't work with unix sockets");
+    return SKIP;
+  }
+ 
+  mysql=  mysql_init(NULL);
+
+  mysql_options(mysql, MYSQL_OPT_BIND, bind_addr);
+  if (mysql_real_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error expected");
+    mysql_close(mysql);
+    return FAIL;
+  }
+  diag("Error: %s", mysql_error(mysql));
+  mysql_close(mysql);
+  return OK;
+}
+
+static int test_bind_address(MYSQL *my)
+{
+  MYSQL *mysql;
+  char *bind_addr= getenv("MYSQL_TEST_BINDADDR");
+  char query[128];
+  int rc;
+
+  if (!strcmp(hostname, "localhost"))
+  {
+    diag("test doesn't work with unix sockets");
+    return SKIP;
+  }
+
+  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  rc= mysql_query(my, query);
+
+  sprintf(query, "CREATE USER '%s'@'%s'", username, bind_addr);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  sprintf(query, "GRANT ALL ON %s.* TO '%s'@'%s'", schema, username, bind_addr);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  if (!bind_addr)
+  {
+    diag("No bind address specified");
+    return SKIP;
+  }
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_BIND, bind_addr);
+
+  if (!mysql_real_connect(mysql, bind_addr, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s\n", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+  diag("%s", mysql_get_host_info(mysql));
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
+  {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc118", test_conc118, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc66", test_conc66, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
