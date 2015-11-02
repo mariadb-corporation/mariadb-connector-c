@@ -281,7 +281,7 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
     int4store(buf, stmt->stmt_id);
     int4store(buf + STMT_ID_LENGTH, stmt->prefetch_rows);
 
-    if (simple_command(stmt->mysql, MYSQL_COM_STMT_FETCH, (char *)buf, sizeof(buf), 1, stmt))
+    if (simple_command(stmt->mysql, COM_STMT_FETCH, (char *)buf, sizeof(buf), 1, stmt))
       DBUG_RETURN(1);
 
     /* free previously allocated buffer */
@@ -974,7 +974,7 @@ my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove)
     if (stmt->state > MYSQL_STMT_INITTED)
     {
       int4store(stmt_id, stmt->stmt_id);
-      if (simple_command(stmt->mysql,MYSQL_COM_STMT_CLOSE, stmt_id, sizeof(stmt_id), 1, stmt))
+      if (simple_command(stmt->mysql,COM_STMT_CLOSE, stmt_id, sizeof(stmt_id), 1, stmt))
       {
         SET_CLIENT_STMT_ERROR(stmt, stmt->mysql->net.last_errno, stmt->mysql->net.sqlstate, stmt->mysql->net.last_error); 
         return 1;
@@ -1256,10 +1256,10 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
     stmt->field_count= 0;
 
     int4store(stmt_id, stmt->stmt_id);
-    if (simple_command(mysql, MYSQL_COM_STMT_CLOSE, stmt_id, sizeof(stmt_id), 1, stmt))
+    if (simple_command(mysql, COM_STMT_CLOSE, stmt_id, sizeof(stmt_id), 1, stmt))
       goto fail;
   }
-  if (simple_command(mysql, MYSQL_COM_STMT_PREPARE, query, length, 1, stmt))
+  if (simple_command(mysql, COM_STMT_PREPARE, query, length, 1, stmt))
     goto fail;
 
   if (stmt->mysql->methods->db_read_prepare_response &&
@@ -1343,7 +1343,7 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
     int4store(buff, stmt->stmt_id);
     int4store(buff + STMT_ID_LENGTH, (int)~0);
 
-    if (simple_command(stmt->mysql, MYSQL_COM_STMT_FETCH, buff, sizeof(buff), 1, stmt))
+    if (simple_command(stmt->mysql, COM_STMT_FETCH, buff, sizeof(buff), 1, stmt))
       DBUG_RETURN(1);
     /* todo: cursor */
   }
@@ -1487,7 +1487,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   request= (char *)mysql_stmt_execute_generate_request(stmt, &request_len);
   DBUG_PRINT("info",("request_len=%ld", request_len));
 
-  ret= test(simple_command(mysql, MYSQL_COM_STMT_EXECUTE, request, request_len, 1, stmt) || 
+  ret= test(simple_command(mysql, COM_STMT_EXECUTE, request, request_len, 1, stmt) || 
       (mysql && mysql->methods->db_read_stmt_result && mysql->methods->db_read_stmt_result(mysql)));
   if (request)
     my_free(request);
@@ -1666,7 +1666,7 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
       {
         unsigned char cmd_buf[STMT_ID_LENGTH];
         int4store(cmd_buf, stmt->stmt_id);
-        if ((ret= simple_command(mysql,MYSQL_COM_STMT_RESET, (char *)cmd_buf, sizeof(cmd_buf), 0, stmt)))
+        if ((ret= simple_command(mysql,COM_STMT_RESET, (char *)cmd_buf, sizeof(cmd_buf), 0, stmt)))
         {
           SET_CLIENT_STMT_ERROR(stmt, mysql->net.last_errno, mysql->net.sqlstate,
               mysql->net.last_error);
@@ -1820,7 +1820,7 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
     int2store(cmd_buff + STMT_ID_LENGTH, param_number);
     memcpy(cmd_buff + STMT_ID_LENGTH + 2, data, length);
     stmt->params[param_number].long_data_used= 1;
-    ret= simple_command(stmt->mysql,MYSQL_COM_STMT_SEND_LONG_DATA, (char *)cmd_buff, packet_len, 1, stmt);
+    ret= simple_command(stmt->mysql, COM_STMT_SEND_LONG_DATA, (char *)cmd_buff, packet_len, 1, stmt);
     my_free(cmd_buff);
     DBUG_RETURN(ret); 
   } 

@@ -101,7 +101,7 @@ struct my_tests_st
   char *skipmsg;
 };
 
-static char *schema = "test";
+static char *schema = "test_c";
 static char *hostname = 0;
 static char *password = 0;
 static unsigned int port = 0;
@@ -390,7 +390,7 @@ MYSQL *test_connect(struct my_tests_st *test) {
     }
   }
   if (!(mysql_real_connect(mysql, hostname, username, password,
-                           schema, port, socketname, (test) ? test->connect_flags:0)))
+                           NULL, port, socketname, (test) ? test->connect_flags:0)))
   {
     diag("Couldn't establish connection to server %s. Error (%d): %s", 
                    hostname, mysql_errno(mysql), mysql_error(mysql));

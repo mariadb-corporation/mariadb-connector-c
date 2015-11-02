@@ -62,42 +62,42 @@ struct st_mysql_client_plugin _mysql_client_plugin_declaration_ =
 };
 
 static char *commands[]= {
-  "MYSQL_COM_SLEEP",
-  "MYSQL_COM_QUIT",
-  "MYSQL_COM_INIT_DB",
-  "MYSQL_COM_QUERY",
-  "MYSQL_COM_FIELD_LIST",
-  "MYSQL_COM_CREATE_DB",
-  "MYSQL_COM_DROP_DB",
-  "MYSQL_COM_REFRESH",
-  "MYSQL_COM_SHUTDOWN",
-  "MYSQL_COM_STATISTICS",
-  "MYSQL_COM_PROCESS_INFO",
-  "MYSQL_COM_CONNECT",
-  "MYSQL_COM_PROCESS_KILL",
-  "MYSQL_COM_DEBUG",
-  "MYSQL_COM_PING",
-  "MYSQL_COM_TIME",
-  "MYSQL_COM_DELAYED_INSERT",
-  "MYSQL_COM_CHANGE_USER",
-  "MYSQL_COM_BINLOG_DUMP",
-  "MYSQL_COM_TABLE_DUMP",
-  "MYSQL_COM_CONNECT_OUT",
-  "MYSQL_COM_REGISTER_SLAVE",
-  "MYSQL_COM_STMT_PREPARE",
-  "MYSQL_COM_STMT_EXECUTE",
-  "MYSQL_COM_STMT_SEND_LONG_DATA",
-  "MYSQL_COM_STMT_CLOSE",
-  "MYSQL_COM_STMT_RESET",
-  "MYSQL_COM_SET_OPTION",
-  "MYSQL_COM_STMT_FETCH",
-  "MYSQL_COM_DAEMON",
-  "MYSQL_COM_END"
+  "COM_SLEEP",
+  "COM_QUIT",
+  "COM_INIT_DB",
+  "COM_QUERY",
+  "COM_FIELD_LIST",
+  "COM_CREATE_DB",
+  "COM_DROP_DB",
+  "COM_REFRESH",
+  "COM_SHUTDOWN",
+  "COM_STATISTICS",
+  "COM_PROCESS_INFO",
+  "COM_CONNECT",
+  "COM_PROCESS_KILL",
+  "COM_DEBUG",
+  "COM_PING",
+  "COM_TIME",
+  "COM_DELAYED_INSERT",
+  "COM_CHANGE_USER",
+  "COM_BINLOG_DUMP",
+  "COM_TABLE_DUMP",
+  "COM_CONNECT_OUT",
+  "COM_REGISTER_SLAVE",
+  "COM_STMT_PREPARE",
+  "COM_STMT_EXECUTE",
+  "COM_STMT_SEND_LONG_DATA",
+  "COM_STMT_CLOSE",
+  "COM_STMT_RESET",
+  "COM_SET_OPTION",
+  "COM_STMT_FETCH",
+  "COM_DAEMON",
+  "COM_END"
 };
 
 typedef struct {
   unsigned long thread_id;
-  int last_command; /* MYSQL_COM_* values, -1 for handshake */
+  int last_command; /* COM_* values, -1 for handshake */
   unsigned int max_packet_size;
   size_t total_size[2];
   unsigned int client_flags;
@@ -332,7 +332,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
         else
           printf("%8lu: CONNECT_SUCCESS(host=%s,user=%s,db=%s)\n", info->thread_id, 
                  mysql->host, info->username, info->db ? info->db : "'none'");
-        info->last_command= MYSQL_COM_SLEEP;
+        info->last_command= COM_SLEEP;
       }
     }
     else {
@@ -346,30 +346,30 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
         info->last_command= *p;
         p++;
         switch (info->last_command) {
-        case MYSQL_COM_INIT_DB:
-        case MYSQL_COM_DROP_DB:
-        case MYSQL_COM_CREATE_DB:
-        case MYSQL_COM_DEBUG:
-        case MYSQL_COM_QUERY:
-        case MYSQL_COM_STMT_PREPARE:
+        case COM_INIT_DB:
+        case COM_DROP_DB:
+        case COM_CREATE_DB:
+        case COM_DEBUG:
+        case COM_QUERY:
+        case COM_STMT_PREPARE:
           trace_set_command(info, p, len - 1);
           break;
-        case MYSQL_COM_PROCESS_KILL:
+        case COM_PROCESS_KILL:
           info->refid= uint4korr(p);
           break;
-        case MYSQL_COM_QUIT:
-          printf("%8d: MYSQL_COM_QUIT\n", info->thread_id);
+        case COM_QUIT:
+          printf("%8d: COM_QUIT\n", info->thread_id);
           delete_trace_info(info->thread_id);
           break;
-        case MYSQL_COM_PING:
-          printf("%8d: MYSQL_COM_PING\n", info->thread_id);
+        case COM_PING:
+          printf("%8d: COM_PING\n", info->thread_id);
           break;
-        case MYSQL_COM_STMT_EXECUTE:
-        case MYSQL_COM_STMT_RESET:
-        case MYSQL_COM_STMT_CLOSE:
+        case COM_STMT_EXECUTE:
+        case COM_STMT_RESET:
+        case COM_STMT_CLOSE:
           info->refid= uint4korr(p);
           break;
-        case MYSQL_COM_CHANGE_USER:
+        case COM_CHANGE_USER:
           break;
         default:
           if (info->local_infile == 1)
@@ -396,24 +396,24 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
         is_error= ((unsigned int)len == -1);
 
         switch(info->last_command) {
-        case MYSQL_COM_STMT_EXECUTE:
-        case MYSQL_COM_STMT_RESET:
-        case MYSQL_COM_STMT_CLOSE:
-        case MYSQL_COM_PROCESS_KILL:
+        case COM_STMT_EXECUTE:
+        case COM_STMT_RESET:
+        case COM_STMT_CLOSE:
+        case COM_PROCESS_KILL:
           dump_reference(info, is_error);
           info->refid= 0;
           info->last_command= 0;
           break;
-        case MYSQL_COM_QUIT:
+        case COM_QUIT:
           dump_simple(info, is_error);
           break;
-        case MYSQL_COM_QUERY:
-        case MYSQL_COM_INIT_DB:
-        case MYSQL_COM_DROP_DB:
-        case MYSQL_COM_CREATE_DB:
-        case MYSQL_COM_DEBUG:
-        case MYSQL_COM_CHANGE_USER:
-          if (info->last_command == MYSQL_COM_QUERY && (uchar)*p == 251)
+        case COM_QUERY:
+        case COM_INIT_DB:
+        case COM_DROP_DB:
+        case COM_CREATE_DB:
+        case COM_DEBUG:
+        case COM_CHANGE_USER:
+          if (info->last_command == COM_QUERY && (uchar)*p == 251)
           {
             info->local_infile= 1;
             p++;
@@ -429,8 +429,8 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
             info->command= NULL;
           }
           break;
-        case MYSQL_COM_STMT_PREPARE:
-          printf("%8d: MYSQL_COM_STMT_PREPARE(%s) ", info->thread_id, info->command);
+        case COM_STMT_PREPARE:
+          printf("%8d: COM_STMT_PREPARE(%s) ", info->thread_id, info->command);
           if (!*p)
           {
             unsigned long stmt_id= uint4korr(p+1);

@@ -30,10 +30,10 @@
       <Directory Id="@FOLDER@">
         <Directory Id="Mariadb" Name="@PRODUCT_INSTALL_DIR@">
           <Directory Id="INSTALLFOLDER" Name="@PRODUCT_NAME@" >
+            <Directory Id="inst_bin" Name="bin"/>
             <Directory Id="instlib" Name="lib">
               <Directory Id="instlib_debug" Name="debug"/>
               <Directory Id="instlib_plugin" Name="plugin"/>
-              <Directory Id="inst_bin" Name="bin"/>
             </Directory>
             <Directory Id="instinclude" Name="include" >
               <Directory Id="instincludemysql" Name="mysql"/>
