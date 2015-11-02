@@ -1,11 +1,15 @@
 # plugin configuration
 
-MACRO(REGISTER_PLUGIN name source struct type allow)
+MACRO(REGISTER_PLUGIN name source struct type target allow)
   IF(PLUGINS)
     LIST(REMOVE_ITEM PLUGINS ${name})
   ENDIF()
   SET(${name}_PLUGIN_SOURCE ${source})
+  MARK_AS_ADVANCED(${name}_PLUGIN_SOURCE})
   SET(${name}_PLUGIN_TYPE ${type})
+  IF(NOT ${target} STREQUAL "")
+    SET(${name}_PLUGIN_TARGET ${target})
+  ENDIF()
   SET(${name}_PLUGIN_STRUCT ${struct})
   SET(${name}_PLUGIN_SOURCE ${source})
   SET(${name}_PLUGIN_CHG ${allow})
@@ -15,26 +19,28 @@ ENDMACRO()
 MARK_AS_ADVANCED(PLUGINS)
 
 # CIO
-REGISTER_PLUGIN("SOCKET" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_socket.c" "pvio_socket_plugin" "STATIC" 0)
+REGISTER_PLUGIN("SOCKET" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_socket.c" "pvio_socket_plugin" "STATIC" pvio_socket 0)
 IF(WIN32)
-  REGISTER_PLUGIN("NPIPE" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_npipe.c" "pvio_npipe_plugin" "DYNAMIC" 1)
-  REGISTER_PLUGIN("SHMEM" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "DYNAMIC" 1)
+  REGISTER_PLUGIN("NPIPE" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_npipe.c" "pvio_npipe_plugin" "STATIC" pvio_npipe 1)
+  REGISTER_PLUGIN("SHMEM" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "DYNAMIC" pvio_shmem 1)
 ENDIF()
 
 # AUTHENTICATION
-REGISTER_PLUGIN("AUTH_NATIVE" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "native_password_client_plugin" "STATIC" 0)
-REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "old_password_client_plugin" "STATIC" 0)
-REGISTER_PLUGIN("AUTH_DIALOG" "${CMAKE_SOURCE_DIR}/plugins/auth/dialog.c" "auth_dialog_plugin" "DYNAMIC" 1)
-REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CMAKE_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "auth_cleartext_plugin" "DYNAMIC" 1)
+REGISTER_PLUGIN("AUTH_NATIVE" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "native_password_client_plugin" "STATIC" "" 0)
+REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "old_password_client_plugin" "STATIC" "" 0)
+REGISTER_PLUGIN("AUTH_DIALOG" "${CMAKE_SOURCE_DIR}/plugins/auth/dialog.c" "auth_dialog_plugin" "DYNAMIC" dialog 1)
+REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CMAKE_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "auth_cleartext_plugin" "DYNAMIC" "mysql_clear_password" 1)
 
 #Remote_IO
-REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" 1)
+IF(CURL_FOUND)
+  REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
+ENDIF()
 
 #Trace
-REGISTER_PLUGIN("TRACE_EXAMPLE" "${CMAKE_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" 1)
+REGISTER_PLUGIN("TRACE_EXAMPLE" "${CMAKE_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" "trace_example" 1)
 
 #Connection
-REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "STATIC" 1)
+REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "STATIC" "" 1)
 
 # Allow registration of additional plugins
 IF(PLUGIN_CONF_FILE)

@@ -51,8 +51,11 @@ static char *get_password(FILE *file, char *buffer, int length)
 {
   char inChar;
   int  CharsProcessed= 1;
+#ifdef _WIN32
+  DWORD Offset= 0;
+#else
   int  Offset= 0;
-
+#endif
   memset(buffer, 0, length);
 
   do

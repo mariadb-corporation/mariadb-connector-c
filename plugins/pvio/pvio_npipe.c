@@ -30,38 +30,34 @@
 #include <string.h>
 #include <m_string.h>
 
-#ifdef HAVE_NPIPE_DYNAMIC
-#define my_malloc(A, B) malloc((A))
-#undef my_free
-#define my_free(A,B) free(((A)))
-#endif
-
 /* Function prototypes */
 my_bool pvio_npipe_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_npipe_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
 size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t pvio_npipe_write(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
 my_bool pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool pvio_npipe_close(MARIADB_PVIO *pvio);
 int pvio_npipe_fast_send(MARIADB_PVIO *pvio);
 int pvio_npipe_keepalive(MARIADB_PVIO *pvio);
-my_socket pvio_npipe_get_socket(MARIADB_PVIO *pvio);
+my_bool pvio_npipe_get_handle(MARIADB_PVIO *pvio, void *handle);
 my_bool pvio_npipe_is_blocking(MARIADB_PVIO *pvio);
 
 struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_set_timeout,
   pvio_npipe_get_timeout,
   pvio_npipe_read,
+  NULL,
   pvio_npipe_write,
+  NULL,
   pvio_npipe_wait_io_or_timeout,
   pvio_npipe_blocking,
   pvio_npipe_connect,
   pvio_npipe_close,
   pvio_npipe_fast_send,
   pvio_npipe_keepalive,
-  pvio_npipe_get_socket,
+  pvio_npipe_get_handle,
   pvio_npipe_is_blocking
 };
 
@@ -87,7 +83,6 @@ struct st_pvio_npipe {
   HANDLE pipe;
   OVERLAPPED overlapped;
   size_t rw_size;
-  int fcntl_mode;
   MYSQL *mysql;
 };
 
@@ -117,7 +112,7 @@ size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 
   cpipe= (struct st_pvio_npipe *)pvio->data;
 
-  if (ReadFile(cpipe->pipe, buffer, length, &dwRead, &cpipe->overlapped))
+  if (ReadFile(cpipe->pipe, (LPVOID)buffer, length, &dwRead, &cpipe->overlapped))
   {
     r= (size_t)dwRead;
     goto end;
@@ -131,7 +126,7 @@ end:
   return r;
 }
 
-size_t pvio_npipe_write(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
+size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   DWORD dwWrite= 0;
   size_t r= -1;
@@ -171,10 +166,11 @@ int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeo
   status= WaitForSingleObject(cpipe->overlapped.hEvent, timeout);
   if (status == WAIT_OBJECT_0)
   {
-    if (GetOverlappedResult(cpipe->pipe, &cpipe->overlapped, &cpipe->rw_size, FALSE))
+    if (GetOverlappedResult(cpipe->pipe, &cpipe->overlapped, (LPDWORD)&cpipe->rw_size, FALSE))
       return 0;
   }  
-  /* other status codes are: WAIT_ABANDONED, WAIT_TIMEOUT and WAIT_FAILED */
+  /* For other status codes (WAIT_ABANDONED, WAIT_TIMEOUT and WAIT_FAILED)
+     we return error */
   save_error= GetLastError();
   CancelIo(cpipe->pipe);
   SetLastError(save_error);
@@ -184,12 +180,27 @@ int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeo
 my_bool pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
 {
   /* not supported */
+  DWORD flags= 0;
+  struct st_pvio_npipe *cpipe= NULL;
+
+  cpipe= (struct st_pvio_npipe *)pvio->data;
+
+  if (previous_mode)
+  {
+    if (!GetNamedPipeHandleState(cpipe->pipe, &flags, NULL, NULL, NULL, NULL, 0))
+      return 1;
+    *previous_mode= flags & PIPE_NOWAIT ? 0 : 1;
+  }
+
+  flags= block ? PIPE_WAIT : PIPE_NOWAIT;
+  if (!SetNamedPipeHandleState(cpipe->pipe, &flags, NULL, NULL))
+    return 1;
   return 0;
 }
 
 int pvio_npipe_keepalive(MARIADB_PVIO *pvio)
 {
-  /* not supported */
+  /* keep alive is used for TCP/IP connections only */
   return 0;
 }
 
@@ -205,7 +216,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   if (!pvio || !cinfo)
     return 1;
 
-  if (!(cpipe= (struct st_pvio_npipe *)my_malloc(sizeof(struct st_pvio_npipe), MYF(0))))
+  if (!(cpipe= (struct st_pvio_npipe *)LocalAlloc(sizeof(struct st_pvio_npipe), 0)))
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
     return 1;
@@ -244,14 +255,14 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 
       if (GetLastError() != ERROR_PIPE_BUSY)
       {
-        pvio->set_error(pvio, CR_NAMEDPIPEOPEN_ERROR, SQLSTATE_UNKNOWN, 0,
+        pvio->set_error(pvio->mysql, CR_NAMEDPIPEOPEN_ERROR, SQLSTATE_UNKNOWN, 0,
                        cinfo->host, cinfo->unix_socket, GetLastError());
         goto end;
       }
 
       if (has_timedout || !WaitNamedPipe(szPipeName, pvio->timeout[PVIO_CONNECT_TIMEOUT]))
       {
-        pvio->set_error(pvio, CR_NAMEDPIPEWAIT_ERROR, SQLSTATE_UNKNOWN, 0,
+        pvio->set_error(pvio->mysql, CR_NAMEDPIPEWAIT_ERROR, SQLSTATE_UNKNOWN, 0,
                        cinfo->host, cinfo->unix_socket, GetLastError());
         goto end;
       }
@@ -261,7 +272,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     dwMode = PIPE_READMODE_BYTE | PIPE_WAIT;
     if (!SetNamedPipeHandleState(cpipe->pipe, &dwMode, NULL, NULL))
     {
-      pvio->set_error(pvio, CR_NAMEDPIPESETSTATE_ERROR, SQLSTATE_UNKNOWN, 0,
+      pvio->set_error(pvio->mysql, CR_NAMEDPIPESETSTATE_ERROR, SQLSTATE_UNKNOWN, 0,
                      cinfo->host, cinfo->unix_socket, (ulong) GetLastError());
       goto end;
     }
@@ -269,7 +280,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     /* Register event handler for overlapped IO */
     if (!(cpipe->overlapped.hEvent= CreateEvent(NULL, FALSE, FALSE, NULL)))
     {
-      pvio->set_error(pvio, CR_EVENT_CREATE_FAILED, SQLSTATE_UNKNOWN, 0,
+      pvio->set_error(pvio->mysql, CR_EVENT_CREATE_FAILED, SQLSTATE_UNKNOWN, 0,
                      GetLastError());
       goto end;
     }
@@ -280,7 +291,7 @@ end:
   {
     if (cpipe->pipe != INVALID_HANDLE_VALUE)
       CloseHandle(cpipe->pipe);
-    my_free((gptr)cpipe, MYF(0));
+    LocalFree(cpipe);
     pvio->data= NULL;
   }
   return 1;
@@ -303,22 +314,32 @@ my_bool pvio_npipe_close(MARIADB_PVIO *pvio)
       CloseHandle(cpipe->pipe);
       cpipe->pipe= INVALID_HANDLE_VALUE;
     }
-    my_free((gptr)pvio->data, MYF(0));
+    LocalFree(pvio->data);
     pvio->data= NULL;
   }
   return r;
 }
 
-my_socket pvio_npipe_get_socket(MARIADB_PVIO *pvio)
+my_bool pvio_npipe_get_handle(MARIADB_PVIO *pvio, void *handle)
 {
   if (pvio && pvio->data)
-    return (my_socket)((struct st_pvio_npipe *)pvio->data)->pipe;
-  return INVALID_SOCKET;
+  {
+    *(HANDLE *)handle= ((struct st_pvio_npipe *)pvio->data)->pipe;
+    return 0;
+  }
+  return 1;
 } 
 
 my_bool pvio_npipe_is_blocking(MARIADB_PVIO *pvio)
 {
-  return 1;
+  DWORD flags= 0;
+  struct st_pvio_npipe *cpipe= NULL;
+
+  cpipe= (struct st_pvio_npipe *)pvio->data;
+
+  if (!GetNamedPipeHandleState(cpipe->pipe, &flags, NULL, NULL, NULL, NULL, 0))
+    return 1;
+  return (flags & PIPE_NOWAIT) ? 0 : 1;
 }
 
 #endif

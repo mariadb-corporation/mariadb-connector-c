@@ -109,7 +109,7 @@ static int get_plugin_nr(int type)
   return -1;
 }
 
-static my_bool check_plugin_version(struct st_mysql_client_plugin *plugin, int version, char *errmsg)
+static my_bool check_plugin_version(struct st_mysql_client_plugin *plugin, unsigned int version, char *errmsg)
 {
   if (plugin->interface_version < version ||
       (plugin->interface_version >> 8) > (version >> 8))

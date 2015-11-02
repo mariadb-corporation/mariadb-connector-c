@@ -29,19 +29,13 @@
 #include <string.h>
 #include <m_string.h>
 
-#ifdef HAVE_SHMEM_DYNAMIC
-#define my_malloc(A, B) malloc((A))
-#undef my_free
-#define my_free(A,B) free(((A)))
-#endif
-
 #define SHM_DEFAULT_NAME "MYSQL"
 #define PVIO_SHM_BUFFER_SIZE 16000 + 4
 
 my_bool pvio_shm_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_shm_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
-size_t pvio_shm_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
-size_t pvio_shm_write(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+size_t pvio_shm_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+size_t pvio_shm_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_shm_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
 my_bool pvio_shm_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
@@ -123,7 +117,7 @@ int pvio_shm_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
   return pvio->timeout[type] / 1000;
 }
 
-size_t pvio_shm_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+size_t pvio_shm_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   PVIO_SHM *pvio_shm= (PVIO_SHM *)pvio->data;
   size_t copy_size= length;
@@ -151,7 +145,7 @@ size_t pvio_shm_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
       return -1;
     }
     /* server sent data */
-    pvio_shm->read_pos= pvio_shm->map;
+    pvio_shm->read_pos= (char *)pvio_shm->map;
     pvio_shm->buffer_size= uint4korr(pvio_shm->read_pos);
     pvio_shm->read_pos+= 4;
   }
@@ -161,7 +155,7 @@ size_t pvio_shm_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   
   if (copy_size)
   {
-    memcpy(buffer, pvio_shm->read_pos, pvio_shm->buffer_size);
+    memcpy(buffer, (uchar *)pvio_shm->read_pos, pvio_shm->buffer_size);
     pvio_shm->read_pos+= copy_size;
     pvio_shm->buffer_size-= copy_size;
   }
@@ -174,12 +168,12 @@ size_t pvio_shm_read(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   return copy_size;
 }
 
-size_t pvio_shm_write(MARIADB_PVIO *pvio,  uchar *buffer, size_t length)
+size_t pvio_shm_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   HANDLE events[2];
   PVIO_SHM *pvio_shm= (PVIO_SHM *)pvio->data;
   size_t bytes_to_write= length;
-  uchar *buffer_pos= buffer;
+  uchar *buffer_pos= (uchar *)buffer;
   
   if (!pvio_shm)
     return -1;
@@ -216,6 +210,7 @@ size_t pvio_shm_write(MARIADB_PVIO *pvio,  uchar *buffer, size_t length)
 
 int pvio_shm_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
+  return 0;
 }
 
 my_bool pvio_shm_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
@@ -244,8 +239,6 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   uchar i= 0;
   int len;
   DWORD cid;
-  char connection_id[28];
-  char *connection_id_str;
   DWORD dwDesiredAccess= EVENT_MODIFY_STATE | SYNCHRONIZE;
   HANDLE hdlConnectRequest= NULL,
          hdlConnectRequestAnswer= NULL,
@@ -269,7 +262,7 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
                      cinfo->mysql->options.shared_memory_base_name : SHM_DEFAULT_NAME;
   
 
-  if (!(shm_name= LocalAlloc(LMEM_ZEROINIT, strlen(base_memory_name) + 40)))
+  if (!(shm_name= (char *)LocalAlloc(LMEM_ZEROINIT, strlen(base_memory_name) + 40)))
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
     goto error;
@@ -394,7 +387,7 @@ error:
       pvio->data= (void *)pvio_shm;
       pvio->mysql= cinfo->mysql;
       pvio->type= cinfo->type;
-      pvio_shm->read_pos= pvio_shm->map;
+      pvio_shm->read_pos= (char *)pvio_shm->map;
       pvio->mysql->net.pvio= pvio;
       return 0;
     }
@@ -433,8 +426,9 @@ my_bool pvio_shm_close(MARIADB_PVIO *pvio)
   return 0;
 }
 
-my_socket pvio_shm_get_socket(MARIADB_PVIO *pvio)
+my_bool pvio_shm_get_socket(MARIADB_PVIO *pvio, void *handle)
 {
+  return 1;
 } 
 
 my_bool pvio_shm_is_blocking(MARIADB_PVIO *pvio)
