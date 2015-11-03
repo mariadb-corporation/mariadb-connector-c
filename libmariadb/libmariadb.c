@@ -1740,6 +1740,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
                           host, socket_errno);
       goto error;
     }
+    if (socket_block(sock, 1) == SOCKET_ERROR)
+      goto error;
   }
   /* set timeouts */
   net->vio->read_timeout= mysql->options.read_timeout;
