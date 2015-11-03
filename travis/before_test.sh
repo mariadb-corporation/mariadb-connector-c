@@ -7,9 +7,9 @@ export MYSQ_GPG_KEY=5072E1F5
 
 remove_mysql(){
     service mysql stop
-    apt-get remove --purge mysql-server mysql-client mysql-common
-    apt-get autoremove
-    apt-get autoclean
+    apt-get -qq remove --purge mysql-server mysql-client mysql-common
+    apt-get -qq autoremove
+    apt-get -qq autoclean
     rm -rf /etc/mysql||true
     rm -rf /var/lib/mysql||true
 }
@@ -26,22 +26,22 @@ END
 
     apt-key adv --keyserver pool.sks-keyservers.net --recv-keys $MYSQ_GPG_KEY
 
-    apt-get update
-    apt-get install mysql-server
+    apt-get -qq update
+    apt-get -qq install mysql-server
 
     dpkg -l|grep ^ii|grep mysql-server|grep ${MYSQL_VERSION/-dmr/}
 
 else
     remove_mysql
 
-    apt-get install python-software-properties
+    apt-get -qq install python-software-properties
 
     apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xcbcb082a1bb943db
     add-apt-repository "deb http://nyc2.mirrors.digitalocean.com/mariadb/repo/$MARIA_VERSION/ubuntu precise main"
 
-    apt-get update -qq
+    apt-get -qq update
 
-    apt-get install mariadb-server
+    apt-get -qq install mariadb-server
 fi
 
 tee /etc/mysql/conf.d/map.cnf << END
