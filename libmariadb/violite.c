@@ -360,7 +360,7 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
 
   if (vio->cache + vio->cache_size > vio->cache_pos)
   {
-    r= MIN(size, vio->cache + vio->cache_size - vio->cache_pos);
+    r= MIN(size, (size_t)(vio->cache + vio->cache_size - vio->cache_pos));
     memcpy(buf, vio->cache_pos, r);
     vio->cache_pos+= r;
   }
