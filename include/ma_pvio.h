@@ -53,7 +53,7 @@ typedef struct st_pvio_callback {
   struct st_pvio_callback *next;
 } PVIO_CALLBACK;
 
-typedef struct st_ma_pvio {
+struct st_ma_pvio {
   void *data;
   /* read ahead cache */
   uchar *cache;
@@ -69,7 +69,7 @@ typedef struct st_ma_pvio {
   FILE *fp;
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
   void (*callback)(MARIADB_PVIO *pvio, my_bool is_read, const char *buffer, size_t length);
-} MARIADB_PVIO;
+};
 
 typedef struct st_ma_pvio_cinfo
 {

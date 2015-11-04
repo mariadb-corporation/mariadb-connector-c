@@ -596,7 +596,6 @@ static int pvio_socket_internal_connect(MARIADB_PVIO *pvio,
     }
   }
 #endif
-
   return rc;
 }
 
@@ -662,7 +661,7 @@ pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
   if (mysql->options.extension && mysql->options.extension->async_context &&
       mysql->options.extension->async_context->active)
   {
-    pvio_socket_blocking(pvio,0, 0);
+    pvio_socket_blocking(pvio, 0, 0);
     return my_connect_async(pvio, name, namelen, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
   }
 
@@ -782,10 +781,11 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       rc= pvio_socket_connect_sync_or_async(pvio, save_res->ai_addr, save_res->ai_addrlen);
       if (!rc)
       {
-/*        if (mysql->options.extension && mysql->options.extension->async_context &&
+        MYSQL *mysql= pvio->mysql;
+        if (mysql->options.extension && mysql->options.extension->async_context &&
              mysql->options.extension->async_context->active)
-          break; */
-        if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
+          break;
+        if (pvio_socket_blocking(pvio, 0, 0) == SOCKET_ERROR)
         {
           closesocket(csock->socket);
           continue;
@@ -812,6 +812,8 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
                            cinfo->host, socket_errno);
       goto error;
     }
+    if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
+      goto error;
   }
 #ifdef _WIN32
   /* apply timeouts */
