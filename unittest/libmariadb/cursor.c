@@ -478,7 +478,7 @@ static int test_bug10794(MYSQL *mysql)
   {
     id_val= (i+1)*10;
     sprintf(a, "a%d", i);
-    a_len= strlen(a); /* safety against broken sprintf */
+    a_len= (unsigned long)strlen(a); /* safety against broken sprintf */
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
   }
@@ -728,7 +728,7 @@ static int test_bug11656(MYSQL *mysql)
   {
     my_bind[i].buffer_type= MYSQL_TYPE_STRING;
     my_bind[i].buffer= (uchar* *)&buf[i];
-    my_bind[i].buffer_length= strlen(buf[i]);
+    my_bind[i].buffer_length= (unsigned long)strlen(buf[i]);
   }
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);

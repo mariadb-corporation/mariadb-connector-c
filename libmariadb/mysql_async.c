@@ -496,7 +496,7 @@ MK_ASYNC_INTERNAL_BODY(
   r_int)
 }
 int STDCALL
-mysql_real_query_start(int *ret, MYSQL *mysql, const char *stmt_str, unsigned long length)
+mysql_real_query_start(int *ret, MYSQL *mysql, const char *stmt_str, size_t length)
 {
   int res;                                                                    
   struct mysql_async_context *b;                                              
@@ -1414,7 +1414,7 @@ MK_ASYNC_INTERNAL_BODY(
 }
 int STDCALL
 mysql_stmt_prepare_start(int *ret, MYSQL_STMT *stmt, const char *query,
-                         unsigned long length)
+                         size_t length)
 {
 MK_ASYNC_START_BODY(
   mysql_stmt_prepare,
@@ -1718,7 +1718,7 @@ MK_ASYNC_INTERNAL_BODY(
 int STDCALL
 mysql_stmt_send_long_data_start(my_bool *ret, MYSQL_STMT *stmt,
                                 unsigned int param_number,
-                                const char *data, unsigned long length)
+                                const char *data, size_t length)
 {
 MK_ASYNC_START_BODY(
   mysql_stmt_send_long_data,

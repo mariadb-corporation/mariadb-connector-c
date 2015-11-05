@@ -313,7 +313,7 @@ size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 #ifndef _WIN32
   r= recv(csock->socket,(void *)buffer, length, read_flags);
 #else
-  r= recv(csock->socket, (char *)buffer, length, 0);
+  r= recv(csock->socket, (char *)buffer, (int)length, 0);
 #endif
   return r;
 }
@@ -359,7 +359,7 @@ size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t l
 #ifndef WIN32
   r= send(csock->socket, buffer, length, write_flags);
 #else
-  r= send(csock->socket, buffer, length, 0);
+  r= send(csock->socket, buffer, (int)length, 0);
 #endif
   return r;
 }
@@ -768,7 +768,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       {
         for (bres= bind_res; bres; bres= bres->ai_next)
         {
-          if (!(rc= bind(csock->socket, bres->ai_addr, bres->ai_addrlen)))
+          if (!(rc= bind(csock->socket, bres->ai_addr, (int)bres->ai_addrlen)))
             break;
         }
         if (rc)
@@ -778,7 +778,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
         }
       }
 
-      rc= pvio_socket_connect_sync_or_async(pvio, save_res->ai_addr, save_res->ai_addrlen);
+      rc= pvio_socket_connect_sync_or_async(pvio, save_res->ai_addr, (uint)save_res->ai_addrlen);
       if (!rc)
       {
         MYSQL *mysql= pvio->mysql;
@@ -921,7 +921,7 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
   FD_ZERO(&sfds);
   FD_SET(csock->socket, &sfds);
 
-  res= select(csock->socket + 1, &sfds, NULL, NULL, &tv);
+  res= select((int)+csock->socket + 1, &sfds, NULL, NULL, &tv);
   if (res > 0 && FD_ISSET(csock->socket, &sfds))
     return TRUE;
   return FALSE;

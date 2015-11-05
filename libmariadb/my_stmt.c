@@ -1221,7 +1221,7 @@ my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt)
   DBUG_RETURN(0);
 }
 
-int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned long length)
+int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t length)
 {
   MYSQL *mysql= stmt->mysql; 
   int rc= 1;
@@ -1792,7 +1792,7 @@ MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_seek(MYSQL_STMT *stmt, MYSQL_ROW_OFFSET 
 }
 
 my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
-    const char *data, ulong length)
+    const char *data, size_t length)
 {
   DBUG_ENTER("mysql_stmt_send_long_data");
 

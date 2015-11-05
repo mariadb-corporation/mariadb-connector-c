@@ -112,7 +112,7 @@ size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 
   cpipe= (struct st_pvio_npipe *)pvio->data;
 
-  if (ReadFile(cpipe->pipe, (LPVOID)buffer, length, &dwRead, &cpipe->overlapped))
+  if (ReadFile(cpipe->pipe, (LPVOID)buffer, (DWORD)length, &dwRead, &cpipe->overlapped))
   {
     r= (size_t)dwRead;
     goto end;
@@ -137,7 +137,7 @@ size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 
   cpipe= (struct st_pvio_npipe *)pvio->data;
 
-  if (WriteFile(cpipe->pipe, buffer, length, &dwWrite, &cpipe->overlapped))
+  if (WriteFile(cpipe->pipe, buffer, (DWORD)length, &dwWrite, &cpipe->overlapped))
   {
     r= (size_t)dwWrite;
     goto end;

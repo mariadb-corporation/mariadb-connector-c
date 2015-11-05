@@ -1135,19 +1135,19 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
   if (sscanf(cs_name, "UTF%2[0-9]%2[LBE]", digits, endianness))
   {
     /* We should have at least digits. Endianness we write either default(BE), or what we found in the string */
-    ptr= strnmov(ptr, "UTF-", buff_len);
-    ptr= strnmov(ptr, digits, buff_len - (ptr - buffer));
-    ptr= strnmov(ptr, endianness, buff_len - (ptr - buffer));
+    ptr= strnmov(ptr, "UTF-", (uint)buff_len);
+    ptr= strnmov(ptr, digits, (uint)(buff_len - (ptr - buffer)));
+    ptr= strnmov(ptr, endianness, (uint)(buff_len - (ptr - buffer)));
   }
   else
   {
     /* Not our client - copy as is*/
-    ptr= strnmov(ptr, cs_name, buff_len);
+    ptr= strnmov(ptr, cs_name, (uint)buff_len);
   }
 
   if (target_cs)
   {
-    strnmov(ptr, "//TRANSLIT", buff_len - (ptr - buffer));
+    strnmov(ptr, "//TRANSLIT", (uint)(buff_len - (ptr - buffer)));
   }
 }
 /* }}} */

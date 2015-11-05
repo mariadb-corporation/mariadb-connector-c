@@ -175,7 +175,7 @@ static my_bool net_realloc(NET *net, size_t length)
     DBUG_RETURN(1);
   }
   net->buff=net->write_pos=buff;
-  net->buff_end=buff+(net->max_packet=pkt_length);
+  net->buff_end=buff+(net->max_packet=(unsigned long)pkt_length);
   DBUG_RETURN(0);
 }
 
@@ -211,7 +211,7 @@ static my_bool net_check_socket_status(my_socket sock)
   FD_ZERO(&sfds);
   FD_SET(sock, &sfds);
 
-  res= select(sock + 1, &sfds, NULL, NULL, &tv);
+  res= select((int)sock + 1, &sfds, NULL, NULL, &tv);
   if (res > 0 && FD_ISSET(sock, &sfds))
     return TRUE;
   return FALSE;
@@ -659,7 +659,7 @@ ulong my_net_read(NET *net)
         start= 0;
       }
 
-      net->where_b=buffer_length;
+      net->where_b=(unsigned long)buffer_length;
 
       if ((packet_length = my_real_read(net,(size_t *)&complen)) == packet_error)
         return packet_error;
@@ -674,8 +674,8 @@ ulong my_net_read(NET *net)
       buffer_length+= complen;
     }
     /* set values */
-    net->buf_length= buffer_length;
-    net->remain_in_buf= buffer_length - current;
+    net->buf_length= (unsigned long)buffer_length;
+    net->remain_in_buf= (unsigned long)(buffer_length - current);
     net->read_pos= net->buff + start + 4;
     len= current - start - 4;
     if (is_multi_packet)
