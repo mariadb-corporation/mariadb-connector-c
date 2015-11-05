@@ -168,7 +168,7 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       response= mysql->passwd;
     }
     if (!response ||
-        vio->write_packet(vio, response, strlen(response) + 1))
+        vio->write_packet(vio, response, (int)strlen(response) + 1))
       return CR_ERROR;
 
     first_loop= FALSE;

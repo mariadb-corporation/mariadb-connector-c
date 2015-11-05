@@ -613,7 +613,7 @@ static int test_bug1500(MYSQL *mysql)
   data= "Dogs";
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
   my_bind[0].buffer= (void *) data;
-  my_bind[0].buffer_length= strlen(data);
+  my_bind[0].buffer_length= (unsigned long)strlen(data);
   my_bind[0].is_null= 0;
   my_bind[0].length= 0;
 
@@ -842,7 +842,7 @@ static int test_bug1664(MYSQL *mysql)
 
     my_bind[0].buffer_type= MYSQL_TYPE_STRING;
     my_bind[0].buffer= (void *)str_data;
-    my_bind[0].buffer_length= strlen(str_data);
+    my_bind[0].buffer_length= (unsigned long)strlen(str_data);
 
     my_bind[1].buffer= (void *)&int_data;
     my_bind[1].buffer_type= MYSQL_TYPE_LONG;
@@ -1642,7 +1642,7 @@ static int test_ps_conj_select(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   int_data= 1;
   strcpy(str_data, "hh");
-  str_length= strlen(str_data);
+  str_length= (unsigned long)strlen(str_data);
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -1882,7 +1882,7 @@ static int test_ps_query_cache(MYSQL *mysql)
     check_stmt_rc(rc, stmt);
     p_int_data= 1;
     strcpy(p_str_data, "hh");
-    p_str_length= strlen(p_str_data);
+    p_str_length= (unsigned long)strlen(p_str_data);
 
     memset(r_bind, '\0', sizeof(r_bind));
     r_bind[0].buffer_type= MYSQL_TYPE_LONG;
@@ -1934,7 +1934,7 @@ static int test_ps_query_cache(MYSQL *mysql)
 
     /* now modify parameter values and see qcache hits */
     strcpy(p_str_data, "ii");
-    p_str_length= strlen(p_str_data);
+    p_str_length= (unsigned long)strlen(p_str_data);
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
     test_ps_query_cache_result(1, "hh", 2, 1, "ii", 2, 2, "ii", 2);
@@ -2124,7 +2124,7 @@ static int test_bug3796(MYSQL *mysql)
   memset(my_bind, '\0', sizeof(my_bind));
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
   my_bind[0].buffer= (void *) concat_arg0;
-  my_bind[0].buffer_length= strlen(concat_arg0);
+  my_bind[0].buffer_length= (unsigned long)strlen(concat_arg0);
 
   mysql_stmt_bind_param(stmt, my_bind);
 

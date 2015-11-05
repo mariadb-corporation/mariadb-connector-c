@@ -86,7 +86,7 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags);
 size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
                                  size_t WriteBufferSize);
- size_t ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
+ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
                                  PCredHandle phCreds,
                                  CtxtHandle * phContext,
                                  DWORD *DecryptLength,

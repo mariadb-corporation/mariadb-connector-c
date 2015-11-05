@@ -124,7 +124,7 @@ static TRACE_INFO *get_trace_info(unsigned long thread_id)
     if (info->thread_id == thread_id)
       return info;
     else
-      info= info->next;
+      info= (TRACE_INFO *)info->next;
   }
 
   if (!(info= (TRACE_INFO *)calloc(sizeof(TRACE_INFO), 1)))
@@ -149,7 +149,7 @@ static void delete_trace_info(unsigned long thread_id)
       if (last)
         last->next= current->next;
       else
-        trace_info= current->next;
+        trace_info= (TRACE_INFO *)current->next;
       if (current->command)
         free(current->command);
       if (current->db)
@@ -161,7 +161,7 @@ static void delete_trace_info(unsigned long thread_id)
       free(current);
     }
     last= current;
-    current= current->next;
+    current= (TRACE_INFO *)current->next;
   }
 
 }
@@ -213,7 +213,7 @@ static int trace_deinit()
   while(trace_info)
   {
     printf("Warning: Connection for thread %lu not properly closed\n", trace_info->thread_id);
-    trace_info= trace_info->next;
+    trace_info= (TRACE_INFO *)trace_info->next;
   }
   register_callback(FALSE, trace_callback);
   return 0;

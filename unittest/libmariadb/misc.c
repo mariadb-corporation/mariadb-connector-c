@@ -630,7 +630,7 @@ static int test_wl4166_4(MYSQL *mysql)
 
   bind_array[1].buffer_type= MYSQL_TYPE_STRING;
   bind_array[1].buffer= (void *) koi8;
-  bind_array[1].buffer_length= strlen(koi8);
+  bind_array[1].buffer_length= (unsigned long)strlen(koi8);
 
   stmt= mysql_stmt_init(mysql);
   check_stmt_rc(rc, stmt);
@@ -933,7 +933,7 @@ static int test_connect_attrs(MYSQL *my)
   mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo1");
   mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo2");
 
-  len= mysql->options.extension->connect_attrs_len;
+  len= (int)mysql->options.extension->connect_attrs_len;
 
   mysql_close(mysql);
 

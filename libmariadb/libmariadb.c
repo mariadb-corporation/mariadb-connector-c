@@ -2004,7 +2004,7 @@ mysql_query(MYSQL *mysql, const char *query)
 */  
 
 int STDCALL
-mysql_send_query(MYSQL* mysql, const char* query, unsigned long length)
+mysql_send_query(MYSQL* mysql, const char* query, size_t length)
 {
   return simple_command(mysql, COM_QUERY, query, length, 1,0);
 }
@@ -2065,7 +2065,7 @@ mysql_read_query_result(MYSQL *mysql)
 }
 
 int STDCALL
-mysql_real_query(MYSQL *mysql, const char *query, unsigned long length)
+mysql_real_query(MYSQL *mysql, const char *query, size_t length)
 {
   DBUG_ENTER("mysql_real_query");
   DBUG_PRINT("enter",("handle: %lx",mysql));
@@ -3206,8 +3206,7 @@ ulong STDCALL mysql_get_client_version(void)
   return MYSQL_VERSION_ID;
 }
 
-ulong STDCALL mysql_hex_string(char *to, const char *from,
-                               unsigned long len)
+ulong STDCALL mysql_hex_string(char *to, const char *from, size_t len)
 {
   char *start= to;
   char hexdigits[]= "0123456789ABCDEF";

@@ -131,7 +131,7 @@ typedef struct st_mysql_error_info
 
 struct st_mysqlnd_stmt_methods
 {
-  my_bool (*prepare)(const MYSQL_STMT * stmt, const char * const query, unsigned int query_len);
+  my_bool (*prepare)(const MYSQL_STMT * stmt, const char * const query, size_t query_len);
   my_bool (*execute)(const MYSQL_STMT * stmt);
   MYSQL_RES * (*use_result)(const MYSQL_STMT * stmt);
   MYSQL_RES * (*store_result)(const MYSQL_STMT * stmt);
@@ -148,7 +148,7 @@ struct st_mysqlnd_stmt_methods
   my_bool (*refresh_bind_param)(const MYSQL_STMT * stmt);
   my_bool (*bind_result)(const MYSQL_STMT * stmt, const MYSQL_BIND *bind);
   my_bool (*send_long_data)(const MYSQL_STMT * stmt, unsigned int param_num,
-                            const char * const data, unsigned long length);
+                            const char * const data, size_t length);
   MYSQL_RES *(*get_parameter_metadata)(const MYSQL_STMT * stmt);
   MYSQL_RES *(*get_result_metadata)(const MYSQL_STMT * stmt);
   my_ulonglong (*get_last_insert_id)(const MYSQL_STMT * stmt);
@@ -224,7 +224,7 @@ int simple_command(MYSQL *mysql,enum enum_server_command command, const char *ar
  *  function prototypes
  */
 MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql);
-int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned long length);
+int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t length);
 int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind_arg, unsigned int column, unsigned long offset);
@@ -237,7 +237,7 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT * stmt, MYSQL_BIND * bnd);
 my_bool STDCALL mysql_stmt_close(MYSQL_STMT * stmt);
 my_bool STDCALL mysql_stmt_reset(MYSQL_STMT * stmt);
 my_bool STDCALL mysql_stmt_free_result(MYSQL_STMT *stmt);
-my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, unsigned int param_number, const char *data, unsigned long length);
+my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, unsigned int param_number, const char *data, size_t length);
 MYSQL_RES *STDCALL mysql_stmt_result_metadata(MYSQL_STMT *stmt);
 MYSQL_RES *STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt);
 unsigned int STDCALL mysql_stmt_errno(MYSQL_STMT * stmt);

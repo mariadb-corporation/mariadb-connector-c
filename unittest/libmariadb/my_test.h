@@ -50,6 +50,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #define MAX_TEST_QUERY_LENGTH 300 /* MAX QUERY BUFFER LENGTH */
 
+/* prevent warnings on Win64 by using STMT_LEN instead of strlen */
+#define STMT_LEN(A) (unsigned long)strlen((A))
+
 #define check_mysql_rc(rc, mysql) \
 if (rc)\
 {\
@@ -195,7 +198,7 @@ int my_stmt_result(MYSQL *mysql, const char *buff)
 
   stmt= mysql_stmt_init(mysql);
 
-  rc= mysql_stmt_prepare(stmt, buff, strlen(buff));
+  rc= mysql_stmt_prepare(stmt, buff, (unsigned long)strlen(buff));
   FAIL_IF(rc, mysql_stmt_error(stmt));
 
   rc= mysql_stmt_execute(stmt);

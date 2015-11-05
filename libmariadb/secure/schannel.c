@@ -22,7 +22,7 @@
 #pragma comment (lib, "crypt32.lib")
 #pragma comment (lib, "secur32.lib")
 
-#define VOID void
+//#define VOID void
 
 extern my_bool ma_ssl_initialized;
 
@@ -107,7 +107,7 @@ static int ssl_thread_init()
     0  success
     1  error
 */
-int ma_ssl_start(char *errmsg, size_t errmsg_len, int count, va_list list)
+int ma_ssl_start(char *errmsg, size_t errmsg_len)
 {
   if (!ma_ssl_initialized)
   {
@@ -158,7 +158,6 @@ static int ma_ssl_set_client_certs(MARIADB_SSL *cssl)
   if (cafile)
   {
     HCERTSTORE myCS= NULL;
-    char szName[64];
 
     if (!(sctx->client_ca_ctx = ma_schannel_create_cert_context(pvio, cafile)))
       goto end;
@@ -216,7 +215,6 @@ end:
 /* {{{ void *ma_ssl_init(MARIADB_SSL *cssl, MYSQL *mysql) */
 void *ma_ssl_init(MYSQL *mysql)
 {
-  int verify;
   SC_CTX *sctx= NULL;
 
   pthread_mutex_lock(&LOCK_schannel_config);
@@ -333,7 +331,7 @@ size_t ma_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
   DWORD dlength= -1;
 
-  ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, length);
+  ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, (DWORD)length);
   return dlength;
 }
 
@@ -472,7 +470,7 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
   SC_CTX *sctx= (SC_CTX *)cssl->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;
   if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
-    return NULL;
+    return 0;
   CertGetCertificateContextProperty(pRemoteCertContext, CERT_HASH_PROP_ID, fp, (DWORD *)&len);
   return len;
 }

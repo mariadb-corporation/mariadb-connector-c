@@ -322,11 +322,11 @@ static int test_ps_i18n(MYSQL *mysql)
   memset(bind_array, '\0', sizeof(bind_array));
   bind_array[0].buffer_type= MYSQL_TYPE_STRING;
   bind_array[0].buffer= (void *) koi8;
-  bind_array[0].buffer_length= strlen(koi8);
+  bind_array[0].buffer_length= (unsigned long)strlen(koi8);
 
   bind_array[1].buffer_type= MYSQL_TYPE_STRING;
   bind_array[1].buffer= (void *) koi8;
-  bind_array[1].buffer_length= strlen(koi8);
+  bind_array[1].buffer_length= (unsigned long)strlen(koi8);
 
   stmt= mysql_stmt_init(mysql);
   check_stmt_rc(rc, stmt);
@@ -393,11 +393,11 @@ static int test_ps_i18n(MYSQL *mysql)
   /* this data must be converted */
   bind_array[0].buffer_type= MYSQL_TYPE_STRING;
   bind_array[0].buffer= (void *) koi8;
-  bind_array[0].buffer_length= strlen(koi8);
+  bind_array[0].buffer_length= (unsigned long)strlen(koi8);
 
   bind_array[1].buffer_type= MYSQL_TYPE_STRING;
   bind_array[1].buffer= (void *) koi8;
-  bind_array[1].buffer_length= strlen(koi8);
+  bind_array[1].buffer_length= (unsigned long)strlen(koi8);
 
   mysql_stmt_bind_param(stmt, bind_array);
 
@@ -408,11 +408,11 @@ static int test_ps_i18n(MYSQL *mysql)
   /* this data must not be converted */
   bind_array[0].buffer_type= MYSQL_TYPE_BLOB;
   bind_array[0].buffer= (void *) cp1251;
-  bind_array[0].buffer_length= strlen(cp1251);
+  bind_array[0].buffer_length= (unsigned long)strlen(cp1251);
 
   bind_array[1].buffer_type= MYSQL_TYPE_BLOB;
   bind_array[1].buffer= (void *) cp1251;
-  bind_array[1].buffer_length= strlen(cp1251);
+  bind_array[1].buffer_length= (unsigned long)strlen(cp1251);
 
   mysql_stmt_bind_param(stmt, bind_array);
 

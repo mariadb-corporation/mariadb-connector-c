@@ -87,7 +87,7 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
       my_free(w_filename);
       return NULL;
     }
-    len= strlen(mode);
+    len= (int)strlen(mode);
     if (!(w_mode= (wchar_t *)my_malloc((len + 1) * sizeof(wchar_t), MYF(MY_ZEROFILL))))
     {
       my_set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -213,7 +213,7 @@ char *ma_gets(char *ptr, size_t size, MA_FILE *file)
 
   switch (file->type) {
   case MA_FILE_LOCAL:
-    return fgets(ptr, size, (FILE *)file->ptr);
+    return fgets(ptr, (int)size, (FILE *)file->ptr);
     break;
 #ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:

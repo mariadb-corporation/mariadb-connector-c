@@ -425,10 +425,10 @@ void		STDCALL mysql_close(MYSQL *sock);
 int		STDCALL mysql_select_db(MYSQL *mysql, const char *db);
 int		STDCALL mysql_query(MYSQL *mysql, const char *q);
 int		STDCALL mysql_send_query(MYSQL *mysql, const char *q,
-					 unsigned long length);
+					 size_t length);
 my_bool	STDCALL mysql_read_query_result(MYSQL *mysql);
 int		STDCALL mysql_real_query(MYSQL *mysql, const char *q,
-					unsigned long length);
+					 size_t length);
 int		STDCALL mysql_create_db(MYSQL *mysql, const char *DB);
 int		STDCALL mysql_drop_db(MYSQL *mysql, const char *DB);
 int		STDCALL mysql_shutdown(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level);
@@ -488,7 +488,7 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSE
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
-unsigned long STDCALL mysql_hex_string(char *to, const char *from, unsigned long len);
+unsigned long STDCALL mysql_hex_string(char *to, const char *from, size_t len);
 my_socket STDCALL mysql_get_socket(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
@@ -542,7 +542,7 @@ int             STDCALL mysql_send_query_start(int *ret, MYSQL *mysql,
 int             STDCALL mysql_send_query_cont(int *ret, MYSQL *mysql, int status);
 int             STDCALL mysql_real_query_start(int *ret, MYSQL *mysql,
                                                const char *q,
-                                               unsigned long length);
+                                               size_t length);
 int             STDCALL mysql_real_query_cont(int *ret, MYSQL *mysql,
                                               int status);
 int             STDCALL mysql_store_result_start(MYSQL_RES **ret, MYSQL *mysql);
@@ -580,7 +580,7 @@ int             STDCALL mysql_read_query_result_start(my_bool *ret,
                                                       MYSQL *mysql);
 int             STDCALL mysql_read_query_result_cont(my_bool *ret,
                                                      MYSQL *mysql, int status);
-int STDCALL mysql_stmt_prepare_start(int *ret, MYSQL_STMT *stmt,const char *query, unsigned long length);
+int STDCALL mysql_stmt_prepare_start(int *ret, MYSQL_STMT *stmt,const char *query, size_t length);
 int STDCALL mysql_stmt_prepare_cont(int *ret, MYSQL_STMT *stmt, int status);
 int STDCALL mysql_stmt_execute_start(int *ret, MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_execute_cont(int *ret, MYSQL_STMT *stmt, int status);
@@ -599,7 +599,7 @@ int STDCALL mysql_stmt_free_result_cont(my_bool *ret, MYSQL_STMT *stmt,
 int STDCALL mysql_stmt_send_long_data_start(my_bool *ret, MYSQL_STMT *stmt,
                                             unsigned int param_number,
                                             const char *data,
-                                            unsigned long len);
+                                            size_t len);
 int STDCALL mysql_stmt_send_long_data_cont(my_bool *ret, MYSQL_STMT *stmt,
                                            int status);
 

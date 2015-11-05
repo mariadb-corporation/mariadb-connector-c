@@ -63,7 +63,7 @@ unsigned char *my_compress_alloc(const unsigned char *packet, size_t *len, size_
     my_free(compbuf);
     return 0;
   }
-  swap(ulong,*len,*complen);			/* *len is now packet length */
+  swap(size_t,*len,*complen);			/* *len is now packet length */
   return compbuf;
 }
 

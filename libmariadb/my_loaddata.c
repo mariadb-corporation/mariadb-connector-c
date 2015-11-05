@@ -117,7 +117,7 @@ int mysql_local_infile_read(void *ptr, char * buf, unsigned int buf_len)
     strcpy(info->error_msg, "Error reading file");
     info->error_no = EE_READ;
   }
-  DBUG_RETURN(count);
+  DBUG_RETURN((int)count);
 }
 /* }}} */
 
