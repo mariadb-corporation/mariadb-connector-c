@@ -61,7 +61,7 @@ static int test_logs(MYSQL *mysql)
   MYSQL_STMT *stmt;
   MYSQL_BIND my_bind[2];
   char       data[255];
-  ulong      length;
+  unsigned long length;
   int        rc;
   short      id;
 
