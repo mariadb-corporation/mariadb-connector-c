@@ -1383,7 +1383,7 @@ static int test_long_data_str1(MYSQL *mysql)
 
   my_bind[0].buffer= data;            /* string data */
   my_bind[0].buffer_length= sizeof(data);
-  my_bind[0].length= &length1;
+  my_bind[0].length= (unsigned long *)&length1;
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
   length1= 0;
 
