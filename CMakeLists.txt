@@ -236,6 +236,22 @@ SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
 INCLUDE(cmake/ConnectorName.cmake)
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME "mariadb-connector-c-${CPACK_PACKAGE_VERSION}-src")
 
+# Build source packages
+IF(GIT_BUILD_SRCPKG)
+  # get branch name
+  EXECUTE_PROCESS(COMMAND git show-branch OUTPUT_VARIABLE git_branch)
+  STRING(REGEX MATCH "\\[([^]]+)\\]" git_branch ${git_branch})
+  STRING(REGEX REPLACE "\\[|\\]" "" GIT_BRANCH ${git_branch})
+  MESSAGE(STATUS "${GIT_BRANCH}")
+  IF(WIN32)
+    EXECUTE_PROCESS(COMMAND git archive ${GIT_BRANCH} --format=zip --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.zip)
+  ELSE()
+    EXECUTE_PROCESS(COMMAND git archive ${GIT_BRANCH} --format=zip --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.zip)
+    EXECUTE_PROCESS(COMMAND git archive ${GIT_BRANCH} --format=tar --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar)
+    EXECUTE_PROCESS(COMMAND gzip -9 -f ${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar)
+  ENDIF()
+ENDIF()
+
 SET(CPACK_SOURCE_IGNORE_FILES
 \\\\.git/
 \\\\.gitignore
