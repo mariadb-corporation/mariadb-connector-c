@@ -19,6 +19,8 @@ IF(COMMAND CMAKE_POLICY)
   CMAKE_POLICY(SET CMP0003 NEW)
 ENDIF()
 
+SET(MARIADB_CONNECTOR_C_COPYRIGHT "2013-2015 MariaDB Corporation Ab")
+
 ### Options ###
 IF(NOT WIN32)
   OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
@@ -46,6 +48,7 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/plugins.cmake)
 
 IF(WIN32)
   FILE(REMOVE ${CMAKE_BINARY_DIR}/win/packaging/plugin.conf)
+  INCLUDE(${CMAKE_SOURCE_DIR}/cmake/version_info.cmake)
 ENDIF()
 
 IF(MSVC)

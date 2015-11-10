@@ -381,10 +381,23 @@ IF(CMAKE_GENERATOR MATCHES Xcode)
   SET(EMPTY_FILE ${CMAKE_SOURCE_DIR}/libmariadb/empty.c)
 ENDIF()
 
-ADD_LIBRARY(mariadbclient STATIC $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
+IF(WIN32)
+  SET_VERSION_INFO("TARGET:libmariadb"
+                   "FILE_TYPE:VFT_DLL"
+                   "SOURCE_FILE:libmariadb/libmariadb.c"
+                   "ORIGINAL_FILE_NAME:libmariadb.dll"
+                   "FILE_DESCRIPTION:Dynamic lib for client/server communication")
+  SET_VERSION_INFO("TARGET:mariadbclient"
+                   "FILE_TYPE:VFT_STATIC_LIB"
+                   "SOURCE_FILE:libmariadb/libmariadb.c"
+                   "ORIGINAL_FILE_NAME:mariadbclient.lib"
+                   "FILE_DESCRIPTION:Static lib for client/server communication")
+ENDIF()
+
+ADD_LIBRARY(mariadbclient STATIC $<TARGET_OBJECTS:mariadb_obj> ${mariadbclient_RC} ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
 
-ADD_LIBRARY(libmariadb SHARED $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
+ADD_LIBRARY(libmariadb SHARED $<TARGET_OBJECTS:mariadb_obj> ${libmariadb_RC} ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
 IF(UNIX)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")

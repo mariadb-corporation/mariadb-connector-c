@@ -7,9 +7,16 @@ ENDIF()
 
 IF(REMOTEIO_PLUGIN_TYPE MATCHES "DYNAMIC")
   IF(CURL_FOUND)
+    IF(WIN32)
+      SET_VERSION_INFO("TARGET:remote_io"
+                       "FILE_TYPE:VFT_DLL"
+                       "SOURCE_FILE:plugins/io/remote_io.c"
+                       "ORIGINAL_FILE_NAME:remote_io.dll"
+                       "FILE_DESCRIPTION:Plugin for remote file access")
+    ENDIF()
     # remote file plugin
     INCLUDE_DIRECTORIES(${CURL_INCLUDE_DIR})
-    SET(REMOTE_IO_SOURCES remote_io.c)
+    SET(REMOTE_IO_SOURCES remote_io.c ${remote_io_RC})
     ADD_LIBRARY(remote_io SHARED ${REMOTE_IO_SOURCES} ${CMAKE_SOURCE_DIR}/plugins/plugin.def)
     TARGET_LINK_LIBRARIES(remote_io ${CURL_LIBRARIES})
     SET_TARGET_PROPERTIES(remote_io PROPERTIES PREFIX "")
