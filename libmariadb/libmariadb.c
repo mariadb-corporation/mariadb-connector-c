@@ -3011,6 +3011,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     if (my_context_init(&ctxt->async_context, stacksize))
     {
       my_free(ctxt);
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
       DBUG_RETURN(1);
     }
     if (!mysql->options.extension)

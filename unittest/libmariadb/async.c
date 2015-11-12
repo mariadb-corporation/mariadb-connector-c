@@ -118,7 +118,7 @@ wait_for_mysql(MYSQL *mysql, int status)
 
 static int async1(MYSQL *my)
 {
-  int err;
+  int err, rc;
   MYSQL mysql, *ret;
   MYSQL_RES *res;
   MYSQL_ROW row;
@@ -130,7 +130,8 @@ static int async1(MYSQL *my)
   {
 
     mysql_init(&mysql);
-    mysql_options(&mysql, MYSQL_OPT_NONBLOCK, 0);
+    rc= mysql_options(&mysql, MYSQL_OPT_NONBLOCK, 0);
+    check_mysql_rc(rc, (MYSQL *)&mysql);
 
     /* set timeouts to 300 microseconds */
     default_timeout= 300;
@@ -193,9 +194,11 @@ static int async1(MYSQL *my)
 
 static int test_conc131(MYSQL *my)
 {
+  int rc;
   /* this test needs to run under valgrind */
   MYSQL *mysql=mysql_init(NULL);
-  mysql_options(mysql, MYSQL_OPT_NONBLOCK, 0);
+  rc= mysql_options(mysql, MYSQL_OPT_NONBLOCK, 0);
+  check_mysql_rc(rc, mysql);
   mysql_close(mysql);
   return OK;
 }
