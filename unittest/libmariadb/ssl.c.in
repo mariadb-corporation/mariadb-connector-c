@@ -28,6 +28,7 @@ static int skip_ssl= 1;
 
 const char *ssluser= "ssluser";
 const char *sslpw= "sslpw";
+char sslhost[128];
 
 pthread_mutex_t LOCK_test;
 
@@ -45,19 +46,45 @@ int check_skip_ssl()
   return 0;
 }
 
+static int create_ssl_user(const char *ssluser, my_bool is_X509)
+{
+  int rc;
+  char query[1024];
+  MYSQL *mysql= mysql_init(NULL);
+
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+
+  sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", ssluser, sslhost);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc,mysql);
+
+  sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", ssluser, sslhost, sslpw);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc,mysql);
+
+  sprintf(query, "GRANT ALL ON %s.* TO  '%s'@'%s' REQUIRE %s", schema, ssluser, sslhost, is_X509 ? "X509" : "SSL");
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc,mysql);
+  rc= mysql_query(mysql, "FLUSH PRIVILEGES");
+  check_mysql_rc(rc,mysql);
+
+  return rc;
+}
+
 static int test_ssl(MYSQL *mysql)
 {
   int rc;
   MYSQL_RES *res;
   MYSQL_ROW row;
 
-  rc= mysql_query(mysql, "SELECT @@have_ssl");
+  rc= mysql_query(mysql, "SELECT @@have_ssl UNION SELECT @@have_openssl");
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
   FAIL_IF(!res, mysql_error(mysql));
 
-  if ((row= mysql_fetch_row(res)))
+  while ((row= mysql_fetch_row(res)))
   {
     if (!strcmp(row[0], "YES"))
       skip_ssl= 0;
@@ -65,11 +92,20 @@ static int test_ssl(MYSQL *mysql)
   }
   mysql_free_result(res);
 
+  sslhost[0]= 0;
+
   if (!skip_ssl)
   {
-    rc= mysql_query(mysql, "DROP USER 'ssluser'@'localhost'");
-    rc= mysql_query(mysql, "GRANT ALL ON test.* TO 'ssluser'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE SSL");
-    rc= mysql_query(mysql, "FLUSH PRVILEGES");
+    char *p;
+
+    rc= mysql_query(mysql, "SELECT CURRENT_USER()");
+    check_mysql_rc(rc, mysql);
+    res= mysql_store_result(mysql);
+    row= mysql_fetch_row(res);
+    diag("user: %s", row[0]);
+    if (p= strchr(row[0], '@'))
+      strcpy(sslhost, p+1);
+    mysql_free_result(res);
   }
 
   return OK;
@@ -100,16 +136,11 @@ static int test_ssl_cipher(MYSQL *unused)
 static int test_conc95(MYSQL *my)
 {
   MYSQL *mysql;
-  int rc;
 
   if (check_skip_ssl())
     return SKIP;
 
-  rc= mysql_query(my, "DROP USER 'ssluser1'@'localhost'");
-  rc= mysql_query(my, "GRANT ALL ON test.* TO 'ssluser1'@'localhost' IDENTIFIED BY 'sslpw' REQUIRE X509");
-  check_mysql_rc(rc, my);
-  rc= mysql_query(my, "FLUSH PRIVILEGES");
-  check_mysql_rc(rc, my);
+  create_ssl_user("ssluser1", 1);
 
   mysql= mysql_init(NULL);
   mysql_ssl_set(mysql, 
@@ -144,6 +175,8 @@ static int test_multi_ssl_connections(MYSQL *unused)
 
   diag("Test doesn't work with yassl");
   return SKIP;
+
+  create_ssl_user(ssluser, 0);
 
   my= mysql_init(NULL);
   FAIL_IF(!my,"mysql_init() failed");
@@ -390,26 +423,18 @@ static int test_conc127(MYSQL *my)
 static int test_conc50_3(MYSQL *my)
 {
   MYSQL *mysql;
-  int rc;
-  char query[256];
 
   if (check_skip_ssl())
     return SKIP;
 
-  mysql_query(my, "DROP USER 'ssltest'@'localhost'");
-
-  sprintf(query, "GRANT ALL ON %s.* TO 'ssltest'@'localhost' REQUIRE SSL", schema ? schema : "*");
-  rc= mysql_query(my, query);
-  check_mysql_rc(rc, my);
-  rc= mysql_query(my, "FLUSH PRIVILEGES");
-  check_mysql_rc(rc, my);
+  create_ssl_user(ssluser, 0);
 
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, (const char *)"ssltest", NULL, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   FAIL_IF(!mysql_errno(mysql), "Error expected, SSL connection required!");
   mysql_close(mysql);

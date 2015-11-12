@@ -1375,7 +1375,7 @@ int STDCALL
 mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
         const char *ca, const char *capath, const char *cipher)
 {
-  #ifdef HAVE_SSL
+  #ifdef HAVE_OPENSSL
   return (mysql_optionsv(mysql, MYSQL_OPT_SSL_KEY, key) |
           mysql_optionsv(mysql, MYSQL_OPT_SSL_CERT, cert) |
           mysql_optionsv(mysql, MYSQL_OPT_SSL_CA, ca) |

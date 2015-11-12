@@ -40,10 +40,11 @@ IF(WITH_OPENSSL)
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
     EXECUTE_PROCESS(COMMAND openssl rsa -in client-key-enc.pem -out client-key.pem -passin pass:qwerty -passout pass:
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
-    EXECUTE_PROCESS(COMMAND "cat server-cert.pem client-cert.pem"
-                    OUTPUT_FILE "ca-cert.pem"
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
-
+    FILE(REMOVE ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem)
+    FILE(READ ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem SERVER_CERT)
+    FILE(WRITE ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem ${SERVER_CERT})
+    FILE(READ ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/client-cert.pem CLIENT_CERT)
+    FILE(APPEND ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem ${CLIENT_CERT})
   ENDIF()
 
   EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
