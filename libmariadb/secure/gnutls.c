@@ -174,9 +174,11 @@ static int ma_ssl_set_certs(MYSQL *mysql)
   /* set key */
   if (certfile || keyfile)
   {
-    if ((ssl_error= gnutls_certificate_set_x509_key_file(GNUTLS_xcred,
+    if ((ssl_error= gnutls_certificate_set_x509_key_file2(GNUTLS_xcred,
                                                          certfile, keyfile,
-                                                         GNUTLS_X509_FMT_PEM)) < 0)
+                                                         GNUTLS_X509_FMT_PEM,
+                                                         OPT_HAS_EXT_VAL(mysql, ssl_pw) ? mysql->options.extension->ssl_pw : NULL,
+                                                         0)) < 0)
       goto error;
   }
   return 1;

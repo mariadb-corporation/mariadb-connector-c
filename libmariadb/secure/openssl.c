@@ -238,6 +238,15 @@ void ma_ssl_end()
   return;
 }
 
+int ma_ssl_get_password(char *buf, int size, int rwflag, void *userdata)
+{
+  bzero(buf, size);
+  if (userdata)
+    strncpy(buf, (char *)userdata, size);
+  return strlen(buf);
+}
+
+
 static int ma_ssl_set_certs(MYSQL *mysql)
 {
   char *certfile= mysql->options.ssl_cert,
@@ -270,11 +279,23 @@ static int ma_ssl_set_certs(MYSQL *mysql)
     if (SSL_CTX_use_certificate_file(SSL_context, certfile, SSL_FILETYPE_PEM) != 1)
       goto error; 
 
-  /* set key */
+  /* If the private key file is encrypted, we need to register a callback function
+   * for providing password. */
+  if (OPT_HAS_EXT_VAL(mysql, ssl_pw))
+  {
+    SSL_CTX_set_default_passwd_cb_userdata(SSL_context, (void *)mysql->options.extension->ssl_pw);
+    SSL_CTX_set_default_passwd_cb(SSL_context, ma_ssl_get_password);
+  }
+
   if (keyfile && keyfile[0])
   {
     if (SSL_CTX_use_PrivateKey_file(SSL_context, keyfile, SSL_FILETYPE_PEM) != 1)
       goto error;
+  }
+  if (OPT_HAS_EXT_VAL(mysql, ssl_pw))
+  {
+    SSL_CTX_set_default_passwd_cb_userdata(SSL_context, NULL);
+    SSL_CTX_set_default_passwd_cb(SSL_context, NULL);
   }
   /* verify key */
   if (certfile && !SSL_CTX_check_private_key(SSL_context))
@@ -328,6 +349,7 @@ static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
 
   return ok;
 }
+
 
 void *ma_ssl_init(MYSQL *mysql)
 {
