@@ -213,6 +213,7 @@ extern unsigned int mariadb_deinitialize_ssl;
     MYSQL_DATABASE_DRIVER=7000,
     MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
     MARIADB_OPT_SSL_FP_LIST,        /* finger print white list for server certificate verification */
+    MARIADB_OPT_SSL_PASSWORD,       /* password for encrypted certificates */
     MARIADB_OPT_CONNECTION_READ_ONLY
   };
 

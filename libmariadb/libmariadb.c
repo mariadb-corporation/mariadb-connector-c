@@ -622,7 +622,7 @@ static const char *default_options[]=
   "ssl-cipher", "max-allowed-packet", "protocol", "shared-memory-base-name",
   "multi-results", "multi-statements", "multi-queries", "secure-auth",
   "report-data-truncation", "plugin-dir", "default-auth", "database-type",
-  "ssl-fp", "ssl-fp-list", "bind-address",
+  "ssl-fp", "ssl-fp-list", "ssl_password", "bind-address",
   NULL
 };
 
@@ -637,7 +637,7 @@ enum option_val
   OPT_ssl_cipher, OPT_max_allowed_packet, OPT_protocol, OPT_shared_memory_base_name,
   OPT_multi_results, OPT_multi_statements, OPT_multi_queries, OPT_secure_auth,
   OPT_report_data_truncation, OPT_plugin_dir, OPT_default_auth, OPT_db_type,
-  OPT_ssl_fp, OPT_ssl_fp_list, OPT_bind_address
+  OPT_ssl_fp, OPT_ssl_fp_list, OPT_ssl_pw, OPT_bind_address
 };
 
 #define CHECK_OPT_EXTENSION_SET(OPTS)\
@@ -796,6 +796,9 @@ static void mysql_read_default_options(struct st_mysql_options *options,
           break;
         case OPT_ssl_fp_list:
           OPT_SET_EXTENDED_VALUE_STR(options, ssl_fp_list, opt_arg);
+          break;
+        case OPT_ssl_pw:
+          OPT_SET_EXTENDED_VALUE_STR(options, ssl_pw, opt_arg);
           break;
 #else
       	case OPT_ssl_key:
@@ -1148,8 +1151,6 @@ mysql_init(MYSQL *mysql)
   mysql->reconnect= 0;
   return mysql;
 }
-
-
 
 int STDCALL
 mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
@@ -1874,6 +1875,7 @@ static void mysql_close_options(MYSQL *mysql)
   my_free(mysql->options.ssl_ca);
   my_free(mysql->options.ssl_capath);
   my_free(mysql->options.ssl_cipher);
+
   if (mysql->options.extension)
   {
     struct mysql_async_context *ctxt;
@@ -1884,6 +1886,7 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->ssl_crlpath);
     my_free(mysql->options.extension->ssl_fp);
     my_free(mysql->options.extension->ssl_fp_list);
+    my_free(mysql->options.extension->ssl_pw);
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
     if ((ctxt = mysql->options.extension->async_context) != 0)
@@ -2843,6 +2846,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MARIADB_OPT_SSL_FP_LIST:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp_list, (char *)arg1);
+    break;
+  case MARIADB_OPT_SSL_PASSWORD:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_pw, (char *)arg1);
     break;
   case MARIADB_OPT_CONNECTION_READ_ONLY:
     if (mysql->net.conn_hdlr)

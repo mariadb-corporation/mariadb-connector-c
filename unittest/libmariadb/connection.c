@@ -674,7 +674,7 @@ static int test_wrong_bind_address(MYSQL *my)
   char *bind_addr= "100.188.111.112";
   MYSQL *mysql;
 
-  if (!strcmp(hostname, "localhost"))
+  if (!hostname || !strcmp(hostname, "localhost"))
   {
     diag("test doesn't work with unix sockets");
     return SKIP;
@@ -702,7 +702,7 @@ static int test_bind_address(MYSQL *my)
   char query[128];
   int rc;
 
-  if (!strcmp(hostname, "localhost"))
+  if (!hostname || !strcmp(hostname, "localhost"))
   {
     diag("test doesn't work with unix sockets");
     return SKIP;

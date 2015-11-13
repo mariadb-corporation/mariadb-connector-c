@@ -51,7 +51,10 @@ struct st_mysql_options_extension {
   MARIADB_DB_DRIVER       *db_driver;
   char *ssl_fp; /* finger print of server certificate */
   char *ssl_fp_list; /* white list of finger prints */
+  char *ssl_pw; /* password for encrypted certificates */
 };
 
+#define OPT_HAS_EXT_VAL(a,key) \
+  ((a)->options.extension && (a)->options.extension->key)
 
 #endif
