@@ -394,10 +394,10 @@ IF(WIN32)
                    "FILE_DESCRIPTION:Static lib for client/server communication")
 ENDIF()
 
-ADD_LIBRARY(mariadbclient STATIC $<TARGET_OBJECTS:mariadb_obj> ${mariadbclient_RC} ${EMPTY_FILE} ${EXPORT_LINK})
+ADD_LIBRARY(mariadbclient STATIC ${ariadbclient_RC} $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
 
-ADD_LIBRARY(libmariadb SHARED $<TARGET_OBJECTS:mariadb_obj> ${libmariadb_RC} ${EMPTY_FILE} ${EXPORT_LINK})
+ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
 IF(UNIX)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")

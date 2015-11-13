@@ -16,7 +16,7 @@ IF(REMOTEIO_PLUGIN_TYPE MATCHES "DYNAMIC")
     ENDIF()
     # remote file plugin
     INCLUDE_DIRECTORIES(${CURL_INCLUDE_DIR})
-    SET(REMOTE_IO_SOURCES remote_io.c ${remote_io_RC})
+    SET(REMOTE_IO_SOURCES ${remote_io_RC} remote_io.c)
     ADD_LIBRARY(remote_io SHARED ${REMOTE_IO_SOURCES} ${CMAKE_SOURCE_DIR}/plugins/plugin.def)
     TARGET_LINK_LIBRARIES(remote_io ${CURL_LIBRARIES})
     SET_TARGET_PROPERTIES(remote_io PROPERTIES PREFIX "")
