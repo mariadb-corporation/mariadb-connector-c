@@ -99,9 +99,16 @@ typedef UINT_PTR rf_SetTimer;
 typedef uint rf_SetTimer;
 #endif
 
+#if (defined(_MSC_VER) && !(_MSC_VER < 1800))
+#define HAVE_STRTOULL 1
+#define HAVE_STRTOLL 1
+#endif
+
 #define Socket_defined
 #define my_socket SOCKET
+#ifndef bool
 #define bool BOOL
+#endif
 #define SIGPIPE	SIGINT
 #define RETQSORTTYPE void
 #define QSORT_TYPE_IS_VOID
