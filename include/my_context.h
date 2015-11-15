@@ -166,6 +166,7 @@ extern int my_context_yield(struct my_context *c);
 */
 extern int my_context_continue(struct my_context *c);
 
+struct st_ma_pvio;
 
 struct mysql_async_context {
   /*
@@ -220,6 +221,7 @@ struct mysql_async_context {
     the user data argument just before the context is suspended, and just after
     it is resumed.
   */
+  struct st_ma_pvio *pvio;
   void (*suspend_resume_hook)(my_bool suspend, void *user_data);
   void *suspend_resume_hook_user_data;
   /*

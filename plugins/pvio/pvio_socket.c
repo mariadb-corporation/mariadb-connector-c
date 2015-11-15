@@ -661,6 +661,9 @@ pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
   if (mysql->options.extension && mysql->options.extension->async_context &&
       mysql->options.extension->async_context->active)
   {
+    /* even if we are not connected yet, application needs to check socket
+     * via mysql_get_socket api call, so we need to assign pvio */
+    mysql->options.extension->async_context->pvio= pvio;
     pvio_socket_blocking(pvio, 0, 0);
     return my_connect_async(pvio, name, namelen, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
   }
