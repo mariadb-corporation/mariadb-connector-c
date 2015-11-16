@@ -458,6 +458,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
     char t_buffer[MAX_TIME_STR_LEN];
     uint len= 0;
+    memset(t_buffer, 0, MAX_TIME_STR_LEN);
 
     t_buffer[1]= t->neg ? 1 : 0;
     int4store(t_buffer + 2, t->day);
@@ -493,7 +494,9 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
        */ 
     MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
     char t_buffer[MAX_DATETIME_STR_LEN];
-    uint len;
+    uint len= 0;
+
+    memset(t_buffer, 0, MAX_DATETIME_STR_LEN);
 
     int2store(t_buffer + 1, t->year);
     t_buffer[3]= (char) t->month;
@@ -510,8 +513,6 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
       len= 7;
     else if (t->year || t->month || t->day)
       len= 4;
-    else
-      len=0;
     t_buffer[0]= len++;
     memcpy(*p, t_buffer, len);
     (*p)+= len;

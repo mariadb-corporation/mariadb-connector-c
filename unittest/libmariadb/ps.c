@@ -182,7 +182,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
   uint         rc, i, count= row_count;
   ulong        length[4];
   MYSQL_BIND   my_bind[4];
-  my_bool      is_null[4]= {0};
+  my_bool      is_null[4]= {0,0,0,0};
   MYSQL_TIME   tm[4];
   ulong        second_part;
   uint         year, month, day, hour, minute, sec;

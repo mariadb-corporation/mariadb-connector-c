@@ -24,26 +24,6 @@ ELSE()
   SET(FOLDER "ProgramFilesFolder")
 ENDIF()
 
-IF (WITH_SIGNCODE)
-  SET(SIGN_OPTIONS " /a /t http://timestamp.verisign.com/scripts/timstamp.dll ")
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/libmariadb.dll)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/libmariadb.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_LIB_DIR}/mariadbclient.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/libmariadb.dll)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/libmariadb.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CLIENT_DBG_DIR}/mariadbclient.lib)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll)
-  EXECUTE_PROCESS(
-    COMMAND signtool sign ${SIGN_OPTIONS} ${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll)
-ENDIF()
-
 SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"dialog.dll\" Name=\"dialog.dll\" DiskId=\"1\" Source=\"${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll\"/>\n")
 SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"mysql_clear_password.dll\" Name=\"mysqlclearpassword.dll\" DiskId=\"1\" Source=\"${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll\"/>\n")
 
@@ -69,12 +49,19 @@ CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
 SET(MSI_PACKAGE "mariadb-connector-c-${PRODUCT_VERSION}-${PLATFORM}.msi")
 
 IF(WITH_SIGNCODE)
-  ADD_CUSTOM_TARGET(SIGNMSI
-    DEPENDS ${MSI_PACKAGE}
-    COMMAND signtool sign ${SIGN_OPTIONS} ${MSI_PACKAGE})
+  IF(EXISTS "/tools/sign.bat")
+    ADD_CUSTOM_TARGET(SIGNMSI
+      DEPENDS ${MSI_PACKAGE}
+      COMMAND /tools/sign.bat ${MSI_PACKAGE})
+  ELSE()
+    ADD_CUSTOM_TARGET(SIGNMSI
+      DEPENDS ${MSI_PACKAGE}
+      COMMAND signtool sign ${SIGN_OPTIONS} ${MSI_PACKAGE})
+  ENDIF()
   ADD_DEPENDENCIES(SIGNMSI ${MSI_PACKAGE})
   SET_TARGET_PROPERTIES(SIGNMSI PROPERTIES EXCLUDE_FROM_ALL OFF)
 ENDIF()
+
 
 ADD_CUSTOM_TARGET(
         ${MSI_PACKAGE}
