@@ -91,6 +91,8 @@ IF(NOT MYSQL_UNIX_ADDR)
   SET(MYSQL_UNIX_ADDR "/tmp/mysql.sock")
 ENDIF()
 
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/version_info.cmake)
+INCLUDE(${CMAKE_SOURCE_DIR}/cmake/sign.cmake)
 INCLUDE("${CMAKE_SOURCE_DIR}/cmake/install.cmake")
 
 SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
