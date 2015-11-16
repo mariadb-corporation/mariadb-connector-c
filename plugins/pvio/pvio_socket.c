@@ -313,6 +313,9 @@ size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 #ifndef _WIN32
   r= recv(csock->socket,(void *)buffer, length, read_flags);
 #else
+  /* Windows doesn't support MSG_DONTWAIT, so we need to set
+     socket to non blocking */
+  pvio_socket_blocking(pvio, 0, 0);
   r= recv(csock->socket, (char *)buffer, (int)length, 0);
 #endif
   return r;
@@ -359,11 +362,15 @@ size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t l
 #ifndef WIN32
   r= send(csock->socket, buffer, length, write_flags);
 #else
+  /* Windows doesn't support MSG_DONTWAIT, so we need to set
+     socket to non blocking */
+  pvio_socket_blocking(pvio, 0, 0);
   r= send(csock->socket, buffer, (int)length, 0);
 #endif
   return r;
 }
 /* }}} */
+
 
 /* {{{ pvio_socket_write */
 /*

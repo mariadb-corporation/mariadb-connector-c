@@ -118,7 +118,7 @@ wait_for_mysql(MYSQL *mysql, int status)
 
 static int async1(MYSQL *my)
 {
-  int err, rc;
+  int err= 0, rc;
   MYSQL mysql, *ret;
   MYSQL_RES *res;
   MYSQL_ROW row;

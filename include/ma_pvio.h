@@ -16,6 +16,10 @@
 struct st_ma_pvio_methods;
 typedef struct st_ma_pvio_methods PVIO_METHODS;
 
+#define IS_ASYNC_ACTIVE(a) \
+  ((a)->mysql->options.extension && (a)->mysql->options.extension->async_context && \
+  (a)->mysql->options.extension->async_context->active)
+
 #ifndef ssl_defined
 #define ssl_defined
 struct st_ma_pvio_ssl;

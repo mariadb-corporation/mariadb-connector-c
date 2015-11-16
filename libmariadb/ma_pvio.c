@@ -59,6 +59,10 @@ extern pthread_mutex_t THR_LOCK_lock;
 /* callback functions for read/write */
 LIST *pvio_callback= NULL;
 
+#define IS_BLOCKING_ERROR()                   \
+  IF_WIN(WSAGetLastError() != WSAEWOULDBLOCK, \
+         (errno != EAGAIN && errno != EINTR))
+
 /* {{{ MARIADB_PVIO *ma_pvio_init */
 MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
 {
@@ -173,7 +177,7 @@ my_bool ma_pvio_set_timeout(MARIADB_PVIO *pvio,
 static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t res;
-  struct mysql_async_context *b= pvio->async_context;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
   int timeout= pvio->timeout[PVIO_READ_TIMEOUT];
 
   for (;;)
@@ -207,11 +211,10 @@ size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   if (!pvio)
     return -1;
 
-
   if (pvio && pvio->async_context && pvio->async_context->active)
   {
-    goto end;
     r= ma_pvio_read_async(pvio, buffer, length);
+    goto end;
   }
   else
   {
@@ -289,6 +292,36 @@ size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 }
 /* }}} */
 
+/* {{{ size_t ma_pvio_write_async */
+static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  ssize_t res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  int timeout= pvio->timeout[PVIO_WRITE_TIMEOUT];
+
+  for (;;)
+  {
+    if (pvio->methods->async_write)
+      res= pvio->methods->async_write(pvio, buffer, length);
+    if (res >= 0 || IS_BLOCKING_ERROR())
+      return res;
+    b->events_to_wait_for= MYSQL_WAIT_WRITE;
+    if (timeout >= 0)
+    {
+      b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
+      b->timeout_value= timeout;
+    }
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+    my_context_yield(&b->async_context);
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+    if (b->events_occured & MYSQL_WAIT_TIMEOUT)
+      return -1;
+  }
+}
+/* }}} */
+
 /* {{{ size_t ma_pvio_write */
 size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
@@ -315,8 +348,27 @@ size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
     r= ma_pvio_ssl_write(pvio->cssl, buffer, length);
   else
 #endif
+  if (IS_ASYNC_ACTIVE(pvio))
+  {
+    r= ma_pvio_write_async(pvio, buffer, length);
+    goto end;
+  }
+  else
+  {
+    if (pvio->async_context)
+    {
+      /*
+        If switching from non-blocking to blocking API usage, set the socket
+        back to blocking mode.
+      */
+      my_bool old_mode;
+      ma_pvio_blocking(pvio, TRUE, &old_mode);
+    }
+  }
+
   if (pvio->methods->write)
     r= pvio->methods->write(pvio, buffer, length);
+end:  
   if (pvio->callback)
     pvio->callback(pvio, 0, buffer, r);
   return r;

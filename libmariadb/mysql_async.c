@@ -134,64 +134,6 @@ my_connect_async(MARIADB_PVIO *pvio,
 #endif
 #endif
 
-ssize_t
-my_recv_async(MARIADB_PVIO *pvio, unsigned char *buf, size_t size, int timeout)
-{
-  ssize_t res;
-  struct mysql_async_context *b= pvio->async_context;
-  for (;;)
-  {
-    /* todo: async */
-    if (pvio->methods->async_read)
-      res= pvio->methods->async_read(pvio, buf, size);
-    if (res >= 0 || IS_BLOCKING_ERROR())
-      return res;
-    b->events_to_wait_for= MYSQL_WAIT_READ;
-    if (timeout >= 0)
-    {
-      b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
-      b->timeout_value= timeout;
-    }
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-    my_context_yield(&b->async_context);
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-    if (b->events_occured & MYSQL_WAIT_TIMEOUT)
-      return -1;
-  }
-}
-
-
-ssize_t
-my_send_async(MARIADB_PVIO *pvio, const unsigned char *buf, size_t size, int timeout)
-{
-  ssize_t res;
-  struct mysql_async_context *b= pvio->async_context;
-
-  for (;;)
-  {
-    if (pvio->methods->async_write)
-      res= pvio->methods->async_write(pvio, buf, size);
-    if (res >= 0 || IS_BLOCKING_ERROR())
-      return res;
-    b->events_to_wait_for= MYSQL_WAIT_WRITE;
-    if (timeout >= 0)
-    {
-      b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
-      b->timeout_value= timeout;
-    }
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-    my_context_yield(&b->async_context);
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-    if (b->events_occured & MYSQL_WAIT_TIMEOUT)
-      return -1;
-  }
-}
-
-
 my_bool
 my_io_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
                  int timeout)
