@@ -165,7 +165,7 @@ Vio *vio_new(my_socket sd, enum enum_vio_type type, my_bool localhost)
     }
 #endif
   }
-  if (!(vio->cache= my_malloc(VIO_CACHE_SIZE, MYF(MY_WME))))
+  if (!(vio->cache= my_malloc(VIO_CACHE_SIZE, MYF(MY_ZEROFILL))))
   {
     my_free(vio);
     vio= NULL;

@@ -669,7 +669,79 @@ static int test_conc118(MYSQL *mysql)
   return OK;
 }
 
+static int test_bind_address(MYSQL *my)
+{
+  MYSQL *mysql;
+  char *bind_address= getenv("MYSQL_TEST_BINDADDR");
+  char query[1024];
+  int rc;
+
+  if (!bind_address)
+  {
+    diag("environment variable MYSQL_TEST_BINDADDR not specified");
+    return SKIP;
+  }
+  sprintf(query, "DROP USER '%s'@'%s'", username, bind_address);
+  mysql_query(my, query);
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_BIND, bind_address);
+
+  if (mysql_real_connect(mysql, hostname, username,
+                         password, schema, port, socketname, 0))
+  {
+    diag("Access denied error expected");
+    return FAIL;
+  }
+  mysql_close(mysql);
+
+
+  /* create a user for given bind address */
+  if (!password)
+    sprintf(query, "CREATE USER '%s'@'%s'", username, bind_address);
+  else
+    sprintf(query, "CREATE USER '%s'@'%s' IDENTFIED BY '%s'", username, bind_address, password);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, mysql);
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_BIND, bind_address);
+
+  if (!mysql_real_connect(mysql, hostname, username,
+                         password, schema, port, socketname, 0))
+  {
+    mysql_close(mysql);
+    diag("Success expected");
+    return FAIL;
+  }
+  mysql_close(mysql);
+
+  return OK;
+}
+
+static int test_wrong_bind_address(MYSQL *my)
+{
+  MYSQL *mysql;
+  char *bind_address= "912.123.123.1";
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_BIND, bind_address);
+
+  if (mysql_real_connect(mysql, hostname, NULL,
+                             NULL, schema, port, socketname, 0))
+  {
+    diag("Error expected");
+    mysql_close(mysql);
+    return FAIL;
+  }
+  mysql_close(mysql);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
+  {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc118", test_conc118, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc66", test_conc66, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},

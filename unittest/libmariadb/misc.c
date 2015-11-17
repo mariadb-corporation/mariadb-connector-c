@@ -988,11 +988,10 @@ static int test_conc117(MYSQL *mysql)
   MYSQL *my= mysql_init(NULL);
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
-  
+ 
   mysql_kill(my, mysql_thread_id(my));
   sleep(5);
 
-  strcpy(my->host, "A");
   my->reconnect= 1;
 
   mysql_query(my, "SET @a:=1");

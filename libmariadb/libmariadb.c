@@ -844,7 +844,7 @@ static const char *default_options[]=
   "ssl-cipher", "max-allowed-packet", "protocol", "shared-memory-base-name",
   "multi-results", "multi-statements", "multi-queries", "secure-auth",
   "report-data-truncation", "plugin-dir", "default-auth", "database-type",
-  "ssl-fp", "ssl-fp-list",
+  "ssl-fp", "ssl-fp-list", "bind-address",
   NULL
 };
 
@@ -859,7 +859,7 @@ enum option_val
   OPT_ssl_cipher, OPT_max_allowed_packet, OPT_protocol, OPT_shared_memory_base_name,
   OPT_multi_results, OPT_multi_statements, OPT_multi_queries, OPT_secure_auth,
   OPT_report_data_truncation, OPT_plugin_dir, OPT_default_auth, OPT_db_type,
-  OPT_ssl_fp, OPT_ssl_fp_list
+  OPT_ssl_fp, OPT_ssl_fp_list, OPT_bind_address
 };
 
 #define CHECK_OPT_EXTENSION_SET(OPTS)\
@@ -1093,6 +1093,10 @@ static void mysql_read_default_options(struct st_mysql_options *options,
         case OPT_default_auth:
           OPT_SET_EXTENDED_VALUE(options, default_auth, opt_arg, 1);
           break;
+        case OPT_bind_address:
+      	  my_free(options->bind_address);
+          options->bind_address= my_strdup(opt_arg, MYF(MY_WME));
+      	  break;
         default:
           DBUG_PRINT("warning",("unknown option: %s",option[0]));
         }
@@ -1658,9 +1662,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (hPipe == INVALID_HANDLE_VALUE)
 #endif
   {
-    struct addrinfo hints, *save_res= 0, *res= 0;
+    struct addrinfo hints, *save_res= 0, *res= 0,
+           *bind_res= 0, *bres= 0;
     char server_port[NI_MAXSERV];
-    int gai_rc;
+    int gai_rc, bind_gai_rc;
     int rc;
 
     unix_socket=0;				/* This is not used */
@@ -1681,10 +1686,26 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     hints.ai_family= AF_UNSPEC;     /* includes: IPv4, IPv6 or hostname */
     hints.ai_socktype= SOCK_STREAM;
 
+    /* if client has multiple interfaces, we will bind socket to given
+     * bind_address */
+    if (mysql->options.bind_address)
+    {
+      bind_gai_rc= getaddrinfo(mysql->options.bind_address, 0, &hints, &bind_res);
+      if (bind_gai_rc != 0 || !bind_res)
+      {
+        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
+                     ER(CR_UNKNOWN_HOST), mysql->options.bind_address, bind_gai_rc);
+        goto error;
+      }
+    }
+
+
     /* Get the address information for the server using getaddrinfo() */
     gai_rc= getaddrinfo(host, server_port, &hints, &res);
     if (gai_rc != 0)
     {
+      if (bind_res)
+        freeaddrinfo(bind_res);
       my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
                    ER(CR_UNKNOWN_HOST), host, gai_rc);
       goto error;
@@ -1699,11 +1720,26 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       if (sock == SOCKET_ERROR)
         /* we do error handling after for loop only for last call */
         continue;
+      if (bind_res)
+      {
+        for (bres= bind_res; bres; bres= bres->ai_next)
+        {
+          if (!(rc= bind(sock, bres->ai_addr, (int)bres->ai_addrlen)))
+            break;
+        }
+        if (rc)
+        {
+          closesocket(sock);
+          continue;
+        }
+      }
       if (!(net->vio= vio_new(sock, VIO_TYPE_TCPIP, FALSE)))
       {
         my_set_error(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
         closesocket(sock);
         freeaddrinfo(res);
+        if (bind_res)
+          freeaddrinfo(bind_res);
         goto error;
       }
       rc= connect_sync_or_async(mysql, net, sock,
@@ -1725,6 +1761,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     }
  
     freeaddrinfo(res);
+    if (bind_res)
+      freeaddrinfo(bind_res);
 
     if (sock == SOCKET_ERROR)
     {
@@ -2192,6 +2230,7 @@ static void mysql_close_options(MYSQL *mysql)
   my_free(mysql->options.my_cnf_group);
   my_free(mysql->options.charset_dir);
   my_free(mysql->options.charset_name);
+  my_free(mysql->options.bind_address);
   my_free(mysql->options.ssl_key);
   my_free(mysql->options.ssl_cert);
   my_free(mysql->options.ssl_ca);
@@ -2900,6 +2939,10 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MYSQL_OPT_NAMED_PIPE:
     mysql->options.named_pipe=1;		/* Force named pipe */
     break;
+  case MYSQL_OPT_BIND:
+    my_free(mysql->options.bind_address);
+    mysql->options.bind_address= my_strdup(arg1, MYF(MY_WME));
+    break;  
   case MYSQL_OPT_LOCAL_INFILE:			/* Allow LOAD DATA LOCAL ?*/
     if (!arg1 || test(*(uint*) arg1))
       mysql->options.client_flag|= CLIENT_LOCAL_FILES;

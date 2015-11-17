@@ -251,7 +251,7 @@ struct st_mysql_options {
     my_bool compress,named_pipe;
     my_bool unused_1, unused_2, unused_3, unused_4;
     enum mysql_option methods_to_use;
-    char *client_ip;
+    char *bind_address;
     my_bool secure_auth;
     my_bool report_data_truncation; 
     /* function pointers for local infile support */
