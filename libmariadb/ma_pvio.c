@@ -185,7 +185,7 @@ static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t lengt
     /* todo: async */
     if (pvio->methods->async_read)
       res= pvio->methods->async_read(pvio, buffer, length);
-    if (res >= 0 /* || IS_BLOCKING_ERROR()*/)
+    if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_READ;
     if (timeout >= 0)
@@ -211,14 +211,14 @@ size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   if (!pvio)
     return -1;
 
-  if (pvio && pvio->async_context && pvio->async_context->active)
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r= ma_pvio_read_async(pvio, buffer, length);
     goto end;
   }
   else
   {
-    if (pvio->async_context)
+    if (IS_PVIO_ASYNC(pvio))
     {
       /*
         If switching from non-blocking to blocking API usage, set the socket
@@ -232,8 +232,10 @@ size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   /* secure connection */
 #ifdef HAVE_SSL
   if (pvio->cssl)
+  {
     r= ma_pvio_ssl_read(pvio->cssl, buffer, length);
-  else
+    goto end;
+  }
 #endif
   if (pvio->methods->read)
     r= pvio->methods->read(pvio, buffer, length);
@@ -330,32 +332,24 @@ size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   if (!pvio)
    return -1;
 
-  if (pvio_callback)
-  {
-    void (*callback)(int mode, MYSQL *mysql, const uchar *buffer, size_t length);
-    LIST *p= pvio_callback;
-    while (p)
-    {
-      callback= p->data;
-      callback(1, pvio->mysql, buffer, length);
-      p= p->next;
-    }
-  }
-
   /* secure connection */
 #ifdef HAVE_SSL
   if (pvio->cssl)
+  {
     r= ma_pvio_ssl_write(pvio->cssl, buffer, length);
+    goto end;
+  }
   else
 #endif
-  if (IS_ASYNC_ACTIVE(pvio))
+//  printf("No ssl (write): %x\n", pvio->cssl);
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r= ma_pvio_write_async(pvio, buffer, length);
     goto end;
   }
   else
   {
-    if (pvio->async_context)
+    if (IS_PVIO_ASYNC(pvio))
     {
       /*
         If switching from non-blocking to blocking API usage, set the socket
@@ -408,13 +402,45 @@ my_bool ma_pvio_get_handle(MARIADB_PVIO *pvio, void *handle)
 }
 /* }}} */
 
+/* {{{ ma_pvio_wait_async */
+static my_bool
+ma_pvio_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
+                 int timeout)
+{
+  switch (event)
+  {
+  case VIO_IO_EVENT_READ:
+    b->events_to_wait_for = MYSQL_WAIT_READ;
+    break;
+  case VIO_IO_EVENT_WRITE:
+    b->events_to_wait_for = MYSQL_WAIT_WRITE;
+    break;
+  case VIO_IO_EVENT_CONNECT:
+    b->events_to_wait_for = MYSQL_WAIT_WRITE | IF_WIN(0, MYSQL_WAIT_EXCEPT);
+    break;
+  }
+
+  if (timeout >= 0)
+  {
+    b->events_to_wait_for |= MYSQL_WAIT_TIMEOUT;
+    b->timeout_value= timeout;
+  }
+  if (b->suspend_resume_hook)
+    (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+  my_context_yield(&b->async_context);
+  if (b->suspend_resume_hook)
+    (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+  return (b->events_occured & MYSQL_WAIT_TIMEOUT) ? 0 : 1;
+}
+/* }}} */
+
 /* {{{ ma_pvio_wait_io_or_timeout */
 int ma_pvio_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
-  if (pvio && pvio->async_context && pvio->async_context->active)
-    return my_io_wait_async(pvio->async_context, 
-                            (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
-                             timeout);
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
+    return ma_pvio_wait_async(pvio->mysql->options.extension->async_context, 
+                             (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
+                              timeout);
 
 
   if (pvio && pvio->methods->wait_io_or_timeout)
@@ -450,6 +476,19 @@ my_bool ma_pvio_is_blocking(MARIADB_PVIO *pvio)
 }
 /* }}} */
 
+/* {{{ ma_pvio_has_data */
+my_bool ma_pvio_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
+{
+  /* check if we still have unread data in cache */
+  if (pvio->cache)
+    if  (pvio->cache_pos > pvio->cache)
+      return pvio->cache_pos - pvio->cache;
+  if (pvio && pvio->methods->has_data)
+    return pvio->methods->has_data(pvio, data_len);
+  return 1;
+}
+/* }}} */
+
 #ifdef HAVE_SSL
 /* {{{ my_bool ma_pvio_start_ssl */
 my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
@@ -463,7 +502,7 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
   }
   if (ma_pvio_ssl_connect(pvio->cssl))
   {
-    my_free((gptr)pvio->cssl);
+    my_free(pvio->cssl);
     pvio->cssl= NULL;
     return 1;
   }

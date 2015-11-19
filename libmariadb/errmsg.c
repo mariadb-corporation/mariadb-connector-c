@@ -136,7 +136,7 @@ const char *client_errors[]=
 /* 2053 */  "",
 /* 2054 */  "This feature is not implemented or disabled",
 /* 2055 */  "Lost connection to MySQL server at '%s', system error: %d",
-/* 2056 */  "",
+/* 2056 */  "Server closed statement due to a prior %s function call",
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
 /* 2058 */  "Plugin %s could not be loaded: %s",
 /* 2059 */  "Can't connect twice. Already connected",

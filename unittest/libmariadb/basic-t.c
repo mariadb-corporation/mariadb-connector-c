@@ -39,8 +39,7 @@ static int test_conc75(MYSQL *my)
   mysql= mysql_init(NULL);
 
 
-  mysql_options(mysql, MYSQL_OPT_RECONNECT,(const char *)"true");
-
+  mysql->reconnect= 1;
   mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS a");

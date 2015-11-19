@@ -16,9 +16,17 @@
 struct st_ma_pvio_methods;
 typedef struct st_ma_pvio_methods PVIO_METHODS;
 
-#define IS_ASYNC_ACTIVE(a) \
-  ((a)->mysql->options.extension && (a)->mysql->options.extension->async_context && \
-  (a)->mysql->options.extension->async_context->active)
+#define IS_PVIO_ASYNC(a) \
+  ((a)->mysql && (a)->mysql->options.extension && (a)->mysql->options.extension->async_context)
+
+#define IS_PVIO_ASYNC_ACTIVE(a) \
+  (IS_PVIO_ASYNC(a)&& (a)->mysql->options.extension->async_context->active)
+
+#define IS_MYSQL_ASYNC(a) \
+  ((a)->options.extension && (a)->options.extension->async_context)
+
+#define IS_MYSQL_ASYNC_ACTIVE(a) \
+  (IS_MYSQL_ASYNC(a)&& (a)->options.extension->async_context->active)
 
 #ifndef ssl_defined
 #define ssl_defined
@@ -101,6 +109,7 @@ struct st_ma_pvio_methods
   my_bool (*get_handle)(MARIADB_PVIO *pvio, void *handle);
   my_bool (*is_blocking)(MARIADB_PVIO *pvio);
   my_bool (*is_alive)(MARIADB_PVIO *pvio);
+  my_bool (*has_data)(MARIADB_PVIO *pvio, ssize_t *data_len);
 };
 
 /* Function prototypes */
@@ -121,5 +130,6 @@ int ma_pvio_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 my_bool ma_pvio_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool ma_pvio_is_alive(MARIADB_PVIO *pvio);
 my_bool ma_pvio_get_handle(MARIADB_PVIO *pvio, void *handle);
+my_bool ma_pvio_has_data(MARIADB_PVIO *pvio, ssize_t *length);
 
 #endif /* _ma_pvio_h_ */

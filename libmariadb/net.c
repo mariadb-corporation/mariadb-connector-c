@@ -179,67 +179,11 @@ static my_bool net_realloc(NET *net, size_t length)
   DBUG_RETURN(0);
 }
 
-
-/* check if the socket is still alive */
-static my_bool net_check_socket_status(my_socket sock)
-{
-#ifndef _WIN32
-  struct pollfd poll_fd;
-#else
-  FD_SET sfds;
-  struct timeval tv= {0,0};
-#endif
-  int res;
-#ifndef _WIN32
-  memset(&poll_fd, 0, sizeof(struct pollfd));
-  poll_fd.events= POLLPRI | POLLIN;
-  poll_fd.fd= sock;
-
-  res= poll(&poll_fd, 1, 0);
-  if (res <= 0) /* timeout or error */
-    return FALSE;
-  if (!(poll_fd.revents & (POLLIN | POLLPRI)))
-    return FALSE;
-  return TRUE;
-#else
-  /* We can't use the WSAPoll function, it's broken :-(
-     (see Windows 8 Bugs 309411 - WSAPoll does not report failed connections)
-     Instead we need to use select function:
-     If TIMEVAL is initialized to {0, 0}, select will return immediately; 
-     this is used to poll the state of the selected sockets.
-  */
-  FD_ZERO(&sfds);
-  FD_SET(sock, &sfds);
-
-  res= select((int)sock + 1, &sfds, NULL, NULL, &tv);
-  if (res > 0 && FD_ISSET(sock, &sfds))
-    return TRUE;
-  return FALSE;
-#endif
-
-}
-
-	/* Remove unwanted characters from connection */
+/* Remove unwanted characters from connection */
 
 void net_clear(NET *net)
 {
-  my_socket sock;
   DBUG_ENTER("net_clear");
-  
-  ma_pvio_get_handle(net->pvio, &sock);
-
-  /* see conc-71: we need to check the socket status first:
-     if the socket is dead we set net->error, so net_flush
-     will report an error */
-  while (net_check_socket_status(sock))
-  {
-    if ((ssize_t)ma_pvio_cache_read(net->pvio, (gptr)net->buff, (size_t) net->max_packet) <= 0)
-    {
-      net->error= 2;
-      DBUG_PRINT("info", ("socket disconnected"));
-      DBUG_VOID_RETURN;
-    }
-  }
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
   DBUG_VOID_RETURN;

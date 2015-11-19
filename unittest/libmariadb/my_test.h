@@ -374,7 +374,7 @@ MYSQL *test_connect(struct my_tests_st *test) {
     return(NULL);
   }
 
-  mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, "1");
+  mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &i);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (const char *)&i);
 
   /* option handling */

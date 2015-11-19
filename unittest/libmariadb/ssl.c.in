@@ -680,6 +680,9 @@ const char *ssl_cert_finger_print= "@SSL_CERT_FINGER_PRINT@";
 static int test_ssl_fp(MYSQL *unused)
 {
   MYSQL *my;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+  int rc;
   
   if (check_skip_ssl())
     return SKIP;
@@ -693,8 +696,22 @@ static int test_ssl_fp(MYSQL *unused)
 
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
                          port, socketname, 0), mysql_error(my));
-
+  
   FAIL_IF(check_cipher(my) != 0, "Invalid cipher");
+
+  mysql_query(my, "SET @a:=1");
+  check_mysql_rc(rc, my);
+
+  mysql_query(my, "SELECT @a");
+  check_mysql_rc(rc, my);
+
+  if ((res= mysql_store_result(my)))
+  {
+    row= mysql_fetch_row(res);
+    diag("@a:=%s", row[0]);
+    mysql_free_result(res);
+  }
+
   mysql_close(my);
   return OK;
 }
@@ -741,7 +758,7 @@ struct my_tests_st my_tests[] = {
   {"test_multi_ssl_connections", test_multi_ssl_connections, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_conc_102", test_conc_102, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_ssl_threads", test_ssl_threads, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-  {"test_password_protected", test_password_protected, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_password_protected", test_password_protected, TEST_CONNECTION_NEW, 0,  NULL,  NULL}, 
 
   {NULL, NULL, 0, 0, NULL, NULL}
 };

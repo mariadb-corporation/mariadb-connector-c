@@ -964,7 +964,6 @@ static int test_conc117(MYSQL *mysql)
   mysql_kill(my, mysql_thread_id(my));
   sleep(5);
 
-  strcpy(my->host, "A");
   my->reconnect= 1;
 
   mysql_query(my, "SET @a:=1");

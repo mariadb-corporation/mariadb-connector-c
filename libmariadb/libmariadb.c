@@ -384,6 +384,13 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   if (!arg)
     arg="";
 
+  /* check if connection kills itself */
+  if (command == COM_PROCESS_KILL)
+  {
+    unsigned long thread_id= uint4korr(arg);
+    if (thread_id == mysql->thread_id)
+      skipp_check= 1;
+  }
   if (net_write_command(net,(uchar) command,arg,
 			length ? length : (ulong) strlen(arg)))
   {
@@ -1684,10 +1691,36 @@ error:
   DBUG_RETURN(0);
 }
 
+struct my_hook_data {
+  MYSQL *orig_mysql;
+  MYSQL *new_mysql;
+  /* This is always NULL currently, but restoring does not hurt just in case. */
+  MARIADB_PVIO *orig_pvio;
+};
+/*
+  Callback hook to make the new VIO accessible via the old MYSQL to calling
+  application when suspending a non-blocking call during automatic reconnect.
+*/
+static void
+my_suspend_hook(my_bool suspend, void *data)
+{
+  struct my_hook_data *hook_data= (struct my_hook_data *)data;
+  if (suspend)
+  {
+    hook_data->orig_pvio= hook_data->orig_mysql->net.pvio;
+    hook_data->orig_mysql->net.pvio= hook_data->new_mysql->net.pvio;
+  }
+  else
+    hook_data->orig_mysql->net.pvio= hook_data->orig_pvio;
+}
+
+
 static my_bool mysql_reconnect(MYSQL *mysql)
 {
   MYSQL tmp_mysql;
-  LIST *li_stmt= mysql->stmts;
+  struct my_hook_data hook_data;
+  struct mysql_async_context *ctxt= NULL;
+
   DBUG_ENTER("mysql_reconnect");
 
   if (!mysql->reconnect ||
@@ -1705,19 +1738,21 @@ static my_bool mysql_reconnect(MYSQL *mysql)
   /* don't reread options from configuration files */
   tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
 
-  /* make sure that we reconnect with the same character set */
-  if (!tmp_mysql.options.charset_name ||
-      strcmp(tmp_mysql.options.charset_name, mysql->charset->csname))
+  if (IS_MYSQL_ASYNC_ACTIVE(mysql))
   {
-    my_free(tmp_mysql.options.charset_name);
-    tmp_mysql.options.charset_name= my_strdup(mysql->charset->csname, MYF(MY_WME));
+    hook_data.orig_mysql= mysql;
+    hook_data.new_mysql= &tmp_mysql;
+    hook_data.orig_pvio= mysql->net.pvio;
+    my_context_install_suspend_resume_hook(ctxt, my_suspend_hook, &hook_data);
   }
 
-  tmp_mysql.reconnect= mysql->reconnect;
   if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
 			  mysql->db, mysql->port, mysql->unix_socket,
-			  mysql->client_flag | CLIENT_REMEMBER_OPTIONS))
+			  mysql->client_flag | CLIENT_REMEMBER_OPTIONS) ||
+      mysql_set_character_set(&tmp_mysql, mysql->charset->csname))
   {
+    if (ctxt)
+      my_context_install_suspend_resume_hook(ctxt, NULL, NULL);
     /* don't free options (CONC-118) */
     memset(&tmp_mysql.options, 0, sizeof(struct st_mysql_options));
     my_set_error(mysql, tmp_mysql.net.last_errno, 
@@ -1727,19 +1762,7 @@ static my_bool mysql_reconnect(MYSQL *mysql)
     DBUG_RETURN(1);
   }
 
-  /* reset the connection in all active statements 
-     todo: check stmt->mysql in mysql_stmt* functions ! */
-  for (;li_stmt;li_stmt= li_stmt->next)
-  {
-    MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
-
-    if (stmt->state != MYSQL_STMT_INITTED)
-    {
-      stmt->state= MYSQL_STMT_INITTED;
-      SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
-    }
-  }
-
+  tmp_mysql.reconnect= mysql->reconnect;
   tmp_mysql.free_me= mysql->free_me;
   tmp_mysql.stmts= mysql->stmts;
   mysql->stmts= NULL;
@@ -1747,15 +1770,30 @@ static my_bool mysql_reconnect(MYSQL *mysql)
   /* Don't free options, we moved them to tmp_mysql */
   memset(&mysql->options, 0, sizeof(mysql->options));
   mysql->free_me=0;
-  mysql->stmts= NULL;
   mysql_close(mysql);
   *mysql=tmp_mysql;
-  mysql->reconnect= 1;
+  mysql->net.pvio->mysql= mysql;
   net_clear(&mysql->net);
   mysql->affected_rows= ~(my_ulonglong) 0;
   DBUG_RETURN(0);
 }
 
+
+static void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
+{
+  if (mysql->stmts)
+  {
+    LIST *li_stmt= mysql->stmts;
+
+    for (; li_stmt; li_stmt= li_stmt->next)
+    {
+      MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
+      stmt->mysql= NULL;
+      SET_CLIENT_STMT_ERROR(stmt, CR_STMT_CLOSED, SQLSTATE_UNKNOWN, function_name);
+    }
+    mysql->stmts= NULL;
+  }
+}
 
 /**************************************************************************
 ** Change user and database 
@@ -1786,36 +1824,33 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
   else
     mysql->charset=default_charset_info;
 
-  mysql->user= (char *)user;
-  mysql->passwd= (char *)passwd;
-  mysql->db= (char *)db;
+  mysql->user= my_strdup(user ? user : "", MYF(MY_WME));
+  mysql->passwd= my_strdup(passwd ? passwd : "", MYF(MY_WME));
+
+  /* db will be set in run_plugin_auth */
+  mysql->db= 0;
   rc= run_plugin_auth(mysql, 0, 0, 0, db);
+
+  /* COM_CHANGE_USER always releases prepared statements, so we need to invalidate them */
+  ma_invalidate_stmts(mysql, "mysql_change_user()");
 
   if (rc==0)
   {
-    LIST *li_stmt= mysql->stmts;
     my_free(s_user);
     my_free(s_passwd);
     my_free(s_db);
 
-    if (!(mysql->user=  my_strdup(user,MYF(MY_WME))) ||
-        !(mysql->passwd=my_strdup(passwd,MYF(MY_WME))) ||
-        !(mysql->db= db ? my_strdup(db,MYF(MY_WME)) : 0))
+    if (db && !(mysql->db= my_strdup(db,MYF(MY_WME))))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
       rc= 1;
     }
-
-    for (;li_stmt;li_stmt= li_stmt->next)
-    {
-      MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
-      stmt->mysql= NULL;
-      SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
-    }/* detach stmts */
-    mysql->stmts= NULL;
-    
   } else
   {
+    my_free(mysql->user);
+    my_free(mysql->passwd);
+    my_free(mysql->db);
+
     mysql->user= s_user;
     mysql->passwd= s_passwd;
     mysql->db= s_db;
@@ -1870,6 +1905,7 @@ static void mysql_close_options(MYSQL *mysql)
   my_free(mysql->options.my_cnf_group);
   my_free(mysql->options.charset_dir);
   my_free(mysql->options.charset_name);
+  my_free(mysql->options.bind_address);
   my_free(mysql->options.ssl_key);
   my_free(mysql->options.ssl_cert);
   my_free(mysql->options.ssl_ca);
@@ -1946,12 +1982,9 @@ void mysql_close_slow_part(MYSQL *mysql)
 void STDCALL
 mysql_close(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt;
   DBUG_ENTER("mysql_close");
   if (mysql)					/* Some simple safety */
   {
-    LIST *li_stmt= mysql->stmts;
-
     if (mysql->net.conn_hdlr && mysql->net.conn_hdlr->data)
     {
       void *p= (void *)mysql->net.conn_hdlr;
@@ -1963,14 +1996,8 @@ mysql_close(MYSQL *mysql)
     if (mysql->methods)
       mysql->methods->db_close(mysql);
 
-    /* reset the connection in all active statements 
-       todo: check stmt->mysql in mysql_stmt* functions ! */
-    for (;li_stmt;li_stmt= li_stmt->next)
-    {
-      stmt= (MYSQL_STMT *)li_stmt->data;
-      stmt->mysql= NULL;
-      SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
-    }
+    /* reset the connection in all active statements */
+    ma_invalidate_stmts(mysql, "mysql_close()");
     mysql_close_memory(mysql);
     mysql_close_options(mysql);
     mysql->host_info=mysql->user=mysql->passwd=mysql->db=0;

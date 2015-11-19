@@ -76,6 +76,7 @@ int pvio_socket_keepalive(MARIADB_PVIO *pvio);
 my_bool pvio_socket_get_handle(MARIADB_PVIO *pvio, void *handle);
 my_bool pvio_socket_is_blocking(MARIADB_PVIO *pvio);
 my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio);
+my_bool pvio_socket_has_data(MARIADB_PVIO *pvio, ssize_t *data_len);
 
 static int pvio_socket_init(char *unused1, 
                            size_t unused2, 
@@ -98,7 +99,8 @@ struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_keepalive,
   pvio_socket_get_handle,
   pvio_socket_is_blocking,
-  pvio_socket_is_alive
+  pvio_socket_is_alive,
+  pvio_socket_has_data
 };
 
 #ifndef HAVE_SOCKET_DYNAMIC
@@ -913,10 +915,13 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
 #ifndef _WIN32
   memset(&poll_fd, 0, sizeof(struct pollfd));
   poll_fd.events= POLLPRI | POLLIN;
+  poll_fd.revents= POLLERR;
   poll_fd.fd= csock->socket;
 
   res= poll(&poll_fd, 1, 0);
   if (res <= 0) /* timeout or error */
+    return FALSE;
+  if (!(poll_fd.revents & POLLERR))
     return FALSE;
   if (!(poll_fd.revents & (POLLIN | POLLPRI)))
     return FALSE;
@@ -931,10 +936,35 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
   FD_ZERO(&sfds);
   FD_SET(csock->socket, &sfds);
 
-  res= select((int)+csock->socket + 1, &sfds, NULL, NULL, &tv);
+  res= select((int)csock->socket + 1, &sfds, NULL, NULL, &tv);
   if (res > 0 && FD_ISSET(csock->socket, &sfds))
     return TRUE;
   return FALSE;
 #endif
+}
+/* }}} */
+
+/* {{{ my_boool pvio_socket_has_data */
+my_bool pvio_socket_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
+{
+  struct st_pvio_socket *csock= NULL;
+  char tmp_buf[1024];
+  ssize_t len;
+  my_bool mode;
+ 
+  if (!pvio || !pvio->data)
+    return 0;
+
+  csock= (struct st_pvio_socket *)pvio->data;
+  /* MSG_PEEK: Peeks at the incoming data. The data is copied into the buffer,
+      but is not removed from the input queue. 
+  */
+  pvio_socket_blocking(pvio, 0, &mode);
+  len= recv(csock->socket, &tmp_buf, sizeof(tmp_buf), MSG_PEEK);
+  pvio_socket_blocking(pvio, mode, 0);
+  if (len < 0)
+    return 1;
+  *data_len= len;
+  return 0;
 }
 /* }}} */

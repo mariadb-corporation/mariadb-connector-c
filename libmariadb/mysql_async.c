@@ -134,37 +134,6 @@ my_connect_async(MARIADB_PVIO *pvio,
 #endif
 #endif
 
-my_bool
-my_io_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
-                 int timeout)
-{
-  switch (event)
-  {
-  case VIO_IO_EVENT_READ:
-    b->events_to_wait_for = MYSQL_WAIT_READ;
-    break;
-  case VIO_IO_EVENT_WRITE:
-    b->events_to_wait_for = MYSQL_WAIT_WRITE;
-    break;
-  case VIO_IO_EVENT_CONNECT:
-    b->events_to_wait_for = MYSQL_WAIT_WRITE | IF_WIN(0, MYSQL_WAIT_EXCEPT);
-    break;
-  }
-
-  if (timeout >= 0)
-  {
-    b->events_to_wait_for |= MYSQL_WAIT_TIMEOUT;
-    b->timeout_value= timeout;
-  }
-  if (b->suspend_resume_hook)
-    (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-  my_context_yield(&b->async_context);
-  if (b->suspend_resume_hook)
-    (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-  return (b->events_occured & MYSQL_WAIT_TIMEOUT) ? 0 : 1;
-}
-
-
 #ifdef HAVE_SSL_FIXME
 static my_bool
 my_ssl_async_check_result(int res, struct mysql_async_context *b, MARIADB_SSL *cssl)

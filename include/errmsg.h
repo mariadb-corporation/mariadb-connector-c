@@ -76,6 +76,7 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_NO_STMT_METADATA     2052
 #define CR_NOT_IMPLEMENTED      2054
 #define CR_SERVER_LOST_EXTENDED 2055
+#define CR_STMT_CLOSED          2056
 #define CR_NEW_STMT_METADATA    2057
 #define CR_AUTH_PLUGIN_CANNOT_LOAD 2058
 #define CR_ALREADY_CONNECTED    2059

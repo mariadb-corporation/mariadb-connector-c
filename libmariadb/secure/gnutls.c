@@ -235,6 +235,12 @@ ssize_t ma_ssl_pull(gnutls_transport_ptr_t ptr, void* data, size_t len)
   return rc;
 }
 
+static int ma_ssl_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
+{
+  MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
+  return pvio->methods->wait_io_or_timeout(pvio, 0, ms);
+}
+
 my_bool ma_ssl_connect(MARIADB_SSL *cssl)
 {
   gnutls_session_t ssl = (gnutls_session_t)cssl->ssl;
@@ -257,7 +263,8 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   gnutls_transport_set_ptr(ssl, pvio);
   gnutls_transport_set_push_function(ssl, ma_ssl_push);
   gnutls_transport_set_pull_function(ssl, ma_ssl_pull);
-  gnutls_handshake_set_timeout(ssl, mysql->options.connect_timeout);
+  gnutls_transport_set_pull_timeout_function(ssl, ma_ssl_pull_timeout);
+  gnutls_handshake_set_timeout(ssl, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
 
   do {
     ret = gnutls_handshake(ssl);
@@ -417,3 +424,4 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
 }
 
 #endif /* HAVE_GNUTLS */
+

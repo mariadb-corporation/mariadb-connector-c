@@ -415,7 +415,8 @@ unsigned char *mysql_net_store_length(unsigned char *packet, size_t length)
 int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
 {
   DBUG_ENTER("store_param");
-  DBUG_PRINT("info", ("column: %d  type: x%x", column, stmt->params[column].buffer_type));
+  DBUG_PRINT("info", ("column: %d  type: %d", column, stmt->params[column].buffer_type));
+  printf("type: %d\n", column, stmt->params[column].buffer_type);
   switch (stmt->params[column].buffer_type) {
   case MYSQL_TYPE_TINY:
     int1store(*p, *(uchar *)stmt->params[column].buffer);

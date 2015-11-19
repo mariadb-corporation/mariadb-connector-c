@@ -523,10 +523,12 @@ static int test_bug12744(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   /* set reconnect, kill and ping to reconnect */
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  //check_mysql_rc(rc, mysql);
+  check_mysql_rc(rc, mysql);
  
   sleep(2);
   rc= mysql_ping(mysql); 
@@ -542,10 +544,10 @@ static int test_bug1500(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   MYSQL_BIND my_bind[3];
-  int        rc;
+  int        rc= 0;
   int32 int_data[3]= {2, 3, 4};
-  const char *data;
-  const char *query;
+  char *data;
+  char *query;
 
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bg1500");
@@ -1083,6 +1085,8 @@ static int test_bug20152(MYSQL *mysql)
   memset(my_bind, '\0', sizeof(my_bind));
   my_bind[0].buffer_type= MYSQL_TYPE_DATE;
   my_bind[0].buffer= (void*)&tm;
+
+  memset(&tm, 0, sizeof(MYSQL_TIME));
 
   tm.year = 2006;
   tm.month = 6;
@@ -2180,11 +2184,11 @@ static int test_bug4026(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
   check_stmt_rc(rc, stmt);
   /* Bind input buffers */
-  memset(my_bind, '\0', sizeof(my_bind));  
-  memset(&time_in, '\0', sizeof(time_in));  
-  memset(&time_out, '\0', sizeof(time_out));
-  memset(&datetime_in, '\0', sizeof(datetime_in));
-  memset(&datetime_out, '\0', sizeof(datetime_out));
+  memset(my_bind, '\0', sizeof(MYSQL_BIND) * 2);  
+  memset(&time_in, '\0', sizeof(MYSQL_TIME));  
+  memset(&time_out, '\0', sizeof(MYSQL_TIME));
+  memset(&datetime_in, '\0', sizeof(MYSQL_TIME));
+  memset(&datetime_out, '\0', sizeof(MYSQL_TIME));
   my_bind[0].buffer_type= MYSQL_TYPE_TIME;
   my_bind[0].buffer= (void *) &time_in;
   my_bind[1].buffer_type= MYSQL_TYPE_DATETIME;
