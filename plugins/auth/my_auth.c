@@ -218,10 +218,10 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     int4store(buff+4, net->max_packet_size);
     buff[8]= (char) mysql->charset->nr;
     bzero(buff + 9, 32-9);
-    if (!(mysql->server_capabilities & MARIADB_CLIENT_EXTENDED_PROTOCOL))
+    if (mysql->server_capabilities & MARIADB_CLIENT_EXTENDED_PROTOCOL)
     {
       mysql->client_flag |= MARIADB_CLIENT_SUPPORTED_FLAGS;
-      int4store(buff + 28, mysql->client_flag << 32);
+      int4store(buff + 28, mysql->client_flag >> 32);
     }
     end= buff+32;
   }

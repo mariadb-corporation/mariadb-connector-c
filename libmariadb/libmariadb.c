@@ -1534,7 +1534,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   mysql->port=port;
   client_flag|=mysql->options.client_flag;
 
-  if (strncmp(end, MA_RPL_VERSION_HACK, sizeof(MA_RPL_VERSION_HACK)) == 0)
+  if (strncmp(end, MA_RPL_VERSION_HACK, sizeof(MA_RPL_VERSION_HACK) - 1) == 0)
   {
     if (!(mysql->server_version= my_strdup(end + sizeof(MA_RPL_VERSION_HACK), 0)))
     {
