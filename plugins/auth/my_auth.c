@@ -169,6 +169,12 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->client_flag & CLIENT_MULTI_STATEMENTS)
     mysql->client_flag|= CLIENT_MULTI_RESULTS;
 
+  /* if server supports extended MariaDB extended protocol, we will unset
+     CLIENT_LONG_PASSWORD and send extended client capabilities in last
+     four of 23 unused bytes */
+  if (mysql->server_capabilities & MARIADB_CLIENT_EXTENDED_PROTOCOL)
+    mysql->client_flag &= ~CLIENT_LONG_PASSWORD;
+
 #if defined(HAVE_SSL) && !defined(EMBEDDED_LIBRARY)
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
@@ -211,7 +217,12 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     int4store(buff,mysql->client_flag);
     int4store(buff+4, net->max_packet_size);
     buff[8]= (char) mysql->charset->nr;
-    bzero(buff+9, 32-9);
+    bzero(buff + 9, 32-9);
+    if (!(mysql->server_capabilities & MARIADB_CLIENT_EXTENDED_PROTOCOL))
+    {
+      mysql->client_flag |= MARIADB_CLIENT_SUPPORTED_FLAGS;
+      int4store(buff + 28, mysql->client_flag << 32);
+    }
     end= buff+32;
   }
   else

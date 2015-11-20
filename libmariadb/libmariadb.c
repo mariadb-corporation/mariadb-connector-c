@@ -70,6 +70,7 @@
 #include <mysql/client_plugin.h>
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
+#define MA_RPL_VERSION_HACK "5.5.5-"
 
 #undef max_allowed_packet
 #undef net_buffer_length
@@ -1308,6 +1309,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   MA_PVIO_CINFO  cinfo= {NULL, NULL, 0, -1, NULL};
   MARIADB_PVIO   *pvio= NULL;
   char    *scramble_data;
+  my_bool is_maria= 0;
   const char *scramble_plugin;
   uint pkt_length, scramble_len, pkt_scramble_len= 0;
   NET	*net= &mysql->net;
@@ -1532,13 +1534,14 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   mysql->port=port;
   client_flag|=mysql->options.client_flag;
 
-  if (strncmp(end, "5.5.5-", 6) == 0)
+  if (strncmp(end, MA_RPL_VERSION_HACK, sizeof(MA_RPL_VERSION_HACK)) == 0)
   {
-    if (!(mysql->server_version= my_strdup(end + 6, 0)))
+    if (!(mysql->server_version= my_strdup(end + sizeof(MA_RPL_VERSION_HACK), 0)))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
       goto error;
     }
+    is_maria= 1;
   }
   else
   {
@@ -1575,7 +1578,14 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     mysql->server_status= uint2korr(end + 3);
     mysql->server_capabilities|= uint2korr(end + 5) << 16;
     pkt_scramble_len= uint1korr(end + 7);
+
+    /* check if MariaD2B specific capabilities are available */
+    if (is_maria && !(mysql->server_capabilities & CLIENT_LONG_PASSWORD))
+    {
+      mysql->server_capabilities|= (ulonglong) uint4korr(end + 14) << 32;
+    }
   }
+
   /* pad 2 */
   end+= 18;
 
@@ -1605,7 +1615,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     }
   }
    
-
   /* Set character set */
   if (mysql->options.charset_name)
     mysql->charset= mysql_find_charset_name(mysql->options.charset_name);

@@ -276,17 +276,18 @@ struct st_mysql_options {
     my_ulonglong extra_info;		/* Used by mysqlshow */
     unsigned long thread_id;		/* Id for connection in server */
     unsigned long packet_length;
-    unsigned int	port;
-    unsigned long client_flag,server_capabilities; /* changed from int to long in 4.1 protocol */
-    unsigned int	protocol_version;
-    unsigned int	field_count;
-    unsigned int 	server_status;
-    unsigned int  server_language;
-    unsigned int  warning_count;          /* warning count, added in 4.1 protocol */
+    unsigned int port;
+    unsigned long long client_flag;
+    unsigned long long server_capabilities; /* changed from long to longlong in 10.2 protocol */
+    unsigned int protocol_version;
+    unsigned int field_count;
+    unsigned int server_status;
+    unsigned int server_language;
+    unsigned int warning_count;          /* warning count, added in 4.1 protocol */
     struct st_mysql_options options;
     enum mysql_status status;
-    my_bool	free_me;		/* If free in mysql_close */
-    my_bool	reconnect;		/* set to 1 if automatic reconnect */
+    my_bool free_me;		/* If free in mysql_close */
+    my_bool reconnect;		/* set to 1 if automatic reconnect */
     char	        scramble_buff[20+ 1];
     /* madded after 3.23.58 */
     my_bool       unused_1;

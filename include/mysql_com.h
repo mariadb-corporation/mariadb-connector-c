@@ -154,7 +154,15 @@ enum enum_server_command
 #define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
 #define CLIENT_REMEMBER_OPTIONS  (1UL << 31)
 
-#define CLIENT_SUPPORTED_FLAGS  (CLIENT_LONG_PASSWORD | \
+/* MariaDB specific capabilities */
+#define MARIADB_CLIENT_FLAGS 0xFFFFFFFF00000000ULL
+#define MARIADB_CLIENT_PROGRESS (1ULL << 32)
+#define MARIADB_CLIENT_EXTENDED_PROTOCOL (1ULL << 63)
+
+#define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
+                                        MARIADB_CLIENT_EXTENDED_PROTOCOL)
+
+#define CLIENT_SUPPORTED_FLAGS  (CLIENT_LONG_PASSWORD |\
                                  CLIENT_FOUND_ROWS |\
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_CONNECT_WITH_DB |\
@@ -178,7 +186,7 @@ enum enum_server_command
                                  CLIENT_PLUGIN_AUTH |\
                                  CLIENT_CONNECT_ATTRS)
 
-#define CLIENT_CAPABILITIES	(CLIENT_LONG_PASSWORD |\
+#define CLIENT_CAPABILITIES	(CLIENT_LONG_PASSWORD | \
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_TRANSACTIONS |\
                                  CLIENT_SECURE_CONNECTION |\
