@@ -469,7 +469,6 @@ unsigned long STDCALL mysql_real_escape_string(MYSQL *mysql,
 void		STDCALL mysql_debug(const char *debug);
 #define mysql_debug_init(A) mysql_debug((A));
 void    STDCALL mysql_debug_end(void);
-void 		STDCALL myodbc_remove_escape(MYSQL *mysql,char *name);
 unsigned int	STDCALL mysql_thread_safe(void);
 unsigned int STDCALL mysql_warning_count(MYSQL *mysql);
 const char * STDCALL mysql_sqlstate(MYSQL *mysql);
@@ -493,6 +492,7 @@ unsigned long STDCALL mysql_hex_string(char *to, const char *from, size_t len);
 my_socket STDCALL mysql_get_socket(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
+int STDCALL mariadb_get_connection_type(MYSQL *mysql);
 
 /* Async API */
 int STDCALL mysql_close_start(MYSQL *sock);

@@ -149,6 +149,7 @@ const char *mariadb_client_errors[] =
 {
   /* 5000 */ "Creating an event failed (Errorcode: %d)",
   /* 5001 */ "Bind to local interface '-.%64s' failed (Errorcode: %d)",
+  /* 5002 */ "Connection type doesn't support asynchronous IO operations",
   ""
 };
 

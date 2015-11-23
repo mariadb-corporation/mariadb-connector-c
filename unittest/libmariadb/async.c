@@ -30,6 +30,19 @@
 
 #define SL(s) (s), sizeof(s)
 
+my_bool skip_async= 0;
+
+static int test_async(MYSQL *mysql)
+{
+  int type= mariadb_get_connection_type(mysql);
+  if (type > MARIADB_CONNECTION_TCP)
+  {
+    skip_async= 1;
+    diag("Asnyc IO not supported");
+  }
+  return OK;
+}
+
 static int
 wait_for_mysql(MYSQL *mysql, int status)
 {
@@ -126,6 +139,9 @@ static int async1(MYSQL *my)
   uint default_timeout;
   int i;
 
+  if (skip_async)
+    return SKIP;
+
   for (i=0; i < 100; i++)
   {
 
@@ -196,7 +212,12 @@ static int test_conc131(MYSQL *my)
 {
   int rc;
   /* this test needs to run under valgrind */
-  MYSQL *mysql=mysql_init(NULL);
+  MYSQL *mysql;
+  
+  if (skip_async)
+    return SKIP;
+
+  mysql= mysql_init(NULL);
   rc= mysql_options(mysql, MYSQL_OPT_NONBLOCK, 0);
   check_mysql_rc(rc, mysql);
   mysql_close(mysql);
@@ -205,13 +226,19 @@ static int test_conc131(MYSQL *my)
 
 static int test_conc129(MYSQL *my)
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
+  
+  if (skip_async)
+    return SKIP;
+
+  mysql= mysql_init(NULL);
   FAIL_IF(mysql_close_start(mysql), "No error expected");
   return OK;
 }
 
 
 struct my_tests_st my_tests[] = {
+  {"test_async", test_async, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"async1", async1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc131", test_conc131, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_conc129", test_conc129, TEST_CONNECTION_NONE, 0,  NULL,  NULL},

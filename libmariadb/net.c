@@ -180,7 +180,6 @@ static my_bool net_realloc(NET *net, size_t length)
 }
 
 /* Remove unwanted characters from connection */
-
 void net_clear(NET *net)
 {
   DBUG_ENTER("net_clear");
@@ -189,9 +188,7 @@ void net_clear(NET *net)
   DBUG_VOID_RETURN;
 }
 
-
-	/* Flush write_buffer if not empty. */
-
+/* Flush write_buffer if not empty. */
 int net_flush(NET *net)
 {
   int error=0;
@@ -207,11 +204,9 @@ int net_flush(NET *net)
   DBUG_RETURN(error);
 }
 
-
 /*****************************************************************************
 ** Write something to server/client buffer
 *****************************************************************************/
-
 
 /*
 ** Write a logical packet with packet header

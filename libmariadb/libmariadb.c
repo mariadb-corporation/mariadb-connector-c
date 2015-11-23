@@ -3069,32 +3069,6 @@ mysql_real_escape_string(MYSQL *mysql, char *to,const char *from,
     return (ulong)mysql_cset_escape_slashes(mysql->charset, to, from, length);
 }
 
-void STDCALL
-myodbc_remove_escape(MYSQL *mysql,char *name)
-{
-  char *to;
-  my_bool use_mb_flag= (mysql->charset->char_maxlen > 1);
-  char *end= 0;
-  if (use_mb_flag)
-    for (end=name; *end ; end++) ;
-
-  for (to=name ; *name ; name++)
-  {
-    int l;
-    if (use_mb_flag && (l = mysql->charset->mb_valid(name , end)))
-    {
-      while (l--)
-	*to++ = *name++;
-      name--;
-      continue;
-    }
-    if (*name == '\\' && name[1])
-      name++;
-    *to++= *name;
-  }
-  *to=0;
-}
-
 void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
 {
   DBUG_ENTER("mysql_get_character_set_info");
@@ -3293,6 +3267,15 @@ mysql_get_socket(const MYSQL *mysql)
     ma_pvio_get_handle(mysql->options.extension->async_context->pvio, &sock);
   }
   return sock;
+}
+
+int STDCALL mariadb_get_connection_type(MYSQL *mysql)
+{
+  /* check if we are connected */
+  if (!mysql || !mysql->net.pvio)
+    return -1;
+
+  return (int)mysql->net.pvio->type;
 }
 
 /*

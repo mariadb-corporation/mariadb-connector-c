@@ -34,7 +34,7 @@ SET(EXPORT_SYMBOLS
  mariadb_dyncol_val_double
  mariadb_dyncol_val_long
  mariadb_dyncol_val_str
- myodbc_remove_escape
+ mariadb_get_connection_type
  mysql_affected_rows
  mysql_autocommit
  mysql_autocommit_cont

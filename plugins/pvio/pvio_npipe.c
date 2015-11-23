@@ -34,7 +34,9 @@
 my_bool pvio_npipe_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_npipe_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
 size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+size_t pvio_npipe_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
 size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+size_t pvio_npipe_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
 my_bool pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
@@ -118,10 +120,10 @@ size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
     goto end;
   }
   if (GetLastError() == ERROR_IO_PENDING)
-    r= pvio_npipe_wait_io_or_timeout(pvio, 1, 0);
-  
-  if (!r)
-    r= cpipe->rw_size;
+  {
+    if (!pvio_npipe_wait_io_or_timeout(pvio, 1, 0))
+      r= cpipe->rw_size;
+  }
 end:  
   return r;
 }
@@ -143,10 +145,10 @@ size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
     goto end;
   }
   if (GetLastError() == ERROR_IO_PENDING)
-    r= pvio_npipe_wait_io_or_timeout(pvio, 1, 0);
-  
-  if (!r)
-    r= cpipe->rw_size;
+  {
+    if (!pvio_npipe_wait_io_or_timeout(pvio, 1, 0))
+      r= cpipe->rw_size;
+  }
 end:  
   return r;
 }
@@ -216,7 +218,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   if (!pvio || !cinfo)
     return 1;
 
-  if (!(cpipe= (struct st_pvio_npipe *)LocalAlloc(sizeof(struct st_pvio_npipe), 0)))
+  if (!(cpipe= (struct st_pvio_npipe *)LocalAlloc(LMEM_ZEROINIT, sizeof(struct st_pvio_npipe))))
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
     return 1;

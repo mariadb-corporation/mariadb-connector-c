@@ -364,6 +364,12 @@ typedef struct st_udf_init
   my_bool const_item;			/* 0 if result is independent of arguments */
 } UDF_INIT;
 
+/* Connection types */
+#define MARIADB_CONNECTION_UNIXSOCKET   0
+#define MARIADB_CONNECTION_TCP          1
+#define MARIADB_CONNECTION_NAMEDPIPE    2
+#define MARIADB_CONNECTION_SHAREDMEM    3
+
   /* Constants when using compression */
 #define NET_HEADER_SIZE 4		/* standard header size */
 #define COMP_HEADER_SIZE 3		/* compression header extra size */
