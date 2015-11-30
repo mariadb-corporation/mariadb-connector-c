@@ -555,12 +555,11 @@ int vio_fastsend(Vio * vio __attribute__((unused)))
   int r=0;
   DBUG_ENTER("vio_fastsend");
 
-#ifdef IPTOS_THROUGHPUT
   {
-#ifndef __EMX__
+#ifdef IPTOS_THROUGHPUT
     int tos = IPTOS_THROUGHPUT;
     if (!setsockopt(vio->sd, IPPROTO_IP, IP_TOS, (void *) &tos, sizeof(tos)))
-#endif /* !__EMX__ */
+#endif /* IPTOS_THROUGHPUT */
     {
       int nodelay = 1;
       if (setsockopt(vio->sd, IPPROTO_TCP, TCP_NODELAY, (void *) &nodelay,
@@ -571,7 +570,6 @@ int vio_fastsend(Vio * vio __attribute__((unused)))
       }
     }
   }
-#endif /* IPTOS_THROUGHPUT */
   DBUG_PRINT("exit", ("%d", r));
   DBUG_RETURN(r);
 }
