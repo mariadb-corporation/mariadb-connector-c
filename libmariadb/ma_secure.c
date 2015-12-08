@@ -310,10 +310,15 @@ static unsigned int ma_get_cert_fingerprint(X509 *cert, EVP_MD *digest,
 static my_bool ma_check_fingerprint(char *fp1, unsigned int fp1_len,
                                     char *fp2, unsigned int fp2_len)
 {
-  char hexstr[fp1_len * 2 + 1];
+  /* SHA1 fingerprint (160 bit) / 8 * 2 + 1 */
+  char hexstr[41];
 
   fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
+#ifdef _WIN32
+  if (_strnicmp(hexstr, fp2, fp1_len) != 0)
+#else
   if (strncasecmp(hexstr, fp2, fp1_len) != 0)
+#endif
    return 1;
   return 0;
 }
