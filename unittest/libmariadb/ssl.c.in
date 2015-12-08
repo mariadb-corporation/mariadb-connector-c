@@ -490,6 +490,8 @@ static int verify_ssl_server_cert(MYSQL *my)
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
 
+  diag("Error: %s", mysql_error(mysql));
+
   FAIL_IF(!mysql_errno(mysql), "Expected error");
   mysql_close(mysql);
 
