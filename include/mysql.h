@@ -214,7 +214,8 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
     MARIADB_OPT_SSL_FP_LIST,        /* finger print white list for server certificate verification */
     MARIADB_OPT_SSL_PASSWORD,       /* password for encrypted certificates */
-    MARIADB_OPT_CONNECTION_READ_ONLY
+    MARIADB_OPT_CONNECTION_READ_ONLY,
+    MYSQL_OPT_CONNECT_ATTRS       /* for mysql_get_optionv */
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -487,6 +488,8 @@ CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr);
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
+int STDCALL mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...);
+int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg);
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 unsigned long STDCALL mysql_hex_string(char *to, const char *from, size_t len);
 my_socket STDCALL mysql_get_socket(const MYSQL *mysql);

@@ -464,9 +464,13 @@ int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
 {
   X509 *cert;
   MYSQL *mysql;
-  MARIADB_PVIO *pvio;
+  X509_NAME *x509sn;
+  int cn_pos;
+  X509_NAME_ENTRY *cn_entry;
+  ASN1_STRING *cn_asn1;
+  const char *cn_str;
   SSL *ssl;
-  char *p1, *p2, buf[256];
+  MARIADB_PVIO *pvio;
 
   if (!cssl || !cssl->ssl)
     return 1;
@@ -477,33 +481,46 @@ int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
 
   if (!mysql->host)
   {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
-                        "Invalid (empty) hostname");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                    ER(CR_SSL_CONNECTION_ERROR), "Invalid (empty) hostname");
     return 1;
   }
 
   if (!(cert= SSL_get_peer_certificate(ssl)))
   {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
-                        "Unable to get server certificate");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                    ER(CR_SSL_CONNECTION_ERROR), "Unable to get server certificate");
     return 1;
   }
 
-  X509_NAME_oneline(X509_get_subject_name(cert), buf, 256);
+  x509sn= X509_get_subject_name(cert);
+
+  if ((cn_pos= X509_NAME_get_index_by_NID(x509sn, NID_commonName, -1)) < 0)
+    goto error;
+
+  if (!(cn_entry= X509_NAME_get_entry(x509sn, cn_pos)))
+    goto error;
+
+  if (!(cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry)))
+    goto error;
+
+  cn_str = (char *)ASN1_STRING_data(cn_asn1);
+
+  /* Make sure there is no embedded \0 in the CN */
+  if ((size_t)ASN1_STRING_length(cn_asn1) != strlen(cn_str))
+    goto error;
+
+  if (strcmp(cn_str, mysql->host))
+    goto error;
+
   X509_free(cert);
 
-  /* Extract the server name from buffer:
-     Format: ....CN=/hostname/.... */
-  if ((p1= strstr(buf, "/CN=")))
-  {
-    p1+= 4;
-    if ((p2= strchr(p1, '/')))
-      *p2= 0;
-    if (!strcmp(mysql->host, p1))
-      return(0);
-  }
-  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
-                       "Validation of SSL server certificate failed");
+  return 0;
+error:
+  X509_free(cert);
+
+  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                  ER(CR_SSL_CONNECTION_ERROR), "Validation of SSL server certificate failed");
   return 1;
 }
 

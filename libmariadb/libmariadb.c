@@ -1229,15 +1229,13 @@ uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer)
         size_t len;
         uchar *p= hash_element(&mysql->options.extension->connect_attrs, i);
         
-        len= *(size_t *)p;
+        len= strlen(p);
         buffer= mysql_net_store_length(buffer, len);
-        p+= sizeof(size_t);
         memcpy(buffer, p, len);
-        buffer+= len;
-        p+= len;
-        len= *(size_t *)p;
+        buffer+= (len);
+        p+= (len + 1);
+        len= strlen(p);
         buffer= mysql_net_store_length(buffer, len);
-        p+= sizeof(size_t);
         memcpy(buffer, p, len);
         buffer+= len;
       }
@@ -2597,21 +2595,17 @@ static size_t get_store_length(size_t length)
   return 9;
 }
 
-uchar *ma_get_hash_key(const uchar *hash_entry, 
+uchar *ma_get_hash_keyval(const uchar *hash_entry, 
                        unsigned int *length,
                        my_bool not_used __attribute__((unused)))
 {
   /* Hash entry has the following format:
-     Offset: 0               key length
-             sizeof(size_t)  key
-             key_length +
-             sizeof(size_t)  value length
-                             value
+     Offset: 0               key (\0 terminated)
+             key_length + 1  valu (\0 terminated)
   */
   uchar *p= (uchar *)hash_entry;
-  size_t len=*((size_t*)p);
-  p+= sizeof(size_t);
-  *length= (uint)len;
+  size_t len= strlen(p);
+  *length= len;
   return p;
 }
 
@@ -2809,19 +2803,19 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_CONNECT_ATTR_DELETE:
     {
-      uchar *p;
+      uchar *h;
       CHECK_OPT_EXTENSION_SET(&mysql->options);
       if (hash_inited(&mysql->options.extension->connect_attrs) &&
-          (p= (uchar *)hash_search(&mysql->options.extension->connect_attrs, (uchar *)arg1,
+          (h= (uchar *)hash_search(&mysql->options.extension->connect_attrs, (uchar *)arg1,
                       arg1 ? (uint)strlen((char *)arg1) : 0)))
       {
-        size_t key_len= *(size_t *)p;
-        mysql->options.extension->connect_attrs_len-= key_len;
-        mysql->options.extension->connect_attrs_len-= get_store_length(key_len);
-        key_len= *(size_t *)(p + sizeof(size_t) + key_len);
-        mysql->options.extension->connect_attrs_len-= key_len;
-        mysql->options.extension->connect_attrs_len-= get_store_length(key_len);
-        hash_delete(&mysql->options.extension->connect_attrs, p);
+        uchar *p= h;
+        size_t key_len= strlen(p);
+        mysql->options.extension->connect_attrs_len-= key_len + get_store_length(key_len);
+        p+= key_len + 1;
+        key_len= strlen(p);
+        mysql->options.extension->connect_attrs_len-= key_len + get_store_length(key_len);
+        hash_delete(&mysql->options.extension->connect_attrs, h);
       }
           
     }
@@ -2843,6 +2837,11 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       size_t storage_len= key_len + value_len + 
                           get_store_length(key_len) +
                           get_store_length(value_len);
+
+      /* since we store terminating zero character in hash, we need
+       * to increase lengths */
+      key_len++;
+      value_len++;
       
       CHECK_OPT_EXTENSION_SET(&mysql->options);
       if (!key_len ||
@@ -2855,24 +2854,20 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if (!hash_inited(&mysql->options.extension->connect_attrs))
       {
         if (_hash_init(&mysql->options.extension->connect_attrs,
-                       0, 0, 0, ma_get_hash_key, ma_hash_free, 0))
+                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
           goto end;
         }
       }
-      if ((buffer= (uchar *)my_malloc(2 * sizeof(size_t) + key_len + value_len, 
+      if ((buffer= (uchar *)my_malloc(key_len + value_len, 
                                       MYF(MY_WME | MY_ZEROFILL))))
       {
         uchar *p= buffer;
-        *((size_t *)p)= key_len;
-        p+= sizeof(size_t);
-        memcpy(p, arg1, key_len);
-        p+= key_len;
-        *((size_t *)p)= value_len;
-        p+= sizeof(size_t);
+        strcpy(p, arg1);
+        p+= (strlen(arg1) + 1);
         if (arg2)
-          memcpy(p, arg2, value_len);
+          strcpy(p, arg2);
 
         if (hash_insert(&mysql->options.extension->connect_attrs, buffer))
         {
@@ -2921,6 +2916,176 @@ end:
   DBUG_RETURN(1);
 }
 
+int STDCALL
+mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
+{
+  va_list ap;
+
+  DBUG_ENTER("mariadb_get_optionv");
+  DBUG_PRINT("enter",("option: %d",(int) option));
+
+  va_start(ap, arg);
+
+  switch(option) {
+  case MYSQL_OPT_CONNECT_TIMEOUT:
+    *((uint *)arg)= mysql->options.connect_timeout;
+    break;
+  case MYSQL_OPT_COMPRESS:
+    *((my_bool *)arg)= mysql->options.compress;
+    break;
+  case MYSQL_OPT_NAMED_PIPE:
+    *((my_bool *)arg)= mysql->options.named_pipe;
+    break;
+  case MYSQL_OPT_LOCAL_INFILE:			/* Allow LOAD DATA LOCAL ?*/
+    *((uint *)arg)= test(mysql->options.client_flag & CLIENT_LOCAL_FILES);
+    break;
+  case MYSQL_INIT_COMMAND:
+    /* mysql_get_optionsv(mysql, MYSQL_INIT_COMMAND, commands, elements) */
+    {
+      unsigned int *elements;
+      if (arg)
+        *((char **)arg)= mysql->options.init_command ? mysql->options.init_command->buffer : NULL;
+      if ((elements= va_arg(ap, unsigned int *)))
+        *elements= mysql->options.init_command ? mysql->options.init_command->elements : 0;
+    }
+    break;
+  case MYSQL_READ_DEFAULT_FILE:
+    *((char **)arg)= mysql->options.my_cnf_file;
+    break;
+  case MYSQL_READ_DEFAULT_GROUP:
+    *((char **)arg)= mysql->options.my_cnf_group;
+    break;
+  case MYSQL_SET_CHARSET_DIR:
+    /* not supported in this version. Since all character sets 
+       are internally available, we don't throw an error */
+    *((char **)arg)= NULL;
+    break;
+  case MYSQL_SET_CHARSET_NAME:
+    *((char **)arg)= mysql->options.charset_name;
+    break;
+  case MYSQL_OPT_RECONNECT:
+    *((uint *)arg)= mysql->reconnect;
+    break;
+  case MYSQL_OPT_PROTOCOL:
+    *((uint *)arg)= mysql->options.protocol;
+    break;
+  case MYSQL_OPT_READ_TIMEOUT:
+    *((uint *)arg)= mysql->options.read_timeout;
+    break;
+  case MYSQL_OPT_WRITE_TIMEOUT:
+    *((uint *)arg)= mysql->options.write_timeout;
+    break;
+  case MYSQL_REPORT_DATA_TRUNCATION:
+    *((uint *)arg)= mysql->options.report_data_truncation;
+    break;
+  case MYSQL_PROGRESS_CALLBACK:
+    *((void (**)(const MYSQL *, uint, uint, double, const char *, uint))arg)=
+       mysql->options.extension ?  mysql->options.extension->report_progress : NULL;
+    break;
+  case MYSQL_PLUGIN_DIR:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->plugin_dir : NULL;
+    break;
+  case MYSQL_DEFAULT_AUTH:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->default_auth : NULL;
+    break;
+  case MYSQL_OPT_NONBLOCK:
+    *((my_bool *)arg)= test(mysql->options.extension && mysql->options.extension->async_context);
+    break;
+  case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
+    *((my_bool *)arg)= test(mysql->options.client_flag & CLIENT_SSL_VERIFY_SERVER_CERT);
+    break;
+  case MYSQL_OPT_SSL_KEY:
+    *((char **)arg)= mysql->options.ssl_key;
+    break;
+  case MYSQL_OPT_SSL_CERT:
+    *((char **)arg)= mysql->options.ssl_cert;
+    break;
+  case MYSQL_OPT_SSL_CA:
+    *((char **)arg)= mysql->options.ssl_ca;
+    break;
+  case MYSQL_OPT_SSL_CAPATH:
+    *((char **)arg)= mysql->options.ssl_capath;
+    break;
+  case MYSQL_OPT_SSL_CIPHER:
+    *((char **)arg)= mysql->options.ssl_cipher;
+    break;
+  case MYSQL_OPT_SSL_CRL:
+    *((char **)arg)= mysql->options.extension ? mysql->options.ssl_cipher : NULL;
+    break;
+  case MYSQL_OPT_SSL_CRLPATH:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_crlpath : NULL;
+    break;
+  case MYSQL_OPT_CONNECT_ATTRS:
+    /* mysql_get_optionsv(mysql, MYSQL_OPT_CONNECT_ATTRS, keys, vals, elements) */
+    {
+      int i, *elements;
+      char **key= (char **)arg;
+      char **val;
+
+      if (!elements)
+        goto error;
+      
+      val= va_arg(ap, char **);
+      
+      if (!(elements= va_arg(ap, unsigned int *)))
+        goto error;
+
+      *elements= 0;
+
+      if (!mysql->options.extension ||
+          !hash_inited(&mysql->options.extension->connect_attrs))
+        break;
+
+      *elements= mysql->options.extension->connect_attrs.records;
+
+      if (val || key)
+      {
+        for (i=0; i < *elements; i++)
+        {
+          uchar *p= hash_element(&mysql->options.extension->connect_attrs, i);
+          if (key)
+            key[i]= p;
+          p+= strlen(p) + 1;
+          if (val)
+            val[i]= p;
+        }
+      }
+    } 
+    break;
+  case MYSQL_SECURE_AUTH:
+    *((my_bool *)arg)= mysql->options.secure_auth;
+    break;
+  case MYSQL_OPT_BIND:
+    *((char **)arg)= mysql->options.bind_address;
+    break;
+  case MARIADB_OPT_SSL_FP:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_fp : NULL;
+    break;
+  case MARIADB_OPT_SSL_FP_LIST:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_fp_list : NULL;
+    break;
+  case MARIADB_OPT_SSL_PASSWORD:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_pw : NULL;
+    break;
+    /* todo
+  case MARIADB_OPT_CONNECTION_READ_ONLY:
+    break;
+    */
+  default:
+    va_end(ap);
+    DBUG_RETURN(-1);
+  }
+  va_end(ap);
+  DBUG_RETURN(0);
+error:
+  va_end(ap);
+  DBUG_RETURN(-1);
+}
+
+int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg)
+{
+  return mysql_get_optionv(mysql, option, arg);
+}
 
 int STDCALL
 mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
