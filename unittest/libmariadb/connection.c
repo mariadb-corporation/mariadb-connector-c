@@ -740,7 +740,82 @@ static int test_bind_address(MYSQL *my)
   return OK;
 }
 
+static int test_get_options(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int options_int[]= {MYSQL_OPT_CONNECT_TIMEOUT, MYSQL_REPORT_DATA_TRUNCATION, MYSQL_OPT_LOCAL_INFILE,
+                      MYSQL_OPT_RECONNECT, MYSQL_OPT_PROTOCOL, MYSQL_OPT_READ_TIMEOUT, MYSQL_OPT_WRITE_TIMEOUT, 0};
+  my_bool options_bool[]= {MYSQL_OPT_COMPRESS, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_SECURE_AUTH,
+#ifdef _WIN32    
+    MYSQL_OPT_NAMED_PIPE,
+#endif
+                          0};
+  int options_char[]= {MYSQL_READ_DEFAULT_FILE, MYSQL_READ_DEFAULT_GROUP, MYSQL_SET_CHARSET_NAME,
+                       MYSQL_OPT_SSL_KEY, MYSQL_OPT_SSL_CA, MYSQL_OPT_SSL_CERT, MYSQL_OPT_SSL_CAPATH,
+                       MYSQL_OPT_SSL_CIPHER, MYSQL_OPT_BIND, MARIADB_OPT_SSL_FP, MARIADB_OPT_SSL_FP_LIST,
+                       MARIADB_OPT_SSL_PASSWORD, 0};
+
+  char *init_command[3]= {"SET @a:=1", "SET @b:=2", "SET @c:=3"};
+  int elements= 0;
+  char **command;
+
+
+  int intval[2]= {1, 0};
+  my_bool boolval[2]= {1, 0};
+  char *char1= "test", *char2;
+  int i;
+  char *attr_key[] = {"foo1", "foo2", "foo3"};
+  char *attr_val[] = {"bar1", "bar2", "bar3"};
+  char *key[3], *val[3];
+
+  for (i=0; options_int[i]; i++)
+  {
+    mysql_options(mysql, options_int[i], &intval[0]);
+    intval[1]= 0;
+    mariadb_get_optionv(mysql, options_int[i], &intval[1]);
+    FAIL_IF(intval[0] != intval[1], "mariadb_get_optionv (int) failed");
+  }
+  for (i=0; options_bool[i]; i++)
+  {
+    mysql_options(mysql, options_bool[i], &boolval[0]);
+    intval[1]= 0;
+    mariadb_get_optionv(mysql, options_bool[i], &boolval[1]);
+    FAIL_IF(boolval[0] != boolval[1], "mariadb_get_optionv (my_bool) failed");
+  }
+  for (i=0; options_char[i]; i++)
+  {
+    mysql_options(mysql, options_char[i], char1);
+    char2= NULL;
+    mariadb_get_optionv(mysql, options_char[i], (void *)&char2);
+    FAIL_IF(strcmp(char1, char2), "mariadb_get_optionv (char) failed");
+  }
+
+  for (i=0; i < 3; i++)
+    mysql_options(mysql, MYSQL_INIT_COMMAND, init_command[i]);
+
+  mariadb_get_optionv(mysql, MYSQL_INIT_COMMAND, &command, &elements);
+  FAIL_IF(elements != 3, "expected 3 elements");
+  for (i=0; i < 3; i++)
+    FAIL_IF(strcmp(init_command[i], command[i]), "wrong init command");
+
+  for (i=0; i < 3; i++)
+    mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, attr_key[i], attr_val[i]);
+
+  mariadb_get_optionv(mysql, MYSQL_OPT_CONNECT_ATTRS, NULL, NULL, &elements);
+  FAIL_IF(elements != 3, "expected 3 connection attributes");
+
+  mariadb_get_optionv(mysql, MYSQL_OPT_CONNECT_ATTRS, &key, &val, &elements);
+  for (i=0; i < elements; i++)
+  {
+    diag("%s => %s", key[i], val[i]);
+  }
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_get_options", test_get_options, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc118", test_conc118, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
