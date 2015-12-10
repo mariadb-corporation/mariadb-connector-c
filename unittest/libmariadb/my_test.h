@@ -82,6 +82,13 @@ if (!(expr))\
   return FAIL;\
 }
 
+#define SKIP_CONNECTION_HANDLER \
+ if (hostname && strstr(hostname, "://"))\
+  {\
+    diag("Test skipped (connection handler)");\
+    return SKIP;\
+  } 
+
 /* connection options */
 #define TEST_CONNECTION_DEFAULT    1 /* default connection */
 #define TEST_CONNECTION_NONE       2 /* tests creates own connection */
@@ -104,7 +111,7 @@ struct my_tests_st
   char *skipmsg;
 };
 
-static char *schema = "test_c";
+static char *schema = 0;
 static char *hostname = 0;
 static char *password = 0;
 static unsigned int port = 0;
@@ -368,18 +375,19 @@ int check_variable(MYSQL *mysql, char *variable, char *value)
 MYSQL *test_connect(struct my_tests_st *test) {
   MYSQL *mysql;
   char query[255];
-  int i= 1;
+  int i= 0;
+  int timeout= 10;
+  int truncation_report= 1;
   if (!(mysql = mysql_init(NULL))) {
     diag("%s", "mysql_init failed - exiting");
     return(NULL);
   }
 
-  mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &i);
-  mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (const char *)&i);
+  mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &truncation_report);
+  mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
 
   /* option handling */
   if (test && test->options) {
-    int i=0;
 
     while (test->options[i].option)
     {
@@ -403,6 +411,8 @@ MYSQL *test_connect(struct my_tests_st *test) {
 
   /* change database or create if it doesn't exist */
   if (mysql_select_db(mysql, schema)) {
+    diag("Error number: %d", mysql_errno(mysql));
+
     if(mysql_errno(mysql) == 1049) {
       sprintf(query, "CREATE DATABASE %s", schema);
       if (mysql_query(mysql, query)) {
@@ -424,11 +434,6 @@ static int reset_connection(MYSQL *mysql) {
   int rc;
 
   rc= mysql_change_user(mysql, username, password, schema);
-  check_mysql_rc(rc, mysql);
-  if (mysql_get_server_version(mysql) < 50400)
-    rc= mysql_query(mysql, "SET table_type='MyISAM'");
-  else
-    rc= mysql_query(mysql, "SET storage_engine='MyISAM'");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "SET sql_mode=''");
   check_mysql_rc(rc, mysql);
@@ -452,6 +457,8 @@ void get_envvars() {
     password= envvar;
   if (!schema && (envvar= getenv("MYSQL_TEST_DB")))
     schema= envvar;
+  if (!schema)
+    schema= "testc";
   if (!port && (envvar= getenv("MYSQL_TEST_PORT")))
     port= atoi(envvar);
   if (!socketname && (envvar= getenv("MYSQL_TEST_SOCKET")))
@@ -470,7 +477,8 @@ void run_tests(struct my_tests_st *test) {
   if ((mysql_default= test_connect(NULL)))
   {
     diag("Testing against MySQL Server %s", mysql_get_server_info(mysql_default));
-    diag("Host %s", mysql_get_host_info(mysql_default));
+    diag("Host: %s", mysql_get_host_info(mysql_default));
+    diag("Client library: %s", mysql_get_client_info());
   }
   else
   {

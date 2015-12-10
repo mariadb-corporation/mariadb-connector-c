@@ -34,6 +34,8 @@ SET(EXPORT_SYMBOLS
  mariadb_dyncol_val_double
  mariadb_dyncol_val_long
  mariadb_dyncol_val_str
+ mariadb_get_charset_by_name
+ mariadb_get_charset_by_nr
  mariadb_get_connection_type
  mysql_affected_rows
  mysql_autocommit
@@ -124,6 +126,7 @@ SET(EXPORT_SYMBOLS
  mysql_query
  mysql_query_cont
  mysql_query_start
+ mysql_reconnect
  mysql_read_query_result
  mysql_read_query_result_cont
  mysql_read_query_result_start

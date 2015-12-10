@@ -482,8 +482,8 @@ const char * STDCALL mysql_get_client_info(void);
 unsigned long STDCALL mysql_get_client_version(void);
 my_bool STDCALL mariadb_connection(MYSQL *mysql);
 const char * STDCALL mysql_get_server_name(MYSQL *mysql);
-CHARSET_INFO * STDCALL mysql_get_charset_by_name(const char *csname);
-CHARSET_INFO * STDCALL mysql_get_charset_by_nr(unsigned int csnr);
+CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname);
+CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr);
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
@@ -493,6 +493,7 @@ my_socket STDCALL mysql_get_socket(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 int STDCALL mariadb_get_connection_type(MYSQL *mysql);
+my_bool STDCALL mysql_reconnect(MYSQL *mysql);
 
 /* Async API */
 int STDCALL mysql_close_start(MYSQL *sock);
@@ -628,6 +629,7 @@ struct st_mysql_methods {
   int (*db_stmt_fetch_to_bind)(MYSQL_STMT *stmt, unsigned char *row);
   void (*db_stmt_flush_unbuffered)(MYSQL_STMT *stmt);
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
+  my_bool (*reconnect)(MYSQL *mysql);
 };
 
 /* synonyms/aliases functions */

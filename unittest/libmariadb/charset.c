@@ -679,7 +679,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
 
   for (i= 0; i < sizeof(csname)/sizeof(char*); ++i)
   {
-    csinfo[i]= mysql_find_charset_name(csname[i]);
+    csinfo[i]= mariadb_get_charset_by_name(csname[i]);
 
     if (csinfo[i] == NULL)
     {

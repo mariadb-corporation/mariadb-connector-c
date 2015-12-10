@@ -32,6 +32,7 @@ static int test_conc66(MYSQL *my)
   MYSQL *mysql= mysql_init(NULL);
   int rc;
   FILE *fp;
+  char query[1024];
 
   if (!(fp= fopen("./my.cnf", "w")))
     return FAIL;
@@ -47,7 +48,8 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(my, "GRANT ALL ON test.* TO 'conc66'@'localhost' IDENTIFIED BY 'test\";#test'");
+  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname);
+  rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
   check_mysql_rc(rc, my);
@@ -57,7 +59,8 @@ static int test_conc66(MYSQL *my)
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
-  rc= mysql_query(my, "DROP USER conc66@localhost");
+  sprintf(query, "DROP user conc66@%s", hostname);
+  rc= mysql_query(my, query);
 
   check_mysql_rc(rc, my);
   mysql_close(mysql);
@@ -561,6 +564,8 @@ static int test_reconnect(MYSQL *mysql)
   mysql_kill(mysql, mysql_thread_id(mysql1));
   sleep(4);
 
+  mysql_ping(mysql1);
+
   rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
   check_mysql_rc(rc, mysql1);
   diag("Thread_id after kill: %lu", mysql_thread_id(mysql1));
@@ -649,6 +654,8 @@ static int test_conc118(MYSQL *mysql)
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
+  mysql_ping(mysql);
+
   rc= mysql_query(mysql, "SET @a:=1");
   check_mysql_rc(rc, mysql);
 
@@ -657,12 +664,9 @@ static int test_conc118(MYSQL *mysql)
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
-  mysql->host= "foo";
-
   rc= mysql_query(mysql, "SET @a:=1");
   FAIL_IF(!rc, "error expected");
 
-  mysql->host= hostname;
   rc= mysql_query(mysql, "SET @a:=1");
   check_mysql_rc(rc, mysql);
 

@@ -95,6 +95,7 @@ typedef struct st_ma_connection_plugin
   int (*options)(MYSQL *mysql, enum mysql_option, void *arg);
   int (*set_connection)(MYSQL *mysql,enum enum_server_command command, const char *arg,
                         size_t length, my_bool skipp_check, void *opt_arg);
+  my_bool (*reconnect)(MYSQL *mysql);
 } MARIADB_CONNECTION_PLUGIN;
 
 #define MARIADB_DB_DRIVER(a) ((a)->ext_db)

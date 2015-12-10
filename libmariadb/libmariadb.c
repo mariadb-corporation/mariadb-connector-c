@@ -124,11 +124,14 @@ struct st_mysql_methods MARIADB_DEFAULT_METHODS;
 
 #define native_password_plugin_name "mysql_native_password"
 
+#define IS_CONNHDLR_ACTIVE(mysql)\
+  ((mysql)->net.conn_hdlr && (mysql)->net.conn_hdlr->active)
+
 static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
 void read_user_name(char *name);
 static void append_wild(char *to,char *end,const char *wild);
-static my_bool mysql_reconnect(MYSQL *mysql);
+my_bool mysql_reconnect(MYSQL *mysql);
 static int cli_report_progress(MYSQL *mysql, uchar *packet, uint length);
 
 extern int mysql_client_plugin_init();
@@ -354,13 +357,6 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
   DBUG_PRINT("info", ("server_command: %d  packet_size: %u", command, length));
 
-  if (mysql->net.conn_hdlr && mysql->net.conn_hdlr->data)
-  {
-    result= mysql->net.conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
-    if (result== -1)
-      DBUG_RETURN(result);
-  }
-
   if (mysql->net.pvio == 0)
   {						/* Do reconnect if possible */
     if (mysql_reconnect(mysql))
@@ -376,6 +372,14 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
     goto end;
   }
 
+  if (IS_CONNHDLR_ACTIVE(mysql))
+  {
+    result= mysql->net.conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
+    if (result== -1)
+      DBUG_RETURN(result);
+  }
+
+
   CLEAR_CLIENT_ERROR(mysql);
 
   mysql->info=0;
@@ -384,13 +388,6 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   if (!arg)
     arg="";
 
-  /* check if connection kills itself */
-  if (command == COM_PROCESS_KILL)
-  {
-    unsigned long thread_id= uint4korr(arg);
-    if (thread_id == mysql->thread_id)
-      skipp_check= 1;
-  }
   if (net_write_command(net,(uchar) command,arg,
 			length ? length : (ulong) strlen(arg)))
   {
@@ -660,7 +657,7 @@ enum option_val
 
 #define OPT_SET_EXTENDED_VALUE_INT(OPTS, KEY, VAL)                \
     CHECK_OPT_EXTENSION_SET(OPTS)                                 \
-+    (OPTS)->extension->KEY= (VAL)
+    (OPTS)->extension->KEY= (VAL)
 
 
 static TYPELIB option_types={array_elements(default_options)-1,
@@ -1145,6 +1142,7 @@ mysql_init(MYSQL *mysql)
     bzero((char*) (mysql),sizeof(*(mysql)));
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
   mysql->charset= default_charset_info;
+  mysql->methods= &MARIADB_DEFAULT_METHODS;
   strmov(mysql->net.sqlstate, "00000");
   mysql->net.last_error[0]= mysql->net.last_errno= 0;
 
@@ -1291,8 +1289,37 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   const char *passwd, const char *db,
 		   uint port, const char *unix_socket,unsigned long client_flag)
 {
+  char *end;
+
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
+
+  if (host && (end= strstr(host, "://")))
+  {
+    MARIADB_CONNECTION_PLUGIN *plugin;
+    char plugin_name[64];
+
+    bzero(plugin_name, 64);
+    strncpy(plugin_name, host, MIN(end - host, 63));
+    end+= 3;
+
+    if (!(plugin= (MARIADB_CONNECTION_PLUGIN *)mysql_client_find_plugin(mysql, plugin_name, MARIADB_CLIENT_CONNECTION_PLUGIN)))
+      return NULL;
+
+    if (!(mysql->net.conn_hdlr= (MA_CONNECTION_HANDLER *)my_malloc(sizeof(MA_CONNECTION_HANDLER), MYF(MY_ZEROFILL))))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      return NULL;
+    }
+
+    /* save URL for reconnect */
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, url, host);
+
+    mysql->net.conn_hdlr->plugin= plugin;
+
+    if (plugin && plugin->connect)
+      return plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
+  }
 
   return mysql->methods->db_connect(mysql, host, user, passwd,
                                     db, port, unix_socket, client_flag);
@@ -1320,32 +1347,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
-  /* special case:
-   * If hostname contains "://", e.g. "repl://localhost", we need to process connection
-   * by connection plugin 
-   */
-  if (host && (end= strstr(host, "://")))
-  {
-    MARIADB_CONNECTION_PLUGIN *plugin;
-    char plugin_name[64];
-
-    bzero(plugin_name, 64);
-    strncpy(plugin_name, host, MIN(end - host, 63));
-    end+= 3;
-    if (!(plugin= (MARIADB_CONNECTION_PLUGIN *)mysql_client_find_plugin(mysql, plugin_name, MARIADB_CLIENT_CONNECTION_PLUGIN)))
-      DBUG_RETURN(NULL);
-
-    if (!(mysql->net.conn_hdlr= (MA_CONNECTION_HANDLER *)my_malloc(sizeof(MA_CONNECTION_HANDLER), MYF(MY_ZEROFILL))))
-    {
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      DBUG_RETURN(NULL);
-    }
-
-    mysql->net.conn_hdlr->plugin= plugin; 
-
-    if (plugin->connect)
-      return plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
-  }
 
   ma_set_connect_attrs(mysql);
 
@@ -1659,7 +1660,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     mysql->reconnect= 0;
 
     for (;begin < end; begin++)
-    {  
+    {
       if (mysql_real_query(mysql, *begin, (unsigned long)strlen(*begin)))
         goto error;
 
@@ -1715,13 +1716,21 @@ my_suspend_hook(my_bool suspend, void *data)
 }
 
 
-static my_bool mysql_reconnect(MYSQL *mysql)
+my_bool STDCALL mysql_reconnect(MYSQL *mysql)
 {
   MYSQL tmp_mysql;
   struct my_hook_data hook_data;
   struct mysql_async_context *ctxt= NULL;
+  LIST *li_stmt= mysql->stmts;
 
   DBUG_ENTER("mysql_reconnect");
+
+  /* check if connection handler is active */
+  if (IS_CONNHDLR_ACTIVE(mysql)) 
+  {
+    if (mysql->net.conn_hdlr->plugin && mysql->net.conn_hdlr->plugin->connect)
+      DBUG_RETURN(mysql->net.conn_hdlr->plugin->reconnect(mysql));
+  }
 
   if (!mysql->reconnect ||
       (mysql->server_status & SERVER_STATUS_IN_TRANS) || !mysql->host_info)
@@ -1734,6 +1743,13 @@ static my_bool mysql_reconnect(MYSQL *mysql)
 
   mysql_init(&tmp_mysql);
   tmp_mysql.options=mysql->options;
+  if (mysql->net.conn_hdlr)
+  {
+    tmp_mysql.net.conn_hdlr= mysql->net.conn_hdlr;
+    mysql->net.conn_hdlr= 0;
+  }
+
+
 
   /* don't reread options from configuration files */
   tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
@@ -1760,6 +1776,17 @@ static my_bool mysql_reconnect(MYSQL *mysql)
                         tmp_mysql.net.last_error);
     mysql_close(&tmp_mysql);
     DBUG_RETURN(1);
+  }
+
+  for (;li_stmt;li_stmt= li_stmt->next)
+  {
+    MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
+
+    if (stmt->state != MYSQL_STMT_INITTED)
+    {
+      stmt->state= MYSQL_STMT_INITTED;
+      SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+    }
   }
 
   tmp_mysql.reconnect= mysql->reconnect;
@@ -1923,6 +1950,7 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->ssl_fp);
     my_free(mysql->options.extension->ssl_fp_list);
     my_free(mysql->options.extension->ssl_pw);
+    my_free(mysql->options.extension->url);
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
     if ((ctxt = mysql->options.extension->async_context) != 0)
@@ -1985,7 +2013,8 @@ mysql_close(MYSQL *mysql)
   DBUG_ENTER("mysql_close");
   if (mysql)					/* Some simple safety */
   {
-    if (mysql->net.conn_hdlr && mysql->net.conn_hdlr->data)
+
+    if (IS_CONNHDLR_ACTIVE(mysql))
     {
       void *p= (void *)mysql->net.conn_hdlr;
       mysql->net.conn_hdlr->plugin->close(mysql);
@@ -1998,6 +2027,7 @@ mysql_close(MYSQL *mysql)
 
     /* reset the connection in all active statements */
     ma_invalidate_stmts(mysql, "mysql_close()");
+
     mysql_close_memory(mysql);
     mysql_close_options(mysql);
     mysql->host_info=mysql->user=mysql->passwd=mysql->db=0;
@@ -2048,7 +2078,9 @@ int mthd_my_read_query_result(MYSQL *mysql)
   DBUG_ENTER("mthd_my_read_query_result");
 
   if (!mysql || (length = net_safe_read(mysql)) == packet_error)
+  {
     DBUG_RETURN(1);
+  }
   free_old_query(mysql);			/* Free old result */
 get_info:
   pos=(uchar*) mysql->net.read_pos;
@@ -2496,7 +2528,6 @@ mysql_stat(MYSQL *mysql)
   DBUG_RETURN((char*) mysql->net.read_pos);
 }
 
-
 int STDCALL
 mysql_ping(MYSQL *mysql)
 {
@@ -2509,7 +2540,6 @@ mysql_ping(MYSQL *mysql)
     rc= simple_command(mysql, COM_PING,0,0,0,0);
   return rc;
 }
-
 
 char * STDCALL
 mysql_get_server_info(MYSQL *mysql)
@@ -2878,10 +2908,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_pw, (char *)arg1);
     break;
   case MARIADB_OPT_CONNECTION_READ_ONLY:
-    if (mysql->net.conn_hdlr)
-      DBUG_RETURN(mysql->net.conn_hdlr->plugin->options(mysql, MARIADB_OPT_CONNECTION_READ_ONLY, arg1));
-    else
-      return -1;
+    OPT_SET_EXTENDED_VALUE_INT(&mysql->options, read_only, *(my_bool *)arg1);
+    break;
   default:
     va_end(ap);
     DBUG_RETURN(-1);
@@ -3278,6 +3306,15 @@ int STDCALL mariadb_get_connection_type(MYSQL *mysql)
   return (int)mysql->net.pvio->type;
 }
 
+CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname)
+{
+  return (CHARSET_INFO *)mysql_find_charset_name(csname);
+}
+
+CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr)
+{
+  return (CHARSET_INFO *)mysql_find_charset_nr(csnr);
+}
 /*
  * Default methods for a connection. These methods are
  * stored in mysql->methods and can be overwritten by
@@ -3315,5 +3352,9 @@ struct st_mysql_methods MARIADB_DEFAULT_METHODS = {
   /* store values in bind buffer */
   mthd_stmt_fetch_to_bind,
   /* skip unbuffered stmt result */
-  mthd_stmt_flush_unbuffered
+  mthd_stmt_flush_unbuffered,
+  /* set error */
+  my_set_error,
+  /* reconnect */
+  mysql_reconnect
 };

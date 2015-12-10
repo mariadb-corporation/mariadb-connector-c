@@ -182,7 +182,9 @@ static my_bool net_realloc(NET *net, size_t length)
 /* Remove unwanted characters from connection */
 void net_clear(NET *net)
 {
+  size_t len;
   DBUG_ENTER("net_clear");
+  ma_pvio_has_data(net->pvio, &len);
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
   DBUG_VOID_RETURN;
@@ -193,6 +195,7 @@ int net_flush(NET *net)
 {
   int error=0;
   DBUG_ENTER("net_flush");
+
   if (net->buff != net->write_pos)
   {
     error=net_real_write(net,(char*) net->buff,

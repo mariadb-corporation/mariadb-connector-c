@@ -70,7 +70,8 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   repl_connect,
   repl_close,
   repl_set_options,
-  repl_command
+  repl_command,
+  NULL 
 };
 
 typedef struct st_conn_repl {
@@ -81,10 +82,20 @@ typedef struct st_conn_repl {
   char *url;
   char *host[2];
   int port[2];
+  unsigned int current_type;
 } REPL_DATA;
 
-#define SET_SLAVE(mysql, data) mysql->net.pvio= data->pvio[MARIADB_SLAVE]
-#define SET_MASTER(mysql, data) mysql->net.pvio= data->pvio[MARIADB_MASTER]
+#define SET_SLAVE(mysql, data)\
+{\
+  mysql->net.pvio= data->pvio[MARIADB_SLAVE]; \
+  data->current_type= MARIADB_SLAVE;\
+}
+
+#define SET_MASTER(mysql, data)\
+{\
+  mysql->net.pvio= data->pvio[MARIADB_MASTER];\
+  data->current_type= MARIADB_MASTER;\
+}
 
 
 /* parse url
@@ -108,10 +119,8 @@ my_bool repl_parse_url(const char *url, REPL_DATA *data)
   memset(data->host, 0, 2 * sizeof(char *));
   memset(data->port, 0, 2 * sizeof(int));
 
-  if (data->url)
-    my_free(data->url);
-
-  data->url= my_strdup(url, MYF(0));
+  if (!data->url)
+    data->url= my_strdup(url, MYF(0));
   data->host[MARIADB_MASTER]= p= data->url;
  
   /* get slaves */ 
@@ -150,10 +159,11 @@ my_bool repl_parse_url(const char *url, REPL_DATA *data)
   {
     /* We need to be aware of IPv6 addresses: According to RFC3986 sect. 3.2.2
        hostnames have to be enclosed in square brackets if a port is given */
-    if (data->host[i][0]= '[' && strchr(data->host[i], ':') && (p= strchr(data->host[i],']')))
+    if (data->host[i][0]== '[' && strchr(data->host[i], ':') && (p= strchr(data->host[i],']')))
     {
       /* ignore first square bracket */
-      data->host[i]++;
+      memmove(data->host[i], data->host[i]+1, strlen(data->host[i]) - 1);
+      p= strchr(data->host[i],']');
       *p= 0;
       p++;
     }
@@ -176,12 +186,18 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
   REPL_DATA *data= NULL;
   MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
 
+  if ((data= (REPL_DATA *)hdlr->data))
+  {
+    ma_pvio_close(data->pvio[MARIADB_MASTER]);
+    data->pvio[MARIADB_MASTER]= 0;
+    repl_close(mysql);
+  }
+
   if (!(data= calloc(1, sizeof(REPL_DATA))))
   {
     mysql->methods->set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     return NULL;
   }
-
   memset(data->pvio, 0, 2 * sizeof(MARIADB_PVIO *));
 
   if (repl_parse_url(host, data))
@@ -194,6 +210,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
 
   data->pvio[MARIADB_MASTER]= mysql->net.pvio;
   hdlr->data= data;
+  SET_MASTER(mysql, data);
 
   /* to allow immediate access without connection delay, we will start
    * connecting to slave(s) in background */
@@ -245,7 +262,6 @@ void repl_close(MYSQL *mysql)
   my_free(data->url);
   my_free(data);
   mysql->net.conn_hdlr->data= NULL;
-  mysql_close(mysql);
 }
 
 static my_bool is_slave_command(const char *buffer, size_t buffer_len)
@@ -295,20 +311,20 @@ int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
     case COM_QUERY:
     case COM_STMT_PREPARE:
       if (is_slave_command(arg, length))
-        SET_SLAVE(mysql, data);
+        SET_SLAVE(mysql, data)
       else
-        SET_MASTER(mysql,data);
+        SET_MASTER(mysql,data)
       break;
     case COM_STMT_EXECUTE:
     case COM_STMT_FETCH:
       if (data->pvio[MARIADB_SLAVE]->mysql->stmts && is_slave_stmt(data->pvio[MARIADB_SLAVE]->mysql, arg))
-        SET_SLAVE(mysql, data);
+        SET_SLAVE(mysql, data)
       else
-        SET_MASTER(mysql,data);
+        SET_MASTER(mysql,data)
       break;
 
     default:
-      SET_MASTER(mysql,data);
+      SET_MASTER(mysql,data)
       break; 
   }
   return 0;

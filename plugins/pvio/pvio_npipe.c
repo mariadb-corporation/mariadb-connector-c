@@ -251,7 +251,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
                                     0,               /* no sharing */
                                     NULL,            /* default security attributes */
                                     OPEN_EXISTING,
-                                    0,               /* default attributes */
+                                    FILE_FLAG_OVERLAPPED,
                                     NULL)) != INVALID_HANDLE_VALUE)
         break;
 

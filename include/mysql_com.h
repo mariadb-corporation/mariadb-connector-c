@@ -230,6 +230,7 @@ typedef struct st_connection_handler
 {
   struct st_ma_connection_plugin *plugin;
   void *data;
+  my_bool active;
   my_bool free_data;
 } MA_CONNECTION_HANDLER;
 

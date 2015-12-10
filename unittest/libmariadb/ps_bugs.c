@@ -528,9 +528,8 @@ static int test_bug12744(MYSQL *mysql)
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  check_mysql_rc(rc, mysql);
  
-  sleep(2);
+  sleep(4);
   rc= mysql_ping(mysql); 
   check_mysql_rc(rc, mysql);
 

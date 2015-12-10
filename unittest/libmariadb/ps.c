@@ -64,7 +64,10 @@ static int test_conc83(MYSQL *my)
   /* 1. Status is inited, so prepare should work */
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  sleep(2);
+  sleep(5);
+
+  rc= mysql_ping(mysql);
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   check_stmt_rc(rc, stmt);
