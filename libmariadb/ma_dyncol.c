@@ -1114,7 +1114,7 @@ dynamic_column_string_read(DYNAMIC_COLUMN_VALUE *store_it_here,
 #ifndef LIBMARIADB
   store_it_here->x.string.charset= get_charset_by_nr(charset_nr);
 #else
-  store_it_here->x.string.charset= mysql_get_charset_by_nr(charset_nr);
+  store_it_here->x.string.charset= mariadb_get_charset_by_nr(charset_nr);
 #endif
   if (store_it_here->x.string.charset == NULL)
     return ER_DYNCOL_UNKNOWN_CHARSET;

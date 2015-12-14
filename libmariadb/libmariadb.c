@@ -164,7 +164,7 @@ void net_get_error(char *buf, size_t buf_len,
   else
   {
     *error_no= CR_UNKNOWN_ERROR;
-    memcpy(sqlstate, unknown_sqlstate, SQLSTATE_LENGTH);
+    memcpy(sqlstate, SQLSTATE_UNKNOWN, SQLSTATE_LENGTH);
   }
 }
 
@@ -208,7 +208,7 @@ restart:
         if (cli_report_progress(mysql, (uchar *)pos, (uint) (len-1)))
         {
           /* Wrong packet */
-          my_set_error(mysql, CR_MALFORMED_PACKET, unknown_sqlstate, 0);
+          my_set_error(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
           return (packet_error);
         }
         goto restart;
@@ -368,7 +368,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   if (mysql->status != MYSQL_STATUS_READY ||
       mysql->server_status & SERVER_MORE_RESULTS_EXIST)
   {
-    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     goto end;
   }
 
@@ -378,7 +378,6 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
     if (result== -1)
       DBUG_RETURN(result);
   }
-
 
   CLEAR_CLIENT_ERROR(mysql);
 
@@ -998,7 +997,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
   if (!(result=(MYSQL_DATA*) my_malloc(sizeof(MYSQL_DATA),
 				       MYF(MY_WME | MY_ZEROFILL))))
   {
-    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(0);
   }
   init_alloc_root(&result->alloc,8192,0);	/* Assume rowlength < 8192 */
@@ -1017,7 +1016,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
 				     (fields+1)*sizeof(char *)+fields+pkt_len))))
     {
       free_rows(result);
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       DBUG_RETURN(0);
     }
     *prev_ptr=cur;
@@ -1036,7 +1035,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
         if (len > (ulong) (end_to - to))
         {
           free_rows(result);
-          SET_CLIENT_ERROR(mysql, CR_UNKNOWN_ERROR, unknown_sqlstate, 0);
+          SET_CLIENT_ERROR(mysql, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, 0);
           DBUG_RETURN(0);
         }
         memcpy(to,(char*) cp,len); to[len]=0;
@@ -1519,7 +1518,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       !(mysql->user=my_strdup(user,MYF(0))) ||
       !(mysql->passwd=my_strdup(passwd,MYF(0))))
   {
-    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     goto error;
   }
   strmov(mysql->host_info,host_info);
@@ -1535,7 +1534,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     if (!(mysql->server_version= my_strdup(end + 6, 0)))
     {
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       goto error;
     }
   }
@@ -1543,7 +1542,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     if (!(mysql->server_version= my_strdup(end, MYF(0))))
     {
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       goto error;
     }
   }
@@ -1599,7 +1598,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     mysql->server_capabilities&= ~CLIENT_SECURE_CONNECTION;
     if (mysql->options.secure_auth)
     {
-      SET_CLIENT_ERROR(mysql, CR_SECURE_AUTH, unknown_sqlstate, 0);
+      SET_CLIENT_ERROR(mysql, CR_SECURE_AUTH, SQLSTATE_UNKNOWN, 0);
       goto error;
     }
   }
@@ -1636,7 +1635,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     if (mysql_select_db(mysql, db))
     {
-      my_set_error(mysql, CR_SERVER_LOST, unknown_sqlstate,
+      my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                           ER(CR_SERVER_LOST_EXTENDED),
                           "Setting intital database",
                           errno);
@@ -1867,7 +1866,7 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
 
     if (db && !(mysql->db= my_strdup(db,MYF(MY_WME))))
     {
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       rc= 1;
     }
   } else
@@ -2153,7 +2152,7 @@ mysql_store_result(MYSQL *mysql)
     DBUG_RETURN(0);
   if (mysql->status != MYSQL_STATUS_GET_RESULT)
   {
-    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(0);
   }
   mysql->status=MYSQL_STATUS_READY;		/* server is ready */
@@ -2161,7 +2160,7 @@ mysql_store_result(MYSQL *mysql)
 				      sizeof(ulong)*mysql->field_count,
 				      MYF(MY_WME | MY_ZEROFILL))))
   {
-    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(0);
   }
   result->eof=1;				/* Marker for buffered */
@@ -2203,7 +2202,7 @@ mysql_use_result(MYSQL *mysql)
     DBUG_RETURN(0);
   if (mysql->status != MYSQL_STATUS_GET_RESULT)
   {
-    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(0);
   }
   if (!(result=(MYSQL_RES*) my_malloc(sizeof(*result)+
@@ -2520,7 +2519,7 @@ mysql_stat(MYSQL *mysql)
   mysql->net.read_pos[mysql->packet_length]=0;	/* End of stat string */
   if (!mysql->net.read_pos[0])
   {
-    SET_CLIENT_ERROR(mysql, CR_WRONG_HOST_INFO , unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_WRONG_HOST_INFO , SQLSTATE_UNKNOWN, 0);
     return mysql->net.last_error;
   }
   DBUG_RETURN((char*) mysql->net.read_pos);
@@ -2601,7 +2600,7 @@ uchar *ma_get_hash_keyval(const uchar *hash_entry,
 {
   /* Hash entry has the following format:
      Offset: 0               key (\0 terminated)
-             key_length + 1  valu (\0 terminated)
+             key_length + 1  value (\0 terminated)
   */
   uchar *p= (uchar *)hash_entry;
   size_t len= strlen(p);
@@ -2743,7 +2742,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     if (!(ctxt= (struct mysql_async_context *)
           my_malloc(sizeof(*ctxt), MYF(MY_ZEROFILL))))
     {
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       goto end;
     }
     stacksize= 0;
@@ -2761,7 +2760,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         my_malloc(sizeof(struct st_mysql_options_extension),
                   MYF(MY_WME | MY_ZEROFILL))))
       {
-        SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+        SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
         goto end;
       }
     mysql->options.extension->async_context= ctxt;
@@ -2828,6 +2827,42 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.extension->connect_attrs_len= 0;
     }
     break;
+  case MARIADB_OPT_USERDATA:
+    {
+      void *data= va_arg(ap, void *);
+      uchar *buffer, *p;
+      char *key= (char *)arg1;
+
+      if (!key || !data)
+      {
+        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        goto end;
+      }
+
+      CHECK_OPT_EXTENSION_SET(&mysql->options);
+      if (!hash_inited(&mysql->options.extension->userdata))
+      {
+        if (_hash_init(&mysql->options.extension->userdata,
+                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0) ||
+            !(buffer= (uchar *)my_malloc(strlen(key) + 1 + sizeof(void *), MYF(MY_ZEROFILL))))
+        {
+          SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+          goto end;
+        }
+      }
+      p= buffer;
+      strcpy(p, key);
+      p+= strlen(key) + 1;
+      memcpy(p, &data, sizeof(void *));
+
+      if (hash_insert(&mysql->options.extension->userdata, buffer))
+      {
+        my_free(buffer);
+        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        goto end;
+      }
+    }
+    break;
   case MYSQL_OPT_CONNECT_ATTR_ADD:
     {
       uchar *buffer;
@@ -2847,7 +2882,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if (!key_len ||
           storage_len + mysql->options.extension->connect_attrs_len > 0xFFFF)
       {
-        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, unknown_sqlstate, 0);
+        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
         goto end;
       }
 
@@ -2856,7 +2891,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         if (_hash_init(&mysql->options.extension->connect_attrs,
                        0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0))
         {
-          SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+          SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
           goto end;
         }
       }
@@ -2872,14 +2907,14 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         if (hash_insert(&mysql->options.extension->connect_attrs, buffer))
         {
           my_free(buffer);
-          SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, unknown_sqlstate, 0);
+          SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
           goto end;
         }
         mysql->options.extension->connect_attrs_len+= storage_len;
       }
       else
       {
-        SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+        SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
         goto end;
       }
     }
@@ -3019,13 +3054,19 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     /* mysql_get_optionsv(mysql, MYSQL_OPT_CONNECT_ATTRS, keys, vals, elements) */
     {
       int i, *elements;
-      char **key= (char **)arg;
-      char **val;
+      char **key= NULL;
+      void *arg1;
+      char **val= NULL;
 
       if (!elements)
         goto error;
+
+      if (arg)
+        key= *(char ***)arg;
       
-      val= va_arg(ap, char **);
+      arg1= va_arg(ap, char **);
+      if (arg1)
+        val= *(char ***)arg1;
       
       if (!(elements= va_arg(ap, unsigned int *)))
         goto error;
@@ -3071,6 +3112,24 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
   case MARIADB_OPT_CONNECTION_READ_ONLY:
     break;
     */
+  case MARIADB_OPT_USERDATA:
+    /* nysql_get_optionv(mysql, MARIADB_OPT_USERDATA, key, value) */
+    {
+      uchar *p;
+      void *data= va_arg(ap, void *);
+      char *key= (char *)arg;
+      if (key && data && mysql->options.extension && hash_inited(&mysql->options.extension->userdata) &&
+          (p= (uchar *)hash_search(&mysql->options.extension->userdata, (uchar *)key,
+                      strlen((char *)key))))
+      {
+        p+= strlen(key) + 1;
+        *((void **)data)= *((void **)p);
+        break;
+      }
+      if (data)
+        *((void **)data)= NULL;
+    }
+    break;
   default:
     va_end(ap);
     DBUG_RETURN(-1);
@@ -3092,7 +3151,6 @@ mysql_options(MYSQL *mysql,enum mysql_option option, const void *arg)
 {
   return mysql_optionsv(mysql, option, arg);
 }
-
 
 /****************************************************************************
 ** Functions to get information from the MySQL structure
@@ -3200,7 +3258,7 @@ int STDCALL mysql_next_result(MYSQL *mysql)
   /* make sure communication is not blocking */
   if (mysql->status != MYSQL_STATUS_READY)
   {
-    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate, 0);
+    SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(1);
   }
 

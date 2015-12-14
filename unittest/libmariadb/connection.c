@@ -664,9 +664,7 @@ static int test_conc118(MYSQL *mysql)
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
-  rc= mysql_query(mysql, "SET @a:=1");
-  FAIL_IF(!rc, "error expected");
-
+  mysql_ping(mysql);
   rc= mysql_query(mysql, "SET @a:=1");
   check_mysql_rc(rc, mysql);
 
@@ -768,9 +766,10 @@ static int test_get_options(MYSQL *my)
   my_bool boolval[2]= {1, 0};
   char *char1= "test", *char2;
   int i;
+  MYSQL *userdata;
   char *attr_key[] = {"foo1", "foo2", "foo3"};
   char *attr_val[] = {"bar1", "bar2", "bar3"};
-  char *key[3], *val[3];
+  char **key, **val;
 
   for (i=0; options_int[i]; i++)
   {
@@ -801,12 +800,14 @@ static int test_get_options(MYSQL *my)
   FAIL_IF(elements != 3, "expected 3 elements");
   for (i=0; i < 3; i++)
     FAIL_IF(strcmp(init_command[i], command[i]), "wrong init command");
-
   for (i=0; i < 3; i++)
     mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, attr_key[i], attr_val[i]);
 
   mysql_get_optionv(mysql, MYSQL_OPT_CONNECT_ATTRS, NULL, NULL, &elements);
   FAIL_IF(elements != 3, "expected 3 connection attributes");
+
+  key= (char **)malloc(sizeof(char *) * elements);
+  val= (char **)malloc(sizeof(char *) * elements);
 
   mysql_get_optionv(mysql, MYSQL_OPT_CONNECT_ATTRS, &key, &val, &elements);
   for (i=0; i < elements; i++)
@@ -814,6 +815,13 @@ static int test_get_options(MYSQL *my)
     diag("%s => %s", key[i], val[i]);
   }
 
+  free(key);
+  free(val);
+
+  mysql_optionsv(mysql, MARIADB_OPT_USERDATA, "my_app", (void *)mysql);
+  mysql_get_optionv(mysql, MARIADB_OPT_USERDATA, "my_app", &userdata);
+
+  FAIL_IF(mysql != userdata, "wrong userdata");
   mysql_close(mysql);
   return OK;
 }
