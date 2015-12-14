@@ -1950,6 +1950,8 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->url);
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
+    if (hash_inited(&mysql->options.extension->userdata))
+      hash_free(&mysql->options.extension->userdata);
     if ((ctxt = mysql->options.extension->async_context) != 0)
     {
       my_context_destroy(&ctxt->async_context);
