@@ -646,6 +646,7 @@ static int test_conc_102(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO t_conc102 VALUES (0)");
   check_mysql_rc(rc, mysql);
+  pthread_mutex_init(&LOCK_test, NULL);
 
   for (i=0; i < 50; i++)
   {
@@ -665,6 +666,7 @@ static int test_conc_102(MYSQL *mysql)
     WaitForSingleObject(hthreads[i], INFINITE);
 #endif
   } 
+  pthread_mutex_destroy(&LOCK_test);
   rc= mysql_query(mysql, "SELECT a FROM t_conc102");
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
