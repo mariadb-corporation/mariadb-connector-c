@@ -31,15 +31,15 @@ IF(WITH_SSL)
   IF(EXISTS "${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
     MESSAGE(STATUS "certificates already exist")
   ELSE()
-    MESSAGE(STATUS "cerating certificates")
-    EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout server-key-enc.pem -out server-cert.pem -subj "/DC=com/DC=example/CN=server" -passout pass:qwerty
+    MESSAGE(STATUS "creating certificates")
+    EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout server-key-enc.pem -out server-cert.pem -subj "/DC=com/DC=example/CN=server" -passout pass:qwerty OUTPUT_FILE x.1 ERROR_FILE x.2 
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
     EXECUTE_PROCESS(COMMAND openssl rsa -in server-key-enc.pem -out server-key.pem -passin pass:qwerty -passout pass:
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
-    EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout client-key-enc.pem -out client-cert.pem -subj "/DC=com/DC=example/CN=client" -passout pass:qwerty
+      OUTPUT_FILE x.1 ERROR_FILE x.2 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+    EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout client-key-enc.pem -out client-cert.pem -subj "/DC=com/DC=example/CN=client" -passout pass:qwerty OUTPUT_FILE x.1 ERROR_FILE x.2
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
     EXECUTE_PROCESS(COMMAND openssl rsa -in client-key-enc.pem -out client-key.pem -passin pass:qwerty -passout pass:
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs OUTPUT_FILE x.1 ERROR_FILE x.2)
     FILE(READ ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem F1)              
     FILE(READ ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/client-cert.pem F2)              
     FILE(WRITE ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem ${F1} ${F2})              
