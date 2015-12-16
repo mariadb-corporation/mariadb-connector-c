@@ -7,7 +7,7 @@ configuration: RelWithDebInfo
 platform: x64
 clone_folder: c:\projects\mariadb-connector-c
 before_build:
-- cmd: >-
+- ps: >-
     cd c:\projects\mariadb-connector-c
 
     echo running cmake
@@ -17,3 +17,5 @@ build:
   project: mariadb-connector-c.sln
   parallel: true
   verbosity: minimal
+test_script:
+  - ps: "mkdir c:\\tmp\n(new-object System.Net.WebClient).DownloadFile('https://downloads.mariadb.org/f/mariadb-10.1.8/winx64-packages/mariadb-10.1.8-winx64.zip/from/http%3A/mirrors.n-ix.net/mariadb/?serve','C:\\tmp\\mariadb-10.1.8-winx64.zip')\nmkdir c:\\tmp\\mariadb\nunzip c:\\tmp\\mariadb-10.1.8-winx64.zip -d c:\\tmp\\mariadb\nSET BIN_DIR=c:\\tmp\\mariadb\nSET CERT_DIR=c:\\projects\\mariadb-connector-c\\unittest\\libmariadb\\certs\nstart %BINDIR%\\mysqld.exe --console --max_allowed_packet=1G --enable-named-pipe --socket=JDBC-test-socket --ssl-ca=%CERTDIR%\\cacert.pem --ssl-cert=%CERTDIR%\\server-cert.pem --ssl-key=%CERTDIR%\\server-key.pem\ntimeout 20\nset MYSQL_TEST_USER=root\nset MYSQL_TEST_HOST=127.0.0.1\ncd \\projects\\mariadb-connector-c\\unittest\\libmariadb\nctest -V\ncall %BINDIR%\\mysqladmin -uroot shutdown"
