@@ -84,6 +84,7 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 
 #define CR_EVENT_CREATE_FAILED 5000
 #define CR_BIND_ADDR_FAILED    5001
+#define CR_FUNCTION_NOT_SUPPORTED 5002
 
 #define SQLSTATE_UNKNOWN "HY000"
 

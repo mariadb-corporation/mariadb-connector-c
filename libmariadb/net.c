@@ -107,7 +107,6 @@ extern pthread_mutex_t LOCK_bytes_sent , LOCK_bytes_received;
 ** can't normally do this the client should have a bigger max-buffer.
 */
 
-#define TEST_BLOCKING		8
 static int net_write_buff(NET *net,const char *packet, size_t len);
 
 
@@ -117,6 +116,10 @@ int my_net_init(NET *net, MARIADB_PVIO* pvio)
 {
   if (!(net->buff=(uchar*) my_malloc(net_buffer_length,MYF(MY_WME | MY_ZEROFILL))))
     return 1;
+
+  /* We don't allocate memory for multi buffer, since we don't know in advance if the server
+   * supports COM_MULTI comand. It will be allocated on demand in net_add_multi_command */
+     
   max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
   net->pvio = pvio;
@@ -141,13 +144,15 @@ int my_net_init(NET *net, MARIADB_PVIO* pvio)
 
 void net_end(NET *net)
 {
-  my_free((gptr) net->buff);
+  my_free(net->buff);
+  my_free(net->mbuff);
   net->buff=0;
+  net->mbuff= 0;
 }
 
 /* Realloc the packet buffer */
 
-static my_bool net_realloc(NET *net, size_t length)
+static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
 {
   uchar *buff;
   size_t pkt_length;
@@ -166,7 +171,7 @@ static my_bool net_realloc(NET *net, size_t length)
   pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
   /* reallocate buffer:
      size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
-  if (!(buff=(uchar*) my_realloc((char*) net->buff, 
+  if (!(buff=(uchar*) my_realloc(is_multi ? net->mbuff : net->buff, 
                                  pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE,
                                  MYF(MY_WME))))
   {
@@ -174,8 +179,16 @@ static my_bool net_realloc(NET *net, size_t length)
     net->error=1;
     DBUG_RETURN(1);
   }
-  net->buff=net->write_pos=buff;
-  net->buff_end=buff+(net->max_packet=(unsigned long)pkt_length);
+  if (!is_multi)
+  {
+    net->buff=net->write_pos=buff;
+    net->buff_end=buff+(net->max_packet=(unsigned long)pkt_length);
+  }
+  else
+  {
+    net->mbuff=net->mbuff_pos=buff;
+    net->mbuff_end=buff+(net->max_packet=(unsigned long)pkt_length);
+  }
   DBUG_RETURN(0);
 }
 
@@ -186,11 +199,13 @@ void net_clear(NET *net)
   DBUG_ENTER("net_clear");
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
+  if (net->mbuff)
+    net->mbuff_pos= net->mbuff;
   DBUG_VOID_RETURN;
 }
 
 
-	/* Flush write_buffer if not empty. */
+/* Flush write_buffer if not empty. */
 
 int net_flush(NET *net)
 {
@@ -327,6 +342,55 @@ net_write_buff(NET *net,const char *packet, size_t len)
   return 0;
 }
 
+int net_add_multi_command(NET *net, uchar command, const uchar *packet,
+                          size_t length)
+{
+  size_t left_length;
+  size_t required_length, current_length;
+  required_length= length + 1 + NET_HEADER_SIZE;
+
+  /* We didn't allocate memory in my_net_init since it was to early to
+   * detect if the server supports COM_MULTI command */
+  if (!net->mbuff)
+  {
+    size_t alloc_size= (required_length + IO_SIZE - 1) & ~(IO_SIZE - 1);
+    if (!(net->mbuff= (char *)my_malloc(alloc_size, MYF(MY_WME))))
+    {
+      net->last_errno=ER_OUT_OF_RESOURCES;
+      net->error=2;
+      net->reading_or_writing=0;
+      return(1);
+    }
+    net->mbuff_pos= net->mbuff;
+    net->mbuff_end= net->mbuff + alloc_size; 
+  }
+
+  left_length= net->mbuff_end - net->mbuff_pos;
+
+  /* check if our buffer is large enough */
+  if (left_length < required_length)
+  {
+    current_length= net->mbuff_pos - net->mbuff;
+    if (net_realloc(net, 1, current_length + required_length))
+      goto error;
+  }
+  int3store(net->mbuff_pos, length + 1);
+  net->mbuff_pos+= 3;
+  *net->mbuff_pos= command;
+  net->mbuff_pos++;
+  memcpy(net->mbuff_pos, packet, length);
+  net->mbuff_pos+= length;
+  return 0;
+
+error:
+ if (net->mbuff)
+ {
+   my_free(net->mbuff);
+   net->mbuff= net->mbuff_pos= net->mbuff_end= 0;
+ }
+ return 1; 
+}
+
 /*  Read and write using timeouts */
 
 int
@@ -390,7 +454,6 @@ net_real_write(NET *net,const char *packet,size_t  len)
   net->reading_or_writing=0;
   DBUG_RETURN(((int) (pos != end)));
 }
-
 
 /*****************************************************************************
 ** Read something from server/clinet
@@ -460,7 +523,7 @@ my_real_read(NET *net, size_t *complen)
 	/* The necessary size of net->buff */
 	if (helping >= net->max_packet)
 	{
-	  if (net_realloc(net,helping))
+	  if (net_realloc(net, 0, helping))
 	  {
 	    len= packet_error;		/* Return error */
 	    goto end;

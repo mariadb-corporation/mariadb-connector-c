@@ -88,6 +88,8 @@ extern const CHARSET_INFO * mysql_find_charset_nr(uint charsetnr);
 extern const CHARSET_INFO * mysql_find_charset_name(const char * const name);
 extern int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                            const char *data_plugin, const char *db);
+extern int net_add_multi_command(NET *net, uchar command, const uchar *packet,
+                                 size_t length);
 
 extern LIST *pvio_callback;
 
@@ -350,10 +352,20 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 {
   NET *net= &mysql->net;
   int result= -1;
+  my_bool is_multi= 0;
 
-  DBUG_ENTER("mthd_my_send_command");
+  if (OPT_HAS_EXT_VAL(mysql, multi_command))
+    is_multi= mysql->options.extension->multi_command;
+
+  DBUG_ENTER("mthd_my_send_cmd");
 
   DBUG_PRINT("info", ("server_command: %d  packet_size: %u", command, length));
+
+  if (is_multi)
+  {
+    /* todo: error handling */
+    DBUG_RETURN(net_add_multi_command(&mysql->net, command, arg, length));
+  }
 
   if (mysql->net.conn_hdlr && mysql->net.conn_hdlr->data)
   {
@@ -661,7 +673,7 @@ enum option_val
 
 #define OPT_SET_EXTENDED_VALUE_INT(OPTS, KEY, VAL)                \
     CHECK_OPT_EXTENSION_SET(OPTS)                                 \
-+    (OPTS)->extension->KEY= (VAL)
+    (OPTS)->extension->KEY= (VAL)
 
 
 static TYPELIB option_types={array_elements(default_options)-1,
@@ -2106,15 +2118,22 @@ mysql_read_query_result(MYSQL *mysql)
 int STDCALL
 mysql_real_query(MYSQL *mysql, const char *query, size_t length)
 {
+  my_bool is_multi= 0;
+
   DBUG_ENTER("mysql_real_query");
   DBUG_PRINT("enter",("handle: %lx",mysql));
   DBUG_PRINT("query",("Query = \"%.255s\" length=%u",query, length));
+
+  if (OPT_HAS_EXT_VAL(mysql, multi_command))
+    is_multi= mysql->options.extension->multi_command;
 
   free_old_query(mysql);
 
   if (simple_command(mysql, COM_QUERY,query,length,1,0))
     DBUG_RETURN(-1);
-  DBUG_RETURN(mysql->methods->db_read_query_result(mysql));
+  if (!is_multi)
+    DBUG_RETURN(mysql->methods->db_read_query_result(mysql));
+  DBUG_RETURN(0);
 }
 
 /**************************************************************************
@@ -2891,6 +2910,15 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       DBUG_RETURN(mysql->net.conn_hdlr->plugin->options(mysql, MARIADB_OPT_CONNECTION_READ_ONLY, arg1));
     else
       return -1;
+  case MARIADB_OPT_COM_MULTI:
+    if (&mysql->net.pvio && 
+        (mysql->server_capabilities & MARIADB_CLIENT_EXTENDED_FLAGS))
+    {
+      OPT_SET_EXTENDED_VALUE_INT(&mysql->options, multi_command, *(my_bool *)arg1);
+    }
+    else
+      DBUG_RETURN(-1);
+    break;
   default:
     va_end(ap);
     DBUG_RETURN(-1);
@@ -3302,6 +3330,24 @@ mysql_get_socket(const MYSQL *mysql)
     ma_pvio_get_handle(mysql->options.extension->async_context->pvio, &sock);
   }
   return sock;
+}
+
+int STDCALL mariadb_flush_multi_command(MYSQL *mysql)
+{
+  int is_multi= 0;
+  int rc;
+
+  /* turn off multi_command option, so simple_command will 
+   * stop to add commands to the queue and send packet
+   * to the server */
+  mysql_options(mysql, MARIADB_OPT_COM_MULTI, &is_multi);
+  
+  rc= simple_command(mysql, COM_MULTI, mysql->net.mbuff,
+                        mysql->net.mbuff_pos - mysql->net.mbuff,
+                        0, 0);
+  /* reset multi_buff */
+  mysql->net.mbuff_pos= mysql->net.mbuff;
+  return rc;
 }
 
 /*

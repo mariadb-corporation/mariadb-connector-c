@@ -87,6 +87,7 @@ enum enum_server_command
   COM_SET_OPTION = 27,
   COM_STMT_FETCH = 28,
   COM_DAEMON,
+  COM_MULTI = 255,
   COM_END
 };
 
@@ -156,11 +157,12 @@ enum enum_server_command
 
 /* MariaDB specific capabilities */
 #define MARIADB_CLIENT_FLAGS 0xFFFFFFFF00000000ULL
+#define MARIADB_CLIENT_COM_MULTI 1
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
-#define MARIADB_CLIENT_EXTENDED_PROTOCOL (1ULL << 63)
+#define MARIADB_CLIENT_EXTENDED_FLAGS (1ULL << 63)
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
-                                        MARIADB_CLIENT_EXTENDED_PROTOCOL)
+                                        MARIADB_CLIENT_EXTENDED_FLAGS)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_LONG_PASSWORD |\
                                  CLIENT_FOUND_ROWS |\
@@ -245,6 +247,7 @@ typedef struct st_net {
   MARIADB_PVIO *pvio;
   unsigned char *buff;
   unsigned char *buff_end,*write_pos,*read_pos;
+  unsigned char *mbuff, *mbuff_end, *mbuff_pos;
   my_socket fd;					/* For Perl DBI/dbd */
   unsigned long remain_in_buf,length;
   unsigned long buf_length, where_b;

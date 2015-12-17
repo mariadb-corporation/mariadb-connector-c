@@ -52,6 +52,8 @@ struct st_mysql_options_extension {
   char *ssl_fp; /* finger print of server certificate */
   char *ssl_fp_list; /* white list of finger prints */
   char *ssl_pw; /* password for encrypted certificates */
+  my_bool multi_command; /* indicates if client wants to send multiple
+                            commands in one packet */
 };
 
 #define OPT_HAS_EXT_VAL(a,key) \

@@ -34,6 +34,7 @@ SET(EXPORT_SYMBOLS
  mariadb_dyncol_val_double
  mariadb_dyncol_val_long
  mariadb_dyncol_val_str
+ mariadb_flush_multi_command
  myodbc_remove_escape
  mysql_affected_rows
  mysql_autocommit
