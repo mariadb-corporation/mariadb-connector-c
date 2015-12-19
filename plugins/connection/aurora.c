@@ -132,7 +132,10 @@ my_bool aurora_switch_connection(MYSQL *mysql, AURORA *aurora, int type)
         aurora->last_instance_type= AURORA_PRIMARY;
       }
       break;
+    default:
+      return 1;
   }
+  return 0;
 }
 /* }}} */
 
@@ -177,7 +180,7 @@ void aurora_close_memory(AURORA *aurora)
 my_bool aurora_parse_url(const char *url, AURORA *aurora)
 {
   char *p, *c;
-  int i;
+  unsigned int i;
 
   if (!url || url[0] == 0)
     return 1;
@@ -313,7 +316,7 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
  */
 static unsigned int aurora_get_valid_instances(AURORA *aurora, AURORA_INSTANCE **instances)
 {
-  int i, valid_instances= 0;
+  unsigned int i, valid_instances= 0;
 
   memset(instances, 0, sizeof(AURORA_INSTANCE *) * AURORA_MAX_INSTANCES);
 
@@ -334,7 +337,7 @@ static unsigned int aurora_get_valid_instances(AURORA *aurora, AURORA_INSTANCE *
 /* {{{ void aurora_refresh_blacklist() */
 void aurora_refresh_blacklist(AURORA *aurora)
 {
-  int i;
+  unsigned int i;
   for (i=0; i < aurora->num_instances; i++)
   {
     if (aurora->instance[i].blacklisted &&
@@ -475,7 +478,7 @@ my_bool aurora_find_replica(AURORA *aurora)
 /* {{{ AURORA_INSTANCE aurora_get_primary_id_instance() */
 AURORA_INSTANCE *aurora_get_primary_id_instance(AURORA *aurora)
 {
-  int i;
+  unsigned int i;
 
   if (!aurora->primary_id[0])
     return 0;
@@ -492,7 +495,7 @@ AURORA_INSTANCE *aurora_get_primary_id_instance(AURORA *aurora)
 /* {{{ my_bool aurora_find_primary() */
 my_bool aurora_find_primary(AURORA *aurora)
 {
-  int i;
+  unsigned int i;
   AURORA_INSTANCE *instance= NULL;
   MYSQL mysql;
   my_bool check_primary= 1;
@@ -657,11 +660,11 @@ my_bool aurora_reconnect(MYSQL *mysql)
   switch (aurora->last_instance_type)
   {
     case AURORA_REPLICA:
-      if (!(rc= mysql->methods->reconnect(aurora->mysql[aurora->last_instance_type])))
+      if (!(rc= mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
         aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
     break;
     case AURORA_PRIMARY:
-      if (!(rc= mysql->methods->reconnect(aurora->mysql[aurora->last_instance_type])))
+      if (!(rc= mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
         aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
       break;
     default:

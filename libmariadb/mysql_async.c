@@ -394,7 +394,7 @@ MK_ASYNC_CONT_BODY(
 struct mysql_real_query_params {
   MYSQL *mysql;
   const char *stmt_str;
-  unsigned long length;
+  size_t length;
 };
 static void
 mysql_real_query_start_internal(void *d)
@@ -578,7 +578,7 @@ MK_ASYNC_CONT_BODY(
 struct mysql_send_query_params {
   MYSQL *mysql;
   const char *q;
-  unsigned long length;
+  size_t length;
 };
 static void
 mysql_send_query_start_internal(void *d)
@@ -1311,7 +1311,7 @@ MK_ASYNC_CONT_BODY(
 struct mysql_stmt_prepare_params {
   MYSQL_STMT *stmt;
   const char *query;
-  unsigned long length;
+  size_t length;
 };
 static void
 mysql_stmt_prepare_start_internal(void *d)
@@ -1614,7 +1614,7 @@ struct mysql_stmt_send_long_data_params {
   MYSQL_STMT *stmt;
   unsigned int param_number;
   const char *data;
-  unsigned long length;
+  size_t length;
 };
 static void
 mysql_stmt_send_long_data_start_internal(void *d)

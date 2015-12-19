@@ -37,6 +37,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <time.h>
+
 #ifdef HAVE_PWD_H
 #include <pwd.h>
 #endif
@@ -131,7 +132,7 @@ static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
 void read_user_name(char *name);
 static void append_wild(char *to,char *end,const char *wild);
-my_bool mysql_reconnect(MYSQL *mysql);
+my_bool STDCALL mysql_reconnect(MYSQL *mysql);
 static int cli_report_progress(MYSQL *mysql, uchar *packet, uint length);
 
 extern int mysql_client_plugin_init();
@@ -1228,7 +1229,7 @@ uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer)
         size_t len;
         uchar *p= hash_element(&mysql->options.extension->connect_attrs, i);
         
-        len= strlen(p);
+        len= strlen((char *)p);
         buffer= mysql_net_store_length(buffer, len);
         memcpy(buffer, p, len);
         buffer+= (len);
@@ -2606,7 +2607,7 @@ uchar *ma_get_hash_keyval(const uchar *hash_entry,
   */
   uchar *p= (uchar *)hash_entry;
   size_t len= strlen(p);
-  *length= len;
+  *length= (unsigned int)len;
   return p;
 }
 
@@ -3060,9 +3061,6 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
       void *arg1;
       char **val= NULL;
 
-      if (!elements)
-        goto error;
-
       if (arg)
         key= *(char ***)arg;
       
@@ -3071,6 +3069,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
         val= *(char ***)arg1;
       
       if (!(elements= va_arg(ap, unsigned int *)))
+        goto error;
+
+      if (!elements)
         goto error;
 
       *elements= 0;
@@ -3122,7 +3123,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
       char *key= (char *)arg;
       if (key && data && mysql->options.extension && hash_inited(&mysql->options.extension->userdata) &&
           (p= (uchar *)hash_search(&mysql->options.extension->userdata, (uchar *)key,
-                      strlen((char *)key))))
+                      (uint)strlen((char *)key))))
       {
         p+= strlen(key) + 1;
         *((void **)data)= *((void **)p);
@@ -3580,6 +3581,4 @@ struct st_mysql_methods MARIADB_DEFAULT_METHODS = {
   mthd_stmt_flush_unbuffered,
   /* set error */
   my_set_error,
-  /* reconnect */
-  mysql_reconnect
 };

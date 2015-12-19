@@ -61,7 +61,6 @@ extern uint	 my_once_extra;
 extern int	_my_tempnam_used;
 #endif
 
-extern unsigned char	*sf_min_adress,*sf_max_adress;
 extern uint	cNewCount;
 extern struct remember *pRememberRoot;
 

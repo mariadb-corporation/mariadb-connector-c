@@ -633,7 +633,6 @@ struct st_mysql_methods {
   int (*db_stmt_fetch_to_bind)(MYSQL_STMT *stmt, unsigned char *row);
   void (*db_stmt_flush_unbuffered)(MYSQL_STMT *stmt);
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
-  my_bool (*reconnect)(MYSQL *mysql);
 };
 
 /* synonyms/aliases functions */

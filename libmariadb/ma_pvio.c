@@ -490,7 +490,7 @@ my_bool ma_pvio_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
   /* check if we still have unread data in cache */
   if (pvio->cache)
     if  (pvio->cache_pos > pvio->cache)
-      return pvio->cache_pos - pvio->cache;
+      return test(pvio->cache_pos - pvio->cache);
   if (pvio && pvio->methods->has_data)
     return pvio->methods->has_data(pvio, data_len);
   return 1;

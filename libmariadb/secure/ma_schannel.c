@@ -338,7 +338,7 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char
      goto end;
    }
    /* ... and import the private key */
-   if (!CryptImportKey(crypt_prov, priv_key, priv_key_len, NULL, 0, (HCRYPTKEY *)&crypt_key))
+   if (!CryptImportKey(crypt_prov, priv_key, priv_key_len, 0, 0, (HCRYPTKEY *)&crypt_key))
    {
      ma_schannel_set_win_error(pvio);
      goto end;
@@ -427,7 +427,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     {
       if(fDoRead)
       {
-        cbData = pvio->methods->read(pvio, IoBuffer + cbIoBuffer, (size_t)(SC_IO_BUFFER_SIZE - cbIoBuffer));
+        cbData = (DWORD)pvio->methods->read(pvio, IoBuffer + cbIoBuffer, (size_t)(SC_IO_BUFFER_SIZE - cbIoBuffer));
         if (cbData == SOCKET_ERROR || cbData == 0)
         {
           rc = SEC_E_INTERNAL_ERROR;
@@ -486,7 +486,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     {
       if(OutBuffers[0].cbBuffer && OutBuffers[0].pvBuffer)
       {
-        cbData= pvio->methods->write(pvio, (uchar *)OutBuffers[0].pvBuffer, (size_t)OutBuffers[0].cbBuffer);
+        cbData= (DWORD)pvio->methods->write(pvio, (uchar *)OutBuffers[0].pvBuffer, (size_t)OutBuffers[0].cbBuffer);
         if(cbData == SOCKET_ERROR || cbData == 0)
         {
           FreeContextBuffer(OutBuffers[0].pvBuffer);
@@ -637,7 +637,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
   /* send client hello packaet */
   if(BuffersOut[0].cbBuffer != 0 && BuffersOut[0].pvBuffer != NULL)
   {  
-    r= pvio->methods->write(pvio, (uchar *)BuffersOut[0].pvBuffer, (size_t)BuffersOut[0].cbBuffer);
+    r= (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut[0].pvBuffer, (size_t)BuffersOut[0].cbBuffer);
     if (r <= 0)
     {
       sRet= SEC_E_INTERNAL_ERROR;
@@ -697,7 +697,6 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
   SECURITY_STATUS sRet= 0;
   SecBufferDesc Msg;
   SecBuffer Buffers[4],
-            ExtraBuffer,
             *pData, *pExtra;
   int i;
 
@@ -711,18 +710,18 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
   {
     if (!dwBytesRead || sRet == SEC_E_INCOMPLETE_MESSAGE)
     {
-      dwBytesRead= pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
+      dwBytesRead= (DWORD)pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
       if (dwBytesRead == 0)
       {
         /* server closed connection */
         // todo: error 
-        return NULL;
+        return SEC_E_INVALID_HANDLE;
       }
       if (dwBytesRead < 0)
       {
         /* socket error */
         // todo: error
-        return NULL;
+        return SEC_E_INVALID_HANDLE;
       }
       dwOffset+= dwBytesRead;
     }
@@ -863,7 +862,7 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   SECURITY_STATUS scRet;
   SecBufferDesc Message;
   SecBuffer Buffers[4];
-  DWORD cbMessage, cbData;
+  DWORD cbMessage;
   PBYTE pbMessage;
   SC_CTX *sctx= (SC_CTX *)pvio->cssl->ssl;
   size_t payload;

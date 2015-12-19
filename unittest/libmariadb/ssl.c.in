@@ -53,10 +53,12 @@ static int check_cipher(MYSQL *mysql)
     return 1;
 #ifdef HAVE_GNUTLS
   return strcmp(cipher, "AES-128-GCM");
-#endif
-#ifdef HAVE_OPENSSL
+#elif HAVE_OPENSSL
   return strcmp(cipher, "DHE-RSA-AES256-SHA");
+#elif HAVE_SCHANNEL
+  return strcmp(cipher, "CALG_AES_256");
 #endif
+  return 1;
 }
 
 static int create_ssl_user(const char *ssluser, my_bool is_X509)
@@ -268,6 +270,7 @@ DWORD WINAPI ssl_thread(void *dummy)
   mysql_close(mysql);
   mysql_thread_end();
   pthread_exit(0);
+  return;
 }
 
 static int test_ssl_threads(MYSQL *mysql)
@@ -291,6 +294,7 @@ static int test_ssl_threads(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT into ssltest VALUES (0)");
   check_mysql_rc(rc, mysql);
+  pthread_mutex_init(&LOCK_test, NULL);
 
   pthread_mutex_init(&LOCK_test, NULL);
 
@@ -640,6 +644,9 @@ static int test_conc_102(MYSQL *mysql)
   DWORD threads[50];
 #endif
 
+  if (check_skip_ssl())
+    return SKIP;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_conc102");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE t_conc102 ( a int)");
@@ -701,10 +708,10 @@ static int test_ssl_fp(MYSQL *unused)
   
   FAIL_IF(check_cipher(my) != 0, "Invalid cipher");
 
-  mysql_query(my, "SET @a:=1");
+  rc= mysql_query(my, "SET @a:=1");
   check_mysql_rc(rc, my);
 
-  mysql_query(my, "SELECT @a");
+  rc= mysql_query(my, "SELECT @a");
   check_mysql_rc(rc, my);
 
   if ((res= mysql_store_result(my)))
