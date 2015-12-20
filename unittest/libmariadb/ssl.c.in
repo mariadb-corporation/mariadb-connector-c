@@ -482,7 +482,7 @@ static int test_conc50_3(MYSQL *my)
 
   mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", NULL, NULL);
 
-  mysql_real_connect(mysql, hostname, "ssltest", NULL, schema,
+  mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
   diag("Error: %s<", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql), "No error expected");
@@ -767,8 +767,9 @@ struct my_tests_st my_tests[] = {
   {"test_multi_ssl_connections", test_multi_ssl_connections, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_conc_102", test_conc_102, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_ssl_threads", test_ssl_threads, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#ifndef HAVE_SCHANNEL
   {"test_password_protected", test_password_protected, TEST_CONNECTION_NEW, 0,  NULL,  NULL}, 
-
+#endif
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
