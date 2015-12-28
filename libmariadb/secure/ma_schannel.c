@@ -626,14 +626,6 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
     return sRet;
   }
 
-  /* Allocate IO-Buffer */
-  sctx->IoBufferSize= 2 * net_buffer_length;
-  if (!(sctx->IoBuffer= (PUCHAR)LocalAlloc(LMEM_ZEROINIT, sctx->IoBufferSize)))
-  {
-    sRet= SEC_E_INSUFFICIENT_MEMORY;
-    goto end;
-  }
-  
   /* send client hello packaet */
   if(BuffersOut[0].cbBuffer != 0 && BuffersOut[0].pvBuffer != NULL)
   {  
@@ -646,11 +638,17 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
   }
   sRet= ma_schannel_handshake_loop(pvio, TRUE, &ExtraData);
 
-  /* Reallocate IO-Buffer for write operations: After handshake
+  /* allocate IO-Buffer for write operations: After handshake
   was successfull, we are able now to calculate payload */
-  QueryContextAttributes( &sctx->ctxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes );
+  if ((sRet = QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes )))
+    goto end;
+
   sctx->IoBufferSize= SCHANNEL_PAYLOAD(sctx->Sizes);
-  sctx->IoBuffer= LocalReAlloc(sctx->IoBuffer, sctx->IoBufferSize, LMEM_ZEROINIT);
+  if (!(sctx->IoBuffer= (PUCHAR)LocalAlloc(0, sctx->IoBufferSize)))
+  {
+    sRet= SEC_E_INSUFFICIENT_MEMORY;
+    goto end;
+  }
     
   return sRet;
 end:
@@ -776,6 +774,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
       dwOffset= 0;
   }    
 }
+/* }}} */
 
 my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
 {
@@ -897,8 +896,45 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
     return -1;
   
   if (pvio->methods->write(pvio, sctx->IoBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer))
-    return payload;
+    return payload; 
   return 0;
 }
 /* }}} */
 
+extern char *ssl_protocol_version[5];
+
+/* {{{ ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version) */
+my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+{
+  SC_CTX *sctx;
+  SecPkgContext_ConnectionInfo ConnectionInfo;
+  if (!cssl->ssl)
+    return 1;
+
+  sctx= (SC_CTX *)cssl->ssl;
+
+  if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo) != SEC_E_OK)
+    return 1;
+
+  switch(ConnectionInfo.dwProtocol)
+  {
+  case SP_PROT_SSL3_CLIENT:
+    version->iversion= 1;
+    break;
+  case SP_PROT_TLS1_CLIENT:
+    version->iversion= 2;
+    break;
+  case SP_PROT_TLS1_1_CLIENT:
+    version->iversion= 3;
+    break;
+  case SP_PROT_TLS1_2_CLIENT:
+    version->iversion= 4;
+    break;
+  default:
+    version->iversion= 0;
+    break;
+  }
+  version->cversion= ssl_protocol_version[version->iversion];
+  return 0;
+}
+/* }}} */

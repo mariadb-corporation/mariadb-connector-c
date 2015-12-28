@@ -423,5 +423,13 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
   }
 }
 
-#endif /* HAVE_GNUTLS */
+my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+{
+  if (!cssl || !cssl->ssl)
+    return 1;
 
+  version->iversion= gnutls_protocol_get_version(cssl->ssl);
+  version->cversion= (char *)gnutls_protocol_get_name(version->iversion);
+  return 0;  
+}
+#endif /* HAVE_GNUTLS */

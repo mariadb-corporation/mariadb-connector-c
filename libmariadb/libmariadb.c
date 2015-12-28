@@ -67,6 +67,9 @@
 #include <poll.h>
 #endif
 #include <ma_pvio.h>
+#ifdef HAVE_SSL
+#include <ma_ssl.h>
+#endif
 #include <ma_dyncol.h>
 #include <mysql/client_plugin.h>
 
@@ -2547,9 +2550,9 @@ mysql_get_server_info(MYSQL *mysql)
   return((char*) mysql->server_version);
 }
 
-unsigned long STDCALL mysql_get_server_version(MYSQL *mysql)
+static size_t mariadb_server_version_id(MYSQL *mysql)
 {
-  long major, minor, patch;
+  size_t major, minor, patch;
   char *p;
 
   if (!(p = mysql->server_version)) {
@@ -2562,7 +2565,12 @@ unsigned long STDCALL mysql_get_server_version(MYSQL *mysql)
   p += 1; /* consume the dot */
   patch = strtol(p, &p, 10);
 
-  return (unsigned long)(major * 10000L + (unsigned long)(minor * 100L + patch));
+  return (major * 10000L + (unsigned long)(minor * 100L + patch));
+}
+
+unsigned long STDCALL mysql_get_server_version(MYSQL *mysql)
+{
+  return (unsigned long)mariadb_server_version_id(mysql);
 }
 
 
@@ -3323,9 +3331,9 @@ mysql_real_escape_string(MYSQL *mysql, char *to,const char *from,
     return (ulong)mysql_cset_escape_slashes(mysql->charset, to, from, length);
 }
 
-void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
+static void mariadb_get_charset_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
 {
-  DBUG_ENTER("mysql_get_character_set_info");
+  DBUG_ENTER("mariadb_get_charset_info");
 
   if (!cs)
     DBUG_VOID_RETURN;
@@ -3340,6 +3348,11 @@ void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
   cs->mbmaxlen= mysql->charset->char_maxlen;
 
   DBUG_VOID_RETURN;
+}
+
+void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
+{
+  return mariadb_get_charset_info(mysql, cs);
 }
 
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname)
@@ -3503,8 +3516,7 @@ mysql_get_parameters(void)
   return &mariadb_internal_parameters;
 }
 
-my_socket STDCALL
-mysql_get_socket(const MYSQL *mysql)
+static my_socket mariadb_get_socket(MYSQL *mysql)
 {
   my_socket sock= INVALID_SOCKET;
   if (mysql->net.pvio)
@@ -3523,13 +3535,10 @@ mysql_get_socket(const MYSQL *mysql)
   return sock;
 }
 
-int STDCALL mariadb_get_connection_type(MYSQL *mysql)
+my_socket STDCALL
+mysql_get_socket(MYSQL *mysql)
 {
-  /* check if we are connected */
-  if (!mysql || !mysql->net.pvio)
-    return -1;
-
-  return (int)mysql->net.pvio->type;
+  return mariadb_get_socket(mysql);
 }
 
 CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname)
@@ -3540,6 +3549,198 @@ CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname)
 CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr)
 {
   return (CHARSET_INFO *)mysql_find_charset_nr(csnr);
+}
+
+my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...)
+{
+  va_list ap;
+
+  DBUG_ENTER("mariadb_get_valuev");
+  DBUG_PRINT("enter",("value: %d",(int) value));
+
+  va_start(ap, arg);
+
+  switch(value) {
+  case MARIADB_MAX_ALLOWED_PACKET:
+    *((size_t *)arg)= (size_t)max_allowed_packet;
+    break;
+  case MARIADB_NET_BUFFER_LENGTH:
+    *((size_t *)arg)= (size_t)net_buffer_length;
+    break;
+  case MARIADB_CONNECTION_SSL_VERSION:
+    #ifdef HAVE_SSL
+    if (mysql && mysql->net.pvio && mysql->net.pvio->cssl)
+    {
+      struct st_ssl_version version;
+      if (!ma_pvio_ssl_get_protocol_version(mysql->net.pvio->cssl, &version))
+      *((char **)arg)= version.cversion;
+    }
+    else
+    #endif
+      goto error;
+    break;
+  case MARIADB_CONNECTION_SSL_VERSION_ID:
+    #ifdef HAVE_SSL
+    if (mysql && mysql->net.pvio && mysql->net.pvio->cssl)
+    {
+      struct st_ssl_version version;
+      if (!ma_pvio_ssl_get_protocol_version(mysql->net.pvio->cssl, &version))
+      *((unsigned int *)arg)= version.iversion;
+    }
+    else
+    #endif
+      goto error;
+    break;
+  case MARIADB_CLIENT_VERSION:
+    *((char **)arg)= MYSQL_CLIENT_VERSION;
+    break;
+  case MARIADB_CLIENT_VERSION_ID:
+    *((size_t *)arg)= MYSQL_VERSION_ID;
+    break;
+  case MARIADB_CONNECTION_SERVER_VERSION:
+    if (mysql)
+      *((char **)arg)= mysql->server_version;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_SERVER_TYPE:
+    if (mysql)
+      *((char **)arg)= mariadb_connection(mysql) ? "MariaDB" : "MySQL";
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_SERVER_VERSION_ID:
+    if (mysql)
+      *((size_t *)arg)= mariadb_server_version_id(mysql);
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_PROTOCOL_VERSION_ID:
+    if (mysql)
+      *((unsigned int *)arg)= mysql->protocol_version;
+    else
+      goto error;
+    break;
+  case MARIADB_CHARSET_INFO:
+    if (mysql)
+      mariadb_get_charset_info(mysql, (MY_CHARSET_INFO *)arg);
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_SOCKET:
+    if (mysql)
+      *((my_socket *)arg)= mariadb_get_socket(mysql);
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_TYPE:
+    if (mysql  && mysql->net.pvio)
+      *((int *)arg)= (int)mysql->net.pvio->type;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_ASYNC_TIMEOUT_MS:
+    if (mysql && mysql->options.extension && mysql->options.extension->async_context)
+      *((unsigned int *)arg)= mysql->options.extension->async_context->timeout_value;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_ASYNC_TIMEOUT:
+    if (mysql && mysql->options.extension && mysql->options.extension->async_context)
+    {
+      unsigned int timeout= mysql->options.extension->async_context->timeout_value;
+      if (timeout > UINT_MAX - 999)
+        *((unsigned int *)arg)= (timeout - 1)/1000 + 1;
+      else
+        *((unsigned int *)arg)= (timeout+999)/1000;
+    }
+    else
+      goto error;
+    break;
+  case MARIADB_CHARSET_NAME:
+    {
+      char *name;
+      name= va_arg(ap, char *);
+      if (name)
+        *((CHARSET_INFO **)arg)= (CHARSET_INFO *)mysql_find_charset_name(name);
+      else
+        goto error;
+    }
+    break;
+  case MARIADB_CHARSET_ID:
+    {
+      unsigned int nr;
+      nr= va_arg(ap, unsigned int);
+      *((CHARSET_INFO **)arg)= (CHARSET_INFO *)mysql_find_charset_nr(nr);
+    }
+    break;
+  case MARIADB_CONNECTION_SSL_CIPHER:
+    #ifdef HAVE_SSL
+    if (mysql && mysql->net.pvio && mysql->net.pvio->cssl)
+      *((char **)arg)= (char *)ma_pvio_ssl_cipher(mysql->net.pvio->cssl);
+    else
+    #endif
+      goto error;
+    break;
+  case MARIADB_CLIENT_ERRORS:
+    *((char ***)arg)= (char **)client_errors;
+    break;
+  case MARIADB_CONNECTION_INFO:
+    if (mysql)
+      *((char **)arg)= (char *)mysql->info;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_PVIO_TYPE:
+    if (mysql && !mysql->net.pvio)
+      *((unsigned int *)arg)= (unsigned int)mysql->net.pvio->type;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_SCHEMA:
+    if (mysql)
+      *((char **)arg)= mysql->db;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_USER:
+    if (mysql)
+      *((char **)arg)= mysql->user;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_PORT:
+    if (mysql)
+      *((unsigned int *)arg)= mysql->port;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_UNIX_SOCKET:
+    if (mysql)
+      *((char **)arg)= mysql->unix_socket;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_HOST:
+    if (mysql)
+      *((char **)arg)= mysql->host;
+    else
+      goto error;
+    break;
+  default:
+    va_end(ap);
+    DBUG_RETURN(-1);
+  }
+  va_end(ap);
+  DBUG_RETURN(0);
+error:
+  va_end(ap);
+  DBUG_RETURN(-1);
+}
+
+my_bool STDCALL mariadb_get_info(MYSQL *mysql, enum mariadb_value value, void *arg)
+{
+  return mariadb_get_infov(mysql, value, arg);
 }
 /*
  * Default methods for a connection. These methods are

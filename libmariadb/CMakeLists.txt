@@ -36,7 +36,8 @@ SET(EXPORT_SYMBOLS
  mariadb_dyncol_val_str
  mariadb_get_charset_by_name
  mariadb_get_charset_by_nr
- mariadb_get_connection_type
+ mariadb_get_info
+ mariadb_get_infov
  mysql_affected_rows
  mysql_autocommit
  mysql_autocommit_cont

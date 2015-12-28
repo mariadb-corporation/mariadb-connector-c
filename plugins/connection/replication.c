@@ -42,13 +42,6 @@ int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
                       size_t length, my_bool skipp_check, void *opt_arg);
 int repl_set_options(MYSQL *msql, enum mysql_option option, void *arg);
 
-#ifdef HAVE_REPLICATION_DYNAMIC
-
-#undef my_free
-#define my_malloc(a,b) malloc(a)
-#define my_free(a) free(a)
-#endif
-
 #define MARIADB_MASTER 0
 #define MARIADB_SLAVE  1
 
@@ -120,7 +113,7 @@ my_bool repl_parse_url(const char *url, REPL_DATA *data)
   memset(data->port, 0, 2 * sizeof(int));
 
   if (!data->url)
-    data->url= my_strdup(url, MYF(0));
+    data->url= strdup(url);
   data->host[MARIADB_MASTER]= p= data->url;
  
   /* get slaves */ 
@@ -188,7 +181,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
 
   if ((data= (REPL_DATA *)hdlr->data))
   {
-    ma_pvio_close(data->pvio[MARIADB_MASTER]);
+    data->pvio[MARIADB_MASTER]->methods->close(data->pvio[MARIADB_MASTER]);
     data->pvio[MARIADB_MASTER]= 0;
     repl_close(mysql);
   }
@@ -234,8 +227,8 @@ error:
   if (data)
   {
     if (data->url)
-      my_free(data->url);
-    my_free(data);
+      free(data->url);
+    free(data);
   }
   return NULL;
 }
@@ -259,8 +252,8 @@ void repl_close(MYSQL *mysql)
   }
 
   /* free masrwe information and close connection */
-  my_free(data->url);
-  my_free(data);
+  free(data->url);
+  free(data);
   mysql->net.conn_hdlr->data= NULL;
 }
 

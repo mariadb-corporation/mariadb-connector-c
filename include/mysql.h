@@ -216,7 +216,36 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_OPT_SSL_PASSWORD,       /* password for encrypted certificates */
     MARIADB_OPT_CONNECTION_READ_ONLY,
     MYSQL_OPT_CONNECT_ATTRS,        /* for mysql_get_optionv */
-    MARIADB_OPT_USERDATA,
+    MARIADB_OPT_USERDATA
+  };
+
+  enum mariadb_value {
+    MARIADB_CHARSET_ID,
+    MARIADB_CHARSET_INFO,
+    MARIADB_CHARSET_NAME,
+    MARIADB_CLIENT_ERRORS,
+    MARIADB_CLIENT_VERSION,
+    MARIADB_CLIENT_VERSION_ID,
+    MARIADB_CONNECTION_ASYNC_TIMEOUT,
+    MARIADB_CONNECTION_ASYNC_TIMEOUT_MS,
+    MARIADB_CONNECTION_HOST,
+    MARIADB_CONNECTION_INFO,
+    MARIADB_CONNECTION_PORT,
+    MARIADB_CONNECTION_PROTOCOL_VERSION_ID,
+    MARIADB_CONNECTION_PVIO_TYPE,
+    MARIADB_CONNECTION_SCHEMA,
+    MARIADB_CONNECTION_SERVER_TYPE,
+    MARIADB_CONNECTION_SERVER_VERSION,
+    MARIADB_CONNECTION_SERVER_VERSION_ID,
+    MARIADB_CONNECTION_SOCKET,
+    MARIADB_CONNECTION_SSL_CIPHER,
+    MARIADB_CONNECTION_SSL_VERSION,
+    MARIADB_CONNECTION_SSL_VERSION_ID,
+    MARIADB_CONNECTION_TYPE,
+    MARIADB_CONNECTION_UNIX_SOCKET,
+    MARIADB_CONNECTION_USER,
+    MARIADB_MAX_ALLOWED_PACKET,
+    MARIADB_NET_BUFFER_LENGTH
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -407,6 +436,8 @@ const char * STDCALL mysql_character_set_name(MYSQL *mysql);
 void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs);
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname);
 
+my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...);
+my_bool STDCALL mariadb_get_info(MYSQL *mysql, enum mariadb_value value, void *arg);
 MYSQL *		STDCALL mysql_init(MYSQL *mysql);
 int		STDCALL mysql_ssl_set(MYSQL *mysql, const char *key,
 				      const char *cert, const char *ca,
@@ -493,10 +524,9 @@ int STDCALL mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg,
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg);
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 unsigned long STDCALL mysql_hex_string(char *to, const char *from, size_t len);
-my_socket STDCALL mysql_get_socket(const MYSQL *mysql);
+my_socket STDCALL mysql_get_socket(MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
-int STDCALL mariadb_get_connection_type(MYSQL *mysql);
 my_bool STDCALL mysql_reconnect(MYSQL *mysql);
 
 /* Async API */

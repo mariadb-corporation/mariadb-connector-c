@@ -34,7 +34,8 @@ my_bool skip_async= 0;
 
 static int test_async(MYSQL *mysql)
 {
-  int type= mariadb_get_connection_type(mysql);
+  int type;
+  mariadb_get_info(mysql, MARIADB_CONNECTION_PVIO_TYPE, &type);
   if (type > MARIADB_CONNECTION_TCP)
   {
     skip_async= 1;

@@ -177,8 +177,11 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
     SSL_load_error_strings();
     /* digests and ciphers */
     OpenSSL_add_all_algorithms();
-
-    if (!(SSL_context= SSL_CTX_new(TLSv1_client_method())))
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
+#else
+    if (!(SSL_context= SSL_CTX_new(SSLv23_client_method())))
+#endif
     {
       ma_ssl_get_error(errmsg, errmsg_len);
       goto end;
@@ -569,3 +572,37 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
   }
   return (fp_len);
 }
+
+
+extern char *ssl_protocol_version[5];
+
+my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+{
+  SSL *ssl;
+
+  if (!cssl || !cssl->ssl)
+    return 1;
+
+  ssl = (SSL *)cssl->ssl;
+  switch(ssl->version)
+  {
+    case SSL3_VERSION:
+      version->iversion= 1;
+      break;
+    case TLS1_VERSION:
+      version->iversion= 2;
+      break;
+    case TLS1_1_VERSION:
+      version->iversion= 3;
+      break;
+    case TLS1_2_VERSION:
+      version->iversion= 4;
+      break;
+    default:
+      version->iversion= 0;
+      break;
+  }
+  version->cversion= ssl_protocol_version[version->iversion];
+  return 0;  
+}
+
