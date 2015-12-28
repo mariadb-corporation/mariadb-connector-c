@@ -82,6 +82,8 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   aurora_reconnect
 };
 
+struct st_mariadb_api *mariadb_api= NULL;
+
 typedef struct st_aurora_instance {
   char *host;
   int  port;
@@ -258,7 +260,7 @@ int aurora_get_instance_type(MYSQL *mysql)
   int rc;
   char *query= "select variable_value from information_schema.global_variables where variable_name='INNODB_READ_ONLY' AND variable_value='OFF'";
 
-  if (!mysql_query(mysql, query))
+  if (!mariadb_api->mysql_query(mysql, query))
   {
     MYSQL_RES *res= mysql_store_result(mysql);
     rc= mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
@@ -286,7 +288,7 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
 {
   my_bool rc= 0;
 
-  if (!mysql_query(mysql, "select server_id from information_schema.replica_host_status "
+  if (!mariadb_api->mysql_query(mysql, "select server_id from information_schema.replica_host_status "
         "where session_id = 'MASTER_SESSION_ID'"))
   {
     MYSQL_RES *res;
@@ -414,7 +416,7 @@ void aurora_copy_mysql(MYSQL *from, MYSQL *to)
   memset(&to->options, 0, sizeof(to->options));
   to->free_me= 0;
   to->net.conn_hdlr= 0;
-  mysql_close(to);
+  mariadb_api->mysql_close(to);
   *to= *from;
   to->net.pvio= from->net.pvio;
   to->net.pvio->mysql= to;
@@ -434,7 +436,7 @@ my_bool aurora_find_replica(AURORA *aurora)
   if (aurora->num_instances < 2)
     return 0;
 
-  mysql_init(&mysql);
+  mariadb_api->mysql_init(&mysql);
   mysql.options= aurora->mysql[AURORA_PRIMARY]->options;
 
   /* don't execute init_command on slave */
@@ -503,7 +505,7 @@ my_bool aurora_find_primary(AURORA *aurora)
   if (!aurora->num_instances)
     return 0;
 
-  mysql_init(&mysql);
+  mariadb_api->mysql_init(&mysql);
   mysql.options= aurora->mysql[AURORA_PRIMARY]->options;
   mysql.net.conn_hdlr= aurora->mysql[AURORA_PRIMARY]->net.conn_hdlr;
 
@@ -545,7 +547,7 @@ void aurora_close_replica(MYSQL *mysql, AURORA *aurora)
   {
     aurora->mysql[AURORA_REPLICA]->net.pvio->mysql= aurora->mysql[AURORA_REPLICA];
     aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= 0;
-    mysql_close(aurora->mysql[AURORA_REPLICA]);
+    mariadb_api->mysql_close(aurora->mysql[AURORA_REPLICA]);
     aurora->pvio[AURORA_REPLICA]= 0;
     aurora->mysql[AURORA_REPLICA]= NULL;
   }
@@ -559,6 +561,9 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
   AURORA *aurora= NULL;
   MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
   my_bool is_reconnect= 0;
+
+  if (!mariadb_api)
+    mariadb_api= mysql->methods->api;
 
   if ((aurora= (AURORA *)hdlr->data))
   {
@@ -660,7 +665,7 @@ my_bool aurora_reconnect(MYSQL *mysql)
   switch (aurora->last_instance_type)
   {
     case AURORA_REPLICA:
-      if (!(rc= mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
+      if (!(rc= mariadb_api->mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
         aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
     break;
     case AURORA_PRIMARY:
@@ -692,7 +697,7 @@ void aurora_close(MYSQL *mysql)
   {
     /* we got options from primary, so don't free it twice */
     memset(&aurora->mysql[AURORA_REPLICA]->options, 0, sizeof(mysql->options));
-    /* connection handler wull be freed in mysql_close() */
+    /* connection handler wull be freed in mariadb_api->mysql_close() */
     aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= 0;
 
     mysql_close(aurora->mysql[AURORA_REPLICA]);
@@ -781,7 +786,7 @@ int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *ar
       {
         aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
         DISABLE_AURORA(mysql);
-        mysql_select_db(aurora->mysql[AURORA_REPLICA], arg);
+        mariadb_api->mysql_select_db(aurora->mysql[AURORA_REPLICA], arg);
         ENABLE_AURORA(mysql);
         aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
       }
