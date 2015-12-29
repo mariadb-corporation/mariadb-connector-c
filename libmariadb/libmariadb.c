@@ -519,7 +519,7 @@ append_wild(char *to, char *end, const char *wild)
 /**************************************************************************
 ** Init debugging if MYSQL_DEBUG environment variable is found
 **************************************************************************/
-void STDCALL mysql_debug_end()
+void STDCALL mysql_debug_end(void)
 {
 #ifndef DBUG_OFF
   DEBUGGER_OFF;
@@ -1806,8 +1806,7 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
   DBUG_RETURN(0);
 }
 
-
-static void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
+void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
 {
   if (mysql->stmts)
   {
@@ -3352,7 +3351,7 @@ static void mariadb_get_charset_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
 
 void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
 {
-  return mariadb_get_charset_info(mysql, cs);
+  mariadb_get_charset_info(mysql, cs);
 }
 
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname)
@@ -3451,7 +3450,7 @@ void STDCALL mysql_server_end()
   my_init_done= 0;
 }
 
-my_bool STDCALL mysql_thread_init()
+my_bool STDCALL mysql_thread_init(void)
 {
 #ifdef THREAD
   return my_thread_init();
@@ -3459,7 +3458,7 @@ my_bool STDCALL mysql_thread_init()
   return 0;
 }
 
-void STDCALL mysql_thread_end()
+void STDCALL mysql_thread_end(void)
 {
   #ifdef THREAD
   my_thread_end();
@@ -3743,8 +3742,10 @@ my_bool STDCALL mariadb_get_info(MYSQL *mysql, enum mariadb_value value, void *a
   return mariadb_get_infov(mysql, value, arg);
 }
 
+#undef STDCALL
 /* API functions for usage in dynamic plugins */
-struct st_mariadb_api MARIADB_API= {
+struct st_mariadb_api MARIADB_API=
+{
   mysql_num_rows,
   mysql_num_fields,
   mysql_eof,
@@ -3906,5 +3907,7 @@ struct st_mysql_methods MARIADB_DEFAULT_METHODS = {
   mthd_stmt_flush_unbuffered,
   /* set error */
   my_set_error,
+  /* invalidate statements */
+  ma_invalidate_stmts,
   &MARIADB_API
 };

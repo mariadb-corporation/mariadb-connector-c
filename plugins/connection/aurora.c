@@ -60,7 +60,7 @@ my_bool aurora_reconnect(MYSQL *mysql);
 #define DISABLE_AURORA(mysql)\
   (mysql)->net.conn_hdlr->active= 0;
 
-#ifndef HAVE_REPLICATION_DYNAMIC
+#ifndef HAVE_AURORA_DYNAMIC
 MARIADB_CONNECTION_PLUGIN connection_aurora_plugin =
 #else
 MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
@@ -394,18 +394,8 @@ MYSQL *aurora_connect_instance(AURORA *aurora, AURORA_INSTANCE *instance, MYSQL 
 /* {{{ void aurora_copy_mysql() */
 void aurora_copy_mysql(MYSQL *from, MYSQL *to)
 {
-  LIST *li_stmt= to->stmts;
-
-  for (;li_stmt;li_stmt= li_stmt->next)
-  {
-    MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
-
-    if (stmt->state != MYSQL_STMT_INITTED)
-    {
-      stmt->state= MYSQL_STMT_INITTED;
-      SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
-    }
-  }
+  /* invalidate statements */
+  to->methods->invalidate_stmts(to, "aurora connect/reconnect");
 
   from->free_me= to->free_me;
   from->reconnect= to->reconnect;
@@ -431,7 +421,6 @@ my_bool aurora_find_replica(AURORA *aurora)
   my_bool replica_found= 0;
   AURORA_INSTANCE *instance[AURORA_MAX_INSTANCES];
   MYSQL mysql;
-//  struct st_dynamic_array *init_command= aurora->mysql[AURORA_PRIMARY]->options.init_command;
 
   if (aurora->num_instances < 2)
     return 0;
@@ -565,6 +554,8 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
   if (!mariadb_api)
     mariadb_api= mysql->methods->api;
 
+  mariadb_api->mariadb_get_info(mysql, MARIADB_CLIENT_ERRORS, &client_errors);
+
   if ((aurora= (AURORA *)hdlr->data))
   {
     aurora_refresh_blacklist(aurora);
@@ -577,7 +568,7 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
   }
   else
   {
-    if (!(aurora= (AURORA *)my_malloc(sizeof(AURORA), MYF(MY_ZEROFILL))))
+    if (!(aurora= (AURORA *)calloc(1, sizeof(AURORA))))
     {
       mysql->methods->set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return NULL;

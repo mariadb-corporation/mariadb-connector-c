@@ -266,7 +266,7 @@ static int test_frm_bug(MYSQL *mysql)
   sprintf(test_frm, "%s/%s/test_frm_bug.frm", data_dir, schema);
 
 
-  if (!(test_file= my_fopen(test_frm, (int) (O_RDWR | O_CREAT), MYF(MY_WME))))
+  if (!(test_file= fopen(test_frm, "rw")))
   {
     mysql_stmt_close(stmt);
     diag("Can't write to file %s -> SKIP", test_frm);
@@ -294,7 +294,7 @@ static int test_frm_bug(MYSQL *mysql)
   mysql_free_result(result);
   mysql_stmt_close(stmt);
 
-  my_fclose(test_file, MYF(0));
+  fclose(test_file);
   mysql_query(mysql, "drop table if exists test_frm_bug");
   return OK;
 }

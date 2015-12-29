@@ -112,11 +112,6 @@ struct my_context {
 };
 #endif
 
-extern void
-my_context_install_suspend_resume_hook(struct mysql_async_context *b,
-                                       void (*hook)(my_bool, void *),
-                                       void *user_data);
-
 /*
   Initialize an asynchroneous context object.
   Returns 0 on success, non-zero on failure.
