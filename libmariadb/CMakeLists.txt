@@ -35,7 +35,10 @@ SET(EXPORT_SYMBOLS
  mariadb_dyncol_val_long
  mariadb_dyncol_val_str
  mariadb_flush_multi_command
- myodbc_remove_escape
+ mariadb_get_charset_by_name
+ mariadb_get_charset_by_nr
+ mariadb_get_info
+ mariadb_get_infov
  mysql_affected_rows
  mysql_autocommit
  mysql_autocommit_cont
@@ -80,6 +83,8 @@ SET(EXPORT_SYMBOLS
  mysql_get_client_info
  mysql_get_client_version
  mysql_get_host_info
+ mysql_get_option
+ mysql_get_optionv
  mysql_get_parameters
  mysql_get_proto_info
  mysql_get_server_info
@@ -125,6 +130,7 @@ SET(EXPORT_SYMBOLS
  mysql_query
  mysql_query_cont
  mysql_query_start
+ mysql_reconnect
  mysql_read_query_result
  mysql_read_query_result_cont
  mysql_read_query_result_start

@@ -240,6 +240,7 @@ typedef struct st_connection_handler
 {
   struct st_ma_connection_plugin *plugin;
   void *data;
+  my_bool active;
   my_bool free_data;
 } MA_CONNECTION_HANDLER;
 
@@ -374,6 +375,12 @@ typedef struct st_udf_init
   char	  *ptr;				/* free pointer for function data */
   my_bool const_item;			/* 0 if result is independent of arguments */
 } UDF_INIT;
+
+/* Connection types */
+#define MARIADB_CONNECTION_UNIXSOCKET   0
+#define MARIADB_CONNECTION_TCP          1
+#define MARIADB_CONNECTION_NAMEDPIPE    2
+#define MARIADB_CONNECTION_SHAREDMEM    3
 
   /* Constants when using compression */
 #define NET_HEADER_SIZE 4		/* standard header size */

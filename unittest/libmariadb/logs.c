@@ -89,7 +89,7 @@ static int test_logs(MYSQL *mysql)
   my_bind[1].buffer_type= MYSQL_TYPE_STRING;
   my_bind[1].buffer= (void *)&data;
   my_bind[1].buffer_length= 255;
-  my_bind[1].length= &length;
+  my_bind[1].length= (unsigned long *)&length;
 
   id= 9876;
   strcpy((char *)data, "MySQL - Open Source Database");

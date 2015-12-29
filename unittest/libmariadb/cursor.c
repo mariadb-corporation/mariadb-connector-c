@@ -59,12 +59,12 @@ MYSQL_STMT *open_cursor(MYSQL *mysql, const char *query)
   fetch buffers.
 */
 
-int stmt_fetch_init(MYSQL *mysql, Stmt_fetch *fetch, unsigned stmt_no_arg,
+int stmt_fetch_init(MYSQL *mysql, Stmt_fetch *fetch, unsigned int stmt_no_arg,
                      const char *query_arg)
 {
   unsigned long type= CURSOR_TYPE_READ_ONLY;
   int rc;
-  unsigned i;
+  unsigned int i;
   MYSQL_RES *metadata;
 
   /* Save query and statement number for error messages */
@@ -180,7 +180,7 @@ int fetch_n(MYSQL *mysql, const char **query_list, unsigned query_count,
 
   for (fetch= fetch_array; fetch < fetch_array + query_count; ++fetch)
   {
-    if (stmt_fetch_init(mysql, fetch, fetch - fetch_array,
+    if (stmt_fetch_init(mysql, fetch, (unsigned int)(fetch - fetch_array),
                     query_list[fetch - fetch_array]))
       return FAIL;
   }
@@ -322,7 +322,7 @@ static int test_bug21206(MYSQL *mysql)
 
   for (fetch= fetch_array; fetch < fetch_array + cursor_count; ++fetch)
   {
-    if ((retcode= stmt_fetch_init(mysql, fetch, fetch - fetch_array, query)))
+    if ((retcode= stmt_fetch_init(mysql, fetch, (unsigned int)(fetch - fetch_array), query)))
       break;
   }
 

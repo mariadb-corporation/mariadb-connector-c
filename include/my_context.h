@@ -112,7 +112,6 @@ struct my_context {
 };
 #endif
 
-
 /*
   Initialize an asynchroneous context object.
   Returns 0 on success, non-zero on failure.

@@ -1,12 +1,16 @@
 # plugin configuration
 
 MACRO(REGISTER_PLUGIN name source struct type target allow)
+  SET(PLUGIN_TYPE ${${name}})
+  IF(NOT PLUGIN_TYPE STREQUAL "OFF")
+    SET(PLUGIN_TYPE ${type})
+  ENDIF()
   IF(PLUGINS)
     LIST(REMOVE_ITEM PLUGINS ${name})
   ENDIF()
   SET(${name}_PLUGIN_SOURCE ${source})
   MARK_AS_ADVANCED(${name}_PLUGIN_SOURCE})
-  SET(${name}_PLUGIN_TYPE ${type})
+  SET(${name}_PLUGIN_TYPE ${PLUGIN_TYPE})
   IF(NOT ${target} STREQUAL "")
     SET(${name}_PLUGIN_TARGET ${target})
   ENDIF()
@@ -40,7 +44,8 @@ ENDIF()
 REGISTER_PLUGIN("TRACE_EXAMPLE" "${CMAKE_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" "trace_example" 1)
 
 #Connection
-REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "STATIC" "" 1)
+REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "DYNAMIC" "" 1)
+REGISTER_PLUGIN("AURORA" "${CMAKE_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "" 1)
 
 # Allow registration of additional plugins
 IF(PLUGIN_CONF_FILE)
@@ -50,7 +55,7 @@ ENDIF()
 
 SET(LIBMARIADB_SOURCES "")
 
-MESSAGE(STATUS "Plugin configuration")
+MESSAGE(STATUS "Plugin configuration:")
 FOREACH(PLUGIN ${PLUGINS})
   IF(WITH_${PLUGIN}_PLUGIN AND ${${PLUGIN}_PLUGIN_CHG} GREATER 0)
     SET(${PLUGIN}_PLUGIN_TYPE ${WITH_${PLUGIN}_PLUGIN})
@@ -72,6 +77,6 @@ ENDIF()
 LIST(REMOVE_DUPLICATES LIBMARIADB_SOURCES)
 
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/libmariadb/client_plugin.c.in
-               ${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c)
+  ${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c)
 
 MARK_AS_ADVANCED(LIBMARIADB_SOURCES)

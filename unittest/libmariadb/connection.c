@@ -32,6 +32,7 @@ static int test_conc66(MYSQL *my)
   MYSQL *mysql= mysql_init(NULL);
   int rc;
   FILE *fp;
+  char query[1024];
 
   if (!(fp= fopen("./my.cnf", "w")))
     return FAIL;
@@ -47,7 +48,8 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(my, "GRANT ALL ON test.* TO 'conc66'@'localhost' IDENTIFIED BY 'test\";#test'");
+  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname);
+  rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
   check_mysql_rc(rc, my);
@@ -57,7 +59,8 @@ static int test_conc66(MYSQL *my)
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
-  rc= mysql_query(my, "DROP USER conc66@localhost");
+  sprintf(query, "DROP user conc66@%s", hostname);
+  rc= mysql_query(my, query);
 
   check_mysql_rc(rc, my);
   mysql_close(mysql);
@@ -561,6 +564,8 @@ static int test_reconnect(MYSQL *mysql)
   mysql_kill(mysql, mysql_thread_id(mysql1));
   sleep(4);
 
+  mysql_ping(mysql1);
+
   rc= mysql_query(mysql1, "SELECT 1 FROM DUAL LIMIT 0");
   check_mysql_rc(rc, mysql1);
   diag("Thread_id after kill: %lu", mysql_thread_id(mysql1));
@@ -649,6 +654,8 @@ static int test_conc118(MYSQL *mysql)
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
+  mysql_ping(mysql);
+
   rc= mysql_query(mysql, "SET @a:=1");
   check_mysql_rc(rc, mysql);
 
@@ -657,12 +664,7 @@ static int test_conc118(MYSQL *mysql)
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
-  mysql->host= "foo";
-
-  rc= mysql_query(mysql, "SET @a:=1");
-  FAIL_IF(!rc, "error expected");
-
-  mysql->host= hostname;
+  mysql_ping(mysql);
   rc= mysql_query(mysql, "SET @a:=1");
   check_mysql_rc(rc, mysql);
 
@@ -740,7 +742,92 @@ static int test_bind_address(MYSQL *my)
   return OK;
 }
 
+static int test_get_options(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int options_int[]= {MYSQL_OPT_CONNECT_TIMEOUT, MYSQL_REPORT_DATA_TRUNCATION, MYSQL_OPT_LOCAL_INFILE,
+                      MYSQL_OPT_RECONNECT, MYSQL_OPT_PROTOCOL, MYSQL_OPT_READ_TIMEOUT, MYSQL_OPT_WRITE_TIMEOUT, 0};
+  my_bool options_bool[]= {MYSQL_OPT_COMPRESS, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_SECURE_AUTH,
+#ifdef _WIN32    
+    MYSQL_OPT_NAMED_PIPE,
+#endif
+                          0};
+  int options_char[]= {MYSQL_READ_DEFAULT_FILE, MYSQL_READ_DEFAULT_GROUP, MYSQL_SET_CHARSET_NAME,
+                       MYSQL_OPT_SSL_KEY, MYSQL_OPT_SSL_CA, MYSQL_OPT_SSL_CERT, MYSQL_OPT_SSL_CAPATH,
+                       MYSQL_OPT_SSL_CIPHER, MYSQL_OPT_BIND, MARIADB_OPT_SSL_FP, MARIADB_OPT_SSL_FP_LIST,
+                       MARIADB_OPT_SSL_PASSWORD, 0};
+
+  char *init_command[3]= {"SET @a:=1", "SET @b:=2", "SET @c:=3"};
+  int elements= 0;
+  char **command;
+
+
+  int intval[2]= {1, 0};
+  my_bool boolval[2]= {1, 0};
+  char *char1= "test", *char2;
+  int i;
+  MYSQL *userdata;
+  char *attr_key[] = {"foo1", "foo2", "foo3"};
+  char *attr_val[] = {"bar1", "bar2", "bar3"};
+  char **key, **val;
+
+  for (i=0; options_int[i]; i++)
+  {
+    mysql_options(mysql, options_int[i], &intval[0]);
+    intval[1]= 0;
+    mysql_get_optionv(mysql, options_int[i], &intval[1]);
+    FAIL_IF(intval[0] != intval[1], "mysql_get_optionv (int) failed");
+  }
+  for (i=0; options_bool[i]; i++)
+  {
+    mysql_options(mysql, options_bool[i], &boolval[0]);
+    intval[1]= 0;
+    mysql_get_optionv(mysql, options_bool[i], &boolval[1]);
+    FAIL_IF(boolval[0] != boolval[1], "mysql_get_optionv (my_bool) failed");
+  }
+  for (i=0; options_char[i]; i++)
+  {
+    mysql_options(mysql, options_char[i], char1);
+    char2= NULL;
+    mysql_get_optionv(mysql, options_char[i], (void *)&char2);
+    FAIL_IF(strcmp(char1, char2), "mysql_get_optionv (char) failed");
+  }
+
+  for (i=0; i < 3; i++)
+    mysql_options(mysql, MYSQL_INIT_COMMAND, init_command[i]);
+
+  mysql_get_optionv(mysql, MYSQL_INIT_COMMAND, &command, &elements);
+  FAIL_IF(elements != 3, "expected 3 elements");
+  for (i=0; i < 3; i++)
+    FAIL_IF(strcmp(init_command[i], command[i]), "wrong init command");
+  for (i=0; i < 3; i++)
+    mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, attr_key[i], attr_val[i]);
+
+  mysql_get_optionv(mysql, MYSQL_OPT_CONNECT_ATTRS, NULL, NULL, &elements);
+  FAIL_IF(elements != 3, "expected 3 connection attributes");
+
+  key= (char **)malloc(sizeof(char *) * elements);
+  val= (char **)malloc(sizeof(char *) * elements);
+
+  mysql_get_optionv(mysql, MYSQL_OPT_CONNECT_ATTRS, &key, &val, &elements);
+  for (i=0; i < elements; i++)
+  {
+    diag("%s => %s", key[i], val[i]);
+  }
+
+  free(key);
+  free(val);
+
+  mysql_optionsv(mysql, MARIADB_OPT_USERDATA, "my_app", (void *)mysql);
+  mysql_get_optionv(mysql, MARIADB_OPT_USERDATA, "my_app", &userdata);
+
+  FAIL_IF(mysql != userdata, "wrong userdata");
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_get_options", test_get_options, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc118", test_conc118, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

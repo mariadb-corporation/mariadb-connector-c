@@ -48,12 +48,15 @@ struct st_mysql_options_extension {
                           double progress,
                           const char *proc_info,
                           unsigned int proc_info_length);
-  MARIADB_DB_DRIVER       *db_driver;
+  MARIADB_DB_DRIVER *db_driver;
   char *ssl_fp; /* finger print of server certificate */
   char *ssl_fp_list; /* white list of finger prints */
   char *ssl_pw; /* password for encrypted certificates */
   my_bool multi_command; /* indicates if client wants to send multiple
                             commands in one packet */
+  char *url; /* for connection handler we need to save URL for reconnect */
+  my_bool read_only;
+  HASH userdata;
 };
 
 #define OPT_HAS_EXT_VAL(a,key) \

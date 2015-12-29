@@ -948,7 +948,7 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
 my_bool pvio_socket_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
 {
   struct st_pvio_socket *csock= NULL;
-  char tmp_buf[1024];
+  char tmp_buf;
   ssize_t len;
   my_bool mode;
  

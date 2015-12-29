@@ -16,6 +16,11 @@ typedef struct st_ma_pvio_ssl {
   void *ssl;
 } MARIADB_SSL;
 
+struct st_ssl_version {
+  unsigned int iversion;
+  char *cversion;
+};
+
 /* Function prototypes */
 
 /* ma_ssl_start
@@ -124,6 +129,17 @@ const char *ma_ssl_get_cipher(MARIADB_SSL *ssl);
 */
 unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsigned int fp_len);
 
+/* ma_ssl_get_protocol_version 
+   returns protocol version in use
+   Parameter:
+     MARIADB_SSL    MariaDB SSL container
+     version        pointer to ssl version info
+   Returns:
+     0              success
+     1              error
+*/
+my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version);
+
 /* Function prototypes */
 MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql);
 my_bool ma_pvio_ssl_connect(MARIADB_SSL *cssl);
@@ -134,5 +150,6 @@ int ma_pvio_ssl_verify_server_cert(MARIADB_SSL *cssl);
 const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl);
 my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list);
 my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
+my_bool ma_pvio_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version);
 
 #endif /* _ma_ssl_h_ */

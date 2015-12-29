@@ -284,7 +284,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
     Cred.cCreds = 1;
     Cred.paCred = &sctx->client_cert_ctx;
   }
-  Cred.grbitEnabledProtocols= SP_PROT_TLS1;
+  Cred.grbitEnabledProtocols= SP_PROT_TLS1_1PLUS;
 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
  									            NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)

@@ -50,7 +50,8 @@ enum enum_pvio_io_event
 enum enum_pvio_type {
   PVIO_TYPE_UNIXSOCKET= 0,
   PVIO_TYPE_SOCKET,
-  PVIO_TYPE_NAMEDPIPE
+  PVIO_TYPE_NAMEDPIPE,
+  PVIO_TYPE_SHAREDMEM,
 };
 
 enum enum_pvio_operation {

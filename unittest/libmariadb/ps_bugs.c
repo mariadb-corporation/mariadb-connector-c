@@ -528,9 +528,8 @@ static int test_bug12744(MYSQL *mysql)
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  check_mysql_rc(rc, mysql);
  
-  sleep(2);
+  sleep(4);
   rc= mysql_ping(mysql); 
   check_mysql_rc(rc, mysql);
 
@@ -644,7 +643,7 @@ static int test_bug1500(MYSQL *mysql)
   data= "Grave";
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
   my_bind[0].buffer= (void *) data;
-  my_bind[0].buffer_length= strlen(data);
+  my_bind[0].buffer_length= (unsigned long)strlen(data);
 
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
@@ -2652,7 +2651,7 @@ static int test_bug5194(MYSQL *mysql)
   for (i= 1; i < COLUMN_COUNT; ++i)
     strcat(param_str, "?, ");
   strcat(param_str, "?)");
-  param_str_length= strlen(param_str);
+  param_str_length= (int)strlen(param_str);
 
   /* setup bind array */
   memset(my_bind, '\0', MAX_PARAM_COUNT * sizeof(MYSQL_BIND));
@@ -3230,7 +3229,7 @@ static int test_mem_overun(MYSQL *mysql)
     sprintf(field, "c%d int, ", i);
     strcat(buffer, field);
   }
-  length= strlen(buffer);
+  length= (int)strlen(buffer);
   buffer[length-2]= ')';
   buffer[--length]= '\0';
 
@@ -3242,7 +3241,7 @@ static int test_mem_overun(MYSQL *mysql)
   {
     strcat(buffer, "1, ");
   }
-  length= strlen(buffer);
+  length= (int)strlen(buffer);
   buffer[length-2]= ')';
   buffer[--length]= '\0';
 

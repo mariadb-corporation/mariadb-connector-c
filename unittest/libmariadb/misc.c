@@ -266,7 +266,7 @@ static int test_frm_bug(MYSQL *mysql)
   sprintf(test_frm, "%s/%s/test_frm_bug.frm", data_dir, schema);
 
 
-  if (!(test_file= my_fopen(test_frm, (int) (O_RDWR | O_CREAT), MYF(MY_WME))))
+  if (!(test_file= fopen(test_frm, "rw")))
   {
     mysql_stmt_close(stmt);
     diag("Can't write to file %s -> SKIP", test_frm);
@@ -294,7 +294,7 @@ static int test_frm_bug(MYSQL *mysql)
   mysql_free_result(result);
   mysql_stmt_close(stmt);
 
-  my_fclose(test_file, MYF(0));
+  fclose(test_file);
   mysql_query(mysql, "drop table if exists test_frm_bug");
   return OK;
 }
@@ -1021,11 +1021,74 @@ static int test_remote2(MYSQL *my)
 }
 #endif
 
+static int test_get_info(MYSQL *mysql)
+{
+  size_t sval;
+  unsigned int ival;
+  char *cval;
+  int rc;
+  MY_CHARSET_INFO cs;
+  CHARSET_INFO *ci;
+  char **errors;
+   
+  rc= mariadb_get_infov(mysql, MARIADB_MAX_ALLOWED_PACKET, &sval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("max_allowed_packet: %d", sval);
+  rc= mariadb_get_infov(mysql, MARIADB_NET_BUFFER_LENGTH, &sval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("net_buffer_length: %d", sval);
+  rc= mariadb_get_infov(mysql, MARIADB_CLIENT_VERSION_ID, &sval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("client_version_id: %d", sval);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_VERSION_ID, &sval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("server_version_id: %d", sval);
+  rc= mariadb_get_infov(mysql, MARIADB_CHARSET_INFO, &cs);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("charset name: %s", cs.csname);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_PVIO_TYPE, &ival);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("connection type: %d", ival);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_PROTOCOL_VERSION_ID, &ival);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("protocol_version: %d", ival);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_TYPE, &cval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("server_type: %s", cval);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_VERSION, &cval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("server_version: %s", cval);
+  rc= mariadb_get_infov(mysql, MARIADB_CLIENT_VERSION, &cval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("client_version: %s", cval);
+  rc= mariadb_get_infov(mysql, MARIADB_CHARSET_NAME, &ci, "utf8");
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("charset_name: %s", ci->csname);
+  diag("charset_nr: %d", ci->nr);
+  rc= mariadb_get_infov(mysql, MARIADB_CHARSET_ID, &ci, 63);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("charset_name: %s", ci->csname);
+  rc= mariadb_get_infov(mysql, MARIADB_CLIENT_ERRORS, &errors);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("error[0]: %s", errors[0]);
+  rc= mysql_query(mysql, "DROP TABLE IF exists t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1),(2)");
+  check_mysql_rc(rc, mysql);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_INFO, &cval);
+  FAIL_IF(rc, "mysql_get_info failed");
+  diag("mariadb_info: %s", cval);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
 #ifdef HAVE_REMOTEIO
   {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL},
 #endif
+  {"test_get_info", test_get_info, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

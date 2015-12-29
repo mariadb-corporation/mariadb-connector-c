@@ -71,7 +71,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
    *   pvio_socket
    *   pvio_namedpipe
    */
-  char *pvio_plugins[] = {"pvio_socket", "pvio_npipe"};
+  char *pvio_plugins[] = {"pvio_socket", "pvio_npipe", "pvio_shmem"};
   int type;
   MARIADB_PVIO_PLUGIN *pvio_plugin;
   MARIADB_PVIO *pvio= NULL;
@@ -86,6 +86,9 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
     case PVIO_TYPE_NAMEDPIPE:
       type= 1;
       break;
+    case PVIO_TYPE_SHAREDMEM:
+      type= 2;
+      break;
 #endif
     default:
       return NULL;
@@ -96,7 +99,6 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
                                           pvio_plugins[type], 
                                           MARIADB_CLIENT_PVIO_PLUGIN)))
   {
-    /* error handling */
     return NULL;
   }
 
@@ -111,6 +113,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
   /* register error routine and methods */
   pvio->methods= pvio_plugin->methods;
   pvio->set_error= my_set_error;
+  pvio->type= cinfo->type;
 
   /* set tineouts */
   if (pvio->methods->set_timeout)
@@ -180,9 +183,14 @@ static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t lengt
   struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
   int timeout= pvio->timeout[PVIO_READ_TIMEOUT];
 
+  if (!pvio->methods->async_read)
+  {
+    PVIO_SET_ERROR(pvio->mysql, CR_ASYNC_NOT_SUPPORTED, unknown_sqlstate, 0);
+    return -1;
+  }
+
   for (;;)
   {
-    /* todo: async */
     if (pvio->methods->async_read)
       res= pvio->methods->async_read(pvio, buffer, length);
     if (res >= 0 || IS_BLOCKING_ERROR())
@@ -482,7 +490,7 @@ my_bool ma_pvio_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
   /* check if we still have unread data in cache */
   if (pvio->cache)
     if  (pvio->cache_pos > pvio->cache)
-      return pvio->cache_pos - pvio->cache;
+      return test(pvio->cache_pos - pvio->cache);
   if (pvio && pvio->methods->has_data)
     return pvio->methods->has_data(pvio, data_len);
   return 1;

@@ -51,6 +51,8 @@
 my_bool ma_ssl_initialized= FALSE;
 unsigned int mariadb_deinitialize_ssl= 1;
 
+char *ssl_protocol_version[5]= {"unknown", "SSL3", "TLS1.0", "TLS1.1", "TLS1.2"};
+
 MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
 {
   MARIADB_SSL *cssl= NULL;
@@ -102,6 +104,11 @@ int ma_pvio_ssl_verify_server_cert(MARIADB_SSL *cssl)
 const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl)
 {
   return ma_ssl_get_cipher(cssl);
+}
+
+my_bool ma_pvio_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+{
+  return ma_ssl_get_protocol_version(cssl, version);
 }
 
 static my_bool ma_pvio_ssl_compare_fp(char *fp1, unsigned int fp1_len,

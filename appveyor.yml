@@ -1,0 +1,29 @@
+version: 3.0.0.{build}
+branches:
+  only:
+  - master
+os: Visual Studio 2015
+configuration: RelWithDebInfo
+platform: x64
+clone_folder: c:\projects\mariadb-connector-c
+environment:
+  MYSQL_TEST_USER: root
+  MYSQL_TEST_HOST: 127.0.0.1
+  MYSQL_TEST_PASSWD: Password12!
+services: mysql56
+before_build:
+- ps: >-
+    cd c:\projects\mariadb-connector-c
+
+    echo running cmake
+
+    cmake -G "Visual Studio 14 2015 Win64" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+build:
+  project: mariadb-connector-c.sln
+  parallel: true
+  verbosity: minimal
+test_script:
+- cmd: >-
+    cd c:\projects\mariadb-connector-c\unittest\libmariadb
+
+    ctest -V

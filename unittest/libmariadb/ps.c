@@ -64,7 +64,10 @@ static int test_conc83(MYSQL *my)
   /* 1. Status is inited, so prepare should work */
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  sleep(2);
+  sleep(5);
+
+  rc= mysql_ping(mysql);
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   check_stmt_rc(rc, stmt);
@@ -1383,7 +1386,7 @@ static int test_long_data_str1(MYSQL *mysql)
 
   my_bind[0].buffer= data;            /* string data */
   my_bind[0].buffer_length= sizeof(data);
-  my_bind[0].length= &length1;
+  my_bind[0].length= (unsigned long *)&length1;
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
   length1= 0;
 
@@ -1482,7 +1485,7 @@ static int test_long_data_str1(MYSQL *mysql)
   my_bind[0].buffer_type= MYSQL_TYPE_BLOB;
   my_bind[0].buffer= (void *) &data; /* this buffer won't be altered */
   my_bind[0].buffer_length= 16;
-  my_bind[0].length= &blob_length;
+  my_bind[0].length= (unsigned long *)&blob_length;
   my_bind[0].error= &my_bind[0].error_value;
   rc= mysql_stmt_bind_result(stmt, my_bind);
   data[16]= 0;
@@ -1498,7 +1501,7 @@ static int test_long_data_str1(MYSQL *mysql)
   my_bind[1].buffer_type= MYSQL_TYPE_BLOB;
   my_bind[1].buffer= (void *) &data; /* this buffer won't be altered */
   my_bind[1].buffer_length= sizeof(data);
-  my_bind[1].length= &blob_length;
+  my_bind[1].length= (unsigned long *)&blob_length;
   memset(data, '\0', sizeof(data));
   mysql_stmt_fetch_column(stmt, my_bind+1, 0, 0);
   FAIL_UNLESS(strlen(data) == max_blob_length, "strlen(data) != max_blob_length");
