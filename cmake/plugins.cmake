@@ -2,7 +2,7 @@
 
 MACRO(REGISTER_PLUGIN name source struct type target allow)
   SET(PLUGIN_TYPE ${${name}})
-  IF(NOT PLUGIN_TYPE STREQUAL "OFF")
+  IF(NOT PLUGIN_TYPE STREQUAL "OFF" AND NOT PLUGIN_TYPE)
     SET(PLUGIN_TYPE ${type})
   ENDIF()
   IF(PLUGINS)
@@ -18,6 +18,7 @@ MACRO(REGISTER_PLUGIN name source struct type target allow)
   SET(${name}_PLUGIN_SOURCE ${source})
   SET(${name}_PLUGIN_CHG ${allow})
   SET(PLUGINS ${PLUGINS} "${name}")
+  ADD_DEFINITIONS(-DHAVE_${name}=1)
 ENDMACRO()
 
 MARK_AS_ADVANCED(PLUGINS)

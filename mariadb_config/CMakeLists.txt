@@ -1,27 +1,33 @@
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include)
 
-# Figure out additional libraries for use with 
+# Figure out additional libraries for use with
 
-FOREACH (dep ${libmariadb_LIB_DEPENDS})
-  STRING(REGEX MATCH "^-l.*$" out "${dep}")
-  IF(out)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${dep}")
-  ENDIF(out)
-ENDFOREACH(dep)
+FUNCTION(GET_LIB_NAME LIB_NAME LIB_OUT)
+  STRING(FIND ${LIB_NAME} ".so" IS_SO)
+  IF(NOT ${IS_SO} STREQUAL "-1")
+    GET_FILENAME_COMPONENT(LIB_FILE ${LIB_NAME} NAME_WE)
+  ELSE()
+    SET(LIB_FILE ${LIB_NAME})
+  ENDIF()
+  SET(LIB_FILE "-l${LIB_FILE}")
+  STRING(REPLACE "-llib" "-l" LIB_FILE ${LIB_FILE})
+  SET(${LIB_OUT} ${LIB_FILE} PARENT_SCOPE)
+ENDFUNCTION()
+
+LIST(LENGTH SYSTEM_LIBS rllength)
+IF(${rllength} GREATER 0)
+  LIST(REMOVE_DUPLICATES SYSTEM_LIBS)
+ENDIF()
+
+FOREACH (LIB_NAME ${SYSTEM_LIBS})
+  GET_LIB_NAME(${LIB_NAME} LIB_OUT)
+  SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${LIB_OUT}")
+ENDFOREACH()
 
 IF(UNIX)
-  IF(OPENSSL_LIBRARIES)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -lssl")
-  ENDIF()
   IF(ICONV_EXTERNAL)
     SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${ICONV_LIBRARIES}")
   ENDIF()
-  FOREACH(lib ${EXTRA_LIBS})
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -l${lib}")
-  ENDFOREACH()
-  IF(WITH_SQLITE)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} -lsqlite")
-  ENDIF()  
 ENDIF(UNIX)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in

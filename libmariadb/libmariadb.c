@@ -3691,7 +3691,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       goto error;
     break;
   case MARIADB_CONNECTION_PVIO_TYPE:
-    if (mysql && !mysql->net.pvio)
+    if (mysql && mysql->net.pvio)
       *((unsigned int *)arg)= (unsigned int)mysql->net.pvio->type;
     else
       goto error;

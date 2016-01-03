@@ -43,7 +43,6 @@
   smb://
 */
 
-#ifdef HAVE_CURL
 #include <my_global.h>
 #include <my_sys.h>
 #include <mysql.h>
@@ -58,6 +57,7 @@
 #endif
 #include <stdlib.h>
 #include <errno.h>
+#include <mariadb/ma_io.h>
  
 /* Internal file structure */
 
@@ -89,11 +89,10 @@ typedef struct
  
 CURLM *multi_handle= NULL;
 
-#ifndef HAVE_REMOTE_IO_DYNAMIC
-struct st_mysql_client_plugin remote_io_plugin=
-{
+#ifndef HAVE_REMOTEIO_DYNAMIC
+MARIADB_REMOTEIO_PLUGIN remote_io_plugin=
 #else
-struct st_mysql_client_plugin _mysql_client_plugin_declare_ =
+MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declare_ =
 #endif
 {
   MARIADB_CLIENT_REMOTEIO_PLUGIN,
@@ -439,4 +438,3 @@ char *ma_rio_gets(char *ptr, size_t size, MA_FILE *file)
  
   return ptr;/*success */ 
 }
-#endif 
