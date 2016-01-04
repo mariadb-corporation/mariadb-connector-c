@@ -554,14 +554,12 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
   if (!mariadb_api)
     mariadb_api= mysql->methods->api;
 
-  mariadb_api->mariadb_get_info(mysql, MARIADB_CLIENT_ERRORS, &client_errors);
-
   if ((aurora= (AURORA *)hdlr->data))
   {
     aurora_refresh_blacklist(aurora);
     if (aurora->mysql[aurora->last_instance_type]->net.pvio)
     {
-      SET_CLIENT_ERROR(mysql, CR_ALREADY_CONNECTED, SQLSTATE_UNKNOWN, 0);
+      mysql->methods->set_error(mysql, CR_ALREADY_CONNECTED, SQLSTATE_UNKNOWN, 0);
       return NULL;
     }
     is_reconnect= 1;

@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2015 Monty Program AB
+ * Copyright (C) 2015, 2016 Monty Program AB
  * Copyright (c) 2003 Simtec Electronics
  *
  * Re-implemented by Vincent Sanders <vince@kyllikki.org> with extensive
@@ -89,10 +89,10 @@ typedef struct
  
 CURLM *multi_handle= NULL;
 
-#ifndef HAVE_REMOTEIO_DYNAMIC
+#ifndef HAVE_REMOTEIO_DYNAMIC 
 MARIADB_REMOTEIO_PLUGIN remote_io_plugin=
 #else
-MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declare_ =
+MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
 {
   MARIADB_CLIENT_REMOTEIO_PLUGIN,
@@ -126,6 +126,7 @@ int ma_rio_deinit(void)
     multi_handle= NULL;
   }
   curl_global_cleanup();
+  return 0;
 }
 /* }}} */
 

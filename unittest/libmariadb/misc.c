@@ -982,6 +982,7 @@ static int test_remote1(MYSQL *mysql)
   if (!remote_plugin)
   {
     diag("skip - no remote io plugin available");
+    diag("error: %s", mysql_error(mysql));
     return SKIP;
   }
 

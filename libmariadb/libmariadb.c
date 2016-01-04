@@ -104,6 +104,10 @@ extern int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row);
 extern int mthd_stmt_read_all_rows(MYSQL_STMT *stmt);
 extern void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
+extern void
+my_context_install_suspend_resume_hook(struct mysql_async_context *b,
+                                       void (*hook)(my_bool, void *),
+                                       void *user_data);
 
 uint mysql_port=0;
 my_string mysql_unix_port=0;
@@ -3436,7 +3440,7 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
   return(rc);
 }
 
-void STDCALL mysql_server_end()
+void STDCALL mysql_server_end(void)
 {
   if (!mysql_client_init)
     return;

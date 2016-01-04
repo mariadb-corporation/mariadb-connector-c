@@ -1,5 +1,5 @@
 /************************************************************************************
-   Copyright (C) 2015 MariaDB Corporation AB,
+   Copyright (C) 2015,2016 MariaDB Corporation AB,
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -106,7 +106,7 @@ struct st_ma_pvio_methods pvio_socket_methods= {
 #ifndef HAVE_SOCKET_DYNAMIC
 MARIADB_PVIO_PLUGIN pvio_socket_plugin=
 #else
-MARIADB_PVIO_PLUGIN _mysql_client_plugin_declare_
+MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_
 #endif
 {
   MARIADB_CLIENT_PVIO_PLUGIN,

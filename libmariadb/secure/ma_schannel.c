@@ -908,6 +908,7 @@ my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *ve
 {
   SC_CTX *sctx;
   SecPkgContext_ConnectionInfo ConnectionInfo;
+
   if (!cssl->ssl)
     return 1;
 
