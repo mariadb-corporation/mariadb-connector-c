@@ -755,7 +755,7 @@ static int test_get_options(MYSQL *my)
   int options_char[]= {MYSQL_READ_DEFAULT_FILE, MYSQL_READ_DEFAULT_GROUP, MYSQL_SET_CHARSET_NAME,
                        MYSQL_OPT_SSL_KEY, MYSQL_OPT_SSL_CA, MYSQL_OPT_SSL_CERT, MYSQL_OPT_SSL_CAPATH,
                        MYSQL_OPT_SSL_CIPHER, MYSQL_OPT_BIND, MARIADB_OPT_SSL_FP, MARIADB_OPT_SSL_FP_LIST,
-                       MARIADB_OPT_SSL_PASSWORD, 0};
+                       MARIADB_OPT_SSL_PASSPHRASE, 0};
 
   char *init_command[3]= {"SET @a:=1", "SET @b:=2", "SET @c:=3"};
   int elements= 0;

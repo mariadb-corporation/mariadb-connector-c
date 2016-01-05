@@ -55,7 +55,7 @@ static int check_cipher(MYSQL *mysql)
 
 #ifdef HAVE_GNUTLS
   {
-    return strcmp(cipher, "AES-128-GCM");
+    return strcmp(cipher, "AES-256-CBC");
   }
 #elif HAVE_OPENSSL
   if (!strcmp(cipher, "DHE-RSA-AES256-SHA") ||
@@ -388,7 +388,7 @@ static int test_password_protected(MYSQL *my)
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem",
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
 
-  mysql_options(mysql, MARIADB_OPT_SSL_PASSWORD, "qwerty");
+  mysql_options(mysql, MARIADB_OPT_SSL_PASSPHRASE, "qwerty");
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0), mysql_error(mysql));

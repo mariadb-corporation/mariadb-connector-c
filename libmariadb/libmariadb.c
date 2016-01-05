@@ -2948,7 +2948,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_SSL_FP_LIST:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp_list, (char *)arg1);
     break;
-  case MARIADB_OPT_SSL_PASSWORD:
+  case MARIADB_OPT_SSL_PASSPHRASE:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_pw, (char *)arg1);
     break;
   case MARIADB_OPT_CONNECTION_READ_ONLY:
@@ -3119,7 +3119,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
   case MARIADB_OPT_SSL_FP_LIST:
     *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_fp_list : NULL;
     break;
-  case MARIADB_OPT_SSL_PASSWORD:
+  case MARIADB_OPT_SSL_PASSPHRASE:
     *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_pw : NULL;
     break;
     /* todo

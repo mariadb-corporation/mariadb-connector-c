@@ -204,7 +204,7 @@ void *ma_ssl_init(MYSQL *mysql)
     goto error;
   gnutls_session_set_ptr(ssl, (void *)mysql);
 
-  ssl_error= gnutls_priority_set_direct(ssl, "NORMAL:-DHE-RSA", &err);
+  ssl_error= gnutls_priority_set_direct(ssl, "NORMAL", &err);
   if (ssl_error < 0)
     goto error;
 
