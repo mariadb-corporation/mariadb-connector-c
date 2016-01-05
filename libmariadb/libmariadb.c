@@ -3576,16 +3576,20 @@ int STDCALL mariadb_flush_multi_command(MYSQL *mysql)
   int is_multi= 0;
   int rc;
 
-  /* turn off multi_command option, so simple_command will 
+  /* turn off multi_command option, so simple_command will
    * stop to add commands to the queue and send packet
    * to the server */
   mysql_options(mysql, MARIADB_OPT_COM_MULTI, &is_multi);
-  
+
   rc= simple_command(mysql, COM_MULTI, mysql->net.mbuff,
                         mysql->net.mbuff_pos - mysql->net.mbuff,
-                        0, 0);
+                        1, 0);
   /* reset multi_buff */
   mysql->net.mbuff_pos= mysql->net.mbuff;
+
+  if (!rc)
+    rc= mysql->methods->db_read_query_result(mysql);
+
   return rc;
 }
 
