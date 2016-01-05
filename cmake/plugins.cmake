@@ -38,7 +38,7 @@ REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CMAKE_SOURCE_DIR}/plugins/auth/mariadb_clear
 
 #Remote_IO
 IF(CURL_FOUND)
-  REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
+  REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "STATIC" "remote_io" 1)
 ENDIF()
 
 #Trace
