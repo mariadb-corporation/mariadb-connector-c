@@ -438,6 +438,7 @@ const char * STDCALL mysql_character_set_name(MYSQL *mysql);
 void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs);
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname);
 
+int STDCALL mariadb_flush_multi_command(MYSQL *mysql);
 my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...);
 my_bool STDCALL mariadb_get_info(MYSQL *mysql, enum mariadb_value value, void *arg);
 MYSQL *		STDCALL mysql_init(MYSQL *mysql);
