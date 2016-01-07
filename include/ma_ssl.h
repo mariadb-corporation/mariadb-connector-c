@@ -151,5 +151,6 @@ const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl);
 my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list);
 my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
 my_bool ma_pvio_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version);
+void ma_pvio_ssl_end();
 
 #endif /* _ma_ssl_h_ */

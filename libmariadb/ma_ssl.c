@@ -78,7 +78,11 @@ MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
 
 my_bool ma_pvio_ssl_connect(MARIADB_SSL *cssl)
 {
-  return ma_ssl_connect(cssl);
+  my_bool rc;
+  
+  if ((rc= ma_ssl_connect(cssl)))
+    ma_ssl_close(cssl);
+  return rc;
 }
 
 size_t ma_pvio_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
@@ -104,6 +108,11 @@ int ma_pvio_ssl_verify_server_cert(MARIADB_SSL *cssl)
 const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl)
 {
   return ma_ssl_get_cipher(cssl);
+}
+
+void ma_pvio_ssl_end()
+{
+  return ma_ssl_end();
 }
 
 my_bool ma_pvio_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)

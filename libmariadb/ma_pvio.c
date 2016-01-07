@@ -70,6 +70,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
    * Currently we support the following pvio types:
    *   pvio_socket
    *   pvio_namedpipe
+   *   pvio_sharedmed
    */
   char *pvio_plugins[] = {"pvio_socket", "pvio_npipe", "pvio_shmem"};
   int type;

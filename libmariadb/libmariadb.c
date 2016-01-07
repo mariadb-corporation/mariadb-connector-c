@@ -3122,10 +3122,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
   case MARIADB_OPT_SSL_PASSPHRASE:
     *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_pw : NULL;
     break;
-    /* todo
   case MARIADB_OPT_CONNECTION_READ_ONLY:
+    *((my_bool *)arg)= mysql->options.extension ? mysql->options.extension->read_only : 0;
     break;
-    */
   case MARIADB_OPT_USERDATA:
     /* nysql_get_optionv(mysql, MARIADB_OPT_USERDATA, key, value) */
     {
@@ -3450,6 +3449,9 @@ void STDCALL mysql_server_end(void)
   list_free(pvio_callback, 0);
   if (my_init_done)
     my_end(0);
+#ifdef HAVE_SSL
+  ma_pvio_ssl_end();
+#endif  
   mysql_client_init= 0;
   my_init_done= 0;
 }
@@ -3570,6 +3572,21 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
   case MARIADB_NET_BUFFER_LENGTH:
     *((size_t *)arg)= (size_t)net_buffer_length;
     break;
+  case MARIADB_CONNECTION_ERROR_ID:
+    if (!mysql)
+      goto error;
+    *((unsigned int *)arg)= mysql->net.last_errno;
+    break;
+  case MARIADB_CONNECTION_ERROR:
+    if (!mysql)
+      goto error;
+    *((char **)arg)= mysql->net.last_error;
+    break;
+  case MARIADB_CONNECTION_SQLSTATE:
+    if (!mysql)
+      goto error;
+    *((char **)arg)= mysql->net.sqlstate;
+    break;
   case MARIADB_CONNECTION_SSL_VERSION:
     #ifdef HAVE_SSL
     if (mysql && mysql->net.pvio && mysql->net.pvio->cssl)
@@ -3593,6 +3610,19 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     else
     #endif
       goto error;
+    break;
+  case MARIADB_CONNECTION_SSL_LIBRARY:
+#ifdef HAVE_SSL
+#ifdef HAVE_GNUTLS
+    *((char **)arg)= "GNUTLS";
+#elif HAVE_OPENSSL
+    *((char **)arg)= "OPENSSL";
+#elif HAVE_SCHANNEL
+    *((char **)arg)= "SCHANNEL";
+#endif
+#else
+    *((char **)arg)= "OFF";
+#endif
     break;
   case MARIADB_CLIENT_VERSION:
     *((char **)arg)= MYSQL_CLIENT_VERSION;
