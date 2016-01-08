@@ -35,12 +35,18 @@ static int com_multi_1(MYSQL *mysql)
   /* 1 SELECT result */
   res= mysql_store_result(mysql);
   FAIL_UNLESS(res, "1 of 2 simple query in batch no result");
+  FAIL_UNLESS(res->field_count == 1 && res->row_count == 1 &&
+              strcmp(res->fields[0].name, "1") == 0,
+              "1 of 2 simple query in batch wrong result");
   mysql_free_result(res);
   /* 2 SELECT result */
   rc= mysql_next_result(mysql);
   FAIL_UNLESS(rc == 0, "no second result in the batch");
   res= mysql_store_result(mysql);
   FAIL_UNLESS(res, "2 of 2 simple query in batch no result");
+  FAIL_UNLESS(res->field_count == 1 && res->row_count == 1 &&
+              strcmp(res->fields[0].name, "2") == 0,
+              "1 of 2 simple query in batch wrong result");
   mysql_free_result(res);
   /* WHOLE batch result (OK) */
   rc= mysql_next_result(mysql);
