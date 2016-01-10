@@ -262,9 +262,9 @@ int aurora_get_instance_type(MYSQL *mysql)
 
   if (!mariadb_api->mysql_query(mysql, query))
   {
-    MYSQL_RES *res= mysql_store_result(mysql);
+    MYSQL_RES *res= mariadb_api->mysql_store_result(mysql);
     rc= mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
-    mysql_free_result(res);
+    mariadb_api->mysql_free_result(res);
     return rc;
   }
   return -1;
@@ -294,9 +294,9 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
     MYSQL_RES *res;
     MYSQL_ROW row;
 
-    if ((res= mysql_store_result(mysql)))
+    if ((res= mariadb_api->mysql_store_result(mysql)))
     {
-      if ((row= mysql_fetch_row(res)))
+      if ((row= mariadb_api->mysql_fetch_row(res)))
       {
         if (row[0])
         {
@@ -304,7 +304,7 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
           rc= 1;
         }
       }
-      mysql_free_result(res);
+      mariadb_api->mysql_free_result(res);
     }
   }
   return rc;
@@ -355,7 +355,7 @@ void aurora_refresh_blacklist(AURORA *aurora)
 /* {{{ MYSQL *aurora_connect_instance() */
 MYSQL *aurora_connect_instance(AURORA *aurora, AURORA_INSTANCE *instance, MYSQL *mysql)
 {
-  if (!mysql->methods->db_connect(mysql,
+  if (!mariadb_api->mysql_real_connect(mysql,
         instance->host,
         aurora->username,
         aurora->password,
@@ -442,7 +442,7 @@ my_bool aurora_find_replica(AURORA *aurora)
         case AURORA_REPLICA:
           if (!aurora->mysql[AURORA_REPLICA])
           {
-            aurora->mysql[AURORA_REPLICA]= mysql_init(NULL);
+            aurora->mysql[AURORA_REPLICA]= mariadb_api->mysql_init(NULL);
           }
           aurora_copy_mysql(&mysql, aurora->mysql[AURORA_REPLICA]);
           aurora->active[AURORA_REPLICA]= 1;
@@ -455,7 +455,7 @@ my_bool aurora_find_replica(AURORA *aurora)
           continue;
           break;
         default:
-          mysql_close(&mysql);
+          mariadb_api->mysql_close(&mysql);
           return 0;
           break;
       }
@@ -658,7 +658,7 @@ my_bool aurora_reconnect(MYSQL *mysql)
         aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
     break;
     case AURORA_PRIMARY:
-      if (!(rc= mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
+      if (!(rc= mariadb_api->mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
         aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
       break;
     default:
@@ -689,7 +689,7 @@ void aurora_close(MYSQL *mysql)
     /* connection handler wull be freed in mariadb_api->mysql_close() */
     aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= 0;
 
-    mysql_close(aurora->mysql[AURORA_REPLICA]);
+    mariadb_api->mysql_close(aurora->mysql[AURORA_REPLICA]);
   }
 
   if (aurora->mysql[AURORA_PRIMARY])
@@ -699,19 +699,9 @@ void aurora_close(MYSQL *mysql)
 
     aurora->mysql[AURORA_PRIMARY]->net.pvio= aurora->pvio[AURORA_PRIMARY];
 
-    mysql_close(aurora->mysql[AURORA_PRIMARY]);
+    mariadb_api->mysql_close(aurora->mysql[AURORA_PRIMARY]);
   }
 
-
-
-/*
-  if (aurora->mysql[AURORA_PRIMARY])
-  {
-    aurora->mysql[AURORA_PRIMARY]->net.pvio= aurora->pvio[AURORA_PRIMARY];
-    aurora->mysql[AURORA_PRIMARY]->net.conn_hdlr= 0;
-    mysql_close(aurora->mysql[AURORA_PRIMARY]);
-  }
-*/
   /* free masrwe information  */
   aurora_close_memory(aurora);
 }
