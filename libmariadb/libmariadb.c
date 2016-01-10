@@ -2857,13 +2857,27 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if (!hash_inited(&mysql->options.extension->userdata))
       {
         if (_hash_init(&mysql->options.extension->userdata,
-                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0) ||
-            !(buffer= (uchar *)my_malloc(strlen(key) + 1 + sizeof(void *), MYF(MY_ZEROFILL))))
+                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
           goto end;
         }
       }
+      /* check if key is already in buffer */
+      if (p= (uchar *)hash_search(&mysql->options.extension->userdata, (uchar *)key,
+                      (uint)strlen((char *)key)))
+      {
+        p+= strlen(key) + 1;
+        memcpy(p, &data, sizeof(void *));
+        break;
+      }
+
+      if (!(buffer= (uchar *)my_malloc(strlen(key) + 1 + sizeof(void *), MYF(MY_ZEROFILL))))
+      {
+        SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+        goto end;
+      }
+
       p= buffer;
       strcpy(p, key);
       p+= strlen(key) + 1;
