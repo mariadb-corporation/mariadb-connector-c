@@ -2,12 +2,13 @@
 */
 
 #include "my_test.h"
+#include "ma_pvio.h"
 
 static int aurora1(MYSQL *mysql)
 {
   int rc;
   my_bool read_only= 1;
-  char *primary, *replica;
+  const char *primary, *schema;
   MYSQL_RES *res;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
@@ -19,7 +20,7 @@ static int aurora1(MYSQL *mysql)
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1, 'foo'), (2, 'bar')");
   check_mysql_rc(rc, mysql);
 
-  primary= mysql->host;
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_HOST, &primary);
   diag("primary: %s", primary);
 
   mysql_options(mysql, MARIADB_OPT_CONNECTION_READ_ONLY, &read_only);
@@ -37,15 +38,29 @@ static int aurora1(MYSQL *mysql)
   diag("Num_rows: %d", mysql_num_rows(res));
   mysql_free_result(res);
 
-  replica= mysql->host;
-  diag("replica: %s", replica);
-  diag("db: %s", mysql->db);
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SCHEMA, &schema);
+  diag("db: %s", schema);
 
+  return OK;
+}
+
+static int test_wrong_user(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  if (mysql_real_connect(mysql, hostname, "wrong_user", NULL, NULL, 0, NULL, 0))
+  {
+    diag("Error expected");
+    mysql_close(mysql);
+    return FAIL;
+  }
+  mysql_close(mysql);
   return OK;
 }
 
 struct my_tests_st my_tests[] = {
   {"aurora1", aurora1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_wrong_user", test_wrong_user, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

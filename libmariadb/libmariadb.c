@@ -1323,7 +1323,9 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
     mysql->net.conn_hdlr->plugin= plugin;
 
     if (plugin && plugin->connect)
+    {
       return plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
+    }
   }
 
   return mysql->methods->db_connect(mysql, host, user, passwd,

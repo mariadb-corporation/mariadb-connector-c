@@ -362,7 +362,7 @@ MYSQL *aurora_connect_instance(AURORA *aurora, AURORA_INSTANCE *instance, MYSQL 
         aurora->database,
         instance->port ? instance->port : aurora->port,
         NULL,
-        aurora->client_flag))
+        aurora->client_flag | CLIENT_REMEMBER_OPTIONS))
   {
     /* connection not available */
     instance->blacklisted= time(NULL);
@@ -630,7 +630,12 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
       aurora->active[AURORA_PRIMARY]= 1;
       aurora->pvio[AURORA_PRIMARY]= aurora->mysql[AURORA_PRIMARY]->net.pvio;
     }
+    else
+      aurora->pvio[AURORA_PRIMARY]= NULL;
   }
+
+  if (!aurora->pvio[AURORA_PRIMARY] && !aurora->pvio[AURORA_REPLICA])
+    goto error;
 
   aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
   ENABLE_AURORA(mysql);
@@ -676,6 +681,11 @@ void aurora_close(MYSQL *mysql)
   MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
   AURORA *aurora= (AURORA *)hdlr->data;
 
+  if (!aurora->pvio[AURORA_PRIMARY] && !aurora->pvio[AURORA_REPLICA])
+  {
+    return;
+  }
+
   aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
 
   /* if the connection is not active yet, just return */
@@ -702,7 +712,7 @@ void aurora_close(MYSQL *mysql)
     mariadb_api->mysql_close(aurora->mysql[AURORA_PRIMARY]);
   }
 
-  /* free masrwe information  */
+  /* free information  */
   aurora_close_memory(aurora);
 }
 /* }}} */
