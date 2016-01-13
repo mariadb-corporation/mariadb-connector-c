@@ -87,7 +87,7 @@ enum enum_server_command
   COM_SET_OPTION = 27,
   COM_STMT_FETCH = 28,
   COM_DAEMON,
-  COM_MULTI = 255,
+  COM_MULTI = 254,
   COM_END
 };
 
