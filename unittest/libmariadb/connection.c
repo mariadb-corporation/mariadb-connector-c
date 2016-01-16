@@ -455,16 +455,21 @@ static int test_opt_reconnect(MYSQL *mysql)
 {
   my_bool my_true= TRUE;
   int rc;
+  my_bool reconnect;
+
+  printf("true: %d\n", TRUE);
 
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "not enough memory");
 
-  FAIL_UNLESS(mysql->reconnect == 0, "reconnect != 0");
+  mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
 
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, &my_true);
   check_mysql_rc(rc, mysql);
 
-  FAIL_UNLESS(mysql->reconnect == 1, "reconnect != 1");
+  mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 1, "reconnect != 1");
 
   if (!(mysql_real_connect(mysql, hostname, username,
                            password, schema, port,
@@ -475,14 +480,16 @@ static int test_opt_reconnect(MYSQL *mysql)
     return FAIL;
   }
 
-  FAIL_UNLESS(mysql->reconnect == 1, "reconnect != 1");
+  mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 1, "reconnect != 1");
 
   mysql_close(mysql);
 
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "not enough memory");
 
-  FAIL_UNLESS(mysql->reconnect == 0, "reconnect != 0");
+  mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
 
   if (!(mysql_real_connect(mysql, hostname, username,
                            password, schema, port,
@@ -493,7 +500,8 @@ static int test_opt_reconnect(MYSQL *mysql)
     return FAIL;
   }
 
-  FAIL_UNLESS(mysql->reconnect == 0, "reconnect != 0");
+  mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
 
   mysql_close(mysql);
   return OK;
@@ -538,16 +546,19 @@ static int test_reconnect(MYSQL *mysql)
   my_bool my_true= TRUE;
   MYSQL *mysql1;
   int rc;
+  my_bool reconnect;
 
   mysql1= mysql_init(NULL);
   FAIL_IF(!mysql1, "not enough memory");
 
-  FAIL_UNLESS(mysql1->reconnect == 0, "reconnect != 0");
+  mysql_get_option(mysql1, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
 
   rc= mysql_options(mysql1, MYSQL_OPT_RECONNECT, &my_true);
   check_mysql_rc(rc, mysql1);
 
-  FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
+  mysql_get_option(mysql1, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 1, "reconnect != 1");
 
   if (!(mysql_real_connect(mysql1, hostname, username,
                            password, schema, port,
@@ -558,7 +569,8 @@ static int test_reconnect(MYSQL *mysql)
     return FAIL;
   }
 
-  FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
+  mysql_get_option(mysql1, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 1, "reconnect != 1");
 
   diag("Thread_id before kill: %lu", mysql_thread_id(mysql1));
   mysql_kill(mysql, mysql_thread_id(mysql1));
@@ -570,7 +582,8 @@ static int test_reconnect(MYSQL *mysql)
   check_mysql_rc(rc, mysql1);
   diag("Thread_id after kill: %lu", mysql_thread_id(mysql1));
 
-  FAIL_UNLESS(mysql1->reconnect == 1, "reconnect != 1");
+  mysql_get_option(mysql1, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_UNLESS(reconnect == 1, "reconnect != 1");
   mysql_close(mysql1);
   return OK;
 }
@@ -647,8 +660,10 @@ int test_connection_timeout(MYSQL *my)
 static int test_conc118(MYSQL *mysql)
 {
   int rc;
+  my_bool reconnect= 1;
 
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+
   mysql->options.unused_1= 1;
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
@@ -745,9 +760,10 @@ static int test_bind_address(MYSQL *my)
 static int test_get_options(MYSQL *my)
 {
   MYSQL *mysql= mysql_init(NULL);
-  int options_int[]= {MYSQL_OPT_CONNECT_TIMEOUT, MYSQL_REPORT_DATA_TRUNCATION, MYSQL_OPT_LOCAL_INFILE,
-                      MYSQL_OPT_RECONNECT, MYSQL_OPT_PROTOCOL, MYSQL_OPT_READ_TIMEOUT, MYSQL_OPT_WRITE_TIMEOUT, 0};
-  my_bool options_bool[]= {MYSQL_OPT_COMPRESS, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_SECURE_AUTH,
+  int options_int[]= {MYSQL_OPT_CONNECT_TIMEOUT, MYSQL_OPT_LOCAL_INFILE,
+                      MYSQL_OPT_PROTOCOL, MYSQL_OPT_READ_TIMEOUT, MYSQL_OPT_WRITE_TIMEOUT, 0};
+  my_bool options_bool[]= {MYSQL_OPT_RECONNECT, MYSQL_REPORT_DATA_TRUNCATION,
+                           MYSQL_OPT_COMPRESS, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_SECURE_AUTH,
 #ifdef _WIN32    
     MYSQL_OPT_NAMED_PIPE,
 #endif

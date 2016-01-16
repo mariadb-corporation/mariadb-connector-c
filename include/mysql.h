@@ -216,7 +216,8 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_OPT_SSL_PASSPHRASE,     /* passphrase for encrypted certificates */
     MARIADB_OPT_CONNECTION_READ_ONLY,
     MYSQL_OPT_CONNECT_ATTRS,        /* for mysql_get_optionv */
-    MARIADB_OPT_USERDATA
+    MARIADB_OPT_USERDATA,
+    MARIADB_OPT_CONNECTION_HANDLER
   };
 
   enum mariadb_value {
@@ -284,7 +285,7 @@ struct st_mysql_options {
     unsigned long max_allowed_packet;
     my_bool use_ssl;				/* if to use SSL or not */
     my_bool compress,named_pipe;
-    my_bool unused_1, unused_2, unused_3, unused_4;
+    my_bool reconnect, unused_1, unused_2, unused_3;
     enum mysql_option methods_to_use;
     char *bind_address;
     my_bool secure_auth;
@@ -321,11 +322,11 @@ struct st_mysql_options {
     struct st_mysql_options options;
     enum mysql_status status;
     my_bool	free_me;		/* If free in mysql_close */
-    my_bool	reconnect;		/* set to 1 if automatic reconnect */
+    my_bool	unused_1;
     char	        scramble_buff[20+ 1];
     /* madded after 3.23.58 */
-    my_bool       unused_1;
-    void          *unused_2, *unused_3, *unused_4, *unused_5;
+    my_bool       unused_2;
+    void          *unused_3, *unused_4, *unused_5, *unused_6;
     LIST          *stmts;
     const struct  st_mysql_methods *methods;
     void          *thd;

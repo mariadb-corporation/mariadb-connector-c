@@ -35,11 +35,11 @@ static int test_conc75(MYSQL *my)
   int rc;
   MYSQL *mysql;
   int i;
+  my_bool reconnect= 1;
 
   mysql= mysql_init(NULL);
 
-
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS a");
@@ -55,7 +55,7 @@ static int test_conc75(MYSQL *my)
   {
     ulong thread_id= mysql_thread_id(mysql);
     /* force reconnect */
-    mysql->reconnect= 1;
+    mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
     diag("killing connection");
     mysql_kill(my, thread_id);
     sleep(2);
@@ -700,6 +700,7 @@ static int test_reconnect_maxpackage(MYSQL *my)
   MYSQL_RES *res;
   MYSQL_ROW row;
   char *query;
+  my_bool reconnect= 1;
 
   SKIP_CONNECTION_HANDLER;
   mysql= mysql_init(NULL);
@@ -707,7 +708,7 @@ static int test_reconnect_maxpackage(MYSQL *my)
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
                               port, socketname, 
                               CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   rc= mysql_query(mysql, "SELECT @@max_allowed_packet");
   check_mysql_rc(rc, mysql);
@@ -753,12 +754,13 @@ static int test_compressed(MYSQL *my)
   int rc;
   MYSQL *mysql= mysql_init(NULL);
   MYSQL_RES *res;
+  my_bool reconnect= 1;
 
   mysql_options(mysql, MYSQL_OPT_COMPRESS, (void *)1);
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
                               port, socketname, 
                               CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   rc= mysql_query(mysql, "SHOW VARIABLES");
   check_mysql_rc(rc, mysql);

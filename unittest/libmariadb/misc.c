@@ -957,6 +957,7 @@ static int test_conc_114(MYSQL *mysql)
 /* run with valgrind */
 static int test_conc117(MYSQL *mysql)
 {
+  my_bool reconnect= 1;
   MYSQL *my= mysql_init(NULL);
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
@@ -964,7 +965,7 @@ static int test_conc117(MYSQL *mysql)
   mysql_kill(my, mysql_thread_id(my));
   sleep(5);
 
-  my->reconnect= 1;
+  mysql_options(my, MYSQL_OPT_RECONNECT, &reconnect);
 
   mysql_query(my, "SET @a:=1");
   mysql_close(my);

@@ -45,7 +45,6 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
 void aurora_close(MYSQL *mysql);
 int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
     size_t length, my_bool skipp_check, void *opt_arg);
-int aurora_set_options(MYSQL *msql, enum mysql_option option, void *arg);
 my_bool aurora_reconnect(MYSQL *mysql);
 
 #define AURORA_MAX_INSTANCES 16
@@ -54,11 +53,6 @@ my_bool aurora_reconnect(MYSQL *mysql);
 #define AURORA_PRIMARY 0
 #define AURORA_REPLICA 1
 #define AURORA_UNAVAILABLE 2
-
-#define ENABLE_AURORA(mysql)\
-  (mysql)->net.conn_hdlr->active= 1;
-#define DISABLE_AURORA(mysql)\
-  (mysql)->net.conn_hdlr->active= 0;
 
 #ifndef HAVE_AURORA_DYNAMIC
 MARIADB_CONNECTION_PLUGIN connection_aurora_plugin =
@@ -77,7 +71,7 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   NULL,
   aurora_connect,
   aurora_close,
-  aurora_set_options,
+  NULL,
   aurora_command,
   aurora_reconnect
 };
@@ -92,16 +86,14 @@ typedef struct st_aurora_instance {
 } AURORA_INSTANCE;
 
 typedef struct st_conn_aurora {
-  MARIADB_PVIO *pvio[2];
-  MYSQL *mysql[2];
-  my_bool active[2];
+  MYSQL *mysql[2],
+        save_mysql;
   char *url;
   unsigned int num_instances;
   AURORA_INSTANCE instance[AURORA_MAX_INSTANCES];
   char *username, *password, *database;
   unsigned int port;
   unsigned long client_flag;
-  unsigned int last_instance_type; /* Primary or Replica */
   char primary_id[100];
 } AURORA;
 
@@ -118,20 +110,13 @@ my_bool aurora_switch_connection(MYSQL *mysql, AURORA *aurora, int type)
     case AURORA_REPLICA:
       if (aurora->mysql[AURORA_REPLICA])
       {
-        mysql->net.pvio= aurora->pvio[AURORA_REPLICA];
-        aurora->pvio[AURORA_REPLICA]->mysql= mysql;
-        mysql->thread_id= aurora->mysql[AURORA_REPLICA]->thread_id;
-        aurora->last_instance_type= AURORA_REPLICA;
+        *mysql= *aurora->mysql[AURORA_REPLICA];
       }
       break;
     case AURORA_PRIMARY:
       if (aurora->mysql[AURORA_PRIMARY])
       {
-        if (aurora->mysql[AURORA_REPLICA])
-          aurora->mysql[AURORA_REPLICA]->net.pvio->mysql= aurora->mysql[AURORA_REPLICA];
-        mysql->net.pvio= aurora->pvio[AURORA_PRIMARY];
-        mysql->thread_id= aurora->mysql[AURORA_PRIMARY]->thread_id;
-        aurora->last_instance_type= AURORA_PRIMARY;
+        *mysql= *aurora->mysql[AURORA_PRIMARY];
       }
       break;
     default:
@@ -257,17 +242,23 @@ my_bool aurora_parse_url(const char *url, AURORA *aurora)
  */
 int aurora_get_instance_type(MYSQL *mysql)
 {
-  int rc;
+  int rc= -1;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.conn_hdlr;
+
   char *query= "select variable_value from information_schema.global_variables where variable_name='INNODB_READ_ONLY' AND variable_value='OFF'";
 
+  if (!mysql)
+    return -1;
+
+  mysql->net.conn_hdlr= 0;
   if (!mariadb_api->mysql_query(mysql, query))
   {
     MYSQL_RES *res= mariadb_api->mysql_store_result(mysql);
     rc= mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
     mariadb_api->mysql_free_result(res);
-    return rc;
   }
-  return -1;
+  mysql->net.conn_hdlr= save_hdlr;
+  return rc;
 }
 /* }}} */
 
@@ -287,7 +278,9 @@ int aurora_get_instance_type(MYSQL *mysql)
 my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
 {
   my_bool rc= 0;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.conn_hdlr;
 
+  mysql->net.conn_hdlr= 0;
   if (!mariadb_api->mysql_query(mysql, "select server_id from information_schema.replica_host_status "
         "where session_id = 'MASTER_SESSION_ID'"))
   {
@@ -307,6 +300,7 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
       mariadb_api->mysql_free_result(res);
     }
   }
+  mysql->net.conn_hdlr= save_hdlr;
   return rc;
 }
 /* }}} */
@@ -326,7 +320,7 @@ static unsigned int aurora_get_valid_instances(AURORA *aurora, AURORA_INSTANCE *
   {
     if (aurora->instance[i].type != AURORA_UNAVAILABLE)
     {
-      if (aurora->instance[i].type == AURORA_PRIMARY && aurora->active[AURORA_PRIMARY])
+      if (aurora->instance[i].type == AURORA_PRIMARY && aurora->mysql[AURORA_PRIMARY])
         continue;
       instances[valid_instances]= &aurora->instance[i];
       valid_instances++;
@@ -386,31 +380,21 @@ MYSQL *aurora_connect_instance(AURORA *aurora, AURORA_INSTANCE *instance, MYSQL 
       return NULL;
   }
   if (!aurora->primary_id[0])
-    aurora_get_primary_id(mysql, aurora);
+    if (aurora_get_primary_id(mysql, aurora))
+      return NULL;
   return mysql;
 }
 /* }}} */
 
-/* {{{ void aurora_copy_mysql() */
-void aurora_copy_mysql(MYSQL *from, MYSQL *to)
+/* {{{ void aurora_close_internal */
+void aurora_close_internal(MYSQL *mysql)
 {
-  /* invalidate statements */
-  to->methods->invalidate_stmts(to, "aurora connect/reconnect");
-
-  from->free_me= to->free_me;
-  from->reconnect= to->reconnect;
-  from->net.conn_hdlr= to->net.conn_hdlr;
-  from->stmts= to->stmts;
-  to->stmts= NULL;
-
-  memset(&to->options, 0, sizeof(to->options));
-  to->free_me= 0;
-  to->net.conn_hdlr= 0;
-  mariadb_api->mysql_close(to);
-  *to= *from;
-  to->net.pvio= from->net.pvio;
-  to->net.pvio->mysql= to;
-  from->net.pvio= NULL;
+  if (mysql)
+  {
+    mysql->net.conn_hdlr= 0;
+    memset(&mysql->options, 0, sizeof(struct st_mysql_options));
+    mariadb_api->mysql_close(mysql);
+  }
 }
 /* }}} */
 
@@ -420,46 +404,45 @@ my_bool aurora_find_replica(AURORA *aurora)
   int valid_instances;
   my_bool replica_found= 0;
   AURORA_INSTANCE *instance[AURORA_MAX_INSTANCES];
-  MYSQL mysql;
+  MYSQL *mysql;
 
   if (aurora->num_instances < 2)
     return 0;
 
-  mariadb_api->mysql_init(&mysql);
-  mysql.options= aurora->mysql[AURORA_PRIMARY]->options;
-
-  /* don't execute init_command on slave */
-  mysql.net.conn_hdlr= aurora->mysql[AURORA_PRIMARY]->net.conn_hdlr;
 
   valid_instances= aurora_get_valid_instances(aurora, instance);
 
   while (valid_instances && !replica_found)
   {
     int random_pick= rand() % valid_instances;
-    if ((aurora_connect_instance(aurora, instance[random_pick], &mysql)))
+    mysql= mariadb_api->mysql_init(NULL);
+    mysql->options= aurora->save_mysql.options;
+
+    /* don't execute init_command on slave */
+//    mysql->net.conn_hdlr= aurora->save_mysql.net.conn_hdlr;
+    if ((aurora_connect_instance(aurora, instance[random_pick], mysql)))
     {
       switch (instance[random_pick]->type) {
         case AURORA_REPLICA:
           if (!aurora->mysql[AURORA_REPLICA])
-          {
-            aurora->mysql[AURORA_REPLICA]= mariadb_api->mysql_init(NULL);
-          }
-          aurora_copy_mysql(&mysql, aurora->mysql[AURORA_REPLICA]);
-          aurora->active[AURORA_REPLICA]= 1;
+            aurora->mysql[AURORA_REPLICA]= mysql;
           return 1;
           break;
         case AURORA_PRIMARY:
-          aurora_copy_mysql(&mysql, aurora->mysql[AURORA_PRIMARY]);
-          aurora->pvio[AURORA_PRIMARY]= aurora->mysql[AURORA_PRIMARY]->net.pvio;
-          aurora->active[AURORA_PRIMARY]= 1;
+          if (!aurora->mysql[AURORA_PRIMARY])
+            aurora->mysql[AURORA_PRIMARY]= mysql;
+          else
+            aurora_close_internal(mysql);
           continue;
           break;
         default:
-          mariadb_api->mysql_close(&mysql);
+          aurora_close_internal(mysql);
           return 0;
           break;
       }
     }
+    else
+      aurora_close_internal(mysql);
     valid_instances= aurora_get_valid_instances(aurora, instance);
   }
   return 0;
@@ -488,58 +471,47 @@ my_bool aurora_find_primary(AURORA *aurora)
 {
   unsigned int i;
   AURORA_INSTANCE *instance= NULL;
-  MYSQL mysql;
+  MYSQL *mysql;
   my_bool check_primary= 1;
+
+  /* We try to find a primary:
+   * by looking 1st if a replica connect provided primary_id already
+   * by walking through instances */
 
   if (!aurora->num_instances)
     return 0;
 
-  mariadb_api->mysql_init(&mysql);
-  mysql.options= aurora->mysql[AURORA_PRIMARY]->options;
-  mysql.net.conn_hdlr= aurora->mysql[AURORA_PRIMARY]->net.conn_hdlr;
-
   for (i=0; i < aurora->num_instances; i++)
   {
+    mysql= mariadb_api->mysql_init(NULL);
+    mysql->options= aurora->save_mysql.options;
+
     if (check_primary && aurora->primary_id[0])
     {
       if ((instance= aurora_get_primary_id_instance(aurora)) &&
-          aurora_connect_instance(aurora, instance, &mysql) &&
+          aurora_connect_instance(aurora, instance, mysql) &&
           instance->type == AURORA_PRIMARY)
       {
-        aurora_copy_mysql(&mysql, aurora->mysql[AURORA_PRIMARY]);
-        aurora->active[AURORA_PRIMARY]= 1;
+        aurora->primary_id[0]= 0;
+        aurora->mysql[AURORA_PRIMARY]= mysql;
         return 1;
       }
       /* primary id connect failed, don't try again */
       aurora->primary_id[0]= 0;
       check_primary= 0;
     }
-    if (aurora->instance[i].type != AURORA_UNAVAILABLE)
+    else if (aurora->instance[i].type != AURORA_UNAVAILABLE)
     {
-      if (aurora_connect_instance(aurora, &aurora->instance[i], &mysql)
+      if (aurora_connect_instance(aurora, &aurora->instance[i], mysql)
           && aurora->instance[i].type == AURORA_PRIMARY)
       {
-        aurora_copy_mysql(&mysql, aurora->mysql[AURORA_PRIMARY]);
-        aurora->active[AURORA_PRIMARY]= 1;
+        aurora->mysql[AURORA_PRIMARY]= mysql;
         return 1;
       }
     }
+    aurora_close_internal(mysql);
   }
   return 0;
-}
-/* }}} */
-
-/* {{{ void aurora_close_replica() */
-void aurora_close_replica(MYSQL *mysql, AURORA *aurora)
-{
-  if (aurora->mysql[AURORA_REPLICA])
-  {
-    aurora->mysql[AURORA_REPLICA]->net.pvio->mysql= aurora->mysql[AURORA_REPLICA];
-    aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= 0;
-    mariadb_api->mysql_close(aurora->mysql[AURORA_REPLICA]);
-    aurora->pvio[AURORA_REPLICA]= 0;
-    aurora->mysql[AURORA_REPLICA]= NULL;
-  }
 }
 /* }}} */
 
@@ -548,39 +520,30 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
     const char *db, unsigned int port, const char *unix_socket, unsigned long client_flag)
 {
   AURORA *aurora= NULL;
-  MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
-  my_bool is_reconnect= 0;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.conn_hdlr;
 
   if (!mariadb_api)
     mariadb_api= mysql->methods->api;
 
-  if ((aurora= (AURORA *)hdlr->data))
-  {
-    aurora_refresh_blacklist(aurora);
-    if (aurora->mysql[aurora->last_instance_type]->net.pvio)
-    {
-      mysql->methods->set_error(mysql, CR_ALREADY_CONNECTED, SQLSTATE_UNKNOWN, 0);
-      return NULL;
-    }
-    is_reconnect= 1;
-  }
-  else
+  /* we call aurora_connect either from mysql_real_connect or from mysql_reconnect,
+   * so make sure in case of reconnect we don't allocate aurora twice */
+  if (!(aurora= (AURORA *)save_hdlr->data))
   {
     if (!(aurora= (AURORA *)calloc(1, sizeof(AURORA))))
     {
       mysql->methods->set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return NULL;
     }
+    aurora->save_mysql= *mysql;
 
-    mysql->net.conn_hdlr->data= (void *)aurora;
-
-    aurora->mysql[AURORA_PRIMARY]= mysql;
+    save_hdlr->data= (void *)aurora;
 
     if (aurora_parse_url(host, aurora))
     {
       goto error;
     }
 
+    /* store login credentials for connect/reconnect */
     if (user)
       aurora->username= strdup(user);
     if (passwd)
@@ -589,56 +552,35 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
       aurora->database= strdup(db);
     aurora->port= port;
     aurora->client_flag= client_flag;
-    aurora->pvio[AURORA_PRIMARY]= aurora->pvio[AURORA_REPLICA]= NULL;
-    hdlr->data= aurora;
   }
 
-
-  /* In case of reconnect, close broken connection first */
-  if (is_reconnect)
+  /* we look for replica first:
+     if it's a primary we don't need to call find_aurora_primary
+     if it's a replica we can obtain primary_id */
+  if (!aurora->mysql[AURORA_REPLICA])
   {
-    DISABLE_AURORA(mysql);
-    switch (aurora->last_instance_type) {
-      case AURORA_REPLICA:
-        aurora_close_replica(mysql, aurora);
-        aurora->pvio[AURORA_REPLICA]= NULL;
-        break;
-      case AURORA_PRIMARY:
-        /* pvio will be closed in mysql_reconnect() */
-        aurora->pvio[AURORA_PRIMARY]= NULL;
-        aurora->primary_id[0]= 0;
-        break;
-    }
-    aurora->active[aurora->last_instance_type]= 0;
-  }
-
-  if (!aurora->active[AURORA_REPLICA])
-  {
-    if (aurora_find_replica(aurora))
-    {
-      aurora->pvio[AURORA_REPLICA]= aurora->mysql[AURORA_REPLICA]->net.pvio;
-      aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= mysql->net.conn_hdlr;
-    }
+    if (!aurora_find_replica(aurora))
+      aurora->mysql[AURORA_REPLICA]= NULL;
     else
-      aurora->pvio[AURORA_REPLICA]= NULL;
+      aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= save_hdlr;
   }
 
-  if (!aurora->active[AURORA_PRIMARY])
+  if (!aurora->mysql[AURORA_PRIMARY])
   {
-    if (aurora_find_primary(aurora))
-    {
-      aurora->active[AURORA_PRIMARY]= 1;
-      aurora->pvio[AURORA_PRIMARY]= aurora->mysql[AURORA_PRIMARY]->net.pvio;
-    }
+    if (!aurora_find_primary(aurora))
+      aurora->mysql[AURORA_PRIMARY]= NULL;
     else
-      aurora->pvio[AURORA_PRIMARY]= NULL;
+      aurora->mysql[AURORA_PRIMARY]->net.conn_hdlr= save_hdlr;
   }
 
-  if (!aurora->pvio[AURORA_PRIMARY] && !aurora->pvio[AURORA_REPLICA])
+  if (!aurora->mysql[AURORA_PRIMARY] && !aurora->mysql[AURORA_REPLICA])
     goto error;
 
-  aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
-  ENABLE_AURORA(mysql);
+  if (aurora->mysql[AURORA_PRIMARY])
+    aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
+  else
+    aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
+  mysql->net.conn_hdlr= save_hdlr;
   return mysql;
 error:
   aurora_close_memory(aurora);
@@ -650,28 +592,53 @@ error:
 my_bool aurora_reconnect(MYSQL *mysql)
 {
   AURORA *aurora;
-  MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
-  my_bool rc= 1;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.conn_hdlr;
+  int i;
 
-  aurora= (AURORA *)hdlr->data;
+  /* We can't determine if a new primary was promotoed, or if
+   * line just dropped - we will close both primary and replica
+   * connection and establish a new connection via
+   * aurora_connect */
 
-  DISABLE_AURORA(mysql);
-  switch (aurora->last_instance_type)
+  aurora= (AURORA *)save_hdlr->data;
+
+  /* removed blacklisted instances */
+  for (i=0; i < aurora->num_instances; i++)
+    aurora->instance[i].type= AURORA_UNKNOWN;
+
+  if (aurora->mysql[AURORA_PRIMARY]->thread_id == mysql->thread_id)
   {
-    case AURORA_REPLICA:
-      if (!(rc= mariadb_api->mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
-        aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
-    break;
-    case AURORA_PRIMARY:
-      if (!(rc= mariadb_api->mysql_reconnect(aurora->mysql[aurora->last_instance_type])))
-        aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
-      break;
-    default:
-      /* todo: error message */
-      break;
+    /* don't send COM_QUIT */
+    aurora->mysql[AURORA_PRIMARY]->net.pvio= NULL;
+    aurora_close_internal(aurora->mysql[AURORA_PRIMARY]);
+    aurora->mysql[AURORA_PRIMARY]= NULL;
+    aurora_close_internal(aurora->mysql[AURORA_REPLICA]);
+    aurora->mysql[AURORA_REPLICA]= NULL;
   }
-  ENABLE_AURORA(mysql);
-  return rc; 
+  else if (aurora->mysql[AURORA_REPLICA]->thread_id == mysql->thread_id)
+  {
+    /* don't send COM_QUIT */
+    aurora->mysql[AURORA_REPLICA]->net.pvio= NULL;
+    aurora_close_internal(aurora->mysql[AURORA_REPLICA]);
+    aurora->mysql[AURORA_REPLICA]= NULL;
+    aurora_close_internal(aurora->mysql[AURORA_PRIMARY]);
+    aurora->mysql[AURORA_PRIMARY]= NULL;
+  }
+
+  /* unset connections, so we can connect to primary and replica again */
+  aurora->mysql[AURORA_PRIMARY]= aurora->mysql[AURORA_REPLICA]= NULL;
+
+  if (aurora_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, 0))
+  {
+    if (aurora->mysql[AURORA_PRIMARY])
+      *mysql= *aurora->mysql[AURORA_PRIMARY];
+    return 0;
+  }
+  if (aurora->mysql[AURORA_REPLICA])
+    *mysql= *aurora->mysql[AURORA_REPLICA];
+  else
+    *mysql= aurora->save_mysql;
+  return 1;
 }
 /* }}} */
 
@@ -679,41 +646,34 @@ my_bool aurora_reconnect(MYSQL *mysql)
 void aurora_close(MYSQL *mysql)
 {
   MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
-  AURORA *aurora= (AURORA *)hdlr->data;
+  AURORA *aurora;
+  int i;
 
-  if (!aurora->pvio[AURORA_PRIMARY] && !aurora->pvio[AURORA_REPLICA])
-  {
+  if (!hdlr || !hdlr->data)
     return;
-  }
+  
+  aurora= (AURORA *)hdlr->data;
+  *mysql= aurora->save_mysql;
 
-  aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
+  if (!aurora->mysql[AURORA_PRIMARY] && !aurora->mysql[AURORA_REPLICA])
+    goto end;
 
-  /* if the connection is not active yet, just return */
-  if (!aurora->active[1])
-    return;
-
-  if (aurora->mysql[AURORA_REPLICA])
+  for (i=0; i < 2; i++)
   {
-    /* we got options from primary, so don't free it twice */
-    memset(&aurora->mysql[AURORA_REPLICA]->options, 0, sizeof(mysql->options));
-    /* connection handler wull be freed in mariadb_api->mysql_close() */
-    aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= 0;
+    if (aurora->mysql[i])
+    {
+      /* Make sure that connection wasn't closed before, e.g. after disconnect */
+      if (mysql->thread_id == aurora->mysql[i]->thread_id && !mysql->net.pvio)
+        aurora->mysql[i]->net.pvio= 0;
 
-    mariadb_api->mysql_close(aurora->mysql[AURORA_REPLICA]);
+      aurora_close_internal(aurora->mysql[i]);
+      aurora->mysql[i]= NULL;
+    }
   }
-
-  if (aurora->mysql[AURORA_PRIMARY])
-  {
-    /* connection handler wull be freed in mysql_close() */
-    aurora->mysql[AURORA_PRIMARY]->net.conn_hdlr= 0;
-
-    aurora->mysql[AURORA_PRIMARY]->net.pvio= aurora->pvio[AURORA_PRIMARY];
-
-    mariadb_api->mysql_close(aurora->mysql[AURORA_PRIMARY]);
-  }
-
   /* free information  */
+end:
   aurora_close_memory(aurora);
+  mysql->net.conn_hdlr= hdlr;
 }
 /* }}} */
 
@@ -756,7 +716,8 @@ my_bool is_replica_stmt(MYSQL *mysql, const char *buffer)
 int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
     size_t length, my_bool skipp_check, void *opt_arg)
 {
-  AURORA *aurora= (AURORA *)mysql->net.conn_hdlr->data;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.conn_hdlr;
+  AURORA *aurora= (AURORA *)save_hdlr->data;
 
   /* if we don't have slave or slave became unavailable root traffic to master */
   if (!aurora->mysql[AURORA_REPLICA] || !OPT_HAS_EXT_VAL(mysql, read_only))
@@ -764,54 +725,43 @@ int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *ar
     if (command != COM_INIT_DB)
     {
       aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
-      return 0;
+      goto end;
     }
   }
 
   switch(command) {
     case COM_INIT_DB:
       /* we need to change default database on primary and replica */
-      if (aurora->mysql[AURORA_REPLICA] && aurora->last_instance_type != AURORA_REPLICA)
+      if (aurora->mysql[AURORA_REPLICA] && mysql->thread_id == aurora->mysql[AURORA_PRIMARY]->thread_id)
       {
-        aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
-        DISABLE_AURORA(mysql);
+        aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= 0;
         mariadb_api->mysql_select_db(aurora->mysql[AURORA_REPLICA], arg);
-        ENABLE_AURORA(mysql);
-        aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
+        aurora->mysql[AURORA_REPLICA]->net.conn_hdlr= mysql->net.conn_hdlr;
       }
       break;
     case COM_QUERY:
     case COM_STMT_PREPARE:
-      if (aurora->mysql[AURORA_REPLICA] && aurora->last_instance_type != AURORA_REPLICA)
+      if (aurora->mysql[AURORA_REPLICA])
         aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
       break;
     case COM_STMT_EXECUTE:
     case COM_STMT_FETCH:
-      if (aurora->pvio[AURORA_REPLICA]->mysql->stmts && is_replica_stmt(aurora->pvio[AURORA_REPLICA]->mysql, arg))
+      if (aurora->mysql[AURORA_REPLICA] && aurora->mysql[AURORA_REPLICA]->stmts && 
+          is_replica_stmt(aurora->mysql[AURORA_REPLICA], arg))
       {
-        if (aurora->last_instance_type != AURORA_REPLICA)
-          aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
+        aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
       }
       else
       {
-        if (aurora->last_instance_type != AURORA_PRIMARY)
-          aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
+        aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
       }  
 
     default:
       aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
       break; 
   }
+end:
+  mysql->net.conn_hdlr= save_hdlr;
   return 0;
-}
-/* }}} */
-
-/* {{{ int aurora_set_options() */
-int aurora_set_options(MYSQL *mysql, enum mysql_option option, void *arg)
-{
-  switch(option) {
-    default:
-      return -1;
-  }
 }
 /* }}} */

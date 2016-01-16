@@ -133,7 +133,7 @@ struct st_mysql_methods MARIADB_DEFAULT_METHODS;
 #define native_password_plugin_name "mysql_native_password"
 
 #define IS_CONNHDLR_ACTIVE(mysql)\
-  ((mysql)->net.conn_hdlr && (mysql)->net.conn_hdlr->active)
+  (((mysql)->net.conn_hdlr))
 
 static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
@@ -1160,7 +1160,7 @@ mysql_init(MYSQL *mysql)
 #ifdef ENABLED_LOCAL_INFILE
   mysql->options.client_flag|= CLIENT_LOCAL_FILES;
 #endif
-  mysql->reconnect= 0;
+  mysql->options.reconnect= 0;
   return mysql;
 }
 
@@ -1295,18 +1295,26 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   uint port, const char *unix_socket,unsigned long client_flag)
 {
   char *end;
+  char *connection_handler= (mysql->options.extension) ? 
+                            mysql->options.extension->connection_handler : 0;
 
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
 
-  if (host && (end= strstr(host, "://")))
+  if (connection_handler ||
+      (host && (end= strstr(host, "://"))))
   {
     MARIADB_CONNECTION_PLUGIN *plugin;
     char plugin_name[64];
 
-    bzero(plugin_name, 64);
-    strncpy(plugin_name, host, MIN(end - host, 63));
-    end+= 3;
+    if (!connection_handler || !connection_handler[0])
+    {
+      bzero(plugin_name, 64);
+      strncpy(plugin_name, host, MIN(end - host, 63));
+      end+= 3;
+    }
+    else
+      strncpy(plugin_name, connection_handler, MIN(63, strlen(connection_handler)));
 
     if (!(plugin= (MARIADB_CONNECTION_PLUGIN *)mysql_client_find_plugin(mysql, plugin_name, MARIADB_CLIENT_CONNECTION_PLUGIN)))
       return NULL;
@@ -1324,7 +1332,13 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
 
     if (plugin && plugin->connect)
     {
-      return plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
+      MYSQL *my= plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
+      if (!my)
+      {
+        my_free(mysql->net.conn_hdlr);
+        mysql->net.conn_hdlr= NULL;
+      }
+      return my;
     }
   }
 
@@ -1663,8 +1677,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     char **end= begin + mysql->options.init_command->elements;
 
     /* Avoid reconnect in mysql_real_connect */
-    my_bool save_reconnect= mysql->reconnect;
-    mysql->reconnect= 0;
+    my_bool save_reconnect= mysql->options.reconnect;
+    mysql->options.reconnect= 0;
 
     for (;begin < end; begin++)
     {
@@ -1678,7 +1692,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
           mysql_free_result(res);
       } while (!mysql_next_result(mysql));
     }
-    mysql->reconnect= save_reconnect;
+    mysql->options.reconnect= save_reconnect;
   }
 
   strmov(mysql->net.sqlstate, "00000");
@@ -1733,13 +1747,13 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
   DBUG_ENTER("mysql_reconnect");
 
   /* check if connection handler is active */
-  if (IS_CONNHDLR_ACTIVE(mysql)) 
+  if (IS_CONNHDLR_ACTIVE(mysql))
   {
-    if (mysql->net.conn_hdlr->plugin && mysql->net.conn_hdlr->plugin->connect)
+    if (mysql->net.conn_hdlr->plugin && mysql->net.conn_hdlr->plugin->reconnect)
       DBUG_RETURN(mysql->net.conn_hdlr->plugin->reconnect(mysql));
   }
 
-  if (!mysql->reconnect ||
+  if (!mysql->options.reconnect ||
       (mysql->server_status & SERVER_STATUS_IN_TRANS) || !mysql->host_info)
   {
    /* Allow reconnect next time */
@@ -1750,13 +1764,6 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
 
   mysql_init(&tmp_mysql);
   tmp_mysql.options=mysql->options;
-  if (mysql->net.conn_hdlr)
-  {
-    tmp_mysql.net.conn_hdlr= mysql->net.conn_hdlr;
-    mysql->net.conn_hdlr= 0;
-  }
-
-
 
   /* don't reread options from configuration files */
   tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
@@ -1796,7 +1803,6 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
     }
   }
 
-  tmp_mysql.reconnect= mysql->reconnect;
   tmp_mysql.free_me= mysql->free_me;
   tmp_mysql.stmts= mysql->stmts;
   mysql->stmts= NULL;
@@ -1957,6 +1963,7 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->ssl_fp_list);
     my_free(mysql->options.extension->ssl_pw);
     my_free(mysql->options.extension->url);
+    my_free(mysql->options.extension->connection_handler);
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
     if (hash_inited(&mysql->options.extension->userdata))
@@ -2009,8 +2016,9 @@ void mysql_close_slow_part(MYSQL *mysql)
   {
     free_old_query(mysql);
     mysql->status=MYSQL_STATUS_READY; /* Force command */
-    mysql->reconnect=0;
-    simple_command(mysql, COM_QUIT,NullS,0,1,0);
+    mysql->options.reconnect=0;
+    if (mysql->net.pvio && mysql->net.buff)
+      simple_command(mysql, COM_QUIT,NullS,0,1,0);
     end_server(mysql);
   }
 }
@@ -2021,13 +2029,11 @@ mysql_close(MYSQL *mysql)
   DBUG_ENTER("mysql_close");
   if (mysql)					/* Some simple safety */
   {
-
-    if (IS_CONNHDLR_ACTIVE(mysql))
+    if (mysql->net.conn_hdlr)
     {
-      void *p= (void *)mysql->net.conn_hdlr;
-      mysql->net.conn_hdlr->plugin->close(mysql);
+      MA_CONNECTION_HANDLER *p= mysql->net.conn_hdlr;
+      p->plugin->close(mysql);
       my_free(p);
-      DBUG_VOID_RETURN;
     }
 
     if (mysql->methods)
@@ -2544,7 +2550,7 @@ mysql_ping(MYSQL *mysql)
   rc= simple_command(mysql, COM_PING,0,0,0,0);
 
   /* if connection was terminated and reconnect is true, try again */
-  if (rc!=0  && mysql->reconnect)
+  if (rc!=0  && mysql->options.reconnect)
     rc= simple_command(mysql, COM_PING,0,0,0,0);
   return rc;
 }
@@ -2682,7 +2688,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     mysql->options.charset_name=my_strdup((char *)arg1,MYF(MY_WME));
     break;
   case MYSQL_OPT_RECONNECT:
-    mysql->reconnect= *(uint *)arg1;
+    mysql->options.reconnect= *(uint *)arg1;
     break;
   case MYSQL_OPT_PROTOCOL:
 #ifdef _WIN32
@@ -2700,7 +2706,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     mysql->options.write_timeout= *(uint *)arg1;
     break;
   case MYSQL_REPORT_DATA_TRUNCATION:
-    mysql->options.report_data_truncation= *(uint *)arg1;
+    mysql->options.report_data_truncation= *(my_bool *)arg1;
     break;
   case MYSQL_PROGRESS_CALLBACK:
     if (!mysql->options.extension)
@@ -2785,7 +2791,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
 
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
-    if (*(uint *)arg1)
+    if (*(my_bool *)arg1)
       mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
     else
       mysql->options.client_flag &= ~CLIENT_SSL_VERIFY_SERVER_CERT;
@@ -2842,6 +2848,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       hash_free(&mysql->options.extension->connect_attrs);
       mysql->options.extension->connect_attrs_len= 0;
     }
+    break;
+  case MARIADB_OPT_CONNECTION_HANDLER:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, connection_handler, (char *)arg1);
     break;
   case MARIADB_OPT_USERDATA:
     {
@@ -3029,7 +3038,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((char **)arg)= mysql->options.charset_name;
     break;
   case MYSQL_OPT_RECONNECT:
-    *((uint *)arg)= mysql->reconnect;
+    *((my_bool *)arg)= mysql->options.reconnect;
     break;
   case MYSQL_OPT_PROTOCOL:
     *((uint *)arg)= mysql->options.protocol;
@@ -3041,7 +3050,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((uint *)arg)= mysql->options.write_timeout;
     break;
   case MYSQL_REPORT_DATA_TRUNCATION:
-    *((uint *)arg)= mysql->options.report_data_truncation;
+    *((my_bool *)arg)= mysql->options.report_data_truncation;
     break;
   case MYSQL_PROGRESS_CALLBACK:
     *((void (**)(const MYSQL *, uint, uint, double, const char *, uint))arg)=
@@ -3158,6 +3167,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
       if (data)
         *((void **)data)= NULL;
     }
+    break;
+  case MARIADB_OPT_CONNECTION_HANDLER:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->connection_handler : NULL;
     break;
   default:
     va_end(ap);

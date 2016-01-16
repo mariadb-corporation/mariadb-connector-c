@@ -52,12 +52,13 @@ static int test_conc83(MYSQL *my)
   MYSQL_STMT *stmt;
   int rc;
   MYSQL *mysql= mysql_init(NULL);
+  my_bool reconnect= 1;
 
   char *query= "SELECT 1,2,3 FROM DUAL";
 
   stmt= mysql_stmt_init(mysql);
 
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_IF(!(mysql_real_connect(mysql, hostname, username, password,
                            schema, port, socketname, 0)), "mysql_real_connect failed");
 
@@ -4544,9 +4545,9 @@ static int test_stmt_close(MYSQL *mysql)
   unsigned int  count;
   int   rc;
   char query[MAX_TEST_QUERY_LENGTH];
+  my_bool reconnect= 1;
 
-
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   /* set AUTOCOMMIT to ON*/
   mysql_autocommit(mysql, TRUE);
@@ -4644,9 +4645,8 @@ static int test_new_date(MYSQL *mysql)
   MYSQL_BIND bind[1];
   int rc;
   char buffer[50];
-
-
-  mysql->reconnect= 1;
+  my_bool reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   /* set AUTOCOMMIT to ON*/
   mysql_autocommit(mysql, TRUE);

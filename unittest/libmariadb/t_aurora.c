@@ -4,12 +4,20 @@
 #include "my_test.h"
 #include "ma_pvio.h"
 
-static int aurora1(MYSQL *mysql)
+static int aurora1(MYSQL *my)
 {
   int rc;
   my_bool read_only= 1;
-  const char *primary, *schema;
+  const char *primary, *my_schema;
   MYSQL_RES *res;
+  MYSQL *mysql= mysql_init(NULL);
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -38,8 +46,10 @@ static int aurora1(MYSQL *mysql)
   diag("Num_rows: %d", mysql_num_rows(res));
   mysql_free_result(res);
 
-  mariadb_get_infov(mysql, MARIADB_CONNECTION_SCHEMA, &schema);
-  diag("db: %s", schema);
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SCHEMA, &my_schema);
+  diag("db: %s", my_schema);
+
+  mysql_close(mysql);
 
   return OK;
 }
@@ -58,16 +68,86 @@ static int test_wrong_user(MYSQL *my)
   return OK;
 }
 
+static int test_reconnect(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *res;
+  my_bool read_only= 1;
+  int rc;
+  my_bool reconnect= 1;
+  const char *aurora_host;
+
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_HOST, &aurora_host);
+  diag("host: %s", aurora_host);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS tx01");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE tx01 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  /* we force cluster restart and promoting new primary:
+   * we wait for 50 seconds - however there is no guarantee that
+   * cluster was restarted already - so this test might fail */
+  system("/usr/local/aws/bin/aws rds failover-db-cluster --db-cluster-identifier instance-1-cluster");
+
+  sleep(50);
+  diag("Q1");
+  rc= mysql_query(mysql, "INSERT INTO tx01 VALUES (1)");
+  if (!rc)
+    diag("error expected!");
+  diag("Error: %s", mysql_error(mysql));
+
+  diag("Q2");
+  rc= mysql_query(mysql, "INSERT INTO tx01 VALUES (1)");
+  if (rc)
+  {  
+    diag("no error expected!");
+    diag("Error: %s", mysql_error(mysql));
+    diag("host: %s", mysql->host);
+  }
+  else
+  {
+    mariadb_get_infov(mysql, MARIADB_CONNECTION_HOST, &aurora_host);
+    diag("host: %s", aurora_host);
+  }
+
+  mysql_options(mysql, MARIADB_OPT_CONNECTION_READ_ONLY, &read_only);
+
+  rc= mysql_query(mysql, "SELECT * from tx01");
+  check_mysql_rc(rc, mysql);
+
+  if ((res= mysql_store_result(mysql)))
+  {
+    diag("num_rows: %d", mysql_num_rows(res));
+    mysql_free_result(res);
+  }
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_HOST, &aurora_host);
+  diag("host: %s", aurora_host);
+
+  mysql_close(mysql); 
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
-  {"aurora1", aurora1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"aurora1", aurora1, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_wrong_user", test_wrong_user, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+  {"test_reconnect", test_reconnect, TEST_CONNECTION_NONE, 0, NULL, NULL}, 
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
 
 int main(int argc, char **argv)
 {
-
   mysql_library_init(0,0,NULL);
 
   if (argc > 1)
