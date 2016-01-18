@@ -54,6 +54,8 @@
 #include <string.h>
 #ifndef WIN32
 #include <sys/time.h>
+#else
+#pragma comment(lib, "Ws2_32.lib")
 #endif
 #include <stdlib.h>
 #include <errno.h>
