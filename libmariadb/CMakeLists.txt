@@ -112,7 +112,7 @@ SET(EXPORT_SYMBOLS
  mysql_list_tables
  mysql_list_tables_cont
  mysql_list_tables_start
- mysql_load_plugin;
+ mysql_load_plugin
  mysql_load_plugin_v
  mysql_more_results
  mysql_next_result

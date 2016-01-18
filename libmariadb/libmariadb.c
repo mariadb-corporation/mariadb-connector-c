@@ -2691,12 +2691,6 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     mysql->options.reconnect= *(uint *)arg1;
     break;
   case MYSQL_OPT_PROTOCOL:
-#ifdef _WIN32
-    if (*(uint *)arg1 > MYSQL_PROTOCOL_PIPE)
-#else
-    if (*(uint *)arg1 > MYSQL_PROTOCOL_SOCKET)
-#endif
-      goto end;
     mysql->options.protocol= *(uint *)arg1;
     break;
   case MYSQL_OPT_READ_TIMEOUT:
@@ -3682,7 +3676,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     else
       goto error;
     break;
-  case MARIADB_CHARSET_INFO:
+  case MARIADB_CONNECTION_CHARSET_INFO:
     if (mysql)
       mariadb_get_charset_info(mysql, (MY_CHARSET_INFO *)arg);
     else

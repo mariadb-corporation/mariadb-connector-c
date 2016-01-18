@@ -28,12 +28,6 @@ typedef struct st_ma_pvio_methods PVIO_METHODS;
 #define IS_MYSQL_ASYNC_ACTIVE(a) \
   (IS_MYSQL_ASYNC(a)&& (a)->options.extension->async_context->active)
 
-#ifndef ssl_defined
-#define ssl_defined
-struct st_ma_pvio_ssl;
-typedef struct st_ma_pvio_ssl MARIADB_SSL;
-#endif
-
 enum enum_pvio_timeout {
   PVIO_CONNECT_TIMEOUT= 0,
   PVIO_READ_TIMEOUT,
