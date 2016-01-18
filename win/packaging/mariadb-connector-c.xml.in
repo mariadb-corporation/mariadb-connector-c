@@ -51,6 +51,7 @@
       </RegistryKey>
     </Component>
     <Component Id="Library" Guid="89E28283-23AE-4F10-B743-B5FA485E9F9A" KeyPath="yes" DiskId="1" Directory="instlib" Win64="@IS_WIN64@">
+      <Environment Id="LIB_PATH" Name="PATH" Value="[instlib]" Permanent="no" Action="set" Part="last" System="yes"/>
       <File Id="libdll" Name="libmariadb.dll"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.dll" />
       <File Id="libdllimp" Name="libmariadb.lib"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.lib" />
       <File Id="libstatic" Name="mariadbclient.lib"  DiskId="1"  Source="@CLIENT_LIB_DIR@/mariadbclient.lib" />
@@ -61,6 +62,7 @@
             Source="@CLIENT_BIN_DIR@/mariadb_client_plugin_info.exe" />
     </Component>
     <Component Id="Plugins" Guid="5B2E98C9-DFF2-4129-8360-C6AD16F6BBEA" KeyPath="yes" DiskId="1" Directory="instlib_plugin" Win64="@IS_WIN64@">
+      <Environment Id="PLUGIN_PATH" Name="PATH" Value="[instlib_plugin]" Permanent="no" Action="set" Part="last" System="yes"/>
       @MARIADB_PLUGINS@
     </Component>
     <Component Id="Includes" Guid="5CFB93CC-FC30-4E13-B665-E52690AB56E3" KeyPath="yes" Directory="instinclude" DiskId="1" Win64="@IS_WIN64@">
