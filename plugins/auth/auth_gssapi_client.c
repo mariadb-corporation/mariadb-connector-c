@@ -100,7 +100,7 @@ static int gssapi_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
 
 /* register client plugin */
-#ifndef HAVE_GSSAPI_DYNAMIC
+#ifndef HAVE_AUTH_GSSAPI_DYNAMIC
 struct st_mysql_client_plugin_AUTHENTICATION auth_gssapi_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
