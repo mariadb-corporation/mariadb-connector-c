@@ -1,4 +1,5 @@
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/plugins/auth)
 
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/install_plugins.cmake)
 IF(WITH_SIGNCODE)
@@ -63,4 +64,37 @@ IF(AUTH_CLEARTEXT_PLUGIN_TYPE MATCHES "DYNAMIC")
   SET_TARGET_PROPERTIES(mysql_clear_password PROPERTIES PREFIX "")
   INSTALL_PLUGIN(mysql_clear_password ${CMAKE_BINARY_DIR}/plugins/auth)
   SIGN_TARGET(mysql_clear_password)
+ENDIF()
+
+# SSPI/GSSAPI plugin
+IF(WIN32)
+  SET(USE_SSPI 1)
+ENDIF()
+
+MESSAGE(STATUS "GSSAPI: ${AUTH_GSSAPI_PLUGIN_TYPE}")
+IF(${AUTH_GSSAPI_PLUGIN_TYPE} MATCHES "DYNAMIC")
+  IF(WIN32)
+    SET_VERSION_INFO("TARGET:auth_gssapi_client"
+                     "FILE_TYPE:VFT_DLL"
+                     "SOURCE_FILE:plugins/auth/auth_gssapi_client.c"
+                     "ORIGINAL_FILE_NAME:auth_gssapi_client.dll"
+                     "FILE_DESCRIPTION:Authentication plugin")
+                   ADD_DEFINITIONS(-DHAVE_AUTH_GSSAPI_DYNAMIC=1)               
+    SET(GSSAPI_SOURCES auth_gssapi_client.c sspi_client.c sspi_errmsg.c ${CMAKE_SOURCE_DIR}/plugins/plugin.def ${gssapi_RC})
+  ELSE()
+    IF(GSSAPI_FOUND)
+      SET(GSSAPI_SOURCES auth_gssapi_client.c gssapi_client.c gssapi_errmsg.c)
+    ENDIF()
+  ENDIF()
+  IF(GSSAPI_FOUND)
+    ADD_LIBRARY(auth_gssapi_client SHARED ${GSSAPI_SOURCES})
+    IF(WIN32)
+      TARGET_LINK_LIBRARIES(auth_gssapi_client secur32.lib)
+    ELSE()
+      TARGET_LINK_LIBRARIES(auth_gssapi_client ${GSSAPI_LIBS})
+    ENDIF()
+    SET_TARGET_PROPERTIES(auth_gssapi_client PROPERTIES PREFIX "")
+    INSTALL_PLUGIN(auth_gssapi_client ${CMAKE_BINARY_DIR}/plugins/auth)
+    SIGN_TARGET(auth_gssapi_client)
+  ENDIF()
 ENDIF()

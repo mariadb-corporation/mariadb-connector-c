@@ -2147,6 +2147,9 @@ mysql_real_query(MYSQL *mysql, const char *query, size_t length)
   DBUG_PRINT("enter",("handle: %lx",mysql));
   DBUG_PRINT("query",("Query = \"%.255s\" length=%u",query, length));
 
+  if (length == -1)
+    length= strlen(query);
+
   free_old_query(mysql);
 
   if (simple_command(mysql, COM_QUERY,query,length,1,0))

@@ -70,7 +70,7 @@ static int test_conc83(MYSQL *my)
   rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, -1);
   check_stmt_rc(rc, stmt);
   diag("Ok");
 
@@ -78,7 +78,7 @@ static int test_conc83(MYSQL *my)
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, -1);
   FAIL_IF(!rc, "Error expected"); 
 
   mysql_stmt_close(stmt);
@@ -98,7 +98,7 @@ static int test_conc60(MYSQL *mysql)
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void *)&x);
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, -1);
   if (rc && mysql_stmt_errno(stmt) == 1146) {
     diag("Internal test - customer data not available");
     mysql_stmt_close(stmt);

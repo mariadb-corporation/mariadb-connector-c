@@ -29,6 +29,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <memory.h>
 #include <errmsg.h>
 
+#ifndef WIN32
+#include <pthread.h>
+#endif
+
 #ifndef OK
 # define OK 0
 #endif

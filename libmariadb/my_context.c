@@ -20,6 +20,7 @@
   swapcontext().
 */
 
+#include "my_global.h"
 #include "mysys_priv.h"
 #include "m_string.h"
 #include "my_context.h"

@@ -1227,6 +1227,9 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   int rc= 1;
   DBUG_ENTER("mysql_stmt_prepare");
 
+  if (length == -1)
+    length= strlen(query);
+
   if (!stmt->mysql)
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
