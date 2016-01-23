@@ -59,7 +59,7 @@ REGISTER_PLUGIN("TRACE_EXAMPLE" "${CMAKE_SOURCE_DIR}/plugins/trace/trace_example
 
 #Connection
 REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "DYNAMIC" "replication" 1)
-REGISTER_PLUGIN("AURORA" "${CMAKE_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "aurora" 1)
+REGISTER_PLUGIN("AURORA" "${CMAKE_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "aurora"  1)
 
 # Allow registration of additional plugins
 IF(PLUGIN_CONF_FILE)
