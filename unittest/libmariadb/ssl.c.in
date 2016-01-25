@@ -785,7 +785,7 @@ static int test_ssl_version(MYSQL *mysql)
   mariadb_get_infov(my, MARIADB_CONNECTION_SSL_VERSION, &version);
   diag("protocol: %s", version);
 
-  mariadb_get_infov(my, MARIADB_CONNECTION_SSL_LIBRARY, &library);
+  mariadb_get_infov(my, MARIADB_SSL_LIBRARY, &library);
   diag("library: %s", library);
 
 
