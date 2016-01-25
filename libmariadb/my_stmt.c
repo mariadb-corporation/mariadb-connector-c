@@ -1375,8 +1375,12 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
 
   stmt->result_cursor= stmt->result.data;
   stmt->fetch_row_func= stmt_buffered_fetch;
-  stmt->mysql->status= MYSQL_STATUS_READY; 
-  stmt->state= MYSQL_STMT_USE_OR_STORE_CALLED;
+  stmt->mysql->status= MYSQL_STATUS_READY;
+
+  if (!stmt->result.rows)
+    stmt->state= MYSQL_STMT_FETCH_DONE;
+  else
+    stmt->state= MYSQL_STMT_USE_OR_STORE_CALLED;
 
   /* set affected rows: see bug 2247 */
   stmt->upsert_status.affected_rows= stmt->result.rows;
@@ -1641,6 +1645,7 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
       stmt->result.rows= 0;
       stmt->result_cursor= NULL;
       stmt->mysql->status= MYSQL_STATUS_READY;
+      stmt->state= MYSQL_STMT_FETCH_DONE;
     }
 
     /* if there is a pending result set, we will flush it */

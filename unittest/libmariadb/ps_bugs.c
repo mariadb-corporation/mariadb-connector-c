@@ -3907,7 +3907,111 @@ static int test_conc141(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc154(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  const char *stmtstr= "SELECT * FROM t1";
+  int rc;
+
+  /* 1st: empty result set without free_result */
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a varchar(20))");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  /* 2nd: empty result set with free_result */
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_free_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_free_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  /* 3rd: non empty result without free_result */
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES ('test_conc154')");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  /* 4th non empty result set with free_result */
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_free_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_free_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc154", test_conc154, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_conc141", test_conc141, TEST_CONNECTION_NEW, 0, NULL , NULL},
   {"test_conc67", test_conc67, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_conc_5", test_conc_5, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
