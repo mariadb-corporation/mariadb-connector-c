@@ -3636,7 +3636,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     #endif
       goto error;
     break;
-  case MARIADB_CONNECTION_SSL_LIBRARY:
+  case MARIADB_SSL_LIBRARY:
 #ifdef HAVE_SSL
 #ifdef HAVE_GNUTLS
     *((char **)arg)= "GNUTLS";
