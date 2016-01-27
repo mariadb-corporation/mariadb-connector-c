@@ -205,6 +205,10 @@ extern unsigned int mariadb_deinitialize_ssl;
     MYSQL_OPT_CONNECT_ATTR_DELETE,
     MYSQL_SERVER_PUBLIC_KEY,
     MYSQL_ENABLE_CLEARTEXT_PLUGIN,
+    MYSQL_OPT_CAN_HANDLE_EXPIRED_PASSWORDS,
+    MYSQL_OPT_SSL_ENFORCE,
+    MYSQL_OPT_MAX_ALLOWED_PACKET,
+    MYSQL_OPT_NET_BUFFER_LENGTH,
 
     /* MariaDB specific */
     MYSQL_PROGRESS_CALLBACK=5999,
@@ -387,16 +391,6 @@ typedef struct character_set
   unsigned int      mbmaxlen;   /* max. length for multibyte strings */
 } MY_CHARSET_INFO;
 
-typedef struct 
-{
-  unsigned long *p_max_allowed_packet;
-  unsigned long *p_net_buffer_length;
-  void *extension;
-} MYSQL_PARAMETERS;
-
-#define net_buffer_length (*mysql_get_parameters()->p_net_buffer_length)
-#define max_allowed_packet (*mysql_get_parameters()->p_max_allowed_packet)
-
 /* Local infile support functions */
 #define LOCAL_INFILE_ERROR_LEN 512
 
@@ -448,8 +442,6 @@ int		STDCALL mysql_ssl_set(MYSQL *mysql, const char *key,
 				      const char *cert, const char *ca,
 				      const char *capath, const char *cipher);
 const char *	STDCALL mysql_get_ssl_cipher(MYSQL *mysql);
-MYSQL *		STDCALL mysql_connect(MYSQL *mysql, const char *host,
-				      const char *user, const char *passwd);
 my_bool		STDCALL mysql_change_user(MYSQL *mysql, const char *user, 
 					  const char *passwd, const char *db);
 MYSQL *		STDCALL mysql_real_connect(MYSQL *mysql, const char *host,
@@ -467,8 +459,6 @@ int		STDCALL mysql_send_query(MYSQL *mysql, const char *q,
 my_bool	STDCALL mysql_read_query_result(MYSQL *mysql);
 int		STDCALL mysql_real_query(MYSQL *mysql, const char *q,
 					 size_t length);
-int		STDCALL mysql_create_db(MYSQL *mysql, const char *DB);
-int		STDCALL mysql_drop_db(MYSQL *mysql, const char *DB);
 int		STDCALL mysql_shutdown(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level);
 int		STDCALL mysql_dump_debug_info(MYSQL *mysql);
 int		STDCALL mysql_refresh(MYSQL *mysql,
@@ -526,7 +516,6 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSE
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
 int STDCALL mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...);
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg);
-MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 unsigned long STDCALL mysql_hex_string(char *to, const char *from, size_t len);
 my_socket STDCALL mysql_get_socket(MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
@@ -673,7 +662,6 @@ struct st_mariadb_api {
   MYSQL * (STDCALL *mysql_init)(MYSQL *mysql);
   int (STDCALL *mysql_ssl_set)(MYSQL *mysql, const char *key, const char *cert, const char *ca, const char *capath, const char *cipher);
   const char * (STDCALL *mysql_get_ssl_cipher)(MYSQL *mysql);
-  MYSQL * (STDCALL *mysql_connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd);
   my_bool (STDCALL *mysql_change_user)(MYSQL *mysql, const char *user, const char *passwd, const char *db);
   MYSQL * (STDCALL *mysql_real_connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd, const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
   void (STDCALL *mysql_close)(MYSQL *sock);
@@ -682,8 +670,6 @@ struct st_mariadb_api {
   int (STDCALL *mysql_send_query)(MYSQL *mysql, const char *q, size_t length);
   my_bool (STDCALL *mysql_read_query_result)(MYSQL *mysql);
   int (STDCALL *mysql_real_query)(MYSQL *mysql, const char *q, size_t length);
-  int (STDCALL *mysql_create_db)(MYSQL *mysql, const char *DB);
-  int (STDCALL *mysql_drop_db)(MYSQL *mysql, const char *DB);
   int (STDCALL *mysql_shutdown)(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level);
   int (STDCALL *mysql_dump_debug_info)(MYSQL *mysql);
   int (STDCALL *mysql_refresh)(MYSQL *mysql, unsigned int refresh_options);
@@ -730,7 +716,6 @@ struct st_mariadb_api {
   int (STDCALL *mysql_optionsv)(MYSQL *mysql,enum mysql_option option, ...); 
   int (STDCALL *mysql_get_optionv)(MYSQL *mysql, enum mysql_option option, void *arg, ...);
   int (STDCALL *mysql_get_option)(MYSQL *mysql, enum mysql_option option, void *arg);
-  MYSQL_PARAMETERS *(STDCALL *mysql_get_parameters)(void);
   unsigned long (STDCALL *mysql_hex_string)(char *to, const char *from, size_t len);
   my_socket (STDCALL *mysql_get_socket)(MYSQL *mysql);
   unsigned int (STDCALL *mysql_get_timeout_value)(const MYSQL *mysql);

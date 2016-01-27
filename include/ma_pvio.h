@@ -4,6 +4,8 @@
 
 #ifdef HAVE_SSL
 #include <ma_ssl.h>
+#else
+#define MARIADB_SSL void
 #endif
 
 #define PVIO_SET_ERROR if (pvio->set_error) \

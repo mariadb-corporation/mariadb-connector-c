@@ -79,8 +79,6 @@
 #undef net_buffer_length
 extern ulong max_allowed_packet; /* net.c */
 extern ulong net_buffer_length;  /* net.c */
-static MYSQL_PARAMETERS mariadb_internal_parameters=
-{&max_allowed_packet, &net_buffer_length, 0};
 
 static my_bool mysql_client_init=0;
 static void mysql_close_options(MYSQL *mysql);
@@ -1198,28 +1196,6 @@ mysql_get_ssl_cipher(MYSQL *mysql)
 ** Free strings in the SSL structure and clear 'use_ssl' flag.
 ** NB! Errors are not reported until you do mysql_real_connect.
 **************************************************************************/
-
-/**************************************************************************
-** Connect to sql server
-** If host == 0 then use localhost
-**************************************************************************/
-
-MYSQL * STDCALL
-mysql_connect(MYSQL *mysql,const char *host,
-	      const char *user, const char *passwd)
-{
-  MYSQL *res;
-  mysql=mysql_init(mysql);			/* Make it thread safe */
-  {
-    DBUG_ENTER("mysql_connect");
-    if (!(res=mysql_real_connect(mysql,host,user,passwd,NullS,0,NullS,0)))
-    {
-      if (mysql->free_me)
-	my_free(mysql);
-    }
-    DBUG_RETURN(res);
-  }
-}
 
 uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer)
 {
@@ -2475,24 +2451,6 @@ mysql_list_processes(MYSQL *mysql)
   DBUG_RETURN(mysql_store_result(mysql));
 }
 
-
-int  STDCALL
-mysql_create_db(MYSQL *mysql, const char *db)
-{
-  DBUG_ENTER("mysql_createdb");
-  DBUG_PRINT("enter",("db: %s",db));
-  DBUG_RETURN(simple_command(mysql, COM_CREATE_DB,db, (uint) strlen(db),0,0));
-}
-
-
-int  STDCALL
-mysql_drop_db(MYSQL *mysql, const char *db)
-{
-  DBUG_ENTER("mysql_drop_db");
-  DBUG_PRINT("enter",("db: %s",db));
-  DBUG_RETURN(simple_command(mysql, COM_DROP_DB,db,(uint) strlen(db),0,0));
-}
-
 /* In 5.0 this version became an additional parameter shutdown_level */
 int STDCALL
 mysql_shutdown(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level)
@@ -2786,7 +2744,15 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     if (mysql->net.pvio)
       mysql->net.pvio->async_context= ctxt;
     break;
-
+  case MYSQL_OPT_MAX_ALLOWED_PACKET:
+    if (mysql)
+      mysql->options.max_allowed_packet= (*(size_t *)arg1);
+    else
+      max_allowed_packet= (*(size_t *)arg1);
+    break;
+  case MYSQL_OPT_NET_BUFFER_LENGTH:
+    net_buffer_length= (*(size_t *)arg1);
+    break;
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
     if (*(my_bool *)arg1)
       mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
@@ -3128,6 +3094,13 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
         }
       }
     } 
+    break;
+  case MYSQL_OPT_MAX_ALLOWED_PACKET:
+    *((unsigned long *)arg)= (mysql) ? mysql->options.max_allowed_packet :
+                                       max_allowed_packet;
+    break;
+  case MYSQL_OPT_NET_BUFFER_LENGTH:
+    *((unsigned long *)arg)= net_buffer_length;
     break;
   case MYSQL_SECURE_AUTH:
     *((my_bool *)arg)= mysql->options.secure_auth;
@@ -3540,12 +3513,6 @@ mysql_get_server_name(MYSQL *mysql)
   return mariadb_connection(mysql) ? "MariaDB" : "MySQL";
 }
 
-MYSQL_PARAMETERS *STDCALL
-mysql_get_parameters(void)
-{
-  return &mariadb_internal_parameters;
-}
-
 static my_socket mariadb_get_socket(MYSQL *mysql)
 {
   my_socket sock= INVALID_SOCKET;
@@ -3832,7 +3799,6 @@ struct st_mariadb_api MARIADB_API=
   mysql_init,
   mysql_ssl_set,
   mysql_get_ssl_cipher,
-  mysql_connect,
   mysql_change_user,
   mysql_real_connect,
   mysql_close,
@@ -3841,8 +3807,6 @@ struct st_mariadb_api MARIADB_API=
   mysql_send_query,
   mysql_read_query_result,
   mysql_real_query,
-  mysql_create_db,
-  mysql_drop_db,
   mysql_shutdown,
   mysql_dump_debug_info,
   mysql_refresh,
@@ -3889,7 +3853,6 @@ struct st_mariadb_api MARIADB_API=
   mysql_optionsv,
   mysql_get_optionv,
   mysql_get_option,
-  mysql_get_parameters,
   mysql_hex_string,
   mysql_get_socket,
   mysql_get_timeout_value,
