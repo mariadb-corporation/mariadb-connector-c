@@ -932,6 +932,7 @@ select 1;\
 DROP TABLE IF EXISTS test_multi_tab";
   uint count, exp_value;
   uint rows[]= {0, 0, 2, 1, 3, 2, 2, 1, 1, 0, 0, 1, 0};
+  my_bool reconnect= 1;
 
   /*
     First test that we get an error for multi statements
@@ -950,7 +951,7 @@ DROP TABLE IF EXISTS test_multi_tab";
   mysql_close(mysql);
   mysql= mysql_local;
 
-  mysql_local->reconnect= 1;
+  mysql_options(mysql_local, MYSQL_OPT_RECONNECT, &reconnect);
 
   rc= mysql_query(mysql_local, query);
   check_mysql_rc(rc, mysql);

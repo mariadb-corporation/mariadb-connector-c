@@ -15,7 +15,7 @@ ELSE()
 ENDIF()
 
 IF(APPLE)
-  find_library(ICONV_LIBRARIES NAMES iconv libiconv c PATHS
+  find_library(ICONV_LIBRARIES NAMES iconv libiconv PATHS
                /opt/local/lib/
                /usr/lib/
                NO_CMAKE_SYSTEM_PATH)

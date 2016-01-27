@@ -35,6 +35,7 @@ pthread_mutex_t LOCK_gnutls_config;
 
 static gnutls_certificate_credentials_t GNUTLS_xcred;
 extern my_bool ma_ssl_initialized;
+extern unsigned int mariadb_deinitialize_ssl;
 
 static int my_verify_callback(gnutls_session_t ssl);
 
@@ -137,7 +138,8 @@ void ma_ssl_end()
     gnutls_certificate_free_crls(GNUTLS_xcred);
     gnutls_certificate_free_ca_names(GNUTLS_xcred);
     gnutls_certificate_free_credentials(GNUTLS_xcred);
-    gnutls_global_deinit();
+    if (mariadb_deinitialize_ssl)
+      gnutls_global_deinit();
     ma_ssl_initialized= FALSE;
   }
   pthread_mutex_unlock(&LOCK_gnutls_config);
@@ -204,7 +206,7 @@ void *ma_ssl_init(MYSQL *mysql)
     goto error;
   gnutls_session_set_ptr(ssl, (void *)mysql);
 
-  ssl_error= gnutls_priority_set_direct(ssl, "NORMAL:-DHE-RSA", &err);
+  ssl_error= gnutls_priority_set_direct(ssl, "NORMAL", &err);
   if (ssl_error < 0)
     goto error;
 

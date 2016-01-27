@@ -202,8 +202,8 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
     goto error;
 
   /* try to connect to master */
-  if (!(mysql->methods->db_connect(mysql, data->host[MARIADB_MASTER], user, passwd, db, 
-                                   data->port[MARIADB_MASTER] ? data->port[MARIADB_MASTER] : port, unix_socket, clientflag)))
+  if (!(mariadb_api->mysql_real_connect(mysql, data->host[MARIADB_MASTER], user, passwd, db, 
+        data->port[MARIADB_MASTER] ? data->port[MARIADB_MASTER] : port, unix_socket, clientflag)))
     goto error;
 
   data->pvio[MARIADB_MASTER]= mysql->net.pvio;

@@ -34,7 +34,6 @@ SET(EXPORT_SYMBOLS
  mariadb_dyncol_val_double
  mariadb_dyncol_val_long
  mariadb_dyncol_val_str
- mariadb_flush_multi_command
  mariadb_get_charset_by_name
  mariadb_get_charset_by_nr
  mariadb_get_info
@@ -113,7 +112,7 @@ SET(EXPORT_SYMBOLS
  mysql_list_tables
  mysql_list_tables_cont
  mysql_list_tables_start
- mysql_load_plugin;
+ mysql_load_plugin
  mysql_load_plugin_v
  mysql_more_results
  mysql_next_result
@@ -403,7 +402,6 @@ ENDIF()
 
 ADD_LIBRARY(mariadbclient STATIC ${ariadbclient_RC} $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
-
 ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
 TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
 IF(UNIX)

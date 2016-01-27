@@ -70,6 +70,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
    * Currently we support the following pvio types:
    *   pvio_socket
    *   pvio_namedpipe
+   *   pvio_sharedmed
    */
   char *pvio_plugins[] = {"pvio_socket", "pvio_npipe", "pvio_shmem"};
   int type;
@@ -488,8 +489,8 @@ my_bool ma_pvio_is_blocking(MARIADB_PVIO *pvio)
 my_bool ma_pvio_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
 {
   /* check if we still have unread data in cache */
-  if (pvio->cache)
-    if  (pvio->cache_pos > pvio->cache)
+  if (pvio && pvio->cache)
+    if (pvio->cache_pos > pvio->cache)
       return test(pvio->cache_pos - pvio->cache);
   if (pvio && pvio->methods->has_data)
     return pvio->methods->has_data(pvio, data_len);

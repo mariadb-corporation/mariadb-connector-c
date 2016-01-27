@@ -210,7 +210,9 @@ inline double ulonglong2double(ulonglong value)
 #define HAVE_PUTENV
 #define HAVE_SELECT
 #define HAVE_SETLOCALE
+#ifndef HAVE_SOCKET
 #define HAVE_SOCKET		/* Giangi */
+#endif
 #define HAVE_FLOAT_H
 #define HAVE_LIMITS_H
 #define HAVE_STDDEF_H

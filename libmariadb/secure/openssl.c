@@ -41,6 +41,7 @@
 #include <my_pthread.h>
 
 extern my_bool ma_ssl_initialized;
+extern unsigned int mariadb_deinitialize_ssl;
 static SSL_CTX *SSL_context= NULL;
 
 #define MAX_SSL_ERR_LEN 100
@@ -226,14 +227,16 @@ void ma_ssl_end()
       SSL_CTX_free(SSL_context);
       SSL_context= NULL;
     }
-    ERR_remove_state(0);
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    ERR_free_strings();
-    //ENGINE_cleanup();
-    CONF_modules_free();
-    CONF_modules_unload(1);
-    sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+    if (mariadb_deinitialize_ssl)
+    {
+      ERR_remove_state(0);
+      EVP_cleanup();
+      CRYPTO_cleanup_all_ex_data();
+      ERR_free_strings();
+      CONF_modules_free();
+      CONF_modules_unload(1);
+      sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+    }
     ma_ssl_initialized= FALSE;
   }
   pthread_mutex_unlock(&LOCK_openssl_config);
@@ -293,7 +296,12 @@ static int ma_ssl_set_certs(MYSQL *mysql)
   if (keyfile && keyfile[0])
   {
     if (SSL_CTX_use_PrivateKey_file(SSL_context, keyfile, SSL_FILETYPE_PEM) != 1)
-      goto error;
+    {
+      unsigned long err= ERR_peek_error();
+      if (!(ERR_GET_LIB(err) == ERR_LIB_X509 &&
+	  ERR_GET_REASON(err) == X509_R_CERT_ALREADY_IN_HASH_TABLE))
+        goto error;
+    }
   }
   if (OPT_HAS_EXT_VAL(mysql, ssl_pw))
   {

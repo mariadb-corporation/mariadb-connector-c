@@ -53,18 +53,7 @@ static int check_cipher(MYSQL *mysql)
     return 1;
   diag("cipher: %s", cipher);
 
-#ifdef HAVE_GNUTLS
-  {
-    return strcmp(cipher, "AES-128-GCM");
-  }
-#elif HAVE_OPENSSL
-  if (!strcmp(cipher, "DHE-RSA-AES256-SHA") ||
-      !strcmp(cipher, "DHE-RSA-AES256-GCM-SHA384"))
-    return 0;
-#elif HAVE_SCHANNEL
-  return strcmp(cipher, "CALG_AES_256");
-#endif
-  return 1;
+  return 0;
 }
 
 static int create_ssl_user(const char *ssluser, my_bool is_X509)
@@ -89,6 +78,8 @@ static int create_ssl_user(const char *ssluser, my_bool is_X509)
   check_mysql_rc(rc,mysql);
   rc= mysql_query(mysql, "FLUSH PRIVILEGES");
   check_mysql_rc(rc,mysql);
+
+  mysql_close(mysql);
 
   return rc;
 }
@@ -388,7 +379,7 @@ static int test_password_protected(MYSQL *my)
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem",
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
 
-  mysql_options(mysql, MARIADB_OPT_SSL_PASSWORD, "qwerty");
+  mysql_options(mysql, MARIADB_OPT_SSL_PASSPHRASE, "qwerty");
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0), mysql_error(mysql));
@@ -775,7 +766,7 @@ static int test_ssl_fp_list(MYSQL *unused)
 static int test_ssl_version(MYSQL *mysql)
 {
   unsigned int iversion;
-  char *version;
+  const char *version, *library;
   MYSQL *my;
 
   if (check_skip_ssl())
@@ -793,6 +784,9 @@ static int test_ssl_version(MYSQL *mysql)
   diag("protocol: %d", iversion);
   mariadb_get_infov(my, MARIADB_CONNECTION_SSL_VERSION, &version);
   diag("protocol: %s", version);
+
+  mariadb_get_infov(my, MARIADB_SSL_LIBRARY, &library);
+  diag("library: %s", library);
 
   mysql_close(my);
 

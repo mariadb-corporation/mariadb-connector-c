@@ -310,7 +310,6 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   return 0;
 
 end:
-  /* todo: cleanup */
   if (pRemoteCertContext)
     CertFreeCertificateContext(pRemoteCertContext);
   if (rc && sctx->IoBufferSize)
@@ -322,6 +321,9 @@ end:
     CertFreeCertificateContext(sctx->client_cert_ctx);
   if (sctx->client_crl_ctx)
     CertFreeCRLContext(sctx->client_crl_ctx);
+  sctx->client_ca_ctx= 0;
+  sctx->client_cert_ctx= 0;
+  sctx->client_crl_ctx= 0;
   return 1;
 }
 

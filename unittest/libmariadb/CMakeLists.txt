@@ -21,11 +21,11 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
-SET(API_TESTS "t_aurora" "async" "basic-t" "fetch" "charset" "logs"
-              "cursor" "errors" "view" "ps" "ps_bugs"
-              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread"
-              "dyncol" "features-10_2")
+SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
+              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "dyncol" "features-10_2")
 
+#exclude following tests from ctests, since we need to run them maually with different credentials            
+SET(MANUAL_TESTS "t_aurora")
 # Get finger print from server certificate 
 IF(WITH_SSL)
 
@@ -64,3 +64,8 @@ FOREACH(API_TEST ${API_TESTS})
   ADD_TEST(${API_TEST} ${EXECUTABLE_OUTPUT_PATH}/${API_TEST})
   SET_TESTS_PROPERTIES(${API_TEST} PROPERTIES TIMEOUT 120)
 ENDFOREACH(API_TEST)
+
+FOREACH(API_TEST ${MANUAL_TESTS})
+  ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c ${CMAKE_SOURCE_DIR}/libmariadb/getopt.c)
+  TARGET_LINK_LIBRARIES(${API_TEST} mytap libmariadb)
+ENDFOREACH()

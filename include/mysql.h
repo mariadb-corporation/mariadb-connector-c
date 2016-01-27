@@ -213,22 +213,25 @@ extern unsigned int mariadb_deinitialize_ssl;
     MYSQL_DATABASE_DRIVER=7000,
     MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
     MARIADB_OPT_SSL_FP_LIST,        /* finger print white list for server certificate verification */
-    MARIADB_OPT_SSL_PASSWORD,       /* password for encrypted certificates */
-    MARIADB_OPT_COM_MULTI,
+    MARIADB_OPT_SSL_PASSPHRASE,     /* passphrase for encrypted certificates */
     MARIADB_OPT_CONNECTION_READ_ONLY,
     MYSQL_OPT_CONNECT_ATTRS,        /* for mysql_get_optionv */
-    MARIADB_OPT_USERDATA
+    MARIADB_OPT_USERDATA,
+    MARIADB_OPT_CONNECTION_HANDLER,
+    MARIADB_OPT_COM_MULTI,
   };
 
   enum mariadb_value {
     MARIADB_CHARSET_ID,
-    MARIADB_CHARSET_INFO,
     MARIADB_CHARSET_NAME,
     MARIADB_CLIENT_ERRORS,
     MARIADB_CLIENT_VERSION,
     MARIADB_CLIENT_VERSION_ID,
     MARIADB_CONNECTION_ASYNC_TIMEOUT,
     MARIADB_CONNECTION_ASYNC_TIMEOUT_MS,
+    MARIADB_CONNECTION_CHARSET_INFO,
+    MARIADB_CONNECTION_ERROR,
+    MARIADB_CONNECTION_ERROR_ID,
     MARIADB_CONNECTION_HOST,
     MARIADB_CONNECTION_INFO,
     MARIADB_CONNECTION_PORT,
@@ -239,7 +242,9 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_CONNECTION_SERVER_VERSION,
     MARIADB_CONNECTION_SERVER_VERSION_ID,
     MARIADB_CONNECTION_SOCKET,
+    MARIADB_CONNECTION_SQLSTATE,
     MARIADB_CONNECTION_SSL_CIPHER,
+    MARIADB_SSL_LIBRARY,
     MARIADB_CONNECTION_SSL_VERSION,
     MARIADB_CONNECTION_SSL_VERSION_ID,
     MARIADB_CONNECTION_TYPE,
@@ -281,7 +286,7 @@ struct st_mysql_options {
     unsigned long max_allowed_packet;
     my_bool use_ssl;				/* if to use SSL or not */
     my_bool compress,named_pipe;
-    my_bool unused_1, unused_2, unused_3, unused_4;
+    my_bool reconnect, unused_1, unused_2, unused_3;
     enum mysql_option methods_to_use;
     char *bind_address;
     my_bool secure_auth;
@@ -318,12 +323,12 @@ struct st_mysql_options {
     unsigned int warning_count;          /* warning count, added in 4.1 protocol */
     struct st_mysql_options options;
     enum mysql_status status;
-    my_bool free_me;		/* If free in mysql_close */
-    my_bool reconnect;		/* set to 1 if automatic reconnect */
+    my_bool	free_me;		/* If free in mysql_close */
+    my_bool	unused_1;
     char	        scramble_buff[20+ 1];
     /* madded after 3.23.58 */
-    my_bool       unused_1;
-    void          *unused_2, *unused_3, *unused_4, *unused_5;
+    my_bool       unused_2;
+    void          *unused_3, *unused_4, *unused_5, *unused_6;
     LIST          *stmts;
     const struct  st_mysql_methods *methods;
     void          *thd;
@@ -438,7 +443,6 @@ const char * STDCALL mysql_character_set_name(MYSQL *mysql);
 void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs);
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname);
 
-int STDCALL mariadb_flush_multi_command(MYSQL *mysql);
 my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...);
 my_bool STDCALL mariadb_get_info(MYSQL *mysql, enum mariadb_value value, void *arg);
 MYSQL *		STDCALL mysql_init(MYSQL *mysql);

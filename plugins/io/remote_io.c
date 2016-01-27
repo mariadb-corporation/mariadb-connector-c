@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2015 Monty Program AB
+ * Copyright (C) 2015, 2016 Monty Program AB
  * Copyright (c) 2003 Simtec Electronics
  *
  * Re-implemented by Vincent Sanders <vince@kyllikki.org> with extensive
@@ -43,7 +43,6 @@
   smb://
 */
 
-#ifdef HAVE_CURL
 #include <my_global.h>
 #include <my_sys.h>
 #include <mysql.h>
@@ -55,9 +54,12 @@
 #include <string.h>
 #ifndef WIN32
 #include <sys/time.h>
+#else
+#pragma comment(lib, "Ws2_32.lib")
 #endif
 #include <stdlib.h>
 #include <errno.h>
+#include <mariadb/ma_io.h>
  
 /* Internal file structure */
 
@@ -89,11 +91,10 @@ typedef struct
  
 CURLM *multi_handle= NULL;
 
-#ifndef HAVE_REMOTE_IO_DYNAMIC
-struct st_mysql_client_plugin remote_io_plugin=
-{
+#ifndef HAVE_REMOTEIO_DYNAMIC 
+MARIADB_REMOTEIO_PLUGIN remote_io_plugin=
 #else
-struct st_mysql_client_plugin _mysql_client_plugin_declare_ =
+MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
 {
   MARIADB_CLIENT_REMOTEIO_PLUGIN,
@@ -127,6 +128,7 @@ int ma_rio_deinit(void)
     multi_handle= NULL;
   }
   curl_global_cleanup();
+  return 0;
 }
 /* }}} */
 
@@ -439,4 +441,3 @@ char *ma_rio_gets(char *ptr, size_t size, MA_FILE *file)
  
   return ptr;/*success */ 
 }
-#endif 

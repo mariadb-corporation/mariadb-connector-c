@@ -52,12 +52,13 @@ static int test_conc83(MYSQL *my)
   MYSQL_STMT *stmt;
   int rc;
   MYSQL *mysql= mysql_init(NULL);
+  my_bool reconnect= 1;
 
   char *query= "SELECT 1,2,3 FROM DUAL";
 
   stmt= mysql_stmt_init(mysql);
 
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_IF(!(mysql_real_connect(mysql, hostname, username, password,
                            schema, port, socketname, 0)), "mysql_real_connect failed");
 
@@ -69,7 +70,7 @@ static int test_conc83(MYSQL *my)
   rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, -1);
   check_stmt_rc(rc, stmt);
   diag("Ok");
 
@@ -77,7 +78,7 @@ static int test_conc83(MYSQL *my)
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, -1);
   FAIL_IF(!rc, "Error expected"); 
 
   mysql_stmt_close(stmt);
@@ -97,7 +98,7 @@ static int test_conc60(MYSQL *mysql)
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void *)&x);
 
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, -1);
   if (rc && mysql_stmt_errno(stmt) == 1146) {
     diag("Internal test - customer data not available");
     mysql_stmt_close(stmt);
@@ -4544,9 +4545,9 @@ static int test_stmt_close(MYSQL *mysql)
   unsigned int  count;
   int   rc;
   char query[MAX_TEST_QUERY_LENGTH];
+  my_bool reconnect= 1;
 
-
-  mysql->reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   /* set AUTOCOMMIT to ON*/
   mysql_autocommit(mysql, TRUE);
@@ -4644,9 +4645,8 @@ static int test_new_date(MYSQL *mysql)
   MYSQL_BIND bind[1];
   int rc;
   char buffer[50];
-
-
-  mysql->reconnect= 1;
+  my_bool reconnect= 1;
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   /* set AUTOCOMMIT to ON*/
   mysql_autocommit(mysql, TRUE);

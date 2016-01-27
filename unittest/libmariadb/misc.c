@@ -957,6 +957,7 @@ static int test_conc_114(MYSQL *mysql)
 /* run with valgrind */
 static int test_conc117(MYSQL *mysql)
 {
+  my_bool reconnect= 1;
   MYSQL *my= mysql_init(NULL);
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
@@ -964,7 +965,7 @@ static int test_conc117(MYSQL *mysql)
   mysql_kill(my, mysql_thread_id(my));
   sleep(5);
 
-  my->reconnect= 1;
+  mysql_options(my, MYSQL_OPT_RECONNECT, &reconnect);
 
   mysql_query(my, "SET @a:=1");
   mysql_close(my);
@@ -982,6 +983,7 @@ static int test_remote1(MYSQL *mysql)
   if (!remote_plugin)
   {
     diag("skip - no remote io plugin available");
+    diag("error: %s", mysql_error(mysql));
     return SKIP;
   }
 
@@ -1043,7 +1045,7 @@ static int test_get_info(MYSQL *mysql)
   rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_VERSION_ID, &sval);
   FAIL_IF(rc, "mysql_get_info failed");
   diag("server_version_id: %d", sval);
-  rc= mariadb_get_infov(mysql, MARIADB_CHARSET_INFO, &cs);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_CHARSET_INFO, &cs);
   FAIL_IF(rc, "mysql_get_info failed");
   diag("charset name: %s", cs.csname);
   rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_PVIO_TYPE, &ival);

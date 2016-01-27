@@ -56,6 +56,7 @@ struct st_mysql_options_extension {
                             commands in one packet */
   char *url; /* for connection handler we need to save URL for reconnect */
   my_bool read_only;
+  char *connection_handler;
   HASH userdata;
 };
 

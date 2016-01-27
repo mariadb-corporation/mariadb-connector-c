@@ -29,6 +29,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <memory.h>
 #include <errmsg.h>
 
+#ifndef WIN32
+#include <pthread.h>
+#endif
+
 #ifndef OK
 # define OK 0
 #endif
@@ -374,7 +378,6 @@ int check_variable(MYSQL *mysql, char *variable, char *value)
  */
 MYSQL *test_connect(struct my_tests_st *test) {
   MYSQL *mysql;
-  char query[255];
   int i= 0;
   int timeout= 10;
   int truncation_report= 1;
@@ -401,32 +404,13 @@ MYSQL *test_connect(struct my_tests_st *test) {
     }
   }
   if (!(mysql_real_connect(mysql, hostname, username, password,
-                           NULL, port, socketname, (test) ? test->connect_flags:0)))
+                           schema, port, socketname, (test) ? test->connect_flags:0)))
   {
     diag("Couldn't establish connection to server %s. Error (%d): %s", 
                    hostname, mysql_errno(mysql), mysql_error(mysql));
     mysql_close(mysql);
     return(NULL);
   }
-
-  /* change database or create if it doesn't exist */
-  if (mysql_select_db(mysql, schema)) {
-    diag("Error number: %d", mysql_errno(mysql));
-
-    if(mysql_errno(mysql) == 1049) {
-      sprintf(query, "CREATE DATABASE %s", schema);
-      if (mysql_query(mysql, query)) {
-        diag("Can't create database %s", schema);
-        mysql_close(mysql);
-        return NULL;
-      }
-    } else {
-      diag("Error (%d): %s", mysql_errno(mysql), mysql_error(mysql));
-      mysql_close(mysql);
-      return NULL;
-    }
-  }
-
   return(mysql);
 }
 
@@ -526,6 +510,7 @@ void run_tests(struct my_tests_st *test) {
     }
   }
   if (mysql_default) {
+    diag("close default");
     mysql_close(mysql_default);
   }
   mysql_server_end();

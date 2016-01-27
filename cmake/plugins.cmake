@@ -2,7 +2,7 @@
 
 MACRO(REGISTER_PLUGIN name source struct type target allow)
   SET(PLUGIN_TYPE ${${name}})
-  IF(NOT PLUGIN_TYPE STREQUAL "OFF")
+  IF(NOT PLUGIN_TYPE STREQUAL "OFF" AND NOT PLUGIN_TYPE)
     SET(PLUGIN_TYPE ${type})
   ENDIF()
   IF(PLUGINS)
@@ -18,6 +18,7 @@ MACRO(REGISTER_PLUGIN name source struct type target allow)
   SET(${name}_PLUGIN_SOURCE ${source})
   SET(${name}_PLUGIN_CHG ${allow})
   SET(PLUGINS ${PLUGINS} "${name}")
+  ADD_DEFINITIONS(-DHAVE_${name}=1)
 ENDMACRO()
 
 MARK_AS_ADVANCED(PLUGINS)
@@ -34,18 +35,31 @@ REGISTER_PLUGIN("AUTH_NATIVE" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "nati
 REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CMAKE_SOURCE_DIR}/plugins/auth/old_password.c" "old_password_client_plugin" "DYNAMIC" "old_password" 1)
 REGISTER_PLUGIN("AUTH_DIALOG" "${CMAKE_SOURCE_DIR}/plugins/auth/dialog.c" "auth_dialog_plugin" "DYNAMIC" dialog 1)
 REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CMAKE_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "auth_cleartext_plugin" "DYNAMIC" "mysql_clear_password" 1)
+IF(WIN32)
+    SET(GSSAPI_SOURCES ${CMAKE_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/sspi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/sspi_errmsg.c)
+    REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
+ELSE()
+  IF(GSSAPI_FOUND)
+    SET(GSSAPI_SOURCES ${CMAKE_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/gssapi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/gssapi_errmsg.c)
+    REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
+  ENDIF()
+ENDIF()
 
 #Remote_IO
 IF(CURL_FOUND)
-  REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
+  IF(WIN32)
+    REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
+  ELSE()
+    REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "STATIC" "remote_io" 1)
+  ENDIF()
 ENDIF()
 
 #Trace
 REGISTER_PLUGIN("TRACE_EXAMPLE" "${CMAKE_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" "trace_example" 1)
 
 #Connection
-REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "DYNAMIC" "" 1)
-REGISTER_PLUGIN("AURORA" "${CMAKE_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "" 1)
+REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "DYNAMIC" "replication" 1)
+REGISTER_PLUGIN("AURORA" "${CMAKE_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "aurora"  1)
 
 # Allow registration of additional plugins
 IF(PLUGIN_CONF_FILE)
