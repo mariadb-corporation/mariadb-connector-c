@@ -35,6 +35,7 @@ SET(EXPORT_SYMBOLS
  mariadb_dyncol_val_long
  mariadb_dyncol_val_str
  mariadb_get_charset_by_name
+ mariadb_stmt_execute_direct
  mariadb_get_charset_by_nr
  mariadb_get_info
  mariadb_get_infov

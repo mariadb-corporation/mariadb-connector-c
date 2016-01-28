@@ -189,6 +189,8 @@ int do_verify_prepare_field(MYSQL_RES *result,
     FAIL_UNLESS(strcmp(field->table, table) == 0, "field->table differs");
   if (org_table)
     FAIL_UNLESS(strcmp(field->org_table, org_table) == 0, "field->org_table differs");
+  if (strcmp(field->db,db))
+    diag("%s / %s", field->db, db);
   FAIL_UNLESS(strcmp(field->db, db) == 0, "field->db differs");
   /*
     Character set should be taken into account for multibyte encodings, such

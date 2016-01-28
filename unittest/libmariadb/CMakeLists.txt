@@ -22,7 +22,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
 ADD_DEFINITIONS(-DLIBMARIADB)
 
 SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
-              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "dyncol" "features-10_2")
+              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "dyncol" "features-10_2" )
 
 #exclude following tests from ctests, since we need to run them maually with different credentials            
 SET(MANUAL_TESTS "t_aurora")

@@ -129,7 +129,7 @@ enum enum_server_command
 #define REFRESH_READ_LOCK	16384	/* Lock tables for read */
 #define REFRESH_FAST		32768	/* Intern flag */
 
-#define CLIENT_LONG_PASSWORD        1	/* new more secure passwords */
+#define CLIENT_MYSQL                1
 #define CLIENT_FOUND_ROWS	    2	/* Found instead of affected rows */
 #define CLIENT_LONG_FLAG	    4	/* Get all column flags */
 #define CLIENT_CONNECT_WITH_DB	    8	/* One can specify db on connect */
@@ -157,14 +157,14 @@ enum enum_server_command
 
 /* MariaDB specific capabilities */
 #define MARIADB_CLIENT_FLAGS 0xFFFFFFFF00000000ULL
-#define MARIADB_CLIENT_COM_MULTI 1
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
-#define MARIADB_CLIENT_EXTENDED_FLAGS (1ULL << 63)
+#define MARIADB_CLIENT_COM_MULTI (1ULL << 33)
+//#define MARIADB_CLIENT_EXTENDED_FLAGS (1ULL << 63)
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
-                                        MARIADB_CLIENT_EXTENDED_FLAGS)
+                                       MARIADB_CLIENT_COM_MULTI)
 
-#define CLIENT_SUPPORTED_FLAGS  (CLIENT_LONG_PASSWORD |\
+#define CLIENT_SUPPORTED_FLAGS  (CLIENT_MYSQL |\
                                  CLIENT_FOUND_ROWS |\
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_CONNECT_WITH_DB |\
@@ -188,7 +188,7 @@ enum enum_server_command
                                  CLIENT_PLUGIN_AUTH |\
                                  CLIENT_CONNECT_ATTRS)
 
-#define CLIENT_CAPABILITIES	(CLIENT_LONG_PASSWORD | \
+#define CLIENT_CAPABILITIES	(CLIENT_MYSQL | \
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_TRANSACTIONS |\
                                  CLIENT_SECURE_CONNECTION |\

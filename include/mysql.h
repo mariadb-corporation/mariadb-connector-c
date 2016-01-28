@@ -165,6 +165,12 @@ extern unsigned int mariadb_deinitialize_ssl;
     MEM_ROOT alloc;
   } MYSQL_DATA;
 
+  enum mariadb_com_multi {
+    MARIADB_COM_MULTI_END,
+    MARIADB_COM_MULTI_BEGIN,
+    MARIADB_COM_MULTI_CANCEL
+  };
+
   enum mysql_option 
   {
     MYSQL_OPT_CONNECT_TIMEOUT, 
@@ -637,7 +643,7 @@ int STDCALL mysql_stmt_send_long_data_cont(my_bool *ret, MYSQL_STMT *stmt,
 
 /* API function calls (used by dynmic plugins) */
 struct st_mariadb_api {
-    my_ulonglong (STDCALL *mysql_num_rows)(MYSQL_RES *res);
+  my_ulonglong (STDCALL *mysql_num_rows)(MYSQL_RES *res);
   unsigned int (STDCALL *mysql_num_fields)(MYSQL_RES *res);
   my_bool (STDCALL *mysql_eof)(MYSQL_RES *res);
   MYSQL_FIELD *(STDCALL *mysql_fetch_field_direct)(MYSQL_RES *res, unsigned int fieldnr);
@@ -752,6 +758,7 @@ struct st_mariadb_api {
   unsigned int (STDCALL *mysql_stmt_field_count)(MYSQL_STMT *stmt);
   int (STDCALL *mysql_stmt_next_result)(MYSQL_STMT *stmt);
   my_bool (STDCALL *mysql_stmt_more_results)(MYSQL_STMT *stmt);
+  int (STDCALL *mariadb_stmt_execute_direct)(MYSQL_STMT *stmt, const char *stmtstr, size_t length);
 };
   
 /* these methods can be overwritten by db plugins */
