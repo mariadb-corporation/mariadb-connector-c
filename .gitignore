@@ -11,6 +11,20 @@ examples/mysql_debug
 examples/test_output
 libmysql.so.*
 mysql_config/mysql_config
+#unittest/*/
+*.vcxproj
+*.filters
+*.user
+ipch
+*.sln
+*.suo
+*.sdf
+Win32
+x64
+*.dir
+Debug
+Release
+RelWithDebInfo
 
 # Keep empty directories:
 # Keep empty directories: >> .gitignore/.git*

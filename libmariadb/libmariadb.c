@@ -3071,7 +3071,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
 
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
-    if (*(uint *)arg1)
+    if (*(my_bool *)arg1)
       mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
     else
       mysql->options.client_flag &= ~CLIENT_SSL_VERIFY_SERVER_CERT;
