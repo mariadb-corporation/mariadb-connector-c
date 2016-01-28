@@ -27,7 +27,7 @@ SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view
 #exclude following tests from ctests, since we need to run them maually with different credentials            
 SET(MANUAL_TESTS "t_aurora")
 # Get finger print from server certificate 
-IF(WITH_SSL)
+IF(WITH_SSL AND OPENSSL_FOUND)
 
   #create certificates
   IF(EXISTS "${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
