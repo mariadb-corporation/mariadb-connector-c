@@ -38,6 +38,7 @@ ELSE()
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
 
+OPTION(WITH_UNITTEST "build test suite" ON)
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 IF(WITH_SIGNCODE)
@@ -290,8 +291,10 @@ ENDIF()
 ADD_SUBDIRECTORY(client)
 
 IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
-  ADD_SUBDIRECTORY(unittest/mytap)
-  ADD_SUBDIRECTORY(unittest/libmariadb)
+  IF(WITH_UNITTEST STREQUAL "ON")
+    ADD_SUBDIRECTORY(unittest/mytap)
+    ADD_SUBDIRECTORY(unittest/libmariadb)
+  ENDIF()
 ENDIF()
 
 IF(CLIENT_DOCS)
