@@ -38,8 +38,8 @@ void gssapi_errmsg(OM_uint32 major, OM_uint32 minor, char *buf, size_t size)
   char *p= buf;
   char *end= buf + size - 1;
   int types[] = {GSS_C_GSS_CODE,GSS_C_MECH_CODE};
-
-  for(int i= 0; i < 2;i++)
+  int i;
+  for(i= 0; i < 2;i++)
   {
     message_context= 0;
     status_code= types[i] == GSS_C_GSS_CODE?major:minor;

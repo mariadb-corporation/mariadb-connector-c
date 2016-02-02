@@ -609,9 +609,6 @@ ulong checksum(const unsigned char *mem, uint count);
 #if defined(_MSC_VER) && !defined(_WIN32)
 extern void sleep(int sec);
 #endif
-#ifdef _WIN32
-extern my_bool have_tcpip;		/* Is set if tcpip is used */
-#endif
 
 #ifdef	__cplusplus
 }

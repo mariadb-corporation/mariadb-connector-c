@@ -1430,8 +1430,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if ((unix_socket ||
       (!host && is_NT()) ||
       (host && strcmp(host,LOCAL_HOST_NAMEDPIPE) == 0) ||
-      mysql->options.named_pipe ||
-     !have_tcpip) &&
+      mysql->options.named_pipe) &&
       mysql->options.protocol != MYSQL_PROTOCOL_TCP)
   {
     cinfo.type= PVIO_TYPE_NAMEDPIPE;
