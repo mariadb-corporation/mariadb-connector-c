@@ -10,7 +10,7 @@ ADD_DEFINITIONS(-D THREAD)
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/sign.cmake)
 
 SET(EXPORT_SYMBOLS
- load_defaults
+ mariadb_load_defaults
  ma_pvio_register_callback
  mariadb_connection
  mariadb_convert_string
