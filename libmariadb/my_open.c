@@ -43,7 +43,7 @@ File my_open(const char *FileName, int Flags, myf MyFlags)
     fd = open((my_string) FileName, Flags | O_BINARY,
 	      MY_S_IREAD | MY_S_IWRITE);
 #elif !defined(NO_OPEN_3)
-  fd = open(FileName, Flags, my_umask);	/* Normal unix */
+  fd = open(FileName, Flags, ma_umask);	/* Normal unix */
 #else
   fd = open((my_string) FileName, Flags);
 #endif
@@ -66,17 +66,17 @@ int my_close(File fd, myf MyFlags)
     DBUG_PRINT("error",("Got error %d on close",err));
     my_errno=errno;
     if (MyFlags & (MY_FAE | MY_WME))
-      my_error(EE_BADCLOSE, MYF(ME_BELL+ME_WAITTANG),my_filename(fd),errno);
+      ma_error(EE_BADCLOSE, MYF(ME_BELL+ME_WAITTANG),my_filename(fd),errno);
   }
-  if ((uint) fd < MY_NFILE && my_file_info[fd].type != UNOPEN)
+  if ((uint) fd < MY_NFILE && ma_file_info[fd].type != UNOPEN)
   {
-    my_free(my_file_info[fd].name);
+    ma_free(ma_file_info[fd].name);
 #if defined(THREAD) && !defined(HAVE_PREAD)
-    pthread_mutex_destroy(&my_file_info[fd].mutex);
+    pthread_mutex_destroy(&ma_file_info[fd].mutex);
 #endif
-    my_file_info[fd].type = UNOPEN;
+    ma_file_info[fd].type = UNOPEN;
   }
-  my_file_opened--;
+  ma_file_opened--;
   pthread_mutex_unlock(&THR_LOCK_open);
   DBUG_RETURN(err);
 } /* my_close */
@@ -93,20 +93,20 @@ File my_register_filename(File fd, const char *FileName, enum file_type
       (void) my_close(fd,MyFlags);
       my_errno=EMFILE;
       if (MyFlags & (MY_FFNF | MY_FAE | MY_WME))
-	my_error(EE_OUT_OF_FILERESOURCES, MYF(ME_BELL+ME_WAITTANG),
+	ma_error(EE_OUT_OF_FILERESOURCES, MYF(ME_BELL+ME_WAITTANG),
 		 FileName, my_errno);
       return(-1);
 #endif
-      thread_safe_increment(my_file_opened,&THR_LOCK_open);
+      thread_safe_increment(ma_file_opened,&THR_LOCK_open);
       return(fd);				/* safeguard */
     }
     pthread_mutex_lock(&THR_LOCK_open);
-    if ((my_file_info[fd].name = (char*) my_strdup(FileName,MyFlags)))
+    if ((ma_file_info[fd].name = (char*) ma_strdup(FileName,MyFlags)))
     {
-      my_file_opened++;
-      my_file_info[fd].type = type_of_file;
+      ma_file_opened++;
+      ma_file_info[fd].type = type_of_file;
 #if defined(THREAD) && !defined(HAVE_PREAD)
-      pthread_mutex_init(&my_file_info[fd].mutex,MY_MUTEX_INIT_FAST);
+      pthread_mutex_init(&ma_file_info[fd].mutex,MY_MUTEX_INIT_FAST);
 #endif
       pthread_mutex_unlock(&THR_LOCK_open);
       DBUG_PRINT("exit",("fd: %d",fd));
@@ -120,7 +120,7 @@ File my_register_filename(File fd, const char *FileName, enum file_type
     my_errno=errno;
   DBUG_PRINT("error",("Got error %d on open",my_errno));
   if (MyFlags & (MY_FFNF | MY_FAE | MY_WME))
-    my_error(error_message_number, MYF(ME_BELL+ME_WAITTANG),
+    ma_error(error_message_number, MYF(ME_BELL+ME_WAITTANG),
 	     FileName, my_errno);
   return(fd);
 }

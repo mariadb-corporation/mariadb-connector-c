@@ -36,9 +36,9 @@ gptr my_once_alloc(unsigned int Size, myf MyFlags)
   reg2 USED_MEM **prev;
 
   Size= ALIGN_SIZE(Size);
-  prev= &my_once_root_block;
+  prev= &ma_once_root_block;
   max_left=0;
-  for (next=my_once_root_block ; next && next->left < Size ; next= next->next)
+  for (next=ma_once_root_block ; next && next->left < Size ; next= next->next)
   {
     if (next->left > max_left)
       max_left=next->left;
@@ -47,14 +47,14 @@ gptr my_once_alloc(unsigned int Size, myf MyFlags)
   if (! next)
   {						/* Time to alloc new block */
     get_size= Size+ALIGN_SIZE(sizeof(USED_MEM));
-    if (max_left*4 < my_once_extra && get_size < my_once_extra)
-      get_size=my_once_extra;			/* Normal alloc */
+    if (max_left*4 < ma_once_extra && get_size < ma_once_extra)
+      get_size=ma_once_extra;			/* Normal alloc */
 
     if ((next = (USED_MEM*) malloc(get_size)) == 0)
     {
       my_errno=errno;
       if (MyFlags & (MY_FAE+MY_WME))
-	my_error(EE_OUTOFMEMORY, MYF(ME_BELL+ME_WAITTANG),get_size);
+	ma_error(EE_OUTOFMEMORY, MYF(ME_BELL+ME_WAITTANG),get_size);
       return((gptr) 0);
     }
     DBUG_PRINT("test",("my_once_malloc %u byte malloced",get_size));
@@ -77,12 +77,12 @@ void my_once_free(void)
   reg1 USED_MEM *next,*old;
   DBUG_ENTER("my_once_free");
 
-  for (next=my_once_root_block ; next ; )
+  for (next=ma_once_root_block ; next ; )
   {
     old=next; next= next->next ;
     free((gptr) old);
   }
-  my_once_root_block=0;
+  ma_once_root_block=0;
 
   DBUG_VOID_RETURN;
 } /* my_once_free */

@@ -21,11 +21,11 @@
 #include <m_string.h>
 #include <my_dir.h>
 
-CHARSET_INFO *default_charset_info = (CHARSET_INFO *)&compiled_charsets[5];
-CHARSET_INFO *my_charset_bin= (CHARSET_INFO *)&compiled_charsets[32];
-CHARSET_INFO *my_charset_latin1= (CHARSET_INFO *)&compiled_charsets[5];
-CHARSET_INFO *my_charset_utf8_general_ci= (CHARSET_INFO *)&compiled_charsets[21];
-CHARSET_INFO *my_charset_utf16le_general_ci= (CHARSET_INFO *)&compiled_charsets[68];
+CHARSET_INFO *ma_default_charset_info = (CHARSET_INFO *)&compiled_charsets[5];
+CHARSET_INFO *ma_charset_bin= (CHARSET_INFO *)&compiled_charsets[32];
+CHARSET_INFO *ma_charset_latin1= (CHARSET_INFO *)&compiled_charsets[5];
+CHARSET_INFO *ma_charset_utf8_general_ci= (CHARSET_INFO *)&compiled_charsets[21];
+CHARSET_INFO *ma_charset_utf16le_general_ci= (CHARSET_INFO *)&compiled_charsets[68];
 
 CHARSET_INFO * STDCALL mysql_get_charset_by_nr(uint cs_number)
 {
@@ -48,7 +48,7 @@ my_bool set_default_charset(uint cs, myf flags)
     DBUG_PRINT("error",("Couldn't set default character set"));
     DBUG_RETURN(TRUE);   /* error */
   }
-  default_charset_info = new_charset;
+  ma_default_charset_info = new_charset;
   DBUG_RETURN(FALSE);
 }
 
@@ -74,6 +74,6 @@ my_bool set_default_charset_by_name(const char *cs_name, myf flags)
     DBUG_RETURN(TRUE);   /* error */
   }
 
-  default_charset_info = new_charset;
+  ma_default_charset_info = new_charset;
   DBUG_RETURN(FALSE);
 }

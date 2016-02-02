@@ -60,7 +60,7 @@ MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
   if (!ma_ssl_initialized)
     ma_ssl_start(mysql->net.last_error, MYSQL_ERRMSG_SIZE);
 
-  if (!(cssl= (MARIADB_SSL *)my_malloc(sizeof(MARIADB_SSL), 
+  if (!(cssl= (MARIADB_SSL *)ma_malloc(sizeof(MARIADB_SSL), 
                                       MYF(MY_WME | MY_ZEROFILL))))
   {
     return NULL;
@@ -70,7 +70,7 @@ MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
   cssl->pvio= mysql->net.pvio;
   if (!(cssl->ssl= ma_ssl_init(mysql)))
   {
-    my_free(cssl);
+    ma_free(cssl);
     cssl= NULL;
   }
   return cssl;

@@ -31,11 +31,11 @@
 
 #ifndef HAVE_OPENSSL_DEFAULT
 #include <memory.h>
-#define my_malloc(A,B) malloc((A))
-#undef my_free
-#define my_free(A) free((A))
-#define my_snprintf snprintf
-#define my_vsnprintf vsnprintf
+#define ma_malloc(A,B) malloc((A))
+#undef ma_free
+#define ma_free(A) free((A))
+#define ma_snprintf snprintf
+#define ma_vsnprintf vsnprintf
 #undef SAFE_MUTEX
 #endif
 #include <my_pthread.h>
@@ -126,7 +126,7 @@ static int ssl_thread_init()
   if (LOCK_crypto == NULL)
   {
     if (!(LOCK_crypto= 
-          (pthread_mutex_t *)my_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
+          (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
       return 1;
 
     for (i=0; i < max; i++)
@@ -219,7 +219,7 @@ void ma_ssl_end()
     for (i=0; i < CRYPTO_num_locks(); i++)
       pthread_mutex_destroy(&LOCK_crypto[i]);
 
-    my_free((gptr)LOCK_crypto);
+    ma_free((gptr)LOCK_crypto);
     LOCK_crypto= NULL;
 
     if (SSL_context)
@@ -572,7 +572,7 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
   fp_len= len;
   if (!X509_digest(cert, digest, fp, &fp_len))
   {
-    my_free(fp);
+    ma_free(fp);
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                         ER(CR_SSL_CONNECTION_ERROR), 
                         "invalid finger print of server certificate");

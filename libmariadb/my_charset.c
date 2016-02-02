@@ -55,7 +55,7 @@
 
 #include <iconv.h>
 
-extern int my_snprintf(char* to, size_t n, const char* fmt, ...);
+extern int ma_snprintf(char* to, size_t n, const char* fmt, ...);
 /*
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
@@ -1086,7 +1086,7 @@ char *madb_get_os_character_set()
   char *p= NULL;
 #ifdef _WIN32
   char codepage[FN_REFLEN];
-  my_snprintf(codepage, FN_REFLEN, "%u", GetConsoleWindow() ?
+  ma_snprintf(codepage, FN_REFLEN, "%u", GetConsoleWindow() ?
               GetConsoleCP() : GetACP());
   p= codepage;
 #elif defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)

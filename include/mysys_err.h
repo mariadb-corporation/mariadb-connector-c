@@ -23,9 +23,9 @@ extern "C" {
 
 #define GLOB		0	/* Error maps */
 #define GLOBERRS	EE_LASTERROR - EE_FIRSTERROR + 1	/* Max number of error messages in map's */
-#define EE(X)	globerrs[ (X) - EE_FIRSTERROR ]	/* Defines to add error to right map */
+#define EE(X)	ma_globerrs[ (X) - EE_FIRSTERROR ]	/* Defines to add error to right map */
 
-extern const char * NEAR globerrs[];	/* my_error_messages is here */
+extern const char * NEAR ma_globerrs[];	/* ma_error_messages is here */
 
 /* Error message numbers in global map 
    

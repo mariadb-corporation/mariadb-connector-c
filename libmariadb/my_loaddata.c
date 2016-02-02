@@ -68,7 +68,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
   MYSQL *mysql= (MYSQL *)userdata;
   DBUG_ENTER("mysql_local_infile_init");
 
-  info = (MYSQL_INFILE_INFO *)my_malloc(sizeof(MYSQL_INFILE_INFO), MYF(MY_ZEROFILL));
+  info = (MYSQL_INFILE_INFO *)ma_malloc(sizeof(MYSQL_INFILE_INFO), MYF(MY_ZEROFILL));
   if (!info) {
     DBUG_RETURN(1);
   }
@@ -90,7 +90,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
     else
     {
       info->error_no = my_errno;
-      my_snprintf((char *)info->error_msg, sizeof(info->error_msg), 
+      ma_snprintf((char *)info->error_msg, sizeof(info->error_msg), 
                   EE(EE_FILENOTFOUND), filename, info->error_no);
     }
     DBUG_RETURN(1);
@@ -153,7 +153,7 @@ void mysql_local_infile_end(void *ptr)
   {
     if (info->fp)
       ma_close(info->fp);
-    my_free(ptr);
+    ma_free(ptr);
   }		
   DBUG_VOID_RETURN;
 }
@@ -218,7 +218,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
   }
 
   /* allocate buffer for reading data */
-  buf = (uchar *)my_malloc(buflen, MYF(0));
+  buf = (uchar *)ma_malloc(buflen, MYF(0));
 
   /* init handler: allocate read buffer and open file */
   if (conn->options.local_infile_init(&info, filename,
@@ -264,7 +264,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
 
 infile_error:
   conn->options.local_infile_end(info);
-  my_free(buf);
+  ma_free(buf);
   DBUG_RETURN(result);
 }
 /* }}} */

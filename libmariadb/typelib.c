@@ -31,12 +31,12 @@
 **   If & 4 allow #number# as type
 ****************************************************************************/
 
-int find_type(my_string x, TYPELIB *typelib, uint full_name)
+int ma_find_type(my_string x, TYPELIB *typelib, uint full_name)
 {
   int find,pos,findpos= 0;
   reg1 my_string i;
   reg2 const char *j;
-  DBUG_ENTER("find_type");
+  DBUG_ENTER("ma_find_type");
   DBUG_PRINT("enter",("x: '%s'  lib: %lx",x,typelib));
 
   if (!typelib->count)
@@ -78,27 +78,27 @@ int find_type(my_string x, TYPELIB *typelib, uint full_name)
   if (!(full_name & 2))
     (void) strmov(x,typelib->type_names[findpos]);
   DBUG_RETURN(findpos+1);
-} /* find_type */
+} /* ma_find_type */
 
 
 	/* Get name of type nr 'nr' */
 	/* Warning first type is 1, 0 = empty field */
 
-void make_type(register my_string to, register uint nr, register TYPELIB *typelib)
+void ma_make_type(register my_string to, register uint nr, register TYPELIB *typelib)
 {
-  DBUG_ENTER("make_type");
+  DBUG_ENTER("ma_make_type");
   if (!nr)
     to[0]=0;
   else
-    (void) strmov(to,get_type(typelib,nr-1));
+    (void) strmov(to,ma_get_type(typelib,nr-1));
   DBUG_VOID_RETURN;
-} /* make_type */
+} /* ma_make_type */
 
 
 	/* Get type */
 	/* Warning first type is 0 */
 
-const char *get_type(TYPELIB *typelib, uint nr)
+const char *ma_get_type(TYPELIB *typelib, uint nr)
 {
   if (nr < (uint) typelib->count && typelib->type_names)
     return(typelib->type_names[nr]);

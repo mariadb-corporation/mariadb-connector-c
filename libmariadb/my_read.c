@@ -48,10 +48,10 @@ uint my_read(File Filedes, unsigned char *Buffer, uint Count, myf MyFlags)
       if (MyFlags & (MY_WME | MY_FAE | MY_FNABP))
       {
 	if ((int) readbytes == -1)
-	  my_error(EE_READ, MYF(ME_BELL+ME_WAITTANG),
+	  ma_error(EE_READ, MYF(ME_BELL+ME_WAITTANG),
 		   my_filename(Filedes),my_errno);
 	else if (MyFlags & (MY_NABP | MY_FNABP))
-	  my_error(EE_EOFERR, MYF(ME_BELL+ME_WAITTANG),
+	  ma_error(EE_EOFERR, MYF(ME_BELL+ME_WAITTANG),
 		   my_filename(Filedes),my_errno);
       }
       if ((int) readbytes == -1 || (MyFlags & (MY_FNABP | MY_NABP)))

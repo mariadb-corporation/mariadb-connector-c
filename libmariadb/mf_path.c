@@ -42,11 +42,11 @@ my_string my_path(my_string to, const char *progname,
 		   find_file_in_path(to,progname) ||
 		   ((prog=getenv("_")) != 0 && dirname_part(to,prog))))
   {
-    VOID(intern_filename(to,to));
+    VOID(ma_intern_filename(to,to));
     if (!test_if_hard_path(to))
     {
-      if (!my_getwd(curr_dir,FN_REFLEN,MYF(0)))
-	bchange(to,0,curr_dir, (uint) strlen(curr_dir), (uint) strlen(to)+1);
+      if (!my_getwd(ma_cur_dir,FN_REFLEN,MYF(0)))
+	bchange(to,0,ma_cur_dir, (uint) strlen(ma_cur_dir), (uint) strlen(to)+1);
     }
   }
   else
@@ -60,7 +60,7 @@ my_string my_path(my_string to, const char *progname,
       end= (char*) "/my/";
 #endif
     }
-    VOID(intern_filename(to,end));
+    VOID(ma_intern_filename(to,end));
     to=strend(to);
     if (to != start && to[-1] != FN_LIBCHAR)
       *to++ = FN_LIBCHAR;

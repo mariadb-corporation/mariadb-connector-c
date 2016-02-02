@@ -32,15 +32,15 @@ static my_string NEAR_F expand_tilde(my_string *path);
 	/* from is a dirname (from dirname() ?) ending with FN_LIBCHAR */
 	/* to may be == from */
 
-void pack_dirname(my_string to, const char *from)
+void ma_pack_dirname(my_string to, const char *from)
 {
   int cwd_err;
   uint d_length,length,buff_length= 0;
   my_string start;
   char buff[FN_REFLEN];
-  DBUG_ENTER("pack_dirname");
+  DBUG_ENTER("ma_pack_dirname");
 
-  (void) intern_filename(to,from);		/* Change to intern name */
+  (void) ma_intern_filename(to,from);		/* Change to intern name */
 
 #ifdef FN_DEVCHAR
   if ((start=strrchr(to,FN_DEVCHAR)) != 0)	/* Skipp device part */
@@ -62,18 +62,18 @@ void pack_dirname(my_string to, const char *from)
     }
   }
 
-  if ((d_length= cleanup_dirname(to,to)) != 0)
+  if ((d_length= ma_cleanup_dirname(to,to)) != 0)
   {
     length=0;
-    if (home_dir)
+    if (ma_ma_ma_home_dir)
     {
-      length= (uint) strlen(home_dir);
-      if (home_dir[length-1] == FN_LIBCHAR)
+      length= (uint) strlen(ma_ma_ma_home_dir);
+      if (ma_ma_ma_home_dir[length-1] == FN_LIBCHAR)
 	length--;				/* Don't test last '/' */
     }
     if (length > 1 && length < d_length)
     {						/* test if /xx/yy -> ~/yy */
-      if (bcmp(to,home_dir,length) == 0 && to[length] == FN_LIBCHAR)
+      if (bcmp(to,ma_ma_ma_home_dir,length) == 0 && to[length] == FN_LIBCHAR)
       {
 	to[0]=FN_HOMELIB;			/* Filename begins with ~ */
 	(void) strmov_overlapp(to+1,to+length);
@@ -83,7 +83,7 @@ void pack_dirname(my_string to, const char *from)
     {						/* Test if cwd is ~/... */
       if (length > 1 && length < buff_length)
       {
-	if (bcmp(buff,home_dir,length) == 0 && buff[length] == FN_LIBCHAR)
+	if (bcmp(buff,ma_ma_ma_home_dir,length) == 0 && buff[length] == FN_LIBCHAR)
 	{
 	  buff[0]=FN_HOMELIB;
 	  (void) strmov_overlapp(buff+1,buff+length);
@@ -105,17 +105,17 @@ void pack_dirname(my_string to, const char *from)
   }
   DBUG_PRINT("exit",("to: '%s'",to));
   DBUG_VOID_RETURN;
-} /* pack_dirname */
+} /* ma_pack_dirname */
 
 
 	/* remove unwanted chars from dirname */
 	/* if "/../" removes prev dir; "/~/" removes all before ~ */
 	/* "//" is same as "/", except on Win32 at start of a file  */
 	/* "/./" is removed */
-	/* Unpacks home_dir if "~/.." used */
+	/* Unpacks ma_ma_ma_home_dir if "~/.." used */
 	/* Unpacks current dir if if "./.." used */
 
-uint cleanup_dirname(register my_string to, const char *from)
+uint ma_cleanup_dirname(register my_string to, const char *from)
 						/* to may be == from */
 
 {
@@ -125,7 +125,7 @@ uint cleanup_dirname(register my_string to, const char *from)
   reg4 my_string start;
   char parent[5],				/* for "FN_PARENTDIR" */
        buff[FN_REFLEN+1],*end_parentdir;
-  DBUG_ENTER("cleanup_dirname");
+  DBUG_ENTER("ma_cleanup_dirname");
   DBUG_PRINT("enter",("from: '%s'",from));
 
   start=buff;
@@ -154,23 +154,23 @@ uint cleanup_dirname(register my_string to, const char *from)
 	  pos--;
 	  if (*pos == FN_HOMELIB && (pos == start || pos[-1] == FN_LIBCHAR))
 	  {
-	    if (!home_dir)
+	    if (!ma_ma_ma_home_dir)
 	    {
 	      pos+=length+1;			/* Don't unpack ~/.. */
 	      continue;
 	    }
-	    pos=strmov(buff,home_dir)-1;	/* Unpacks ~/.. */
+	    pos=strmov(buff,ma_ma_ma_home_dir)-1;	/* Unpacks ~/.. */
 	    if (*pos == FN_LIBCHAR)
 	      pos--;				/* home ended with '/' */
 	  }
 	  if (*pos == FN_CURLIB && (pos == start || pos[-1] == FN_LIBCHAR))
 	  {
-	    if (my_getwd(curr_dir,FN_REFLEN,MYF(0)))
+	    if (my_getwd(ma_cur_dir,FN_REFLEN,MYF(0)))
 	    {
 	      pos+=length+1;			/* Don't unpack ./.. */
 	      continue;
 	    }
-	    pos=strmov(buff,curr_dir)-1;	/* Unpacks ./.. */
+	    pos=strmov(buff,ma_cur_dir)-1;	/* Unpacks ./.. */
 	    if (*pos == FN_LIBCHAR)
 	      pos--;				/* home ended with '/' */
 	  }
@@ -208,7 +208,7 @@ uint cleanup_dirname(register my_string to, const char *from)
   (void) strmov(to,buff);
   DBUG_PRINT("exit",("to: '%s'",to));
   DBUG_RETURN((uint) (pos-buff));
-} /* cleanup_dirname */
+} /* ma_cleanup_dirname */
 
 
 	/*
@@ -220,7 +220,7 @@ uint cleanup_dirname(register my_string to, const char *from)
 	*/
 	  
 
-my_bool my_use_symdir=0;	/* Set this if you want to use symdirs */
+my_bool ma_use_symdir=0;	/* Set this if you want to use symdirs */
 
 #ifdef USE_SYMDIR
 void symdirget(char *dir)
@@ -257,18 +257,18 @@ void symdirget(char *dir)
 	/* Unpacks dirname to name that can be used by open... */
 	/* Make that last char of to is '/' if from not empty and
 	   from doesn't end in FN_DEVCHAR */
-	/* Uses cleanup_dirname and changes ~/.. to home_dir/.. */
+	/* Uses ma_cleanup_dirname and changes ~/.. to ma_ma_ma_home_dir/.. */
 	/* Returns length of new directory */
 
-uint unpack_dirname(my_string to, const char *from)
+uint unma_pack_dirname(my_string to, const char *from)
 
 						  /* to may be == from */
 {
   uint length,h_length;
   char buff[FN_REFLEN+1+4],*suffix,*tilde_expansion;
-  DBUG_ENTER("unpack_dirname");
+  DBUG_ENTER("unma_pack_dirname");
 
-  (void) intern_filename(buff,from);		/* Change to intern name */
+  (void) ma_intern_filename(buff,from);		/* Change to intern name */
   length= (uint) strlen(buff);			/* Fix that '/' is last */
   if (length &&
 #ifdef FN_DEVCHAR
@@ -280,7 +280,7 @@ uint unpack_dirname(my_string to, const char *from)
     buff[length+1]= '\0';
   }
 
-  length=cleanup_dirname(buff,buff);
+  length=ma_cleanup_dirname(buff,buff);
   if (buff[0] == FN_HOMELIB)
   {
     suffix=buff+1; tilde_expansion=expand_tilde(&suffix);
@@ -300,11 +300,11 @@ uint unpack_dirname(my_string to, const char *from)
     }
   }
 #ifdef USE_SYMDIR
-  if (my_use_symdir)
+  if (ma_use_symdir)
     symdirget(buff);
 #endif
-  DBUG_RETURN(system_filename(to,buff));	/* Fix for open */
-} /* unpack_dirname */
+  DBUG_RETURN(ma_system_filename(to,buff));	/* Fix for open */
+} /* unma_pack_dirname */
 
 
 	/* Expand tilde to home or user-directory */
@@ -313,7 +313,7 @@ uint unpack_dirname(my_string to, const char *from)
 static my_string NEAR_F expand_tilde(my_string *path)
 {
   if (path[0][0] == FN_LIBCHAR)
-    return home_dir;			/* ~/ expanded to home */
+    return ma_ma_ma_home_dir;			/* ~/ expanded to home */
 #ifdef HAVE_GETPWNAM
   {
     char *str,save;
@@ -339,30 +339,30 @@ static my_string NEAR_F expand_tilde(my_string *path)
 	/* to may be == from */
 	/* Returns to */
 
-my_string unpack_filename(my_string to, const char *from)
+my_string ma_unpack_filename(my_string to, const char *from)
 {
   uint length,n_length;
   char buff[FN_REFLEN];
-  DBUG_ENTER("unpack_filename");
+  DBUG_ENTER("ma_unpack_filename");
 
   length=dirname_part(buff,from);		/* copy & convert dirname */
-  n_length=unpack_dirname(buff,buff);
+  n_length=unma_pack_dirname(buff,buff);
   if (n_length+strlen(from+length) < FN_REFLEN)
   {
     (void) strmov(buff+n_length,from+length);
-    (void) system_filename(to,buff);		/* Fix to usably filename */
+    (void) ma_system_filename(to,buff);		/* Fix to usably filename */
   }
   else
-    (void) system_filename(to,from);		/* Fix to usably filename */
+    (void) ma_system_filename(to,from);		/* Fix to usably filename */
   DBUG_RETURN(to);
-} /* unpack_filename */
+} /* ma_unpack_filename */
 
 
 	/* Convert filename (unix standard) to system standard */
 	/* Used before system command's like open(), create() .. */
 	/* Returns to */
 
-uint system_filename(my_string to, const char *from)
+uint ma_system_filename(my_string to, const char *from)
 {
 #ifndef FN_C_BEFORE_DIR
   return (uint) (strmake(to,from,FN_REFLEN-1)-to);
@@ -378,7 +378,7 @@ uint system_filename(my_string to, const char *from)
   int libchar_found,length;
   my_string to_pos,from_pos,pos;
   char buff[FN_REFLEN];
-  DBUG_ENTER("system_filename");
+  DBUG_ENTER("ma_system_filename");
 
   libchar_found=0;
   (void) strmov(buff,from);			 /* If to == from */
@@ -426,12 +426,12 @@ uint system_filename(my_string to, const char *from)
   DBUG_PRINT("exit",("name: '%s'",to));
   DBUG_RETURN((uint) length);
 #endif
-} /* system_filename */
+} /* ma_system_filename */
 
 
 	/* Fix a filename to intern (UNIX format) */
 
-my_string intern_filename(my_string to, const char *from)
+my_string ma_intern_filename(my_string to, const char *from)
 {
 #ifndef VMS
   {
@@ -529,4 +529,4 @@ my_string intern_filename(my_string to, const char *from)
   (void) strmov(to_pos,from_pos);
   return (to);
 #endif /* VMS */
-} /* intern_filename */
+} /* ma_intern_filename */

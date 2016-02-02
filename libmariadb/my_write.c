@@ -53,7 +53,7 @@ uint my_write(int Filedes, const unsigned char *Buffer, uint Count, myf MyFlags)
 	(uint) writenbytes != (uint) -1)
     {
       if (!(errors++ % MY_WAIT_GIVE_USER_A_MESSAGE))
-	my_error(EE_DISK_FULL,MYF(ME_BELL | ME_NOREFRESH),
+	ma_error(EE_DISK_FULL,MYF(ME_BELL | ME_NOREFRESH),
 		 my_filename(Filedes));
       VOID(sleep(MY_WAIT_FOR_USER_TO_FIX_PANIC));
       continue;
@@ -76,7 +76,7 @@ uint my_write(int Filedes, const unsigned char *Buffer, uint Count, myf MyFlags)
     {
       if (MyFlags & (MY_WME | MY_FAE | MY_FNABP))
       {
-	my_error(EE_WRITE, MYF(ME_BELL+ME_WAITTANG),
+	ma_error(EE_WRITE, MYF(ME_BELL+ME_WAITTANG),
 		 my_filename(Filedes),my_errno);
       }
       DBUG_RETURN(MY_FILE_ERROR);		/* Error on read */

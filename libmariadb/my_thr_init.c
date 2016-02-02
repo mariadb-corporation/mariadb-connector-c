@@ -26,9 +26,9 @@
 
 #ifdef THREAD
 #ifdef USE_TLS
-pthread_key(struct st_my_thread_var*, THR_KEY_mysys);
+pthread_key(struct st_ma_thread_var*, THR_KEY_mysys);
 #else
-pthread_key(struct st_my_thread_var, THR_KEY_mysys);
+pthread_key(struct st_ma_thread_var, THR_KEY_mysys);
 #endif /* USE_TLS */
 pthread_mutex_t THR_LOCK_malloc,THR_LOCK_open,
 	        THR_LOCK_lock, THR_LOCK_net, THR_LOCK_mysys; 
@@ -50,7 +50,7 @@ my_bool THR_KEY_mysys_initialized= FALSE;
 	the function my_thread_global_free must be called from
 	somewhere before final exit of the library */
 
-my_bool my_thread_global_init(void)
+my_bool ma_thread_global_init(void)
 {
   if (pthread_key_create(&THR_KEY_mysys,free))
   {
@@ -80,10 +80,10 @@ my_bool my_thread_global_init(void)
 #ifndef HAVE_LOCALTIME_R
   pthread_mutex_init(&LOCK_localtime_r,MY_MUTEX_INIT_SLOW);
 #endif
-  return my_thread_init();
+  return ma_thread_init();
 }
 
-void my_thread_global_end(void)
+void ma_thread_global_end(void)
 {
 #if defined(USE_TLS)
   (void) TlsFree(THR_KEY_mysys);
@@ -108,19 +108,19 @@ static long thread_id=0;
   the pthread_self thread specific variable is initialized.
 */
 
-my_bool my_thread_init(void)
+my_bool ma_thread_init(void)
 {
-  struct st_my_thread_var *tmp;
-  if (my_pthread_getspecific(struct st_my_thread_var *,THR_KEY_mysys))
+  struct st_ma_thread_var *tmp;
+  if (my_pthread_getspecific(struct st_ma_thread_var *,THR_KEY_mysys))
   {
-    DBUG_PRINT("info", ("my_thread_init was already called. Thread id: %lu",
+    DBUG_PRINT("info", ("ma_thread_init was already called. Thread id: %lu",
                        pthread_self()));
     return 0;						/* Safequard */
   }
   /* We must have many calloc() here because these are freed on
      pthread_exit */
-  if (!(tmp=(struct st_my_thread_var *)
-	calloc(1,sizeof(struct st_my_thread_var))))
+  if (!(tmp=(struct st_ma_thread_var *)
+	calloc(1,sizeof(struct st_ma_thread_var))))
   {
     return 1;
   }
@@ -140,10 +140,10 @@ my_bool my_thread_init(void)
   return 0;
 }
 
-void my_thread_end(void)
+void ma_thread_end(void)
 {
-  struct st_my_thread_var *tmp= 
-            my_pthread_getspecific(struct st_my_thread_var *, THR_KEY_mysys);
+  struct st_ma_thread_var *tmp= 
+            my_pthread_getspecific(struct st_ma_thread_var *, THR_KEY_mysys);
 
   if (tmp && tmp->initialized)
   {
@@ -173,15 +173,15 @@ void my_thread_end(void)
     pthread_setspecific(THR_KEY_mysys,0); 
 }
 
-struct st_my_thread_var *_my_thread_var(void)
+struct st_ma_thread_var *_ma_thread_var(void)
 {
-  struct st_my_thread_var *tmp=
-    my_pthread_getspecific(struct st_my_thread_var*,THR_KEY_mysys);
+  struct st_ma_thread_var *tmp=
+    my_pthread_getspecific(struct st_ma_thread_var*,THR_KEY_mysys);
 #if defined(USE_TLS)
   if (!tmp)
   {
-    my_thread_init();
-    tmp=my_pthread_getspecific(struct st_my_thread_var*,THR_KEY_mysys);
+    ma_thread_init();
+    tmp=my_pthread_getspecific(struct st_ma_thread_var*,THR_KEY_mysys);
   }
 #endif
   return tmp;
@@ -205,17 +205,17 @@ long my_thread_id()
 }
 
 #ifdef DBUG_OFF
-const char *my_thread_name(void)
+const char *ma_thread_name(void)
 {
   return "no_name";
 }
 
 #else
 
-const char *my_thread_name(void)
+const char *ma_thread_name(void)
 {
   char name_buff[100];
-  struct st_my_thread_var *tmp=my_thread_var;
+  struct st_ma_thread_var *tmp=my_thread_var;
   if (!tmp->name[0])
   {
     long id=my_thread_id();
@@ -227,7 +227,7 @@ const char *my_thread_name(void)
 
 extern void **my_thread_var_dbug()
 {
-  struct st_my_thread_var *tmp;
+  struct st_ma_thread_var *tmp;
   /*
     Instead of enforcing DBUG_ASSERT(THR_KEY_mysys_initialized) here,
     which causes any DBUG_ENTER and related traces to fail when
@@ -237,7 +237,7 @@ extern void **my_thread_var_dbug()
   */
   if (! THR_KEY_mysys_initialized)
     return NULL;
-  tmp= _my_thread_var();
+  tmp= _ma_thread_var();
   return tmp && tmp->initialized ? (void **)&tmp->dbug : 0;
 }
 #endif /* DBUG_OFF */

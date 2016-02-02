@@ -50,11 +50,11 @@ uint my_fread(FILE *stream, unsigned char *Buffer, uint Count, myf MyFlags)
     if (MyFlags & (MY_WME | MY_FAE | MY_FNABP))
     {
       if (ferror(stream))
-	my_error(EE_READ, MYF(ME_BELL+ME_WAITTANG),
+	ma_error(EE_READ, MYF(ME_BELL+ME_WAITTANG),
 		 my_filename(fileno(stream)),errno);
       else
       if (MyFlags & (MY_NABP | MY_FNABP))
-	my_error(EE_EOFERR, MYF(ME_BELL+ME_WAITTANG),
+	ma_error(EE_EOFERR, MYF(ME_BELL+ME_WAITTANG),
 		 my_filename(fileno(stream)),errno);
     }
     my_errno=errno ? errno : -1;
@@ -118,7 +118,7 @@ uint my_fwrite(FILE *stream, const unsigned char *Buffer, uint Count, myf MyFlag
       if (errno == ENOSPC && (MyFlags & MY_WAIT_IF_FULL))
       {
 	if (!(errors++ % MY_WAIT_GIVE_USER_A_MESSAGE))
-	  my_error(EE_DISK_FULL,MYF(ME_BELL | ME_NOREFRESH));
+	  ma_error(EE_DISK_FULL,MYF(ME_BELL | ME_NOREFRESH));
 	sleep(MY_WAIT_FOR_USER_TO_FIX_PANIC);
 	VOID(my_fseek(stream,seekptr,MY_SEEK_SET,MYF(0)));
 	continue;
@@ -128,7 +128,7 @@ uint my_fwrite(FILE *stream, const unsigned char *Buffer, uint Count, myf MyFlag
       {
 	if (MyFlags & (MY_WME | MY_FAE | MY_FNABP))
 	{
-	  my_error(EE_WRITE, MYF(ME_BELL+ME_WAITTANG),
+	  ma_error(EE_WRITE, MYF(ME_BELL+ME_WAITTANG),
 		   my_filename(fileno(stream)),errno);
 	}
 	writenbytes=(uint) -1;			/* Return that we got error */

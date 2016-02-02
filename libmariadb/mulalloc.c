@@ -37,7 +37,7 @@ gptr my_multi_malloc(myf myFlags, ...)
   }
   va_end(args);
 
-  if (!(start=(char *) my_malloc(tot_length,myFlags)))
+  if (!(start=(char *) ma_malloc(tot_length,myFlags)))
     DBUG_RETURN(0); /* purecov: inspected */
 
   va_start(args,myFlags);

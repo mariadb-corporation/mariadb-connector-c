@@ -29,7 +29,7 @@ char NEAR errbuff[NRERRBUFFS][ERRMSGSIZE];
 /* Error message to user */
 /*VARARGS2*/
 
-int my_error(int nr,myf MyFlags, ...)
+int ma_error(int nr,myf MyFlags, ...)
 {
   va_list	ap;
   uint		olen, plen;
@@ -37,13 +37,13 @@ int my_error(int nr,myf MyFlags, ...)
   reg2 char	*endpos;
   char		* par;
   char		ebuff[ERRMSGSIZE+20];
-  DBUG_ENTER("my_error");
+  DBUG_ENTER("ma_error");
 
   va_start(ap,MyFlags);
   DBUG_PRINT("my", ("nr: %d  MyFlags: %d  errno: %d", nr, MyFlags, errno));
 
   if (nr / ERRMOD == GLOB && my_errmsg[GLOB] == 0)
-    init_glob_errs();
+    ma_init_glob_errs();
 
   olen=(uint) strlen(tpos=my_errmsg[nr / ERRMOD][nr % ERRMOD - EE_FIRSTERROR]);
   endpos=ebuff;
@@ -100,12 +100,12 @@ int my_error(int nr,myf MyFlags, ...)
   }
   *endpos='\0';			/* End of errmessage */
   va_end(ap);
-  DBUG_RETURN((*error_handler_hook)(nr, ebuff, MyFlags));
+  DBUG_RETURN((*ma_error_handler_hook)(nr, ebuff, MyFlags));
 }
 
 	/* Error as printf */
 
-int my_printf_error (uint error, const char *format, myf MyFlags, ...)
+int ma_printf_error (uint error, const char *format, myf MyFlags, ...)
 {
   va_list args;
   char ebuff[ERRMSGSIZE+20];
@@ -113,12 +113,12 @@ int my_printf_error (uint error, const char *format, myf MyFlags, ...)
   va_start(args,MyFlags);
   (void) vsprintf (ebuff,format,args);
   va_end(args);
-  return (*error_handler_hook)(error, ebuff, MyFlags);
+  return (*ma_error_handler_hook)(error, ebuff, MyFlags);
 }
 
-	/* Give message using error_handler_hook */
+	/* Give message using ma_error_handler_hook */
 
-int my_message(uint error, const char *str, register myf MyFlags)
+int ma_message(uint error, const char *str, register myf MyFlags)
 {
-  return (*error_handler_hook)(error, str, MyFlags);
+  return (*ma_error_handler_hook)(error, str, MyFlags);
 }

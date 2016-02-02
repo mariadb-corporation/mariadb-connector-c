@@ -101,7 +101,7 @@
 #include <signal.h>
 #endif
 
-extern int my_snprintf(char* to, size_t n, const char* fmt, ...);
+extern int ma_snprintf(char* to, size_t n, const char* fmt, ...);
 
 char _dig_vec_upper[] =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -283,7 +283,7 @@ typedef struct _db_code_state_ {
 
 /*
   The test below is so we could call functions with DBUG_ENTER before
-  my_thread_init().
+  ma_thread_init().
 */
 #define get_code_state_if_not_set_or_return if (!cs && !((cs=code_state()))) return
 #define get_code_state_or_return if (!((cs=code_state()))) return
@@ -1290,7 +1290,7 @@ void _db_return_(uint _line_, struct _db_stack_frame_ *_stack_frame_)
   if (cs->framep != _stack_frame_)
   {
     char buf[512];
-    my_snprintf(buf, sizeof(buf), ERR_MISSING_RETURN, cs->func);
+    ma_snprintf(buf, sizeof(buf), ERR_MISSING_RETURN, cs->func);
     DbugExit(buf);
   }
 
@@ -1957,7 +1957,7 @@ static void DoPrefix(CODE_STATE *cs, uint _line_)
   cs->lineno++;
   if (cs->stack->flags & PID_ON)
   {
-    (void) fprintf(cs->stack->out_file, "%-7s: ", my_thread_name());
+    (void) fprintf(cs->stack->out_file, "%-7s: ", ma_thread_name());
   }
   if (cs->stack->flags & NUMBER_ON)
     (void) fprintf(cs->stack->out_file, "%5d: ", cs->lineno);

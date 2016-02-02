@@ -20,7 +20,7 @@
 
 #ifndef SHARED_LIBRARY
 
-const char * NEAR globerrs[GLOBERRS]=
+const char * NEAR ma_globerrs[GLOBERRS]=
 {
   "Can't create/write to file '%s' (Errcode: %d)",
   "Error reading file '%s' (Errcode: %d)",
@@ -55,16 +55,16 @@ const char * NEAR globerrs[GLOBERRS]=
   "Can't change mode for file '%s' to 0x%lx (Error: %d)"
 };
 
-void init_glob_errs(void)
+void ma_init_glob_errs(void)
 {
-  my_errmsg[GLOB] = & globerrs[0];
-} /* init_glob_errs */
+  my_errmsg[GLOB] = & ma_globerrs[0];
+} /* ma_init_glob_errs */
 
 #else
 
-void init_glob_errs()
+void ma_init_glob_errs()
 {
-  my_errmsg[GLOB] = & globerrs[0];
+  my_errmsg[GLOB] = & ma_globerrs[0];
 
   EE(EE_FILENOTFOUND)	= "File '%s' not found (Errcode: %d)";
   EE(EE_CANTCREATEFILE) = "Can't create/write to file '%s' (Errcode: %d)";

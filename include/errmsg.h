@@ -37,7 +37,7 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CER_MAX_ERROR           5999
 #define CER(X) mariadb_client_errors[(X)-CER_MIN_ERROR]
 #define ER(X) client_errors[(X)-CR_MIN_ERROR]
-#define CLIENT_ERRMAP		2	/* Errormap used by my_error() */
+#define CLIENT_ERRMAP		2	/* Errormap used by ma_error() */
 
 #define CR_UNKNOWN_ERROR	2000
 #define CR_SOCKET_CREATE_ERROR	2001

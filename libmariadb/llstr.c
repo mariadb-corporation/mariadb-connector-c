@@ -16,9 +16,9 @@
    MA 02111-1307, USA */
 
 /*
-  Defines: llstr();
+  Defines: ma_llstr();
 
-  llstr(value, buff);
+  ma_llstr(value, buff);
 
   This function saves a longlong value in a buffer and returns the pointer to
   the buffer.  This is useful when trying to portable print longlong
@@ -29,7 +29,7 @@
 #include <my_global.h>
 #include "m_string.h"
 
-char *llstr(longlong value,char *buff)
+char *ma_llstr(longlong value,char *buff)
 {
   longlong2str(value,buff,-10);
   return buff;

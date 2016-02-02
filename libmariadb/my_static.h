@@ -47,15 +47,15 @@ struct remember {
     char aData[1];
 };
 
-extern char	NEAR curr_dir[FN_REFLEN],NEAR home_dir_buff[FN_REFLEN];
+extern char	NEAR ma_cur_dir[FN_REFLEN],NEAR ma_ma_ma_ma_ma_ma_home_dir_buff[FN_REFLEN];
 
-extern volatile int _my_signals;
-extern struct st_remember _my_sig_remember[MAX_SIGNALS];
+extern volatile int _ma_signals;
+extern struct st_remember _ma_sig_remember[MAX_SIGNALS];
 
-extern const char *soundex_map;
+extern const char *ma_soundex_map;
 
-extern USED_MEM* my_once_root_block;
-extern uint	 my_once_extra;
+extern USED_MEM* ma_once_root_block;
+extern uint	 ma_once_extra;
 
 #if !defined(HAVE_TEMPNAM) || defined(HPUX11)
 extern int	_my_tempnam_used;

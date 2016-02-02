@@ -21,7 +21,7 @@
 #include <my_sys.h>
 #include <m_string.h>
 
-void init_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size)
+void ma_init_ma_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size)
 {
   mem_root->free=mem_root->used=0;
   mem_root->min_malloc=32;
@@ -31,7 +31,7 @@ void init_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_siz
   if (pre_alloc_size)
   {
     if ((mem_root->free = mem_root->pre_alloc=
-	 (USED_MEM*) my_malloc(pre_alloc_size+ ALIGN_SIZE(sizeof(USED_MEM)),
+	 (USED_MEM*) ma_malloc(pre_alloc_size+ ALIGN_SIZE(sizeof(USED_MEM)),
 			       MYF(0))))
     {
       mem_root->free->size=pre_alloc_size+ALIGN_SIZE(sizeof(USED_MEM));
@@ -42,13 +42,13 @@ void init_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_siz
 #endif
 }
 
-gptr alloc_root(MEM_ROOT *mem_root, size_t Size)
+gptr ma_alloc_root(MEM_ROOT *mem_root, size_t Size)
 {
 #if defined(HAVE_purify) && defined(EXTRA_DEBUG)
   reg1 USED_MEM *next;
   Size+=ALIGN_SIZE(sizeof(USED_MEM));
 
-  if (!(next = (USED_MEM*) my_malloc(Size,MYF(MY_WME))))
+  if (!(next = (USED_MEM*) ma_malloc(Size,MYF(MY_WME))))
   {
     if (mem_root->error_handler)
       (*mem_root->error_handler)();
@@ -78,7 +78,7 @@ gptr alloc_root(MEM_ROOT *mem_root, size_t Size)
     if (max_left*4 < mem_root->block_size && get_size < mem_root->block_size)
       get_size=mem_root->block_size;		/* Normal alloc */
 
-    if (!(next = (USED_MEM*) my_malloc(get_size,MYF(MY_WME | MY_ZEROFILL))))
+    if (!(next = (USED_MEM*) ma_malloc(get_size,MYF(MY_WME | MY_ZEROFILL))))
     {
       if (mem_root->error_handler)
 	(*mem_root->error_handler)();
@@ -100,12 +100,12 @@ gptr alloc_root(MEM_ROOT *mem_root, size_t Size)
 #endif
 }
 
-	/* deallocate everything used by alloc_root */
+	/* deallocate everything used by ma_alloc_root */
 
-void free_root(MEM_ROOT *root, myf MyFlags)
+void ma_free_root(MEM_ROOT *root, myf MyFlags)
 {
   reg1 USED_MEM *next,*old;
-  DBUG_ENTER("free_root");
+  DBUG_ENTER("ma_free_root");
 
   if (!root)
     DBUG_VOID_RETURN; /* purecov: inspected */
@@ -116,13 +116,13 @@ void free_root(MEM_ROOT *root, myf MyFlags)
   {
     old=next; next= next->next ;
     if (old != root->pre_alloc)
-      my_free(old);
+      ma_free(old);
   }
   for (next= root->free ; next ; )
   {
     old=next; next= next->next ;
     if (old != root->pre_alloc)
-      my_free(old);
+      ma_free(old);
   }
   root->used=root->free=0;
   if (root->pre_alloc)
@@ -135,21 +135,21 @@ void free_root(MEM_ROOT *root, myf MyFlags)
 }
 
 
-char *strdup_root(MEM_ROOT *root,const char *str)
+char *ma_strdup_root(MEM_ROOT *root,const char *str)
 {
   size_t len= strlen(str)+1;
   char *pos;
-  if ((pos=alloc_root(root,len)))
+  if ((pos=ma_alloc_root(root,len)))
     memcpy(pos,str,len);
   pos[len]= 0;
   return pos;
 }
 
 
-char *memdup_root(MEM_ROOT *root, const char *str, size_t len)
+char *ma_memdup_root(MEM_ROOT *root, const char *str, size_t len)
 {
   char *pos;
-  if ((pos=alloc_root(root,len)))
+  if ((pos=ma_alloc_root(root,len)))
     memcpy(pos,str,len);
   return pos;
 }

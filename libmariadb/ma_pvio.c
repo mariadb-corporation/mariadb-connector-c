@@ -104,7 +104,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
   }
 
 
-  if (!(pvio= (MARIADB_PVIO *)my_malloc(sizeof(MARIADB_PVIO), 
+  if (!(pvio= (MARIADB_PVIO *)ma_malloc(sizeof(MARIADB_PVIO), 
                                       MYF(MY_WME | MY_ZEROFILL))))
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
@@ -124,7 +124,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
     pvio->methods->set_timeout(pvio, PVIO_WRITE_TIMEOUT, cinfo->mysql->options.write_timeout);
   }
 
-  if (!(pvio->cache= my_malloc(PVIO_READ_AHEAD_CACHE_SIZE, MYF(MY_ZEROFILL))))
+  if (!(pvio->cache= ma_malloc(PVIO_READ_AHEAD_CACHE_SIZE, MYF(MY_ZEROFILL))))
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
     return NULL;
@@ -386,19 +386,19 @@ void ma_pvio_close(MARIADB_PVIO *pvio)
   if (pvio && pvio->cssl)
   {
     ma_pvio_ssl_close(pvio->cssl);
-    my_free((gptr)pvio->cssl);
+    ma_free((gptr)pvio->cssl);
   }
 #endif
   if (pvio && pvio->methods->close)
     pvio->methods->close(pvio);
 
   if (pvio->cache)
-    my_free((gptr)pvio->cache);
+    ma_free((gptr)pvio->cache);
 
   if (pvio->fp)
     my_fclose(pvio->fp, MYF(0));
 
-  my_free((gptr)pvio);
+  ma_free((gptr)pvio);
 }
 /* }}} */
 
@@ -511,7 +511,7 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
   }
   if (ma_pvio_ssl_connect(pvio->cssl))
   {
-    my_free(pvio->cssl);
+    ma_free(pvio->cssl);
     pvio->cssl= NULL;
     return 1;
   }

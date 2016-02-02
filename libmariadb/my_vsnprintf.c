@@ -22,18 +22,18 @@
 #include <m_ctype.h>
 
 
-int my_snprintf(char* to, size_t n, const char* fmt, ...)
+int ma_snprintf(char* to, size_t n, const char* fmt, ...)
 {
   int result;
   va_list args;
   va_start(args,fmt);
-  result= my_vsnprintf(to, n, fmt, args);
+  result= ma_vsnprintf(to, n, fmt, args);
   va_end(args);
   return result;
 }
 
 
-int my_vsnprintf(char *to, size_t n, const char* fmt, va_list ap)
+int ma_vsnprintf(char *to, size_t n, const char* fmt, va_list ap)
 {
   char *start=to, *end=to+n-1;
   for (; *fmt ; fmt++)
@@ -92,7 +92,7 @@ static void my_printf(const char * fmt, ...)
   int n;
   va_list ar;
   va_start(ar, fmt);
-  n = my_vsnprintf(buf, sizeof(buf),fmt, ar);
+  n = ma_vsnprintf(buf, sizeof(buf),fmt, ar);
   printf(buf);
   printf("n=%d, strlen=%d\n", n, strlen(buf));
   va_end(ar);

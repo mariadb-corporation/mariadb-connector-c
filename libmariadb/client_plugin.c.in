@@ -197,7 +197,7 @@ add_plugin(MYSQL *mysql, struct st_mysql_client_plugin *plugin, void *dlhandle,
   }
 
   p= (struct st_client_plugin_int *)
-    memdup_root(&mem_root, (char *)&plugin_int, sizeof(plugin_int));
+    ma_memdup_root(&mem_root, (char *)&plugin_int, sizeof(plugin_int));
 
   if (!p)
   {
@@ -250,7 +250,7 @@ static void load_env_plugins(MYSQL *mysql)
   if (!s)
     return;
 
-  free_env= plugs= my_strdup(s, MYF(MY_WME));
+  free_env= plugs= ma_strdup(s, MYF(MY_WME));
 
   do {
     if ((s= strchr(plugs, ';')))
@@ -259,7 +259,7 @@ static void load_env_plugins(MYSQL *mysql)
     plugs= s + 1;
   } while (s);
 
-  my_free(free_env);
+  ma_free(free_env);
 }
 
 /********** extern functions to be used by libmariadb *********************/
@@ -286,7 +286,7 @@ int mysql_client_plugin_init()
   bzero(&mysql, sizeof(mysql)); /* dummy mysql for set_mysql_extended_error */
 
   pthread_mutex_init(&LOCK_load_client_plugin, MY_MUTEX_INIT_SLOW);
-  init_alloc_root(&mem_root, 128, 128);
+  ma_init_ma_alloc_root(&mem_root, 128, 128);
 
   bzero(&plugin_list, sizeof(plugin_list));
 
@@ -329,7 +329,7 @@ void mysql_client_plugin_deinit()
 
   bzero(&plugin_list, sizeof(plugin_list));
   initialized= 0;
-  free_root(&mem_root, MYF(0));
+  ma_free_root(&mem_root, MYF(0));
   pthread_mutex_destroy(&LOCK_load_client_plugin);
 }
 

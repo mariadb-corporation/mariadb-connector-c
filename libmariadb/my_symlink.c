@@ -53,7 +53,7 @@ int my_readlink(char *to, const char *filename, myf MyFlags)
     else
     {
       if (MyFlags & MY_WME)
-	my_error(EE_CANT_READLINK, MYF(0), filename, errno);
+	ma_error(EE_CANT_READLINK, MYF(0), filename, errno);
       result= -1;
     }
   }
@@ -80,7 +80,7 @@ int my_symlink(const char *content, const char *linkname, myf MyFlags)
     result= -1;
     my_errno=errno;
     if (MyFlags & MY_WME)
-      my_error(EE_CANT_SYMLINK, MYF(0), linkname, content, errno);
+      ma_error(EE_CANT_SYMLINK, MYF(0), linkname, content, errno);
   }
   DBUG_RETURN(result);
 #endif /* HAVE_READLINK */
@@ -123,7 +123,7 @@ int my_realpath(char *to, const char *filename, myf MyFlags)
       /* Realpath didn't work;  Use original name */
       my_errno=errno;
       if (MyFlags & MY_WME)
-	my_error(EE_REALPATH, MYF(0), filename, my_errno);
+	ma_error(EE_REALPATH, MYF(0), filename, my_errno);
       if (to != filename)
 	strmov(to,filename);
       result= -1;

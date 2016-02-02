@@ -43,7 +43,7 @@ static my_bool win32_init_tcp_ip();
 #define my_win_init()
 #endif
 
-my_bool my_init_done=0;
+my_bool ma_init_done=0;
 
 
 
@@ -61,17 +61,17 @@ static ulong atoi_octal(const char *str)
 
 	/* Init my_sys functions and my_sys variabels */
 
-void my_init(void)
+void ma_init(void)
 {
   my_string str;
-  if (my_init_done)
+  if (ma_init_done)
     return;
-  my_init_done=1;
+  ma_init_done=1;
 #ifdef THREAD
 #if defined(HAVE_PTHREAD_INIT)
   pthread_init();			/* Must be called before DBUG_ENTER */
 #endif
-  my_thread_global_init();
+  ma_thread_global_init();
 #ifndef _WIN32
   sigfillset(&my_signals);		/* signals blocked by mf_brkhant */
 #endif
@@ -80,46 +80,46 @@ void my_init(void)
   (void) isatty(0);			/* Go around connect() bug in UW7 */
 #endif
   {
-    DBUG_ENTER("my_init");
-    DBUG_PROCESS(my_progname ? my_progname : (char*) "unknown");
-    if (!home_dir)
+    DBUG_ENTER("ma_init");
+    DBUG_PROCESS(ma_progname ? ma_progname : (char*) "unknown");
+    if (!ma_ma_ma_home_dir)
     {					/* Don't initialize twice */
-      if ((home_dir=getenv("HOME")) != 0)
-        home_dir=intern_filename(home_dir_buff,home_dir);
+      if ((ma_ma_ma_home_dir=getenv("HOME")) != 0)
+        ma_ma_ma_home_dir=ma_intern_filename(ma_ma_ma_ma_ma_ma_home_dir_buff,ma_ma_ma_home_dir);
 #ifndef VMS
       /* Default creation of new files */
       if ((str=getenv("UMASK")) != 0)
-        my_umask=(int) (atoi_octal(str) | 0600);
+        ma_umask=(int) (atoi_octal(str) | 0600);
 	/* Default creation of new dir's */
       if ((str=getenv("UMASK_DIR")) != 0)
-        my_umask_dir=(int) (atoi_octal(str) | 0700);
+        ma_umask_dir=(int) (atoi_octal(str) | 0700);
 #endif
 #ifdef VMS
       init_ctype();			/* Stupid linker don't link _ctype.c */
 #endif
-      DBUG_PRINT("exit",("home: '%s'",home_dir));
+      DBUG_PRINT("exit",("home: '%s'",ma_ma_ma_home_dir));
     }
 #ifdef _WIN32
     my_win_init();
 #endif
     DBUG_VOID_RETURN;
   }
-} /* my_init */
+} /* ma_init */
 
 
 	/* End my_sys */
 
-void my_end(int infoflag)
+void ma_end(int infoflag)
 {
   FILE *info_file;
   if (!(info_file=DBUG_FILE))
     info_file=stderr;
   if (infoflag & MY_CHECK_ERROR || info_file != stderr)
   {					/* Test if some file is left open */
-    if (my_file_opened | my_stream_opened)
+    if (ma_file_opened | ma_stream_opened)
     {
-      sprintf(errbuff[0],EE(EE_OPEN_WARNING),my_file_opened,my_stream_opened);
-      (void) my_message_no_curses(EE_OPEN_WARNING,errbuff[0],ME_BELL);
+      sprintf(errbuff[0],EE(EE_OPEN_WARNING),ma_file_opened,ma_stream_opened);
+      (void) ma_message_no_curses(EE_OPEN_WARNING,errbuff[0],ME_BELL);
       DBUG_PRINT("error",("%s",errbuff[0]));
     }
   }
@@ -164,16 +164,16 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
   pthread_mutex_destroy(&THR_LOCK_malloc);
   pthread_mutex_destroy(&THR_LOCK_open);
   pthread_mutex_destroy(&THR_LOCK_net);
-  DBUG_END();				/* Must be done before my_thread_end */
-  my_thread_end();
-  my_thread_global_end();
+  DBUG_END();				/* Must be done before ma_thread_end */
+  ma_thread_end();
+  ma_thread_global_end();
 #endif
 #ifdef _WIN32
   if (have_tcpip);
     WSACleanup( );
 #endif /* _WIN32 */
-    my_init_done=0;
-} /* my_end */
+    ma_init_done=0;
+} /* ma_end */
 
 #ifdef _WIN32
 

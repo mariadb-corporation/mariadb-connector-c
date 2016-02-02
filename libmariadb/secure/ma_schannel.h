@@ -47,8 +47,8 @@ typedef void VOID;
 
 
 #ifndef HAVE_SCHANNEL_DEFAULT
-#define my_snprintf snprintf
-#define my_vsnprintf vsnprintf
+#define ma_snprintf snprintf
+#define ma_vsnprintf vsnprintf
 #undef SAFE_MUTEX
 #endif
 #include <my_pthread.h>

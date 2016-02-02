@@ -51,7 +51,7 @@ my_bool _hash_init(HASH *hash,uint size,uint key_offset,uint key_length,
   DBUG_PRINT("enter",("hash: %lx  size: %d",hash,size));
 
   hash->records=0;
-  if (my_init_dynamic_array_ci(&hash->array,sizeof(HASH_LINK),size,0))
+  if (ma_init_dynamic_array_ci(&hash->array,sizeof(HASH_LINK),size,0))
   {
     hash->free=0;				/* Allow call to hash_free */
     DBUG_RETURN(TRUE);
@@ -82,7 +82,7 @@ void hash_free(HASH *hash)
       (*hash->free)(data[i].data);
     hash->free=0;
   }
-  delete_dynamic(&hash->array);
+  ma_delete_dynamic(&hash->array);
   hash->records=0;
   DBUG_VOID_RETURN;
 }
@@ -303,7 +303,7 @@ my_bool hash_insert(HASH *info,const uchar *record)
   LINT_INIT(ptr_to_rec); LINT_INIT(ptr_to_rec2);
 
   flag=0;
-  if (!(empty=(HASH_LINK*) alloc_dynamic(&info->array)))
+  if (!(empty=(HASH_LINK*) ma_alloc_dynamic(&info->array)))
     return(TRUE);				/* No more memory */
 
   info->current_record= NO_RECORD;
@@ -503,7 +503,7 @@ my_bool hash_delete(HASH *hash,uchar *record)
   pos->next=empty_index;
 
 exit:
-  VOID(pop_dynamic(&hash->array));
+  VOID(ma_pop_dynamic(&hash->array));
   if (hash->free)
     (*hash->free)((uchar*) record);
   DBUG_RETURN(0);

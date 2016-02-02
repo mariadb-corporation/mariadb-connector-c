@@ -26,21 +26,21 @@
 #include "my_alarm.h"
 #endif
 
-	/* from my_init */
-my_string	home_dir=0,my_progname=0;
-char		NEAR curr_dir[FN_REFLEN]= {0},
-		NEAR home_dir_buff[FN_REFLEN]= {0};
-ulong		my_stream_opened=0,my_file_opened=0, my_tmp_file_created=0;
-int		NEAR my_umask=0664, NEAR my_umask_dir=0777;
+	/* from ma_init */
+my_string	ma_ma_ma_home_dir=0,ma_progname=0;
+char		NEAR ma_cur_dir[FN_REFLEN]= {0},
+		NEAR ma_ma_ma_ma_ma_ma_home_dir_buff[FN_REFLEN]= {0};
+ulong		ma_stream_opened=0,ma_file_opened=0, ma_tmp_file_created=0;
+int		NEAR ma_umask=0664, NEAR ma_umask_dir=0777;
 #ifndef THREAD
 int		NEAR my_errno=0;
 #endif
-struct my_file_info my_file_info[MY_NFILE]= {{0,UNOPEN}};
+struct ma_file_info ma_file_info[MY_NFILE]= {{0,UNOPEN}};
 
 	/* From mf_brkhant */
-int			NEAR my_dont_interrupt=0;
-volatile int		_my_signals=0;
-struct st_remember _my_sig_remember[MAX_SIGNALS]={{0,0}};
+int			NEAR ma_dont_interrupt=0;
+volatile int		_ma_signals=0;
+struct st_remember _ma_sig_remember[MAX_SIGNALS]={{0,0}};
 #ifdef THREAD
 sigset_t my_signals;			/* signals blocked by mf_brkhant */
 #endif
@@ -49,16 +49,16 @@ sigset_t my_signals;			/* signals blocked by mf_brkhant */
 my_bool key_cache_inited=0;
 
 	/* from mf_reccache.c */
-ulong my_default_record_cache_size=RECORD_CACHE_SIZE;
+ulong ma_default_record_cache_size=RECORD_CACHE_SIZE;
 
 	/* from soundex.c */
 				/* ABCDEFGHIJKLMNOPQRSTUVWXYZ */
 				/* :::::::::::::::::::::::::: */
-const char *soundex_map=	  "01230120022455012623010202";
+const char *ma_soundex_map=	  "01230120022455012623010202";
 
-	/* from my_malloc */
-USED_MEM* my_once_root_block=0;			/* pointer to first block */
-uint	  my_once_extra=ONCE_ALLOC_INIT;	/* Memory to alloc / block */
+	/* from ma_malloc */
+USED_MEM* ma_once_root_block=0;			/* pointer to first block */
+uint	  ma_once_extra=ONCE_ALLOC_INIT;	/* Memory to alloc / block */
 
 	/* from my_tempnam */
 #if !defined(HAVE_TEMPNAM) || defined(HPUX11)
@@ -78,22 +78,22 @@ uint cNewCount = 0;			/* Number of times NEW() was called */
 struct remember *pRememberRoot = NULL;
 
 	/* from my_alarm */
-int volatile my_have_got_alarm=0;	/* declare variable to reset */
-ulong my_time_to_wait_for_lock=2;	/* In seconds */
+int volatile ma_have_got_alarm=0;	/* declare variable to reset */
+ulong ma_time_to_wait_for_lock=2;	/* In seconds */
 
 	/* from errors.c */
 #ifdef SHARED_LIBRARY
-char * NEAR globerrs[GLOBERRS];		/* my_error_messages is here */
+char * NEAR ma_globerrs[GLOBERRS];		/* ma_error_messages is here */
 #endif
 void (*my_abort_hook)(int) = (void(*)(int)) exit;
-int (*error_handler_hook)(uint error,const char *str,myf MyFlags)=
-    my_message_no_curses;
-int (*fatal_error_handler_hook)(uint error,const char *str,myf MyFlags)=
-  my_message_no_curses;
+int (*ma_error_handler_hook)(uint error,const char *str,myf MyFlags)=
+    ma_message_no_curses;
+int (*fatal_ma_error_handler_hook)(uint error,const char *str,myf MyFlags)=
+  ma_message_no_curses;
 
 	/* How to disable options */
-my_bool NEAR my_disable_locking=0;
-my_bool NEAR my_disable_async_io=0;
-my_bool NEAR my_disable_flush_key_blocks=0;
-my_bool NEAR my_disable_symlinks=0;
+my_bool NEAR ma_disable_locking=0;
+my_bool NEAR ma_disable_async_io=0;
+my_bool NEAR ma_disable_flush_key_blocks=0;
+my_bool NEAR ma_disable_symlinks=0;
 my_bool NEAR mysys_uses_curses=0;

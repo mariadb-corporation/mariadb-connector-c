@@ -293,7 +293,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mpvio->db && (mysql->server_capabilities & CLIENT_CONNECT_WITH_DB))
   {
     end= strmake(end, mpvio->db, NAME_LEN) + 1;
-    mysql->db= my_strdup(mpvio->db, MYF(MY_WME));
+    mysql->db= ma_strdup(mpvio->db, MYF(MY_WME));
   }
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)

@@ -49,15 +49,15 @@ FILE *my_fopen(const char *FileName, int Flags, myf MyFlags)
     */
     if ((uint) fileno(fd) >= MY_NFILE)
     {
-      thread_safe_increment(my_stream_opened,&THR_LOCK_open);
+      thread_safe_increment(ma_stream_opened,&THR_LOCK_open);
       DBUG_RETURN(fd);				/* safeguard */
     }
     pthread_mutex_lock(&THR_LOCK_open);
-    if ((my_file_info[fileno(fd)].name = (char*)
-	 my_strdup(FileName,MyFlags)))
+    if ((ma_file_info[fileno(fd)].name = (char*)
+	 ma_strdup(FileName,MyFlags)))
     {
-      my_stream_opened++;
-      my_file_info[fileno(fd)].type = STREAM_BY_FOPEN;
+      ma_stream_opened++;
+      ma_file_info[fileno(fd)].type = STREAM_BY_FOPEN;
       pthread_mutex_unlock(&THR_LOCK_open);
       DBUG_PRINT("exit",("stream: %lx",fd));
       DBUG_RETURN(fd);
@@ -70,7 +70,7 @@ FILE *my_fopen(const char *FileName, int Flags, myf MyFlags)
     my_errno=errno;
   DBUG_PRINT("error",("Got error %d on open",my_errno));
   if (MyFlags & (MY_FFNF | MY_FAE | MY_WME))
-    my_error((Flags & O_RDONLY) || (Flags == O_RDONLY ) ? EE_FILENOTFOUND :
+    ma_error((Flags & O_RDONLY) || (Flags == O_RDONLY ) ? EE_FILENOTFOUND :
 	     EE_CANTCREATEFILE,
 	     MYF(ME_BELL+ME_WAITTANG), FileName,my_errno);
   DBUG_RETURN((FILE*) 0);
@@ -91,15 +91,15 @@ int my_fclose(FILE *fd, myf MyFlags)
   {
     my_errno=errno;
     if (MyFlags & (MY_FAE | MY_WME))
-      my_error(EE_BADCLOSE, MYF(ME_BELL+ME_WAITTANG),
+      ma_error(EE_BADCLOSE, MYF(ME_BELL+ME_WAITTANG),
 	       my_filename(file),errno);
   }
   else
-    my_stream_opened--;
-  if ((uint) file < MY_NFILE && my_file_info[file].type != UNOPEN)
+    ma_stream_opened--;
+  if ((uint) file < MY_NFILE && ma_file_info[file].type != UNOPEN)
   {
-    my_file_info[file].type = UNOPEN;
-    my_free(my_file_info[file].name);
+    ma_file_info[file].type = UNOPEN;
+    ma_free(ma_file_info[file].name);
   }
   pthread_mutex_unlock(&THR_LOCK_open);
   DBUG_RETURN(err);
@@ -122,23 +122,23 @@ FILE *my_fdopen(File Filedes, const char *name, int Flags, myf MyFlags)
   {
     my_errno=errno;
     if (MyFlags & (MY_FAE | MY_WME))
-      my_error(EE_CANT_OPEN_STREAM, MYF(ME_BELL+ME_WAITTANG),errno);
+      ma_error(EE_CANT_OPEN_STREAM, MYF(ME_BELL+ME_WAITTANG),errno);
   }
   else
   {
     pthread_mutex_lock(&THR_LOCK_open);
-    my_stream_opened++;
+    ma_stream_opened++;
     if (Filedes < MY_NFILE)
     {
-      if (my_file_info[Filedes].type != UNOPEN)
+      if (ma_file_info[Filedes].type != UNOPEN)
       {
-        my_file_opened--;			/* File is opened with my_open ! */
+        ma_file_opened--;			/* File is opened with my_open ! */
       }
       else
       {
-        my_file_info[Filedes].name=  my_strdup(name,MyFlags);
+        ma_file_info[Filedes].name=  ma_strdup(name,MyFlags);
       }
-      my_file_info[Filedes].type = STREAM_BY_FDOPEN;
+      ma_file_info[Filedes].type = STREAM_BY_FDOPEN;
     }
     pthread_mutex_unlock(&THR_LOCK_open);
   }

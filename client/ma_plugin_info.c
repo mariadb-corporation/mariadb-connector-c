@@ -56,16 +56,16 @@ static struct st_plugin_type plugin_types[]=
 
 static void version()
 {
-  printf("%s Version %s\n", my_progname, CLIENT_PLUGIN_INFO_VERSION);
+  printf("%s Version %s\n", ma_progname, CLIENT_PLUGIN_INFO_VERSION);
 }
 
 static void usage(void)
 {
   int i=0;
-  printf("%s Version %s\n", my_progname, CLIENT_PLUGIN_INFO_VERSION);
+  printf("%s Version %s\n", ma_progname, CLIENT_PLUGIN_INFO_VERSION);
   puts("Copyright 2015 MariaDB Corporation AB");
   puts("Show client plugin information for MariaDB Connector/C.");
-  printf("Usage: %s [OPTIONS] [plugin_name]\n", my_progname);
+  printf("Usage: %s [OPTIONS] [plugin_name]\n", ma_progname);
   while (long_options[i].name)
   {
     printf("  --%-12s -%s\n", long_options[i].name, values[i]);
@@ -73,7 +73,7 @@ static void usage(void)
   }
 }
 
-static char *get_type_name(int type)
+static char *ma_get_type_name(int type)
 {
   int i=0;
   while (plugin_types[i].type)
@@ -88,7 +88,7 @@ static char *get_type_name(int type)
 static void show_plugin_info(struct st_mysql_client_plugin *plugin, my_bool builtin)
 {
   printf("Name: %s\n", plugin->name);
-  printf("Type: %s\n", get_type_name(plugin->type));
+  printf("Type: %s\n", ma_get_type_name(plugin->type));
   printf("Desc: %s\n", plugin->desc);
   printf("Author: %s\n", plugin->author);
   printf("License: %s\n", plugin->license);
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 {
   int option_index= 0;
   int c;
-  my_progname= argv[0];
+  ma_progname= argv[0];
 
   mysql_server_init(0, NULL, NULL);
 

@@ -21,7 +21,7 @@
 ** On Windows defaults will also search in the Windows directory for a file
 ** called 'group'.ini
 ** As long as the program uses the last argument for conflicting
-** options one only have to add a call to "load_defaults" to enable
+** options one only have to add a call to "mariadb_load_defaults" to enable
 ** use of default values.
 ** pre- and end 'blank space' are removed from options and values. The
 ** following escape sequences are recognized in values:  \b \t \n \r \\
@@ -75,24 +75,24 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args,MEM_ROOT *alloc,
 				   const char *ext, TYPELIB *group);
 
 
-void load_defaults(const char *conf_file, const char **groups,
+void mariadb_load_defaults(const char *conf_file, const char **groups,
 		   int *argc, char ***argv)
 {
   DYNAMIC_ARRAY args;
   const char **dirs, *forced_default_file;
   TYPELIB group;
-  my_bool found_print_defaults=0;
+  my_bool found_ma_print_defaults=0;
   uint args_used=0;
   MEM_ROOT alloc;
   char *ptr,**res;
-  DBUG_ENTER("load_defaults");
+  DBUG_ENTER("mariadb_load_defaults");
 
-  init_alloc_root(&alloc,128,0);
+  ma_init_ma_alloc_root(&alloc,128,0);
   if (*argc >= 2 && !strcmp(argv[0][1],"--no-defaults"))
   {
     /* remove the --no-defaults argument and return only the other arguments */
     uint i;
-    if (!(ptr=(char*) alloc_root(&alloc,sizeof(alloc)+
+    if (!(ptr=(char*) ma_alloc_root(&alloc,sizeof(alloc)+
 				 (*argc + 1)*sizeof(char*))))
       goto err;
     res= (char**) (ptr+sizeof(alloc));
@@ -127,7 +127,7 @@ void load_defaults(const char *conf_file, const char **groups,
   for (; *groups ; groups++)
     group.count++;
 
-  if (my_init_dynamic_array(&args, sizeof(char*),*argc, 32))
+  if (ma_init_dynamic_array(&args, sizeof(char*),*argc, 32))
     goto err;
   if (forced_default_file)
   {
@@ -169,7 +169,7 @@ void load_defaults(const char *conf_file, const char **groups,
 	goto err;
     }
   }
-  if (!(ptr=(char*) alloc_root(&alloc,sizeof(alloc)+
+  if (!(ptr=(char*) ma_alloc_root(&alloc,sizeof(alloc)+
 			       (args.elements + *argc +1) *sizeof(char*))))
     goto err;
   res= (char**) (ptr+sizeof(alloc));
@@ -184,7 +184,7 @@ void load_defaults(const char *conf_file, const char **groups,
   /* Check if we wan't to see the new argument list */
   if (*argc >= 2 && !strcmp(argv[0][1],"--print-defaults"))
   {
-    found_print_defaults=1;
+    found_ma_print_defaults=1;
     --*argc; ++*argv;				/* skipp argument */
   }
 
@@ -195,8 +195,8 @@ void load_defaults(const char *conf_file, const char **groups,
   (*argc)+=args.elements;
   *argv= (char**) res;
   *(MEM_ROOT*) ptr= alloc;			/* Save alloc root for free */
-  delete_dynamic(&args);
-  if (found_print_defaults)
+  ma_delete_dynamic(&args);
+  if (found_ma_print_defaults)
   {
     int i;
     printf("%s would have been started with the following arguments:\n",
@@ -214,11 +214,11 @@ void load_defaults(const char *conf_file, const char **groups,
 }
 
 
-void free_defaults(char **argv)
+void ma_free_defaults(char **argv)
 {
   MEM_ROOT ptr;
   memcpy_fixed((char*) &ptr,(char *) argv - sizeof(ptr), sizeof(ptr));
-  free_root(&ptr,MYF(0));
+  ma_free_root(&ptr,MYF(0));
 }
 
 
@@ -294,7 +294,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
       }
       for ( ; isspace(end[-1]) ; end--) ;	/* Remove end space */
       end[0]=0;
-      read_values=find_type(ptr,group,3) > 0;
+      read_values=ma_find_type(ptr,group,3) > 0;
       continue;
     }
     if (!found_group)
@@ -311,10 +311,10 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
     for ( ; isspace(end[-1]) ; end--) ;
     if (!value)
     {
-      if (!(tmp=alloc_root(alloc,(uint) (end-ptr)+3)))
+      if (!(tmp=ma_alloc_root(alloc,(uint) (end-ptr)+3)))
 	goto err;
       strmake(strmov(tmp,"--"),ptr,(uint) (end-ptr));
-      if (insert_dynamic(args,(gptr) &tmp))
+      if (ma_insert_dynamic(args,(gptr) &tmp))
 	goto err;
     }
     else
@@ -333,10 +333,10 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
       }
       if (value_end < value)			/* Empty string */
 	value_end=value;
-      if (!(tmp=alloc_root(alloc,(uint) (end-ptr)+3 +
+      if (!(tmp=ma_alloc_root(alloc,(uint) (end-ptr)+3 +
 			   (uint) (value_end-value)+1)))
 	goto err;
-      if (insert_dynamic(args,(gptr) &tmp))
+      if (ma_insert_dynamic(args,(gptr) &tmp))
 	goto err;
       ptr=strnmov(strmov(tmp,"--"),ptr,(uint) (end-ptr));
       *ptr++= '=';
@@ -390,7 +390,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
 }
 
 
-void print_defaults(const char *conf_file, const char **groups)
+void ma_print_defaults(const char *conf_file, const char **groups)
 {
 #ifdef _WIN32
   bool have_ext=fn_ext(conf_file)[0] != 0;

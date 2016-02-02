@@ -15,7 +15,7 @@
    Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
    MA 02111-1307, USA */
 
-/* my_setwd() and my_getwd() works with intern_filenames !! */
+/* my_setwd() and my_getwd() works with ma_intern_filenames !! */
 
 #include "mysys_priv.h"
 #include <m_string.h>
@@ -40,7 +40,7 @@
 	/* Gets current working directory in buff. Directory is allways ended
 	   with FN_LIBCHAR */
 	/* One must pass a buffer to my_getwd. One can allways use
-	   curr_dir[] */
+	   ma_cur_dir[] */
 
 int my_getwd(my_string buf, uint size, myf MyFlags)
 {
@@ -49,8 +49,8 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
   DBUG_PRINT("my",("buf: %lx  size: %d  MyFlags %d", buf,size,MyFlags));
 
 #if ! defined(MSDOS)
-  if (curr_dir[0])				/* Current pos is saved here */
-    VOID(strmake(buf,&curr_dir[0],size-1));
+  if (ma_cur_dir[0])				/* Current pos is saved here */
+    VOID(strmake(buf,&ma_cur_dir[0],size-1));
   else
 #endif
   {
@@ -62,7 +62,7 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
 #endif
     {
       my_errno=errno;
-      my_error(EE_GETWD,MYF(ME_BELL+ME_WAITTANG),errno);
+      ma_error(EE_GETWD,MYF(ME_BELL+ME_WAITTANG),errno);
       return(-1);
     }
 #elif defined(HAVE_GETWD)
@@ -75,10 +75,10 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
     if (!getcwd(buf,size-2,1) && MyFlags & MY_WME)
     {
       my_errno=errno;
-      my_error(EE_GETWD,MYF(ME_BELL+ME_WAITTANG),errno);
+      ma_error(EE_GETWD,MYF(ME_BELL+ME_WAITTANG),errno);
       return(-1);
     }
-    intern_filename(buf,buf);
+    ma_intern_filename(buf,buf);
 #else
 #error "No way to get current directory"
 #endif
@@ -87,7 +87,7 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
       pos[0]= FN_LIBCHAR;
       pos[1]=0;
     }
-    (void) strmake(&curr_dir[0],buf,(size_s) (FN_REFLEN-1));
+    (void) strmake(&ma_cur_dir[0],buf,(size_s) (FN_REFLEN-1));
   }
   DBUG_RETURN(0);
 } /* my_getwd */
@@ -129,7 +129,7 @@ int my_setwd(const char *dir, myf MyFlags)
     {
       *pos='\0';			/* Dir is now only drive */
       my_errno=errno;
-      my_error(EE_SETWD,MYF(ME_BELL+ME_WAITTANG),dir,ENOENT);
+      ma_error(EE_SETWD,MYF(ME_BELL+ME_WAITTANG),dir,ENOENT);
       DBUG_RETURN(-1);
     }
     dir=pos;				/* drive changed, change now path */
@@ -151,7 +151,7 @@ int my_setwd(const char *dir, myf MyFlags)
       pos[0]=FN_LIBCHAR;		/* Mark as directory */
       pos[1]=0;
     }
-    system_filename(buff,buff);		/* Change to VMS format */
+    ma_system_filename(buff,buff);		/* Change to VMS format */
     dir=buff;
   }
 #endif /* VMS */
@@ -163,22 +163,22 @@ int my_setwd(const char *dir, myf MyFlags)
   {
     my_errno=errno;
     if (MyFlags & MY_WME)
-      my_error(EE_SETWD,MYF(ME_BELL+ME_WAITTANG),start,errno);
+      ma_error(EE_SETWD,MYF(ME_BELL+ME_WAITTANG),start,errno);
   }
   else
   {
     if (test_if_hard_path(start))
     {						/* Hard pathname */
-      pos=strmake(&curr_dir[0],start,(size_s) FN_REFLEN-1);
+      pos=strmake(&ma_cur_dir[0],start,(size_s) FN_REFLEN-1);
       if (pos[-1] != FN_LIBCHAR)
       {
-	length=(uint) (pos-(char*) curr_dir);
-	curr_dir[length]=FN_LIBCHAR;		/* must end with '/' */
-	curr_dir[length+1]='\0';
+	length=(uint) (pos-(char*) ma_cur_dir);
+	ma_cur_dir[length]=FN_LIBCHAR;		/* must end with '/' */
+	ma_cur_dir[length+1]='\0';
       }
     }
     else
-      curr_dir[0]='\0';				/* Don't save name */
+      ma_cur_dir[0]='\0';				/* Don't save name */
   }
   DBUG_RETURN(res);
 } /* my_setwd */
@@ -191,7 +191,7 @@ int my_setwd(const char *dir, myf MyFlags)
 int test_if_hard_path(register const char *dir_name)
 {
   if (dir_name[0] == FN_HOMELIB && dir_name[1] == FN_LIBCHAR)
-    return (home_dir != NullS && test_if_hard_path(home_dir));
+    return (ma_ma_ma_home_dir != NullS && test_if_hard_path(ma_ma_ma_home_dir));
   if (dir_name[0] == FN_LIBCHAR)
     return (TRUE);
 #ifdef FN_DEVCHAR

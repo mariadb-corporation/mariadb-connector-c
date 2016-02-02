@@ -516,11 +516,11 @@ extern pthread_mutexattr_t my_errchk_mutexattr;
 #define MY_INIT_MUTEX_ERRCHK &my_errchk_mutexattr
 #endif
 
-extern my_bool my_thread_global_init(void);
-extern void my_thread_global_end(void);
-extern my_bool my_thread_init(void);
-extern void my_thread_end(void);
-extern const char *my_thread_name(void);
+extern my_bool ma_thread_global_init(void);
+extern void ma_thread_global_end(void);
+extern my_bool ma_thread_init(void);
+extern void ma_thread_end(void);
+extern const char *ma_thread_name(void);
 extern long my_thread_id(void);
 extern int pthread_no_free(void *);
 extern int pthread_dummy(int);
@@ -534,7 +534,7 @@ extern int pthread_dummy(int);
 #define DEFAULT_THREAD_STACK	(64*1024)
 #endif
 
-struct st_my_thread_var
+struct st_ma_thread_var
 {
   int thr_errno;
   pthread_cond_t suspend;
@@ -552,9 +552,9 @@ struct st_my_thread_var
   my_bool initialized;
 };
 
-extern struct st_my_thread_var *_my_thread_var(void) __attribute__ ((const));
+extern struct st_ma_thread_var *_ma_thread_var(void) __attribute__ ((const));
 extern void **my_thread_var_dbug();
-#define my_thread_var (_my_thread_var())
+#define my_thread_var (_ma_thread_var())
 #define my_errno my_thread_var->thr_errno
 
 	/* statistics_xxx functions are for not essential statistic */
