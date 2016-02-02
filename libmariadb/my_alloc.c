@@ -21,20 +21,20 @@
 #include <my_sys.h>
 #include <m_string.h>
 
-void ma_init_ma_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size)
+void ma_init_ma_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size)
 {
   mem_root->free=mem_root->used=0;
   mem_root->min_malloc=32;
-  mem_root->block_size=block_size-MALLOC_OVERHEAD-sizeof(USED_MEM)-8;
+  mem_root->block_size=block_size-MALLOC_OVERHEAD-sizeof(MA_USED_MEM)-8;
   mem_root->error_handler=0;
 #if !(defined(HAVE_purify) && defined(EXTRA_DEBUG))
   if (pre_alloc_size)
   {
     if ((mem_root->free = mem_root->pre_alloc=
-	 (USED_MEM*) ma_malloc(pre_alloc_size+ ALIGN_SIZE(sizeof(USED_MEM)),
+	 (MA_USED_MEM*) ma_malloc(pre_alloc_size+ ALIGN_SIZE(sizeof(MA_USED_MEM)),
 			       MYF(0))))
     {
-      mem_root->free->size=pre_alloc_size+ALIGN_SIZE(sizeof(USED_MEM));
+      mem_root->free->size=pre_alloc_size+ALIGN_SIZE(sizeof(MA_USED_MEM));
       mem_root->free->left=pre_alloc_size;
       mem_root->free->next=0;
     }
@@ -42,13 +42,13 @@ void ma_init_ma_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_all
 #endif
 }
 
-gptr ma_alloc_root(MEM_ROOT *mem_root, size_t Size)
+gptr ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size)
 {
 #if defined(HAVE_purify) && defined(EXTRA_DEBUG)
-  reg1 USED_MEM *next;
-  Size+=ALIGN_SIZE(sizeof(USED_MEM));
+  reg1 MA_USED_MEM *next;
+  Size+=ALIGN_SIZE(sizeof(MA_USED_MEM));
 
-  if (!(next = (USED_MEM*) ma_malloc(Size,MYF(MY_WME))))
+  if (!(next = (MA_USED_MEM*) ma_malloc(Size,MYF(MY_WME))))
   {
     if (mem_root->error_handler)
       (*mem_root->error_handler)();
@@ -56,12 +56,12 @@ gptr ma_alloc_root(MEM_ROOT *mem_root, size_t Size)
   }
   next->next=mem_root->used;
   mem_root->used=next;
-  return (gptr) (((char*) next)+ALIGN_SIZE(sizeof(USED_MEM)));
+  return (gptr) (((char*) next)+ALIGN_SIZE(sizeof(MA_USED_MEM)));
 #else
   size_t get_size,max_left;
   gptr point;
-  reg1 USED_MEM *next;
-  reg2 USED_MEM **prev;
+  reg1 MA_USED_MEM *next;
+  reg2 MA_USED_MEM **prev;
 
   Size= ALIGN_SIZE(Size);
   prev= &mem_root->free;
@@ -74,11 +74,11 @@ gptr ma_alloc_root(MEM_ROOT *mem_root, size_t Size)
   }
   if (! next)
   {						/* Time to alloc new block */
-    get_size= Size+ALIGN_SIZE(sizeof(USED_MEM));
+    get_size= Size+ALIGN_SIZE(sizeof(MA_USED_MEM));
     if (max_left*4 < mem_root->block_size && get_size < mem_root->block_size)
       get_size=mem_root->block_size;		/* Normal alloc */
 
-    if (!(next = (USED_MEM*) ma_malloc(get_size,MYF(MY_WME | MY_ZEROFILL))))
+    if (!(next = (MA_USED_MEM*) ma_malloc(get_size,MYF(MY_WME | MY_ZEROFILL))))
     {
       if (mem_root->error_handler)
 	(*mem_root->error_handler)();
@@ -86,7 +86,7 @@ gptr ma_alloc_root(MEM_ROOT *mem_root, size_t Size)
     }
     next->next= *prev;
     next->size= get_size;
-    next->left= get_size-ALIGN_SIZE(sizeof(USED_MEM));
+    next->left= get_size-ALIGN_SIZE(sizeof(MA_USED_MEM));
     *prev=next;
   }
   point= (gptr) ((char*) next+ (next->size-next->left));
@@ -102,9 +102,9 @@ gptr ma_alloc_root(MEM_ROOT *mem_root, size_t Size)
 
 	/* deallocate everything used by ma_alloc_root */
 
-void ma_free_root(MEM_ROOT *root, myf MyFlags)
+void ma_free_root(MA_MEM_ROOT *root, myf MyFlags)
 {
-  reg1 USED_MEM *next,*old;
+  reg1 MA_USED_MEM *next,*old;
   DBUG_ENTER("ma_free_root");
 
   if (!root)
@@ -128,14 +128,14 @@ void ma_free_root(MEM_ROOT *root, myf MyFlags)
   if (root->pre_alloc)
   {
     root->free=root->pre_alloc;
-    root->free->left=root->pre_alloc->size-ALIGN_SIZE(sizeof(USED_MEM));
+    root->free->left=root->pre_alloc->size-ALIGN_SIZE(sizeof(MA_USED_MEM));
     root->free->next=0;
   }
   DBUG_VOID_RETURN;
 }
 
 
-char *ma_strdup_root(MEM_ROOT *root,const char *str)
+char *ma_strdup_root(MA_MEM_ROOT *root,const char *str)
 {
   size_t len= strlen(str)+1;
   char *pos;
@@ -146,7 +146,7 @@ char *ma_strdup_root(MEM_ROOT *root,const char *str)
 }
 
 
-char *ma_memdup_root(MEM_ROOT *root, const char *str, size_t len)
+char *ma_memdup_root(MA_MEM_ROOT *root, const char *str, size_t len)
 {
   char *pos;
   if ((pos=ma_alloc_root(root,len)))

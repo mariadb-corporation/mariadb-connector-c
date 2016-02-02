@@ -39,7 +39,7 @@
 #include "mysys_priv.h"
 #include "m_string.h"
 #include <ctype.h>
-#include "m_ctype.h"
+#include "mariadb_ctype.h"
 #include <my_dir.h>
 #include <mysql.h>
 #include <mariadb/ma_io.h>
@@ -70,7 +70,7 @@ NullS,
 #define windows_ext	".ini"
 #endif
 
-static my_bool search_default_file(DYNAMIC_ARRAY *args,MEM_ROOT *alloc,
+static my_bool search_default_file(DYNAMIC_ARRAY *args,MA_MEM_ROOT *alloc,
 				   const char *dir, const char *config_file,
 				   const char *ext, TYPELIB *group);
 
@@ -83,7 +83,7 @@ void mariadb_load_defaults(const char *conf_file, const char **groups,
   TYPELIB group;
   my_bool found_ma_print_defaults=0;
   uint args_used=0;
-  MEM_ROOT alloc;
+  MA_MEM_ROOT alloc;
   char *ptr,**res;
   DBUG_ENTER("mariadb_load_defaults");
 
@@ -101,7 +101,7 @@ void mariadb_load_defaults(const char *conf_file, const char **groups,
       res[i-1]=argv[0][i];
     (*argc)--;
     *argv=res;
-    *(MEM_ROOT*) ptr= alloc;			/* Save alloc root for free */
+    *(MA_MEM_ROOT*) ptr= alloc;			/* Save alloc root for free */
     DBUG_VOID_RETURN;
   }
 
@@ -194,7 +194,7 @@ void mariadb_load_defaults(const char *conf_file, const char **groups,
 
   (*argc)+=args.elements;
   *argv= (char**) res;
-  *(MEM_ROOT*) ptr= alloc;			/* Save alloc root for free */
+  *(MA_MEM_ROOT*) ptr= alloc;			/* Save alloc root for free */
   ma_delete_dynamic(&args);
   if (found_ma_print_defaults)
   {
@@ -216,13 +216,13 @@ void mariadb_load_defaults(const char *conf_file, const char **groups,
 
 void ma_free_defaults(char **argv)
 {
-  MEM_ROOT ptr;
+  MA_MEM_ROOT ptr;
   memcpy_fixed((char*) &ptr,(char *) argv - sizeof(ptr), sizeof(ptr));
   ma_free_root(&ptr,MYF(0));
 }
 
 
-static my_bool search_default_file(DYNAMIC_ARRAY *args, MEM_ROOT *alloc,
+static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
 				   const char *dir, const char *config_file,
 				   const char *ext, TYPELIB *group)
 {

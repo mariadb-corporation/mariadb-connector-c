@@ -165,7 +165,7 @@ int do_verify_prepare_field(MYSQL_RES *result,
                             const char *file, int line)
 {
   MYSQL_FIELD *field;
-/*  CHARSET_INFO *cs; */
+/*  MARIADB_CHARSET_INFO *cs; */
 
   FAIL_IF(!(field= mysql_fetch_field_direct(result, no)), "FAILED to get result");
 /*  cs= mysql_find_charset_nr(field->charsetnr);

@@ -1,37 +1,18 @@
-SET(MARIADB_CLIENT_INCLUDES config-win.h
-                            dbug.h
-                            errmsg.h
-                            getopt.h
-                            hash.h
-                            ma_common.h
-                            ma_pvio.h
-                            ma_ssl.h
-                            m_ctype.h
-                            m_string.h
-                            ma_dyncol.h
-                            my_alarm.h
-                            my_base.h
-                            my_config.h.in
-                            my_dir.h
-                            my_global.h
-                            my_list.h
-                            my_net.h
-                            my_no_pthread.h
-                            my_pthread.h
-                            my_stmt.h
-                            my_sys.h
-                            mysql.h
-                            mysql_com.h
-                            mysql_io.h
-                            mysql_mm.h
-                            mysql_priv.h
-                            mysql_version.h
-                            mysql_wireprotocol.h
-                            mysqld_error.h
-                            mysys_err.h
-                            sha1.h
-                            thr_alarm.h
-                            mysql/client_plugin.h
-                            mysql/plugin_auth_common.h
-                            mysql/plugin_auth.h
+SET(MARIADB_CLIENT_INCLUDES
+                            ${CMAKE_SOURCE_DIR}/include/mysql_com.h
+                            ${CMAKE_SOURCE_DIR}/include/mysql.h
+                            ${CMAKE_SOURCE_DIR}/include/my_stmt.h
+                            ${CMAKE_SOURCE_DIR}/include/mysql_version.h
+                            ${CMAKE_SOURCE_DIR}/include/my_list.h
+                            ${CMAKE_SOURCE_DIR}/include/mariadb_ctype.h)
+SET(MARIADB_ADDITIONAL_INCLUDES
                             PARENT_SCOPE)
+INSTALL(FILES
+   ${CMAKE_BINARY_DIR}/include/mysql_version.h
+   ${MARIADB_CLIENT_INCLUDES}
+   DESTINATION ${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
+INSTALL(FILES
+   ${CMAKE_SOURCE_DIR}/include/mysql/client_plugin.h
+   ${CMAKE_SOURCE_DIR}/include/mysql/plugin_auth_common.h
+   ${CMAKE_SOURCE_DIR}/include/mysql/plugin_auth.h
+   DESTINATION ${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}/mysql)

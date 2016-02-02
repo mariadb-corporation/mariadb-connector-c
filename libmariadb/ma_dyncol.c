@@ -71,15 +71,15 @@
 
 
 #ifndef LIBMARIADB
-uint32 copy_and_convert(char *to, uint32 to_length, CHARSET_INFO *to_cs,
+uint32 copy_and_convert(char *to, uint32 to_length, MARIADB_CHARSET_INFO *to_cs,
 			const char *from, uint32 from_length,
-			CHARSET_INFO *from_cs, uint *errors);
+			MARIADB_CHARSET_INFO *from_cs, uint *errors);
 #else
 
 size_t mariadb_time_to_string(const MYSQL_TIME *tm, char *time_str, size_t len,
                            unsigned int digits);
-size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
-                                      char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
+size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs,
+                                      char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode);
 #endif
 /*
   Flag byte bits
@@ -1062,7 +1062,7 @@ dynamic_column_double_read(DYNAMIC_COLUMN_VALUE *store_it_here,
 
 static enum enum_dyncol_func_result
 dynamic_column_string_store(DYNAMIC_COLUMN *str, LEX_STRING *string,
-                            CHARSET_INFO *charset)
+                            MARIADB_CHARSET_INFO *charset)
 {
   enum enum_dyncol_func_result rc;
 #ifdef LIBMARIADB
@@ -3841,7 +3841,7 @@ end:
 
 enum enum_dyncol_func_result
 mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
-                       CHARSET_INFO *cs, char quote)
+                       MARIADB_CHARSET_INFO *cs, char quote)
 {
   char buff[40];
   size_t len;

@@ -41,7 +41,7 @@
 
 #include <my_global.h>
 #include "m_string.h"
-#include "m_ctype.h"
+#include "mariadb_ctype.h"
 #include "my_sys.h"			/* defines errno */
 #include <errno.h>
 

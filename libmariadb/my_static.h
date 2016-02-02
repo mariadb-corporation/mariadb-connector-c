@@ -54,7 +54,7 @@ extern struct st_remember _ma_sig_remember[MAX_SIGNALS];
 
 extern const char *ma_soundex_map;
 
-extern USED_MEM* ma_once_root_block;
+extern MA_USED_MEM* ma_once_root_block;
 extern uint	 ma_once_extra;
 
 #if !defined(HAVE_TEMPNAM) || defined(HPUX11)

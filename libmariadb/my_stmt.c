@@ -47,7 +47,7 @@
 #include <my_sys.h>
 #include <mysys_err.h>
 #include <m_string.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #include "mysql.h"
 #include "mysql_priv.h"
 #include "mysql_version.h"
@@ -71,7 +71,7 @@
 
 typedef struct
 {
-  MEM_ROOT fields_ma_alloc_root;
+  MA_MEM_ROOT fields_ma_alloc_root;
 } MADB_STMT_EXTENSION;
 
 static my_bool is_not_null= 0;
@@ -913,7 +913,7 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
 
   if (stmt->field_count && !stmt->bind)
   {
-    MEM_ROOT *fields_ma_alloc_root=
+    MA_MEM_ROOT *fields_ma_alloc_root=
                 &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
 //    ma_free_root(fields_ma_alloc_root, MYF(0));
     if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
@@ -981,7 +981,7 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
 static my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove)
 {
   char stmt_id[STMT_ID_LENGTH];
-  MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+  MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
 
   /* clear memory */
   ma_free_root(&stmt->result.alloc, MYF(0)); /* allocated in mysql_stmt_store_result */
@@ -1243,7 +1243,7 @@ my_bool mthd_stmt_get_param_metadata(MYSQL_STMT *stmt)
 my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt)
 {
   MYSQL_DATA *result;
-  MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+  MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
   DBUG_ENTER("stmt_read_result_metadata");
 
   if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0, 7)))
@@ -1336,7 +1336,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   /* allocated bind buffer for result */
   if (stmt->field_count)
   {
-    MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
     if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
     {
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -1436,7 +1436,7 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
 static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
 {
   uint i;
-  MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+  MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
 
   DBUG_ENTER("madb_alloc_stmt_fields");
 
@@ -1526,7 +1526,7 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
     if (!stmt->field_count ||
         mysql->server_status & SERVER_MORE_RESULTS_EXIST) /* fix for ps_bug: test_misc */
     {
-      MEM_ROOT *fields_ma_alloc_root=
+      MA_MEM_ROOT *fields_ma_alloc_root=
                   &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
       uint i;
 
@@ -2049,7 +2049,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   /* allocated bind buffer for result */
   if (stmt->field_count)
   {
-    MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
     if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
     {
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);

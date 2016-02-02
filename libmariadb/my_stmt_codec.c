@@ -47,7 +47,7 @@
 #include <my_sys.h>
 #include <mysys_err.h>
 #include <m_string.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #include "mysql.h"
 
 #define MYSQL_SILENT

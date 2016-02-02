@@ -50,7 +50,7 @@
 #include <string.h>
 #endif
 #include <my_global.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #include <m_string.h>
 
 #include <iconv.h>
@@ -494,7 +494,7 @@ mysql_mbcharlen_utf32(unsigned int utf32 __attribute((unused)))
 #define UTF8_MB3 "utf8"
 
 /* {{{ mysql_charsets */
-const CHARSET_INFO compiled_charsets[] =
+const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
 {
   {   1, 1, "big5","big5_chinese_ci", "", 950, "BIG5", 1, 2, mysql_mbcharlen_big5, check_mb_big5},
   {   3, 1, "dec8", "dec8_swedisch_ci", "", 0, "DEC", 1, 1, NULL, NULL},
@@ -668,9 +668,9 @@ const CHARSET_INFO compiled_charsets[] =
 
 
 /* {{{ mysql_find_charset_nr */
-const CHARSET_INFO * mysql_find_charset_nr(unsigned int charsetnr)
+const MARIADB_CHARSET_INFO * mysql_find_charset_nr(unsigned int charsetnr)
 {
-  const CHARSET_INFO * c = compiled_charsets;
+  const MARIADB_CHARSET_INFO * c = mariadb_compiled_charsets;
   DBUG_ENTER("mysql_find_charset_nr");
 
   do {
@@ -686,9 +686,9 @@ const CHARSET_INFO * mysql_find_charset_nr(unsigned int charsetnr)
 
 
 /* {{{ mysql_find_charset_name */
-CHARSET_INFO * mysql_find_charset_name(const char *name)
+MARIADB_CHARSET_INFO * mysql_find_charset_name(const char *name)
 {
-  CHARSET_INFO *c = (CHARSET_INFO *)compiled_charsets;
+  MARIADB_CHARSET_INFO *c = (MARIADB_CHARSET_INFO *)mariadb_compiled_charsets;
   DBUG_ENTER("mysql_find_charset_name");
 
   do {
@@ -704,7 +704,7 @@ CHARSET_INFO * mysql_find_charset_name(const char *name)
 
 
 /* {{{ mysql_cset_escape_quotes */
-size_t mysql_cset_escape_quotes(const CHARSET_INFO *cset, char *newstr,
+size_t mysql_cset_escape_quotes(const MARIADB_CHARSET_INFO *cset, char *newstr,
                     const char * escapestr, size_t escapestr_len )
 {
   const char   *newstr_s = newstr;
@@ -758,7 +758,7 @@ size_t mysql_cset_escape_quotes(const CHARSET_INFO *cset, char *newstr,
 
 
 /* {{{ mysql_cset_escape_slashes */
-size_t mysql_cset_escape_slashes(const CHARSET_INFO * cset, char *newstr,
+size_t mysql_cset_escape_slashes(const MARIADB_CHARSET_INFO * cset, char *newstr,
                      const char * escapestr, size_t escapestr_len )
 {
   const char   *newstr_s = newstr;
@@ -1164,8 +1164,8 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
 
    @return -1 in case of error, bytes used in the "to" buffer, otherwise
  */
-size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
-                                      char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode)
+size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs,
+                                      char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode)
 {
   iconv_t conv= 0;
   size_t rc= -1;

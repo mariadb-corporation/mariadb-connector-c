@@ -32,8 +32,8 @@ gptr my_once_alloc(unsigned int Size, myf MyFlags)
 {
   size_t get_size,max_left;
   gptr point;
-  reg1 USED_MEM *next;
-  reg2 USED_MEM **prev;
+  reg1 MA_USED_MEM *next;
+  reg2 MA_USED_MEM **prev;
 
   Size= ALIGN_SIZE(Size);
   prev= &ma_once_root_block;
@@ -46,11 +46,11 @@ gptr my_once_alloc(unsigned int Size, myf MyFlags)
   }
   if (! next)
   {						/* Time to alloc new block */
-    get_size= Size+ALIGN_SIZE(sizeof(USED_MEM));
+    get_size= Size+ALIGN_SIZE(sizeof(MA_USED_MEM));
     if (max_left*4 < ma_once_extra && get_size < ma_once_extra)
       get_size=ma_once_extra;			/* Normal alloc */
 
-    if ((next = (USED_MEM*) malloc(get_size)) == 0)
+    if ((next = (MA_USED_MEM*) malloc(get_size)) == 0)
     {
       my_errno=errno;
       if (MyFlags & (MY_FAE+MY_WME))
@@ -60,7 +60,7 @@ gptr my_once_alloc(unsigned int Size, myf MyFlags)
     DBUG_PRINT("test",("my_once_malloc %u byte malloced",get_size));
     next->next= 0;
     next->size= get_size;
-    next->left= get_size-ALIGN_SIZE(sizeof(USED_MEM));
+    next->left= get_size-ALIGN_SIZE(sizeof(MA_USED_MEM));
     *prev=next;
   }
   point= (gptr) ((char*) next+ (next->size-next->left));
@@ -74,7 +74,7 @@ gptr my_once_alloc(unsigned int Size, myf MyFlags)
 
 void my_once_free(void)
 {
-  reg1 USED_MEM *next,*old;
+  reg1 MA_USED_MEM *next,*old;
   DBUG_ENTER("my_once_free");
 
   for (next=ma_once_root_block ; next ; )

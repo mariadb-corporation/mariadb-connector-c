@@ -658,12 +658,12 @@ static int test_bug_54100(MYSQL *mysql)
 
 
 /* We need this internal function for the test */
-CHARSET_INFO * mysql_find_charset_name(const char *name); 
+MARIADB_CHARSET_INFO * mysql_find_charset_name(const char *name); 
 
 static int test_utf16_utf32_noboms(MYSQL *mysql)
 {
   char          *csname[]= {"utf16", "utf16le", "utf32", "utf8"};
-  CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
+  MARIADB_CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
 
   const int     UTF8= sizeof(csname)/sizeof(char*) - 1;
 

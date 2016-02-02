@@ -19,7 +19,7 @@
 
 #include "mysys_priv.h"
 #include <m_string.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 
 /***************************************************************************
 ** Search after a fieldtype. Endspace in x is not compared.

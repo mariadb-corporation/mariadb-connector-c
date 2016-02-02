@@ -26,7 +26,7 @@
 #include <my_sys.h>
 #include <mysys_err.h>
 #include <m_string.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #include <ma_common.h>
 #include "my_context.h"
 #include "mysql.h"
@@ -86,8 +86,8 @@ static void mysql_close_options(MYSQL *mysql);
 extern my_bool  ma_init_done;
 extern my_bool  mysql_ps_subsystem_initialized;
 extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename);
-extern const CHARSET_INFO * mysql_find_charset_nr(uint charsetnr);
-extern const CHARSET_INFO * mysql_find_charset_name(const char * const name);
+extern const MARIADB_CHARSET_INFO * mysql_find_charset_nr(uint charsetnr);
+extern const MARIADB_CHARSET_INFO * mysql_find_charset_name(const char * const name);
 extern int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                            const char *data_plugin, const char *db);
 extern int net_add_multi_command(NET *net, uchar command, const uchar *packet,
@@ -933,7 +933,7 @@ static size_t rset_field_offsets[]= {
 };
 
 MYSQL_FIELD *
-unpack_fields(MYSQL_DATA *data,MEM_ROOT *alloc,uint fields,
+unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
 	      my_bool default_value, my_bool long_flag_protocol)
 {
   MYSQL_ROWS	*row;
@@ -1845,7 +1845,7 @@ void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
 my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user, 
 				  const char *passwd, const char *db)
 {
-  const CHARSET_INFO *s_cs= mysql->charset;
+  const MARIADB_CHARSET_INFO *s_cs= mysql->charset;
   char *s_user= mysql->user, 
        *s_passwd= mysql->passwd, 
        *s_db= mysql->db;
@@ -3457,7 +3457,7 @@ void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs)
 
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname)
 {
-  const CHARSET_INFO *cs;
+  const MARIADB_CHARSET_INFO *cs;
   DBUG_ENTER("mysql_set_character_set");
 
   if (!csname)
@@ -3638,14 +3638,14 @@ mysql_get_socket(MYSQL *mysql)
   return mariadb_get_socket(mysql);
 }
 
-CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname)
+MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname)
 {
-  return (CHARSET_INFO *)mysql_find_charset_name(csname);
+  return (MARIADB_CHARSET_INFO *)mysql_find_charset_name(csname);
 }
 
-CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr)
+MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr)
 {
-  return (CHARSET_INFO *)mysql_find_charset_nr(csnr);
+  return (MARIADB_CHARSET_INFO *)mysql_find_charset_nr(csnr);
 }
 
 my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...)
@@ -3746,7 +3746,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     else
       goto error;
     break;
-  case MARIADB_CONNECTION_CHARSET_INFO:
+  case MARIADB_CONNECTION_MARIADB_CHARSET_INFO:
     if (mysql)
       mariadb_get_charset_info(mysql, (MY_CHARSET_INFO *)arg);
     else
@@ -3787,7 +3787,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       char *name;
       name= va_arg(ap, char *);
       if (name)
-        *((CHARSET_INFO **)arg)= (CHARSET_INFO *)mysql_find_charset_name(name);
+        *((MARIADB_CHARSET_INFO **)arg)= (MARIADB_CHARSET_INFO *)mysql_find_charset_name(name);
       else
         goto error;
     }
@@ -3796,7 +3796,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     {
       unsigned int nr;
       nr= va_arg(ap, unsigned int);
-      *((CHARSET_INFO **)arg)= (CHARSET_INFO *)mysql_find_charset_nr(nr);
+      *((MARIADB_CHARSET_INFO **)arg)= (MARIADB_CHARSET_INFO *)mysql_find_charset_nr(nr);
     }
     break;
   case MARIADB_CONNECTION_SSL_CIPHER:

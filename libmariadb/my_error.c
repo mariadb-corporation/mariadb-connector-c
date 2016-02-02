@@ -19,7 +19,7 @@
 #include "mysys_err.h"
 #include <m_string.h>
 #include <stdarg.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 
 /* Define some external variables for error handling */
 

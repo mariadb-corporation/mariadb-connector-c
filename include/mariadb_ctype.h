@@ -20,8 +20,8 @@
   Notes:   my_global.h should be included before ctype.h
 */
 
-#ifndef _m_ctype_h
-#define _m_ctype_h
+#ifndef _mariadb_ctype_h
+#define _mariadb_ctype_h
 
 #include <ctype.h>
 
@@ -36,7 +36,7 @@ extern "C" {
 #define MADB_DEFAULT_COLLATION_NAME "latin1_swedish_ci"
 
 /* we use the mysqlnd implementation */
-typedef struct charset_info_st
+typedef struct ma_charset_info_st
 {
   unsigned int	nr; /* so far only 1 byte for charset */
   unsigned int  state;
@@ -49,20 +49,20 @@ typedef struct charset_info_st
   unsigned int	char_maxlen;
   unsigned int 	(*mb_charlen)(unsigned int c);
   unsigned int 	(*mb_valid)(const char *start, const char *end);
-} CHARSET_INFO;
+} MARIADB_CHARSET_INFO;
 
-extern const CHARSET_INFO  compiled_charsets[];
-extern CHARSET_INFO *ma_default_charset_info;
-extern CHARSET_INFO *ma_charset_bin;
-extern CHARSET_INFO *ma_charset_latin1;
-extern CHARSET_INFO *ma_charset_utf8_general_ci;
-extern CHARSET_INFO *ma_charset_utf16le_general_ci;
+extern const MARIADB_CHARSET_INFO  mariadb_compiled_charsets[];
+extern MARIADB_CHARSET_INFO *ma_default_charset_info;
+extern MARIADB_CHARSET_INFO *ma_charset_bin;
+extern MARIADB_CHARSET_INFO *ma_charset_latin1;
+extern MARIADB_CHARSET_INFO *ma_charset_utf8_general_ci;
+extern MARIADB_CHARSET_INFO *ma_charset_utf16le_general_ci;
 
-CHARSET_INFO *find_compiled_charset(unsigned int cs_number);
-CHARSET_INFO *find_compiled_charset_by_name(const char *name);
+MARIADB_CHARSET_INFO *find_compiled_charset(unsigned int cs_number);
+MARIADB_CHARSET_INFO *find_compiled_charset_by_name(const char *name);
 
-size_t mysql_cset_escape_quotes(const CHARSET_INFO *cset, char *newstr,  const char *escapestr, size_t escapestr_len);
-size_t mysql_cset_escape_slashes(const CHARSET_INFO *cset, char *newstr, const char *escapestr, size_t escapestr_len);
+size_t mysql_cset_escape_quotes(const MARIADB_CHARSET_INFO *cset, char *newstr,  const char *escapestr, size_t escapestr_len);
+size_t mysql_cset_escape_slashes(const MARIADB_CHARSET_INFO *cset, char *newstr, const char *escapestr, size_t escapestr_len);
 char* madb_get_os_character_set(void);
 #ifdef _WIN32
 int madb_get_windows_cp(const char *charset);

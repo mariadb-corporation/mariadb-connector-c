@@ -56,26 +56,26 @@ typedef int my_socket;
 #include "mysql_com.h"
 #include "mysql_version.h"
 #include "my_list.h"
-#include "m_ctype.h"
+#include "mariadb_ctype.h"
 
-#ifndef ST_USED_MEM_DEFINED
-#define ST_USED_MEM_DEFINED
-  typedef struct st_used_mem {   /* struct for once_alloc */
-    struct st_used_mem *next;    /* Next block in use */
+#ifndef ST_MA_USED_MEM_DEFINED
+#define ST_MA_USED_MEM_DEFINED
+  typedef struct st_ma_used_mem {   /* struct for once_alloc */
+    struct st_ma_used_mem *next;    /* Next block in use */
     size_t left;                 /* memory left in block  */
     size_t size;                 /* Size of block */
-  } USED_MEM;
+  } MA_USED_MEM;
 
-  typedef struct st_mem_root {
-    USED_MEM *free;
-    USED_MEM *used;
-    USED_MEM *pre_alloc;
+  typedef struct st_ma_mem_root {
+    MA_USED_MEM *free;
+    MA_USED_MEM *used;
+    MA_USED_MEM *pre_alloc;
     size_t min_malloc;
     size_t block_size;
     unsigned int block_num;
     unsigned int first_block_usage;
     void (*error_handler)(void);
-  } MEM_ROOT;
+  } MA_MEM_ROOT;
 #endif
 
 extern unsigned int mysql_port;
@@ -159,7 +159,7 @@ extern unsigned int mariadb_deinitialize_ssl;
     my_ulonglong rows;
     unsigned int fields;
     MYSQL_ROWS *data;
-    MEM_ROOT alloc;
+    MA_MEM_ROOT alloc;
   } MYSQL_DATA;
 
   enum mariadb_com_multi {
@@ -236,7 +236,7 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_CLIENT_VERSION_ID,
     MARIADB_CONNECTION_ASYNC_TIMEOUT,
     MARIADB_CONNECTION_ASYNC_TIMEOUT_MS,
-    MARIADB_CONNECTION_CHARSET_INFO,
+    MARIADB_CONNECTION_MARIADB_CHARSET_INFO,
     MARIADB_CONNECTION_ERROR,
     MARIADB_CONNECTION_ERROR_ID,
     MARIADB_CONNECTION_HOST,
@@ -312,9 +312,9 @@ struct st_mysql_options {
     void  *unused_0;
     char *host,*user,*passwd,*unix_socket,*server_version,*host_info;
     char *info,*db;
-    const struct charset_info_st *charset;      /* character set */
+    const struct ma_charset_info_st *charset;      /* character set */
     MYSQL_FIELD *fields;
-    MEM_ROOT field_alloc;
+    MA_MEM_ROOT field_alloc;
     my_ulonglong affected_rows;
     my_ulonglong insert_id;		/* id if insert on table with NEXTNR */
     my_ulonglong extra_info;		/* Used by mysqlshow */
@@ -350,7 +350,7 @@ typedef struct st_mysql_res {
   MYSQL_FIELD	*fields;
   MYSQL_DATA	*data;
   MYSQL_ROWS	*data_cursor;
-  MEM_ROOT	field_alloc;
+  MA_MEM_ROOT	field_alloc;
   MYSQL_ROW	row;			/* If unbuffered read */
   MYSQL_ROW	current_row;		/* buffer to current row */
   unsigned long *lengths;		/* column lengths of current row */
@@ -359,12 +359,12 @@ typedef struct st_mysql_res {
   my_bool       is_ps;
 } MYSQL_RES;
 
+#ifndef _mysql_time_h_
 enum enum_mysql_timestamp_type
 {
   MYSQL_TIMESTAMP_NONE= -2, MYSQL_TIMESTAMP_ERROR= -1,
   MYSQL_TIMESTAMP_DATE= 0, MYSQL_TIMESTAMP_DATETIME= 1, MYSQL_TIMESTAMP_TIME= 2
 };
-
 
 typedef struct st_mysql_time
 {
@@ -373,6 +373,7 @@ typedef struct st_mysql_time
   my_bool       neg;
   enum enum_mysql_timestamp_type time_type;
 } MYSQL_TIME;
+#endif
 
 #define AUTO_SEC_PART_DIGITS 31
 #define SEC_PART_DIGITS 6
@@ -516,10 +517,10 @@ const char * STDCALL mysql_get_client_info(void);
 unsigned long STDCALL mysql_get_client_version(void);
 my_bool STDCALL mariadb_connection(MYSQL *mysql);
 const char * STDCALL mysql_get_server_name(MYSQL *mysql);
-CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname);
-CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr);
-size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, CHARSET_INFO *from_cs,
-                                      char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
+MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname);
+MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr);
+size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs,
+                                      char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode);
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
 int STDCALL mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...);
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg);
@@ -717,9 +718,9 @@ struct st_mariadb_api {
   unsigned long (STDCALL *mysql_get_client_version)(void);
   my_bool (STDCALL *mariadb_connection)(MYSQL *mysql);
   const char * (STDCALL *mysql_get_server_name)(MYSQL *mysql);
-  CHARSET_INFO * (STDCALL *mariadb_get_charset_by_name)(const char *csname);
-  CHARSET_INFO * (STDCALL *mariadb_get_charset_by_nr)(unsigned int csnr);
-  size_t (STDCALL *mariadb_convert_string)(const char *from, size_t *from_len, CHARSET_INFO *from_cs, char *to, size_t *to_len, CHARSET_INFO *to_cs, int *errorcode);
+  MARIADB_CHARSET_INFO * (STDCALL *mariadb_get_charset_by_name)(const char *csname);
+  MARIADB_CHARSET_INFO * (STDCALL *mariadb_get_charset_by_nr)(unsigned int csnr);
+  size_t (STDCALL *mariadb_convert_string)(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs, char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode);
   int (STDCALL *mysql_optionsv)(MYSQL *mysql,enum mysql_option option, ...); 
   int (STDCALL *mysql_get_optionv)(MYSQL *mysql, enum mysql_option option, void *arg, ...);
   int (STDCALL *mysql_get_option)(MYSQL *mysql, enum mysql_option option, void *arg);

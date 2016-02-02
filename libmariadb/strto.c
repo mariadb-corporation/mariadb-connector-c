@@ -39,7 +39,7 @@
 #define strtoll glob_strtoll		/* Fix for True64 */
 
 #include "m_string.h"
-#include "m_ctype.h"
+#include "mariadb_ctype.h"
 #include "my_sys.h"			/* defines errno */
 #include <errno.h>
 

@@ -54,7 +54,7 @@ struct st_client_plugin_int {
 };
 
 static my_bool initialized= 0;
-static MEM_ROOT mem_root;
+static MA_MEM_ROOT mem_root;
 
 static uint valid_plugins[][2]= {
   {MYSQL_CLIENT_AUTHENTICATION_PLUGIN, MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION},

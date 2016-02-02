@@ -1030,7 +1030,7 @@ static int test_get_info(MYSQL *mysql)
   char *cval;
   int rc;
   MY_CHARSET_INFO cs;
-  CHARSET_INFO *ci;
+  MARIADB_CHARSET_INFO *ci;
   char **errors;
    
   rc= mariadb_get_infov(mysql, MARIADB_MAX_ALLOWED_PACKET, &sval);
@@ -1045,7 +1045,7 @@ static int test_get_info(MYSQL *mysql)
   rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_VERSION_ID, &sval);
   FAIL_IF(rc, "mysql_get_info failed");
   diag("server_version_id: %d", sval);
-  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_CHARSET_INFO, &cs);
+  rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_MARIADB_CHARSET_INFO, &cs);
   FAIL_IF(rc, "mysql_get_info failed");
   diag("charset name: %s", cs.csname);
   rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_PVIO_TYPE, &ival);

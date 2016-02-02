@@ -57,7 +57,7 @@ ulong ma_default_record_cache_size=RECORD_CACHE_SIZE;
 const char *ma_soundex_map=	  "01230120022455012623010202";
 
 	/* from ma_malloc */
-USED_MEM* ma_once_root_block=0;			/* pointer to first block */
+MA_USED_MEM* ma_once_root_block=0;			/* pointer to first block */
 uint	  ma_once_extra=ONCE_ALLOC_INIT;	/* Memory to alloc / block */
 
 	/* from my_tempnam */

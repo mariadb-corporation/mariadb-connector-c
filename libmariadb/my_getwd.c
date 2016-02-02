@@ -24,7 +24,7 @@
 #include <sys/param.h>
 #endif
 #if defined(MSDOS) || defined(_WIN32)
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #include <dos.h>
 #include <direct.h>
 #endif

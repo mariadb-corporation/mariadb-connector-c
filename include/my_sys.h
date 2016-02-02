@@ -35,8 +35,8 @@ extern int NEAR my_errno;		/* Last error in mysys */
 #include <my_pthread.h>
 #endif
 
-#ifndef _m_ctype_h
-#include <m_ctype.h>                    /* for CHARSET_INFO */
+#ifndef _mariadb_ctype_h
+#include <mariadb_ctype.h>                    /* for MARIADB_CHARSET_INFO */
 #endif
 
 #include <stdarg.h>  
@@ -182,10 +182,10 @@ extern int (*fatal_ma_error_handler_hook)(uint my_err, const char *str,
 /* charsets */
 extern uint get_charset_number(const char *cs_name);
 extern const char *get_charset_name(uint cs_number);
-extern CHARSET_INFO *get_charset(uint cs_number, myf flags);
+extern MARIADB_CHARSET_INFO *get_charset(uint cs_number, myf flags);
 extern my_bool set_default_charset(uint cs, myf flags);
-extern CHARSET_INFO *get_charset_by_name(const char *cs_name);
-extern CHARSET_INFO *get_charset_by_nr(uint cs_number);
+extern MARIADB_CHARSET_INFO *get_charset_by_name(const char *cs_name);
+extern MARIADB_CHARSET_INFO *get_charset_by_nr(uint cs_number);
 extern my_bool set_default_charset_by_name(const char *cs_name, myf flags);
 extern void free_charsets(void);
 extern char *list_charsets(myf want_flags); /* ma_free() this string... */
@@ -354,24 +354,24 @@ typedef struct st_changeable_var {
 
 /* structs for ma_alloc_root */
 
-#ifndef ST_USED_MEM_DEFINED
-#define ST_USED_MEM_DEFINED
-typedef struct st_used_mem {   /* struct for once_alloc */
-  struct st_used_mem *next;    /* Next block in use */
+#ifndef ST_MA_USED_MEM_DEFINED
+#define ST_MA_USED_MEM_DEFINED
+typedef struct st_ma_used_mem {   /* struct for once_alloc */
+  struct st_ma_used_mem *next;    /* Next block in use */
   size_t left;                 /* memory left in block  */
   size_t size;                 /* Size of block */
-} USED_MEM;
+} MA_USED_MEM;
 
-typedef struct st_mem_root {
-  USED_MEM *free;
-  USED_MEM *used;
-  USED_MEM *pre_alloc;
+typedef struct st_ma_mem_root {
+  MA_USED_MEM *free;
+  MA_USED_MEM *used;
+  MA_USED_MEM *pre_alloc;
   size_t min_malloc;
   size_t block_size;
   unsigned int block_num;
   unsigned int first_block_usage;
   void (*error_handler)(void);
-} MEM_ROOT;
+} MA_MEM_ROOT;
 #endif
 
 	/* Prototypes for mysys and my_func functions */
@@ -592,11 +592,11 @@ extern void ma_free_lock(unsigned char *ptr,myf flags);
 #define ma_free_lock(A,B) ma_free((A),(B))
 #endif
 #define ma_alloc_root_inited(A) ((A)->min_malloc != 0)
-void ma_init_ma_alloc_root(MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size);
-gptr ma_alloc_root(MEM_ROOT *mem_root, size_t Size);
-void ma_free_root(MEM_ROOT *root, myf MyFLAGS);
-char *ma_strdup_root(MEM_ROOT *root,const char *str);
-char *ma_memdup_root(MEM_ROOT *root,const char *str, size_t len);
+void ma_init_ma_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size);
+gptr ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size);
+void ma_free_root(MA_MEM_ROOT *root, myf MyFLAGS);
+char *ma_strdup_root(MA_MEM_ROOT *root,const char *str);
+char *ma_memdup_root(MA_MEM_ROOT *root,const char *str, size_t len);
 void mariadb_load_defaults(const char *conf_file, const char **groups,
 		   int *argc, char ***argv);
 void ma_free_defaults(char **argv);

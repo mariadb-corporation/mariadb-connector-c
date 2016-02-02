@@ -20,7 +20,7 @@
 #include <my_sys.h>
 #include "mysql.h"
 #include <m_string.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #include <stdio.h>
 #include <memory.h>
 

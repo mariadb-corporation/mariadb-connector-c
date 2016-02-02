@@ -18,9 +18,9 @@
 #include "mysys_priv.h"
 #include "my_static.h"
 #include "mysys_err.h"
-#include "m_ctype.h"
+#include "mariadb_ctype.h"
 #include <m_string.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #ifdef HAVE_GETRUSAGE
 #include <sys/resource.h>
 /* extern int     getrusage(int, struct rusage *); */
@@ -28,7 +28,7 @@
 #include <signal.h>
 #ifdef VMS
 #include <my_static.c>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #endif
 #ifdef _WIN32
 #ifdef _MSC_VER

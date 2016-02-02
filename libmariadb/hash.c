@@ -27,7 +27,7 @@
 
 #include "mysys_priv.h"
 #include <m_string.h>
-#include <m_ctype.h>
+#include <mariadb_ctype.h>
 #include "hash.h"
 
 #define NO_RECORD	((uint) -1)

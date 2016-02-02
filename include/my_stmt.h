@@ -172,7 +172,7 @@ typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row)
 
 struct st_mysql_stmt
 {
-  MEM_ROOT                 mem_root;
+  MA_MEM_ROOT                 mem_root;
   MYSQL                    *mysql;
   unsigned long            stmt_id;
   unsigned long            flags;/* cursor is set here */
