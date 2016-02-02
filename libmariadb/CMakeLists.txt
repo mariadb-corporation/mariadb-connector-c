@@ -121,6 +121,7 @@ SET(EXPORT_SYMBOLS
  mysql_num_fields
  mysql_num_rows
  mysql_options
+ mysql_options4
  mysql_optionsv
  mysql_ping
  mysql_ping_cont
@@ -305,10 +306,8 @@ my_malloc.c
 my_messnc.c
 my_net.c
 my_once.c
-my_open.c
 my_port.c 
 my_pthread.c
-my_read.c
 my_realloc.c
 my_seek.c
 my_static.c

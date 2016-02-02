@@ -126,9 +126,6 @@ extern unsigned int mariadb_deinitialize_ssl;
   typedef unsigned long long my_ulonglong;
 #endif
 
-/* mysql compatibility macro */
-#define mysql_options4(A,B,C,D) mysql_optionsv((A),(B),(C),(D))
-
 #define SET_CLIENT_ERROR(a, b, c, d) \
   { \
     (a)->net.last_errno= (b);\
@@ -487,6 +484,8 @@ MYSQL_RES *	STDCALL mysql_store_result(MYSQL *mysql);
 MYSQL_RES *	STDCALL mysql_use_result(MYSQL *mysql);
 int		STDCALL mysql_options(MYSQL *mysql,enum mysql_option option,
 				      const void *arg);
+int		STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option,
+				      const void *arg1, const void *arg2);
 void		STDCALL mysql_free_result(MYSQL_RES *result);
 void		STDCALL mysql_data_seek(MYSQL_RES *result,
 					my_ulonglong offset);
