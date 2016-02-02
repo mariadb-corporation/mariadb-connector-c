@@ -85,7 +85,6 @@ SET(EXPORT_SYMBOLS
  mysql_get_host_info
  mysql_get_option
  mysql_get_optionv
- mysql_get_parameters
  mysql_get_proto_info
  mysql_get_server_info
  mysql_get_server_name
