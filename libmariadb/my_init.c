@@ -36,9 +36,7 @@
 #include <crtdbg.h>
 #endif
 my_bool have_tcpip=0;
-static void my_win_init(void);
-static my_bool win32_have_tcpip(void);
-static my_bool win32_init_tcp_ip();
+static my_bool my_win_init(void);
 #else
 #define my_win_init()
 #endif
@@ -169,10 +167,9 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
   ma_thread_global_end();
 #endif
 #ifdef _WIN32
-  if (have_tcpip);
-    WSACleanup( );
+  WSACleanup( );
 #endif /* _WIN32 */
-    ma_init_done=0;
+  ma_init_done=0;
 } /* ma_end */
 
 #ifdef _WIN32
@@ -201,73 +198,26 @@ void setEnvString(char *ret, const char *name, const char *value)
   DBUG_VOID_RETURN ;
 }
 
-static void my_win_init(void)
+static my_bool my_win_init()
 {
-  DBUG_ENTER("my_win_init");
-  win32_init_tcp_ip();
-  DBUG_VOID_RETURN ;
-}
-
-
-/*------------------------------------------------------------------
-** Name: CheckForTcpip| Desc: checks if tcpip has been installed on system
-** According to Microsoft Developers documentation the first registry
-** entry should be enough to check if TCP/IP is installed, but as expected
-** this doesn't work on all Win32 machines :(
-------------------------------------------------------------------*/
-
-#define TCPIPKEY  "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters"
-#define WINSOCK2KEY "SYSTEM\\CurrentControlSet\\Services\\Winsock2\\Parameters"
-#define WINSOCKKEY  "SYSTEM\\CurrentControlSet\\Services\\Winsock\\Parameters"
-
-static my_bool win32_have_tcpip(void)
-{
-  HKEY hTcpipRegKey;
-  if (RegOpenKeyEx ( HKEY_LOCAL_MACHINE, TCPIPKEY, 0, KEY_READ,
-		      &hTcpipRegKey) != ERROR_SUCCESS)
+  WORD VersionRequested;
+  int err;
+  WSADATA WsaData;
+  const unsigned int MajorVersion=2,
+                     MinorVersion=2;
+  VersionRequested= MAKEWORD(MajorVersion, MinorVersion);
+  /* Load WinSock library */
+  if ((err= WSAStartup(VersionRequested, &WsaData)))
   {
-    if (RegOpenKeyEx ( HKEY_LOCAL_MACHINE, WINSOCK2KEY, 0, KEY_READ,
-		      &hTcpipRegKey) != ERROR_SUCCESS)
-    {
-      if (RegOpenKeyEx ( HKEY_LOCAL_MACHINE, WINSOCKKEY, 0, KEY_READ,
-			 &hTcpipRegKey) != ERROR_SUCCESS)
-	if (!getenv("HAVE_TCPIP") || have_tcpip)	/* Provide a workaround */
-	  return (FALSE);
-    }
+    return 0;
   }
-  RegCloseKey ( hTcpipRegKey);
-  return (TRUE);
-}
-
-static my_bool win32_init_tcp_ip()
-{
-  if (win32_have_tcpip())
+  /* make sure 2.2 or higher is supported */
+  if ((LOBYTE(WsaData.wVersion) * 10 + HIBYTE(WsaData.wVersion)) < 22)
   {
-    WORD wVersionRequested = MAKEWORD( 2, 0 );
-    WSADATA wsaData;
- 	/* Be a good citizen: maybe another lib has already initialised
- 		sockets, so dont clobber them unless necessary */
-    if (WSAStartup( wVersionRequested, &wsaData ))
-    {
-      /* Load failed, maybe because of previously loaded
-	 incompatible version; try again */
-      WSACleanup( );
-      if (!WSAStartup( wVersionRequested, &wsaData ))
-	have_tcpip=1;
-    }
-    else
-    {
-      if (wsaData.wVersion != wVersionRequested)
-      {
-	/* Version is no good, try again */
-	WSACleanup( );
-	if (!WSAStartup( wVersionRequested, &wsaData ))
-	  have_tcpip=1;
-      }
-      else
-	have_tcpip=1;
-    }
+    WSACleanup();
+    return 1;
   }
-  return(0);
+  return 0;
 }
 #endif
+
