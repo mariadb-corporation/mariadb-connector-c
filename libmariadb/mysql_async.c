@@ -250,7 +250,7 @@ mysql_get_timeout_value_ms(const MYSQL *mysql)
   }                                                                           \
   if (res < 0)                                                                \
   {                                                                           \
-    set_mysql_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
+    set_mariadb_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
     *ret= err_val;                                                            \
   }                                                                           \
   else                                                                        \
@@ -263,7 +263,7 @@ mysql_get_timeout_value_ms(const MYSQL *mysql)
     (mysql_val)->options.extension->async_context;                            \
   if (!b->suspended)                                                          \
   {                                                                           \
-    set_mysql_error((mysql_val), CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate);  \
+    set_mariadb_error((mysql_val), CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate);  \
     *ret= err_val;                                                            \
     return 0;                                                                 \
   }                                                                           \
@@ -277,7 +277,7 @@ mysql_get_timeout_value_ms(const MYSQL *mysql)
   b->suspended= 0;                                                            \
   if (res < 0)                                                                \
   {                                                                           \
-    set_mysql_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
+    set_mariadb_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
     *ret= err_val;                                                            \
   }                                                                           \
   else                                                                        \
@@ -311,7 +311,7 @@ mysql_get_timeout_value_ms(const MYSQL *mysql)
     return b->events_to_wait_for;                                             \
   }                                                                           \
   if (res < 0)                                                                \
-    set_mysql_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
+    set_mariadb_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
   return 0;
 
 #define MK_ASYNC_CONT_BODY_VOID_RETURN(mysql_val)                             \
@@ -320,7 +320,7 @@ mysql_get_timeout_value_ms(const MYSQL *mysql)
     (mysql_val)->options.extension->async_context;                            \
   if (!b->suspended)                                                          \
   {                                                                           \
-    set_mysql_error((mysql_val), CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate);  \
+    set_mariadb_error((mysql_val), CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate);  \
     return 0;                                                                 \
   }                                                                           \
                                                                               \
@@ -332,7 +332,7 @@ mysql_get_timeout_value_ms(const MYSQL *mysql)
     return b->events_to_wait_for;               /* (Still) suspended */       \
   b->suspended= 0;                                                            \
   if (res < 0)                                                                \
-    set_mysql_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
+    set_mariadb_error((mysql_val), CR_OUT_OF_MEMORY, unknown_sqlstate);         \
   return 0;
 
 
@@ -432,7 +432,7 @@ mysql_real_query_start(int *ret, MYSQL *mysql, const char *stmt_str, size_t leng
   }                                                                           
   if (res < 0)                                                                
   {                                                                           
-    set_mysql_error((mysql), CR_OUT_OF_MEMORY, unknown_sqlstate);         
+    set_mariadb_error((mysql), CR_OUT_OF_MEMORY, unknown_sqlstate);         
     *ret= 1;                                                            
   }                                                                           
   else                                                                        

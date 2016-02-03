@@ -119,7 +119,7 @@ my_string mysql_unix_port=0;
 #define CONNECT_TIMEOUT 0
 #endif
 
-struct st_mysql_methods MARIADB_DEFAULT_METHODS;
+struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 
 #if defined(MSDOS) || defined(_WIN32)
 // socket_errno is defined in my_global.h for all platforms
@@ -3994,7 +3994,7 @@ struct st_mariadb_api MARIADB_API=
  * stored in mysql->methods and can be overwritten by
  * a plugin, e.g. for using another database
  */
-struct st_mysql_methods MARIADB_DEFAULT_METHODS = {
+struct st_mariadb_methods MARIADB_DEFAULT_METHODS = {
   /* open a connection */
   mthd_my_real_connect,
   /* close connection */

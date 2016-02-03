@@ -134,7 +134,7 @@ extern unsigned int mariadb_deinitialize_ssl;
   }
 
 /* For mysql_async.c */
-#define set_mysql_error(A,B,C) SET_CLIENT_ERROR((A),(B),(C),0)
+#define set_mariadb_error(A,B,C) SET_CLIENT_ERROR((A),(B),(C),0)
 #define unknown_sqlstate SQLSTATE_UNKNOWN
 
 #define CLEAR_CLIENT_ERROR(a) \
@@ -337,7 +337,7 @@ struct st_mysql_options {
     my_bool       unused_2;
     void          *unused_3, *unused_4, *unused_5, *unused_6;
     LIST          *stmts;
-    const struct  st_mysql_methods *methods;
+    const struct  st_mariadb_methods *methods;
     void          *thd;
     my_bool       *unbuffered_fetch_owner;
     char          *info_buffer;
@@ -762,7 +762,7 @@ struct st_mariadb_api {
 };
   
 /* these methods can be overwritten by db plugins */
-struct st_mysql_methods {
+struct st_mariadb_methods {
   MYSQL *(*db_connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd,
 					   const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
   void (*db_close)(MYSQL *mysql);

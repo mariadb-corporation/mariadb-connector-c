@@ -235,7 +235,7 @@ int net_flush(NET *net)
 */
 
 int
-my_net_write(NET *net, const char *packet, size_t len)
+my_net_write(NET *net, const uchar *packet, size_t len)
 {
   uchar buff[NET_HEADER_SIZE];
   while (len >= MAX_PACKET_LENGTH)

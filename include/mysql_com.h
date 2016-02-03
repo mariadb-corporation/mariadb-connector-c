@@ -345,7 +345,7 @@ int	my_net_init(NET *net, MARIADB_PVIO *pvio);
 void	net_end(NET *net);
 void	net_clear(NET *net);
 int	net_flush(NET *net);
-int	my_net_write(NET *net,const char *packet, size_t len);
+int	my_net_write(NET *net,const unsigned char *packet, size_t len);
 int	net_write_command(NET *net,unsigned char command,const char *packet,
 			  size_t len);
 int	net_real_write(NET *net,const char *packet, size_t len);
