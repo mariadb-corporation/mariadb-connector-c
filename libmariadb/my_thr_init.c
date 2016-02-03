@@ -147,12 +147,8 @@ void ma_thread_end(void)
 
   if (tmp && tmp->initialized)
   {
-#ifdef HAVE_OPENSSL
-#if OPENSSL_VERSION_NUMBER >= 0x10000001L
-    ERR_remove_thread_state(NULL);
-#else
-    ERR_remove_state(0);
-#endif
+#ifdef HAVE_NSSL
+    ma_ssl_end();
 #endif
 #if !defined(DBUG_OFF)
     if (tmp->dbug)

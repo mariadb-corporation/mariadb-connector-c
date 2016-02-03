@@ -223,6 +223,12 @@ enum enum_server_command
 #define NET_WRITE_TIMEOUT	60		/* Timeout on write */
 #define NET_WAIT_TIMEOUT	8*60*60		/* Wait for new query */
 
+/* for server integration (mysqlbinlog) */
+#define LIST_PROCESS_HOST_LEN 64
+#define MYSQL50_TABLE_NAME_PREFIX         "#mysql50#"
+#define MYSQL50_TABLE_NAME_PREFIX_LENGTH  (sizeof(MYSQL50_TABLE_NAME_PREFIX)-1)
+#define SAFE_NAME_LEN (NAME_LEN + MYSQL50_TABLE_NAME_PREFIX_LENGTH)
+
 struct st_ma_pvio;
 typedef struct st_ma_pvio MARIADB_PVIO;
 
@@ -295,6 +301,14 @@ enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
                         MYSQL_TYPE_DATETIME, MYSQL_TYPE_YEAR,
                         MYSQL_TYPE_NEWDATE, MYSQL_TYPE_VARCHAR,
                         MYSQL_TYPE_BIT,
+                        /*
+                          the following types are not used by client,
+                          only for mysqlbinlog!!
+                        */
+                        MYSQL_TYPE_TIMESTAMP2,
+                        MYSQL_TYPE_DATETIME2,
+                        MYSQL_TYPE_TIME2,
+                        /* --------------------------------------------- */
                         MYSQL_TYPE_NEWDECIMAL=246,
                         MYSQL_TYPE_ENUM=247,
                         MYSQL_TYPE_SET=248,
@@ -349,7 +363,7 @@ int	my_net_write(NET *net,const unsigned char *packet, size_t len);
 int	net_write_command(NET *net,unsigned char command,const char *packet,
 			  size_t len);
 int	net_real_write(NET *net,const char *packet, size_t len);
-unsigned long	my_net_read(NET *net);
+extern unsigned long my_net_read(NET *net);
 
 struct rand_struct {
   unsigned long seed1,seed2,max_value;
@@ -358,7 +372,7 @@ struct rand_struct {
 
   /* The following is for user defined functions */
 
-enum Item_result {STRING_RESULT,REAL_RESULT,INT_RESULT};
+enum Item_result {STRING_RESULT,REAL_RESULT,INT_RESULT,ROW_RESULT,DECIMAL_RESULT};
 
 typedef struct st_udf_args
 {

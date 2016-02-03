@@ -436,7 +436,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 }
 
 int
-simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
+ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
 	       size_t length, my_bool skipp_check, void *opt_arg)
 {
   return mysql->methods->db_command(mysql, command, arg, length, skipp_check, opt_arg);
@@ -1913,7 +1913,7 @@ mysql_select_db(MYSQL *mysql, const char *db)
   DBUG_ENTER("mysql_select_db");
   DBUG_PRINT("enter",("db: '%s'",db));
 
-  if ((error=simple_command(mysql, COM_INIT_DB,db,(uint) strlen(db),0,0)))
+  if ((error=ma_simple_command(mysql, COM_INIT_DB,db,(uint) strlen(db),0,0)))
     DBUG_RETURN(error);
   ma_free(mysql->db);
   mysql->db=ma_strdup(db,MYF(MY_WME));
@@ -2021,7 +2021,7 @@ void mysql_close_slow_part(MYSQL *mysql)
     mysql->status=MYSQL_STATUS_READY; /* Force command */
     mysql->options.reconnect=0;
     if (mysql->net.pvio && mysql->net.buff)
-      simple_command(mysql, COM_QUIT,NullS,0,1,0);
+      ma_simple_command(mysql, COM_QUIT,NullS,0,1,0);
     end_server(mysql);
   }
 }
@@ -2083,7 +2083,7 @@ mysql_query(MYSQL *mysql, const char *query)
 int STDCALL
 mysql_send_query(MYSQL* mysql, const char* query, size_t length)
 {
-  return simple_command(mysql, COM_QUERY, query, length, 1,0);
+  return ma_simple_command(mysql, COM_QUERY, query, length, 1,0);
 }
 
 int mthd_my_read_query_result(MYSQL *mysql)
@@ -2159,7 +2159,7 @@ mysql_real_query(MYSQL *mysql, const char *query, size_t length)
 
   free_old_query(mysql);
 
-  if (simple_command(mysql, COM_QUERY,query,length,1,0))
+  if (ma_simple_command(mysql, COM_QUERY,query,length,1,0))
     DBUG_RETURN(-1);
   if (!is_multi)
     DBUG_RETURN(mysql->methods->db_read_query_result(mysql));
@@ -2435,7 +2435,7 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
   LINT_INIT(query);
 
   end=strmake(strmake(buff, table,128)+1,wild ? wild : "",128);
-  if (simple_command(mysql, COM_FIELD_LIST,buff,(uint) (end-buff),1,0) ||
+  if (ma_simple_command(mysql, COM_FIELD_LIST,buff,(uint) (end-buff),1,0) ||
       !(query = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,8)))
     DBUG_RETURN(NULL);
 
@@ -2468,7 +2468,7 @@ mysql_list_processes(MYSQL *mysql)
   DBUG_ENTER("mysql_list_processes");
 
   LINT_INIT(fields);
-  if (simple_command(mysql, COM_PROCESS_INFO,0,0,0,0))
+  if (ma_simple_command(mysql, COM_PROCESS_INFO,0,0,0,0))
     DBUG_RETURN(0);
   free_old_query(mysql);
   pos=(uchar*) mysql->net.read_pos;
@@ -2491,7 +2491,7 @@ mysql_shutdown(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level)
   uchar s_level[2];
   DBUG_ENTER("mysql_shutdown");
   s_level[0]= (uchar)shutdown_level;
-  DBUG_RETURN(simple_command(mysql, COM_SHUTDOWN, (char *)s_level, 1, 0, 0));
+  DBUG_RETURN(ma_simple_command(mysql, COM_SHUTDOWN, (char *)s_level, 1, 0, 0));
 }
 
 int STDCALL
@@ -2500,7 +2500,7 @@ mysql_refresh(MYSQL *mysql,uint options)
   uchar bits[1];
   DBUG_ENTER("mysql_refresh");
   bits[0]= (uchar) options;
-  DBUG_RETURN(simple_command(mysql, COM_REFRESH,(char*) bits,1,0,0));
+  DBUG_RETURN(ma_simple_command(mysql, COM_REFRESH,(char*) bits,1,0,0));
 }
 
 int STDCALL
@@ -2510,7 +2510,7 @@ mysql_kill(MYSQL *mysql,ulong pid)
   DBUG_ENTER("mysql_kill");
   int4store(buff,pid);
   /* if we kill our own thread, reading the response packet will fail */ 
-  DBUG_RETURN(simple_command(mysql, COM_PROCESS_KILL,buff,4,0,0));
+  DBUG_RETURN(ma_simple_command(mysql, COM_PROCESS_KILL,buff,4,0,0));
 }
 
 
@@ -2518,14 +2518,14 @@ int STDCALL
 mysql_dump_debug_info(MYSQL *mysql)
 {
   DBUG_ENTER("mysql_dump_debug_info");
-  DBUG_RETURN(simple_command(mysql, COM_DEBUG,0,0,0,0));
+  DBUG_RETURN(ma_simple_command(mysql, COM_DEBUG,0,0,0,0));
 }
 
 char * STDCALL
 mysql_stat(MYSQL *mysql)
 {
   DBUG_ENTER("mysql_stat");
-  if (simple_command(mysql, COM_STATISTICS,0,0,0,0))
+  if (ma_simple_command(mysql, COM_STATISTICS,0,0,0,0))
     return mysql->net.last_error;
   mysql->net.read_pos[mysql->packet_length]=0;	/* End of stat string */
   if (!mysql->net.read_pos[0])
@@ -2541,11 +2541,11 @@ mysql_ping(MYSQL *mysql)
 {
   int rc;
   DBUG_ENTER("mysql_ping");
-  rc= simple_command(mysql, COM_PING,0,0,0,0);
+  rc= ma_simple_command(mysql, COM_PING,0,0,0,0);
 
   /* if connection was terminated and reconnect is true, try again */
   if (rc!=0  && mysql->options.reconnect)
-    rc= simple_command(mysql, COM_PING,0,0,0,0);
+    rc= ma_simple_command(mysql, COM_PING,0,0,0,0);
   return rc;
 }
 
@@ -2634,7 +2634,7 @@ int mariadb_flush_multi_command(MYSQL *mysql)
   int rc;
   size_t length= mysql->net.mbuff_pos - mysql->net.mbuff;
 
-  rc= simple_command(mysql, COM_MULTI, mysql->net.mbuff,
+  rc= ma_simple_command(mysql, COM_MULTI, mysql->net.mbuff,
                      length, 1, 0);
   /* reset multi_buff */
   mysql->net.mbuff_pos= mysql->net.mbuff;
@@ -3574,7 +3574,7 @@ int STDCALL mysql_set_server_option(MYSQL *mysql,
   char buffer[2];
   DBUG_ENTER("mysql_set_server_option");
   int2store(buffer, (uint)option);
-  DBUG_RETURN(simple_command(mysql, COM_SET_OPTION, buffer, sizeof(buffer), 0, 0));
+  DBUG_RETURN(ma_simple_command(mysql, COM_SET_OPTION, buffer, sizeof(buffer), 0, 0));
 }
 
 ulong STDCALL mysql_get_client_version(void)

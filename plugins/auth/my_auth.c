@@ -141,7 +141,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
 
   end= ma_send_connect_attr(mysql, end);
 
-  res= simple_command(mysql, COM_CHANGE_USER,
+  res= ma_simple_command(mysql, COM_CHANGE_USER,
                       buff, (ulong)(end-buff), 1, NULL);
 
 error:
