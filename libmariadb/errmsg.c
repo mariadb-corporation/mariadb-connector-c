@@ -154,7 +154,28 @@ const char *mariadb_client_errors[] =
   ""
 };
 
+const char ** NEAR my_errmsg[MAXMAPS]={0,0,0,0};
+char NEAR errbuff[NRERRBUFFS][ERRMSGSIZE];
+
 void init_client_errs(void)
 {
   my_errmsg[CLIENT_ERRMAP] = &client_errors[0];
+}
+
+int ma_error(int nr,myf myFlags, ...)
+{
+  va_list args;
+  const char *errormsg;
+  char buffer[ERRMSGSIZE];
+
+  va_start(args, myFlags);
+
+  if (!(errormsg= ER(nr)))
+    snprintf(buffer, ERRMSGSIZE, "Unknown error: %d", nr);
+  else
+    vsnprintf(buffer, ERRMSGSIZE, errormsg, args);
+
+  va_end(args);
+
+  return (*ma_error_handler_hook)(nr, buffer, myFlags);
 }

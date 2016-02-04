@@ -295,7 +295,7 @@ my_alloc.c
 my_compress.c
 my_context.c
 my_div.c
-my_error.c 
+#my_error.c 
 my_fopen.c
 my_fstream.c
 my_getwd.c
