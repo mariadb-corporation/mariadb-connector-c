@@ -31,8 +31,7 @@ void ma_init_ma_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_
   if (pre_alloc_size)
   {
     if ((mem_root->free = mem_root->pre_alloc=
-	 (MA_USED_MEM*) ma_malloc(pre_alloc_size+ ALIGN_SIZE(sizeof(MA_USED_MEM)),
-			       MYF(0))))
+	 (MA_USED_MEM*) malloc(pre_alloc_size+ ALIGN_SIZE(sizeof(MA_USED_MEM)))))
     {
       mem_root->free->size=pre_alloc_size+ALIGN_SIZE(sizeof(MA_USED_MEM));
       mem_root->free->left=pre_alloc_size;
@@ -48,7 +47,7 @@ gptr ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size)
   reg1 MA_USED_MEM *next;
   Size+=ALIGN_SIZE(sizeof(MA_USED_MEM));
 
-  if (!(next = (MA_USED_MEM*) ma_malloc(Size,MYF(MY_WME))))
+  if (!(next = (MA_USED_MEM*) malloc(Size)))
   {
     if (mem_root->error_handler)
       (*mem_root->error_handler)();
@@ -78,7 +77,7 @@ gptr ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size)
     if (max_left*4 < mem_root->block_size && get_size < mem_root->block_size)
       get_size=mem_root->block_size;		/* Normal alloc */
 
-    if (!(next = (MA_USED_MEM*) ma_malloc(get_size,MYF(MY_WME | MY_ZEROFILL))))
+    if (!(next = (MA_USED_MEM*) calloc(1, get_size)))
     {
       if (mem_root->error_handler)
 	(*mem_root->error_handler)();
@@ -116,13 +115,13 @@ void ma_free_root(MA_MEM_ROOT *root, myf MyFlags)
   {
     old=next; next= next->next ;
     if (old != root->pre_alloc)
-      ma_free(old);
+      free(old);
   }
   for (next= root->free ; next ; )
   {
     old=next; next= next->next ;
     if (old != root->pre_alloc)
-      ma_free(old);
+      free(old);
   }
   root->used=root->free=0;
   if (root->pre_alloc)

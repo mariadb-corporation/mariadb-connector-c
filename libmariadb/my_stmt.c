@@ -574,7 +574,8 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   DBUG_ENTER("mysql_stmt_execute_generate_request");
 
   /* preallocate length bytes */
-  if (!(start= p= (uchar *)ma_malloc(length, MYF(MY_WME | MY_ZEROFILL))))
+  /* check: gr */
+  if (!(start= p= (uchar *)malloc(length)))
     goto mem_error;
 
   int4store(p, stmt->stmt_id);
@@ -597,7 +598,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     {
       size_t offset= p - start;
       length+= offset + null_count + 20;
-      if (!(start= (uchar *)ma_realloc((gptr)start, length, MYF(MY_WME | MY_ZEROFILL))))
+      if (!(start= (uchar *)realloc((gptr)start, length)))
         goto mem_error;
       p= start + offset;
     }
@@ -621,7 +622,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
       {
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
-        if (!(start= (uchar *)ma_realloc((gptr)start, length, MYF(MY_WME | MY_ZEROFILL))))
+        if (!(start= (uchar *)realloc((gptr)start, length)))
           goto mem_error;
         p= start + offset;
       }
@@ -676,7 +677,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     {
       size_t offset= p - start;
       length= offset + data_size + 20;
-      if (!(start= (uchar *)ma_realloc((gptr)start, length, MYF(MY_WME | MY_ZEROFILL))))
+      if (!(start= (uchar *)realloc((gptr)start, length)))
         goto mem_error;
       p= start + offset;
     }
@@ -702,7 +703,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
 mem_error:
   SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-  ma_free(start);
+  free(start);
   *request_len= 0;
   DBUG_RETURN(NULL);
 }
@@ -915,7 +916,6 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
   {
     MA_MEM_ROOT *fields_ma_alloc_root=
                 &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
-//    ma_free_root(fields_ma_alloc_root, MYF(0));
     if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
     {
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -1025,8 +1025,8 @@ my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
 
   net_stmt_close(stmt, 1);
 
-  ma_free(stmt->extension);
-  ma_free(stmt);
+  free(stmt->extension);
+  free(stmt);
 
   DBUG_RETURN(0);
 }
@@ -1159,14 +1159,13 @@ my_bool STDCALL mysql_stmt_free_result(MYSQL_STMT *stmt)
 MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
 {
 
-  MYSQL_STMT *stmt;
+  MYSQL_STMT *stmt= NULL;
   DBUG_ENTER("mysql_stmt_init");
 
-  if (!(stmt= (MYSQL_STMT *)ma_malloc(sizeof(MYSQL_STMT), MYF(MY_WME | MY_ZEROFILL))) ||
-      !(stmt->extension= (MADB_STMT_EXTENSION *)ma_malloc(sizeof(MADB_STMT_EXTENSION),
-                                                         MYF(MY_WME | MY_ZEROFILL))))
+  if (!(stmt= (MYSQL_STMT *)calloc(1, sizeof(MYSQL_STMT))) ||
+      !(stmt->extension= (MADB_STMT_EXTENSION *)calloc(1, sizeof(MADB_STMT_EXTENSION))))
   {
-    ma_free(stmt);
+    free(stmt);
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(NULL);
   }
@@ -1668,7 +1667,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
                                              request_len, 1, stmt);
  
   if (request)
-    ma_free(request);
+    free(request);
 
   if (ret)
   {
@@ -1833,7 +1832,7 @@ MYSQL_RES * STDCALL mysql_stmt_result_metadata(MYSQL_STMT *stmt)
     DBUG_RETURN(NULL);
 
   /* aloocate result set structutr and copy stmt information */
-  if (!(res= (MYSQL_RES *)ma_malloc(sizeof(MYSQL_RES), MYF(MY_WME | MY_ZEROFILL))))
+  if (!(res= (MYSQL_RES *)calloc(1, sizeof(MYSQL_RES))))
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     DBUG_RETURN(NULL);
@@ -1900,15 +1899,15 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
   if (length || !stmt->params[param_number].long_data_used)
   {
     int ret;
-    size_t packet_len;
-    uchar *cmd_buff= (uchar *)ma_malloc(packet_len= STMT_ID_LENGTH + 2 + length, MYF(MY_WME | MY_ZEROFILL));
+    size_t packet_len= STMT_ID_LENGTH + 2 + length;
+    uchar *cmd_buff= (uchar *)calloc(1, packet_len);
     int4store(cmd_buff, stmt->stmt_id);
     int2store(cmd_buff + STMT_ID_LENGTH, param_number);
     memcpy(cmd_buff + STMT_ID_LENGTH + 2, data, length);
     stmt->params[param_number].long_data_used= 1;
     ret= stmt->mysql->methods->db_command(stmt->mysql, COM_STMT_SEND_LONG_DATA,
                                          (char *)cmd_buff, packet_len, 1, stmt);
-    ma_free(cmd_buff);
+    free(cmd_buff);
     DBUG_RETURN(ret); 
   } 
   DBUG_RETURN(0);

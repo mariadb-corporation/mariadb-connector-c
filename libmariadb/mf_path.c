@@ -99,7 +99,8 @@ static char *find_file_in_path(char *to, const char *name)
   {
     if (path != pos)
     {
-      strxmov(strnmov(to,path,(uint) (pos-path)),dir,name,ext,NullS);
+      sprintf(to, "%s%s%s%s%s", path, pos - path, dir, name, ext);
+//      strxmov(strnmov(to,path,(uint) (pos-path)),dir,name,ext,NullS);
       if (!access(to,F_OK))
       {
 	to[(uint) (pos-path)+1]=0;	/* Return path only */
@@ -109,7 +110,7 @@ static char *find_file_in_path(char *to, const char *name)
   }
 #ifdef _WIN32
   to[0]=FN_CURLIB;
-  strxmov(to+1,dir,name,ext,NullS);
+  sprintf(to +1, "%s%s%s", dir, name, ext);
   if (!access(to,F_OK))			/* Test in current dir */
   {
     to[2]=0;				/* Leave ".\" */

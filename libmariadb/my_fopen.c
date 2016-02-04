@@ -19,6 +19,7 @@
 #include "my_static.h"
 #include <errno.h>
 #include "mysys_err.h"
+#include <string.h>
 
 static void	make_ftype(my_string to,int flag);
 
@@ -54,7 +55,7 @@ FILE *my_fopen(const char *FileName, int Flags, myf MyFlags)
     }
     pthread_mutex_lock(&THR_LOCK_open);
     if ((ma_file_info[fileno(fd)].name = (char*)
-	 ma_strdup(FileName,MyFlags)))
+	 strdup(FileName)))
     {
       ma_stream_opened++;
       ma_file_info[fileno(fd)].type = STREAM_BY_FOPEN;
@@ -99,7 +100,7 @@ int my_fclose(FILE *fd, myf MyFlags)
   if ((uint) file < MY_NFILE && ma_file_info[file].type != UNOPEN)
   {
     ma_file_info[file].type = UNOPEN;
-    ma_free(ma_file_info[file].name);
+    free(ma_file_info[file].name);
   }
   pthread_mutex_unlock(&THR_LOCK_open);
   DBUG_RETURN(err);
@@ -136,7 +137,7 @@ FILE *my_fdopen(File Filedes, const char *name, int Flags, myf MyFlags)
       }
       else
       {
-        ma_file_info[Filedes].name=  ma_strdup(name,MyFlags);
+        ma_file_info[Filedes].name=  strdup(name);
       }
       ma_file_info[Filedes].type = STREAM_BY_FDOPEN;
     }

@@ -63,8 +63,8 @@ void list_free(LIST *root, unsigned int free_data)
   {
     next=root->next;
     if (free_data)
-      ma_free(root->data);
-    ma_free(root);
+      free(root->data);
+    free(root);
     root=next;
   }
 }
@@ -72,7 +72,7 @@ void list_free(LIST *root, unsigned int free_data)
 
 LIST *list_cons(void *data, LIST *list)
 {
-  LIST *new_charset=(LIST*) ma_malloc(sizeof(LIST),MYF(MY_FAE));
+  LIST *new_charset=(LIST*) malloc(sizeof(LIST));
   if (!new_charset)
     return 0;
   new_charset->data=data;

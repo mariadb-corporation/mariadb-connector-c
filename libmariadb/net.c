@@ -114,7 +114,7 @@ static int net_write_buff(NET *net,const char *packet, size_t len);
 
 int my_net_init(NET *net, MARIADB_PVIO* pvio)
 {
-  if (!(net->buff=(uchar*) ma_malloc(net_buffer_length,MYF(MY_WME | MY_ZEROFILL))))
+  if (!(net->buff=(uchar*) calloc(1, net_buffer_length)))
     return 1;
 
   /* We don't allocate memory for multi buffer, since we don't know in advance if the server
@@ -144,8 +144,8 @@ int my_net_init(NET *net, MARIADB_PVIO* pvio)
 
 void net_end(NET *net)
 {
-  ma_free(net->buff);
-  ma_free(net->mbuff);
+  free(net->buff);
+  free(net->mbuff);
   net->buff=0;
   net->mbuff= 0;
 }
@@ -171,9 +171,8 @@ static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
   pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
   /* reallocate buffer:
      size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
-  if (!(buff=(uchar*) ma_realloc(is_multi ? net->mbuff : net->buff, 
-                                 pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE,
-                                 MYF(MY_WME))))
+  if (!(buff=(uchar*) realloc(is_multi ? net->mbuff : net->buff, 
+                               pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE)))
   {
     DBUG_PRINT("info", ("Out of memory"));
     net->error=1;
@@ -353,7 +352,7 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
   if (!net->mbuff)
   {
     size_t alloc_size= (required_length + IO_SIZE - 1) & ~(IO_SIZE - 1);
-    if (!(net->mbuff= (char *)ma_malloc(alloc_size, MYF(MY_WME))))
+    if (!(net->mbuff= (char *)malloc(alloc_size)))
     {
       net->last_errno=ER_OUT_OF_RESOURCES;
       net->error=2;
@@ -384,7 +383,7 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
 error:
  if (net->mbuff)
  {
-   ma_free(net->mbuff);
+   free(net->mbuff);
    net->mbuff= net->mbuff_pos= net->mbuff_end= 0;
  }
  return 1; 
@@ -409,8 +408,7 @@ net_real_write(NET *net,const char *packet,size_t  len)
     size_t complen;
     uchar *b;
     uint header_length=NET_HEADER_SIZE+COMP_HEADER_SIZE;
-    if (!(b=(uchar*) ma_malloc(len + NET_HEADER_SIZE + COMP_HEADER_SIZE + 1,
-				    MYF(MY_WME))))
+    if (!(b=(uchar*) malloc(len + NET_HEADER_SIZE + COMP_HEADER_SIZE + 1)))
     {
       net->last_errno=ER_OUT_OF_RESOURCES;
       net->error=2;
@@ -448,7 +446,7 @@ net_real_write(NET *net,const char *packet,size_t  len)
   }
 #ifdef HAVE_COMPRESS
   if (net->compress)
-    ma_free((char*) packet);
+    free((char*) packet);
 #endif
   net->reading_or_writing=0;
   DBUG_RETURN(((int) (pos != end)));

@@ -99,6 +99,7 @@
 #include <process.h>
 #else
 #include <signal.h>
+#include <sys/time.h>
 #endif
 
 extern int ma_snprintf(char* to, size_t n, const char* fmt, ...);
@@ -2032,7 +2033,7 @@ static void DBUGOpenFile(CODE_STATE *cs,
       cs->stack->name[len]=0;
     }
     else
-    strmov(cs->stack->name,name);
+    strcpy(cs->stack->name,name);
     name=cs->stack->name;
     if (strcmp(name, "-") == 0)
     {

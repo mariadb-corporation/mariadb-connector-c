@@ -35,7 +35,7 @@
 int my_readlink(char *to, const char *filename, myf MyFlags)
 {
 #ifndef HAVE_READLINK
-  strmov(to,filename);
+  strcpy(to,filename);
   return 1;
 #else
   int result=0;
@@ -48,7 +48,7 @@ int my_readlink(char *to, const char *filename, myf MyFlags)
     if ((my_errno=errno) == EINVAL)
     {
       result= 1;
-      strmov(to,filename);
+      strcpy(to,filename);
     }
     else
     {
@@ -117,7 +117,7 @@ int my_realpath(char *to, const char *filename, myf MyFlags)
   {
     char *ptr;
     if ((ptr=realpath(filename,buff)))
-      strmake(to,ptr,FN_REFLEN-1);
+      strncpy(to,ptr,FN_REFLEN-1);
     else
     {
       /* Realpath didn't work;  Use original name */
@@ -132,7 +132,7 @@ int my_realpath(char *to, const char *filename, myf MyFlags)
   DBUG_RETURN(result);
 #else
   if (to != filename)
-    strmov(to,filename);
+    strcpy(to,filename);
   return 0;
 #endif
 }

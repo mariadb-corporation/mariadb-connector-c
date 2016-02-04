@@ -39,6 +39,6 @@ void my_inet_ntoa(struct in_addr in, char *buf)
   char *ptr;
   pthread_mutex_lock(&THR_LOCK_net);
   ptr=inet_ntoa(in);
-  strmov(buf,ptr);
+  strcpy(buf,ptr);
   pthread_mutex_unlock(&THR_LOCK_net);
 }

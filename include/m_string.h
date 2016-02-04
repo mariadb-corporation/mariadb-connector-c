@@ -88,6 +88,10 @@ extern "C" {
 
 #if defined(HAVE_STPCPY) && !defined(HAVE_mit_thread)
 #define strmov(A,B) stpcpy((A),(B))
+#define strnmov(A,B,C) stpncpy((A),(B),(C))
+#else
+#define strmov(A,B) (strcpy((A),(B)) + strlen((B));
+#define strnmov(A,B,C) (strncpy((A),(B),(C)) + strlen((B));
 #endif
 
 extern char NEAR _dig_vec[];		/* Declared in int2str() */
@@ -139,7 +143,7 @@ extern	void bmove_upp(char *dst,const char *src, size_t len);
 extern	void bchange(char *dst, size_t old_len, const char *src,
 		     size_t new_len, size_t tot_len);
 extern	void strappend(char *s,size_t len,pchar fill);
-extern	char *strend(const char *s);
+#define strend(s) strchr((s),'\0')
 extern  char *strcend(const char *, char);
 extern	char *strfield(char *src,int fields,int chars,int blanks,
 			   int tabch);
@@ -152,10 +156,6 @@ extern	char *strmake(char *dst,const char *src, size_t length);
 extern	char *strmake_overlapp(char *dst,const char *src, size_t length);
 #endif
 
-#ifndef strmov
-extern	char *strmov(char *dst,const char *src);
-#endif
-extern	char *strnmov(char *dst,const char *src,uint n);
 extern	char *strsuff(const char *src,const char *suffix);
 extern	char *strcont(const char *src,const char *set);
 extern	char *strxcat _VARARGS((char *dst,const char *src, ...));

@@ -50,7 +50,7 @@ uint dirname_part(my_string to, const char *name)
   DBUG_PRINT("enter",("'%s'",name));
 
   length=dirname_length(name);
-  (void) strmake(to,(char*) name,min(length,FN_REFLEN-2));
+  strncpy(to,(char*) name,min(length,FN_REFLEN-2));
   convert_dirname(to);				/* Convert chars */
   DBUG_RETURN(length);
 } /* dirname */

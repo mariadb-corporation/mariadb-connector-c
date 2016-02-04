@@ -216,7 +216,7 @@ const char *ma_thread_name(void)
   {
     long id=my_thread_id();
     sprintf(name_buff,"T@%ld", id);
-    strmake(tmp->name,name_buff,THREAD_NAME_SIZE);
+    strncpy(tmp->name,name_buff,THREAD_NAME_SIZE);
   }
   return tmp->name;
 }

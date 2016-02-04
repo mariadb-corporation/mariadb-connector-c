@@ -101,7 +101,7 @@ File my_register_filename(File fd, const char *FileName, enum file_type
       return(fd);				/* safeguard */
     }
     pthread_mutex_lock(&THR_LOCK_open);
-    if ((ma_file_info[fd].name = (char*) ma_strdup(FileName,MyFlags)))
+    if ((ma_file_info[fd].name = (char*) strdup(FileName)))
     {
       ma_file_opened++;
       ma_file_info[fd].type = type_of_file;

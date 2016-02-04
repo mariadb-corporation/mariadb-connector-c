@@ -231,7 +231,7 @@ void symdirget(char *dir)
   {
     FILE *fp;
     char temp= *(--pos);            /* May be "/" or "\" */
-    strmov(pos,".sym");
+    strcpy(pos,".sym");
     fp = my_fopen(dir, O_RDONLY,MYF(0));
     *pos++=temp; *pos=0;	  /* Restore old filename */
     if (fp)
@@ -246,7 +246,7 @@ void symdirget(char *dir)
 	if (pos == buff || pos[-1] != FN_LIBCHAR)
 	  *pos++=FN_LIBCHAR;
 
-	strmake(dir,buff, (uint) (pos-buff));
+	strncpy(dir,buff, (uint) (pos-buff));
       }
       my_fclose(fp,MYF(0));
     }
@@ -365,7 +365,7 @@ my_string ma_unpack_filename(my_string to, const char *from)
 uint ma_system_filename(my_string to, const char *from)
 {
 #ifndef FN_C_BEFORE_DIR
-  return (uint) (strmake(to,from,FN_REFLEN-1)-to);
+  return (uint) strlen(strncpy(to,from,FN_REFLEN-1));
 #else	/* VMS */
 
 	/* change 'dev:lib/xxx' to 'dev:[lib]xxx' */
@@ -439,7 +439,7 @@ my_string ma_intern_filename(my_string to, const char *from)
     char buff[FN_REFLEN];
     if (from == to)
     {						/* Dirname may destroy from */
-      strmov(buff,from);
+      strcpy(buff,from);
       from=buff;
     }
     length=dirname_part(to,from);			/* Copy dirname & fix chars */

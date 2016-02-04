@@ -237,15 +237,15 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
       return 0;					/* Ignore wrong paths */
     if (dir)
     {
-      strmov(name,dir);
+      strcpy(name,dir);
       convert_dirname(name);
       if (dir[0] == FN_HOMELIB)		/* Add . to filenames in home */
         strcat(name,".");
-      strxmov(strend(name),config_file,ext,NullS);
+      strcat(strcat(name, config_file), ext);
     }
     else
     {
-      strmov(name,config_file);
+      strcpy(name,config_file);
     }
     fn_format(name,name,"","",4);
 #if !defined(_WIN32) && !defined(OS2)
@@ -261,7 +261,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
       }
     }
 #endif
-    if (!(file = ma_open(fn_format(name,name,"","",4),"r", NULL)))
+    if (!(file = ma_open(name,"r", NULL)))
       return 0;
   }
   else {
@@ -307,13 +307,13 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
     if (!read_values)
       continue;
     if (!(end=value=strchr(ptr,'=')))
-      end=strend(ptr);				/* Option without argument */
+      end=strchr(ptr, '\0');				/* Option without argument */
     for ( ; isspace(end[-1]) ; end--) ;
     if (!value)
     {
       if (!(tmp=ma_alloc_root(alloc,(uint) (end-ptr)+3)))
 	goto err;
-      strmake(strmov(tmp,"--"),ptr,(uint) (end-ptr));
+      strncpy(strmov(tmp,"--"),ptr,(uint) (end-ptr));
       if (ma_insert_dynamic(args,(gptr) &tmp))
 	goto err;
     }
@@ -322,7 +322,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
       /* Remove pre- and end space */
       char *value_end;
       for (value++ ; isspace(*value); value++) ;
-      value_end=strend(value);
+      value_end=strchr(value, '\0');
       for ( ; isspace(value_end[-1]) ; value_end--) ;
       /* remove possible quotes */
       if (*value == '\'' || *value == '\"')
@@ -414,15 +414,15 @@ void ma_print_defaults(const char *conf_file, const char **groups)
     for (dirs=default_directories ; *dirs; dirs++)
     {
       if (**dirs)
-	strmov(name,*dirs);
+	strcpy(name,*dirs);
       else if (defaults_extra_file)
-	strmov(name,defaults_extra_file);
+	strcpy(name,defaults_extra_file);
       else
 	continue;
       convert_dirname(name);
       if (name[0] == FN_HOMELIB)	/* Add . to filenames in home */
 	strcat(name,".");
-      strxmov(strend(name),conf_file,default_ext," ",NullS);
+      strcat(strcat(strcat(name, conf_file), default_ext), " ");
       fputs(name,stdout);
     }
     puts("");

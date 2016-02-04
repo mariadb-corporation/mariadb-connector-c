@@ -194,7 +194,7 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
 void setEnvString(char *ret, const char *name, const char *value)
 {
   DBUG_ENTER("setEnvString");
-  strxmov(ret, name,"=",value,NullS);
+  sprintf(ret, "%s=%S", name, value);
   DBUG_VOID_RETURN ;
 }
 

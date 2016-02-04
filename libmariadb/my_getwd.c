@@ -50,7 +50,7 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
 
 #if ! defined(MSDOS)
   if (ma_cur_dir[0])				/* Current pos is saved here */
-    VOID(strmake(buf,&ma_cur_dir[0],size-1));
+    strncpy(buf,&ma_cur_dir[0],size-1);
   else
 #endif
   {
@@ -69,7 +69,7 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
     {
       char pathname[MAXPATHLEN];
       getwd(pathname);
-      strmake(buf,pathname,size-1);
+      strncpy(buf,pathname,size-1);
     }
 #elif defined(VMS)
     if (!getcwd(buf,size-2,1) && MyFlags & MY_WME)
@@ -87,7 +87,7 @@ int my_getwd(my_string buf, uint size, myf MyFlags)
       pos[0]= FN_LIBCHAR;
       pos[1]=0;
     }
-    (void) strmake(&ma_cur_dir[0],buf,(size_s) (FN_REFLEN-1));
+    strncpy(&ma_cur_dir[0],buf,(size_s) (FN_REFLEN-1));
   }
   DBUG_RETURN(0);
 } /* my_getwd */
@@ -137,7 +137,7 @@ int my_setwd(const char *dir, myf MyFlags)
 #endif
   if (*((pos=strend(dir)-1)) == FN_LIBCHAR && pos != dir)
   {
-    strmov(buff,dir)[-1]=0;			/* Remove last '/' */
+    strncpy(buff, dir, strlen(dir) - 1); /* Remove last '/' */
     dir=buff;
   }
 #endif /* MSDOS*/
@@ -169,7 +169,7 @@ int my_setwd(const char *dir, myf MyFlags)
   {
     if (test_if_hard_path(start))
     {						/* Hard pathname */
-      pos=strmake(&ma_cur_dir[0],start,(size_s) FN_REFLEN-1);
+      pos=strncpy(&ma_cur_dir[0],start,(size_s) FN_REFLEN-1) + strlen(&ma_cur_dir[0]);
       if (pos[-1] != FN_LIBCHAR)
       {
 	length=(uint) (pos-(char*) ma_cur_dir);

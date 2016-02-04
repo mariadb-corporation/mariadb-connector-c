@@ -16,9 +16,8 @@
    MA 02111-1307, USA */
 
 #include "mysys_priv.h"
-
-int ma_message_no_curses(uint error __attribute__((unused)),
-			 const char *str, myf MyFlags)
+int  ma_message_no_curses(uint error __attribute__((unused)),
+			 const char *str, myf MyFlags) 
 {
   DBUG_ENTER("ma_message_no_curses");
   DBUG_PRINT("enter",("message: %s",str));

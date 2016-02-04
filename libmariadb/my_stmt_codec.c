@@ -569,8 +569,8 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
     {
  #define MAX_DOUBLE_STRING_REP_LENGTH 300
      char buff[MAX_DOUBLE_STRING_REP_LENGTH];
-     char *end;
      size_t length;
+     char *end;
 
      length= MIN(MAX_DOUBLE_STRING_REP_LENGTH - 1, r_param->buffer_length);
 
@@ -585,9 +585,10 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
        length= strlen(buff);
      }
 
-     /* remove possible trailing blanks */
-     if ((end= strcend(buff, ' ')))
-       *end= 0;
+     /* remove trailing blanks */
+     end= strchr(buff, '\0') - 1;
+     while (end > buff && *end == ' ')
+       *end--= '\0';
 
      /* check if ZEROFILL flag is active */
      if (field->flags & ZEROFILL_FLAG)

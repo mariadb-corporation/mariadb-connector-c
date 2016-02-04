@@ -687,8 +687,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   if (!pvio || !cinfo)
     return 1;
 
-  if (!(csock= (struct st_pvio_socket *)ma_malloc(sizeof(struct st_pvio_socket),
-                                      MYF(MY_WME | MY_ZEROFILL))))
+  if (!(csock= (struct st_pvio_socket *)calloc(1, sizeof(struct st_pvio_socket))))
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
     return 1;
@@ -838,7 +837,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 error:
   if (pvio->data)
   {
-    ma_free((gptr)pvio->data);
+    free((gptr)pvio->data);
     pvio->data= NULL;
   }
   return 1;
@@ -862,7 +861,7 @@ my_bool pvio_socket_close(MARIADB_PVIO *pvio)
       r= closesocket(csock->socket);
       csock->socket= -1;
     }
-    ma_free((gptr)pvio->data);
+    free((gptr)pvio->data);
     pvio->data= NULL;
   }
   return r;

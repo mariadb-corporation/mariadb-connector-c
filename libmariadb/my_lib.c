@@ -75,7 +75,7 @@ void my_dirend(MY_DIR *buffer)
 {
   DBUG_ENTER("my_dirend");
   if (buffer)
-    ma_free(buffer);
+    free(buffer);
   DBUG_VOID_RETURN;
 } /* my_dirend */
 
@@ -112,7 +112,7 @@ MY_DIR	*my_dir(const char *path, myf MyFlags)
 
   dirp = opendir(directory_file_name(tmp_path,(my_string) path));
   size = STARTSIZE;
-  if (dirp == NULL || ! (buffer = (char *) ma_malloc(size, MyFlags)))
+  if (dirp == NULL || ! (buffer = (char *) malloc(size)))
     goto error;
 
   fcnt = 0;
@@ -146,8 +146,7 @@ MY_DIR	*my_dir(const char *path, myf MyFlags)
     if (eof)
       break;
     size += STARTSIZE; obuffer = buffer;
-    if (!(buffer = (char *) ma_realloc((gptr) buffer, size,
-				       MyFlags | MY_FREE_ON_ERROR)))
+    if (!(buffer = (char *) realloc((gptr) buffer, size)))
       goto error;			/* No memory */
     length= (uint) (sizeof(struct fileinfo ) * firstfcnt);
     diff=    PTR_BYTE_DIFF(buffer , obuffer) + (int) length;
@@ -392,7 +391,7 @@ MY_DIR	*my_dir(const char *path, myf MyFlags)
   size = STARTSIZE;
   firstfcnt = maxfcnt = (size - sizeof(MY_DIR)) /
     (sizeof(struct fileinfo) + FN_LEN);
-  if ((buffer = (char *) ma_malloc(size, MyFlags)) == 0)
+  if ((buffer = (char *) malloc(size) == 0)
     goto error;
   fnames=   (struct fileinfo *) (buffer + sizeof(MY_DIR));
   tempptr = (char *) (fnames + maxfcnt);
@@ -435,8 +434,7 @@ MY_DIR	*my_dir(const char *path, myf MyFlags)
     if (eof)
       break;
     size += STARTSIZE; obuffer = buffer;
-    if (!(buffer = (char *) ma_realloc((gptr) buffer, size,
-				       MyFlags | MY_FREE_ON_ERROR)))
+    if (!(buffer = (char *) realloc((gptr) buffer, size)))
       goto error;
     length= sizeof(struct fileinfo ) * firstfcnt;
     diff=    PTR_BYTE_DIFF(buffer , obuffer) +length;
@@ -514,7 +512,7 @@ MY_DIR	*my_dir(const char* path, myf MyFlags)
   size = STARTSIZE;
   firstfcnt = maxfcnt = (size - sizeof(MY_DIR)) /
     (sizeof(struct fileinfo) + FN_LEN);
-  if ((buffer = (char *) ma_malloc(size, MyFlags)) == 0)
+  if ((buffer = (char *) malloc(size) == 0)
     goto error;
   fnames=   (struct fileinfo *) (buffer + sizeof(MY_DIR));
   tempptr = (char *) (fnames + maxfcnt);
@@ -543,8 +541,7 @@ MY_DIR	*my_dir(const char* path, myf MyFlags)
     if (eof)
       break;
     size += STARTSIZE; obuffer = buffer;
-    if (!(buffer = (char *) ma_realloc((gptr) buffer, size,
-				       MyFlags | MY_FREE_ON_ERROR)))
+    if (!(buffer = (char *) realloc((gptr) buffer, size)))
       goto error;
     length= sizeof(struct fileinfo ) * firstfcnt;
     diff=    PTR_BYTE_DIFF(buffer , obuffer) +length;
@@ -595,13 +592,13 @@ MY_STAT *my_stat(const char *path, MY_STAT *stat_area, myf my_flags)
 	     (unsigned char *) stat_area, my_flags));
 
   if ((m_used= (stat_area == NULL)))
-    if (!(stat_area = (MY_STAT *) ma_malloc(sizeof(MY_STAT), my_flags)))
+    if (!(stat_area = (MY_STAT *) malloc(sizeof(MY_STAT))))
       goto error;
   if ( ! stat((my_string) path, (struct stat *) stat_area) )
     DBUG_RETURN(stat_area);
   my_errno=errno;
   if (m_used)					/* Free if new area */
-    ma_free(stat_area);
+    free(stat_area);
 
 error:
   if (my_flags & (MY_FAE+MY_WME))

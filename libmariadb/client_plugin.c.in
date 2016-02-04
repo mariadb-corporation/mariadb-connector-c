@@ -250,16 +250,16 @@ static void load_env_plugins(MYSQL *mysql)
   if (!s)
     return;
 
-  free_env= plugs= ma_strdup(s, MYF(MY_WME));
+  free_env= plugs= strdup(s);
 
   do {
-    if ((s= strchr(plugs, ';')))
+    if (s= strchr(plugs, ';'))
       *s= '\0';
     mysql_load_plugin(mysql, plugs, -1, 0);
     plugs= s + 1;
   } while (s);
 
-  ma_free(free_env);
+  free(free_env);
 }
 
 /********** extern functions to be used by libmariadb *********************/
@@ -391,11 +391,11 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   }
 
   /* Compile dll path */
-  strxnmov(dlpath, sizeof(dlpath) - 1,
+  snprintf(dlpath, sizeof(dlpath) - 1, "%s/%s%s",
            mysql->options.extension && mysql->options.extension->plugin_dir ?
            mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
            PLUGINDIR, "/",
-           name, SO_EXT, NullS);
+           name, SO_EXT);
 
   /* Open new dll handle */
   if (!(dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))

@@ -119,14 +119,7 @@ extern int NEAR my_errno;		/* Last error in mysys */
 #define TERMINATE(A) {}
 #define QUICK_SAFEMALLOC
 #define NORMAL_SAFEMALLOC
-extern gptr ma_malloc(size_t Size,myf MyFlags);
 #define ma_malloc_ci(SZ,FLAG) ma_malloc( SZ, FLAG )
-extern gptr ma_realloc(gptr oldpoint, size_t Size,myf MyFlags);
-extern void my_no_flags_free(void *ptr);
-extern gptr ma_memdup(const unsigned char *from, size_t length,myf MyFlags);
-extern my_string ma_strdup(const char *from,myf MyFlags);
-extern my_string ma_strndup(const char *from, size_t length, myf MyFlags);
-#define ma_free(PTR) my_no_flags_free(PTR)
 #define CALLER_INFO_PROTO   /* nothing */
 #define CALLER_INFO         /* nothing */
 #define ORIG_CALLER_INFO    /* nothing */
@@ -423,10 +416,6 @@ extern gptr _myrealloc(gptr pPtr,size_t uSize,const char *sFile,
 extern gptr my_multi_malloc _VARARGS((myf MyFlags, ...));
 extern void _myfree(gptr pPtr,const char *sFile,uint uLine, myf MyFlag);
 extern int _sanity(const char *sFile,unsigned int uLine);
-extern gptr _ma_memdup(const unsigned char *from, size_t length,
-		       const char *sFile, uint uLine,myf MyFlag);
-extern my_string _ma_strdup(const char *from, const char *sFile, uint uLine,
-			    myf MyFlag);
 #ifndef TERMINATE
 extern void TERMINATE(FILE *file);
 #endif

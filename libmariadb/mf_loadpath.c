@@ -47,8 +47,8 @@ my_string my_load_path(my_string to, const char *path,
       VOID(strmov(buff,path));
   }
   else
-    VOID(strxmov(buff,own_path_prefix,path,NullS));
-  strmov(to,buff);
+    strcat(strcat(buff, own_path_prefix), path);
+  strcpy(to,buff);
   DBUG_PRINT("exit",("to: %s",to));
   DBUG_RETURN(to);
 } /* my_load_path */

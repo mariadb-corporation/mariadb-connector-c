@@ -102,9 +102,9 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   size_t conn_attr_len= (mysql->options.extension) ? 
                          mysql->options.extension->connect_attrs_len : 0;
 
-  buff= my_alloca(USERNAME_LENGTH+1 + data_len+1 + NAME_LEN+1 + 2 + NAME_LEN+1 + 9 + conn_attr_len);
+  buff= malloc(USERNAME_LENGTH+1 + data_len+1 + NAME_LEN+1 + 2 + NAME_LEN+1 + 9 + conn_attr_len);
 
-  end= strmake(buff, mysql->user, USERNAME_LENGTH) + 1;
+  end= strncpy(buff, mysql->user, USERNAME_LENGTH) + strlen(buff) + 1;
 
   if (!data_len)
     *end++= 0;
@@ -128,7 +128,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
     memcpy(end, data, data_len);
     end+= data_len;
   }
-  end= strmake(end, mpvio->db ? mpvio->db : "", NAME_LEN) + 1;
+  end= strncpy(end, mpvio->db ? mpvio->db : "", NAME_LEN) + strlen(end) + 1;
 
   if (mysql->server_capabilities & CLIENT_PROTOCOL_41)
   {
@@ -137,7 +137,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   }
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
-    end= strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
+    end= strncpy(end, mpvio->plugin->name, NAME_LEN) + strlen(end) + 1;
 
   end= ma_send_connect_attr(mysql, end);
 
@@ -145,7 +145,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
                       buff, (ulong)(end-buff), 1, NULL);
 
 error:
-  my_afree(buff);
+  free(buff);
   return res;
 }
 
@@ -161,7 +161,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                          mysql->options.extension->connect_attrs_len : 0;
 
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
-  buff= my_alloca(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
+  buff= malloc(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
   
   mysql->client_flag|= mysql->options.client_flag;
   mysql->client_flag|= CLIENT_CAPABILITIES;
@@ -264,7 +264,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   /* This needs to be changed as it's not useful with big packets */
   if (mysql->user[0])
-    strmake(end, mysql->user, USERNAME_LENGTH);
+    strncpy(end, mysql->user, USERNAME_LENGTH);
   else
     read_user_name(end);
 
@@ -292,12 +292,12 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   /* Add database if needed */
   if (mpvio->db && (mysql->server_capabilities & CLIENT_CONNECT_WITH_DB))
   {
-    end= strmake(end, mpvio->db, NAME_LEN) + 1;
-    mysql->db= ma_strdup(mpvio->db, MYF(MY_WME));
+    end= strncpy(end, mpvio->db, NAME_LEN) + strlen(end) + 1;
+    mysql->db= strdup(mpvio->db);
   }
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
-    end= strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
+    end= strncpy(end, mpvio->plugin->name, NAME_LEN) + strlen(end) + 1;
 
   end= ma_send_connect_attr(mysql, end);
 
@@ -310,11 +310,11 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                         errno);
     goto error;
   }
-  my_afree(buff);
+  free(buff);
   return 0;
   
 error:
-  my_afree(buff);
+  free(buff);
   return 1;
 }
 

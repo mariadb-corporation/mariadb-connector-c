@@ -21,6 +21,7 @@
 
 #include "mysys_priv.h"
 #include "m_string.h"
+#include <memory.h>
 
 /*
   Initiate array and alloc space for init_alloc elements. Array is usable
@@ -44,7 +45,7 @@ my_bool init_dynamic_array(DYNAMIC_ARRAY *array, uint element_size,
   array->max_element=init_alloc;
   array->alloc_increment=alloc_increment;
   array->size_of_element=element_size;
-  if (!(array->buffer=(char*) ma_malloc_ci(element_size*init_alloc,MYF(MY_WME))))
+  if (!(array->buffer=(char*) malloc(element_size*init_alloc)))
   {
     array->max_element=0;
     DBUG_RETURN(TRUE);
@@ -78,10 +79,9 @@ unsigned char *ma_alloc_dynamic(DYNAMIC_ARRAY *array)
   if (array->elements == array->max_element)
   {
     char *new_ptr;
-    if (!(new_ptr=(char*) ma_realloc(array->buffer,(array->max_element+
-				     array->alloc_increment)*
-				     array->size_of_element,
-				     MYF(MY_WME | MY_ALLOW_ZERO_PTR))))
+    if (!(new_ptr=(char*) realloc(array->buffer,(array->max_element+
+			          array->alloc_increment)*
+				   array->size_of_element)))
       return 0;
     array->buffer=new_ptr;
     array->max_element+=array->alloc_increment;
@@ -110,9 +110,8 @@ my_bool ma_set_dynamic(DYNAMIC_ARRAY *array, gptr element, uint idx)
       char *new_ptr;
       size=(idx+array->alloc_increment)/array->alloc_increment;
       size*= array->alloc_increment;
-      if (!(new_ptr=(char*) ma_realloc(array->buffer,size*
-				       array->size_of_element,
-				       MYF(MY_WME | MY_ALLOW_ZERO_PTR))))
+      if (!(new_ptr=(char*) realloc(array->buffer,size*
+			            array->size_of_element)))
 	return TRUE;
       array->buffer=new_ptr;
       array->max_element=size;
@@ -145,7 +144,7 @@ void ma_delete_dynamic(DYNAMIC_ARRAY *array)
 {
   if (array->buffer)
   {
-    ma_free(array->buffer);
+    free(array->buffer);
     array->buffer=0;
     array->elements=array->max_element=0;
   }
@@ -167,9 +166,8 @@ void ma_freeze_size(DYNAMIC_ARRAY *array)
 
   if (array->buffer && array->max_element != elements)
   {
-    array->buffer=(char*) ma_realloc(array->buffer,
-				     elements*array->size_of_element,
-				     MYF(MY_WME));
+    array->buffer=(char*) realloc(array->buffer,
+			          elements*array->size_of_element);
     array->max_element=elements;
   }
 }

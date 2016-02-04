@@ -115,8 +115,10 @@ static void show_file(char *filename)
   char *has_so_ext= strstr(filename, SO_EXT);
 
   if (!strchr(filename, FN_LIBCHAR))
-    strxnmov(dlpath, sizeof(dlpath) - 1,
-             (env_plugin_dir) ? env_plugin_dir : PLUGINDIR, "/", filename, has_so_ext ? "" : SO_EXT, NullS);
+    snprintf(dlpath, sizeof(dlpath) - 1, "%s/%s%s",
+             (env_plugin_dir) ? env_plugin_dir : PLUGINDIR, 
+             filename, 
+             has_so_ext ? "" : SO_EXT);
   else
     strcpy(dlpath, filename);
   if ((dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))

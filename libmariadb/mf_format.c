@@ -57,7 +57,7 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
   name+=(length=dirname_part(dev,(startpos=(my_string) name)));
   if (length == 0 || flag & 1)
   {
-    (void) strmake(dev,dsk, sizeof(dev) - 2);
+    strncpy(dev,dsk, sizeof(dev) - 2);
       /* Use given directory */
     convert_dirname(dev);			/* Fix to this OS */
   }
@@ -91,7 +91,7 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
       return 0;
     tmp_length=strlength(startpos);
     DBUG_PRINT("error",("dev: '%s'  ext: '%s'  length: %d",dev,ext,length));
-    (void) strmake(to,startpos,min(tmp_length,FN_REFLEN-1));
+    strncpy(to,startpos,min(tmp_length,FN_REFLEN-1));
   }
   else
   {
@@ -100,7 +100,7 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
       bmove(buff,(char*) name,length);		/* Save name for last copy */
       name=buff;
     }
-    pos=strmake(strmov(to,dev),name,length);
+    pos=strncpy(strmov(to,dev),name,length) + strlen(to);
 #ifdef FN_UPPER_CASE
     caseup_str(to);
 #endif
@@ -117,7 +117,7 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
     if (flag & 32 || (!lstat(to,&stat_buff) && S_ISLNK(stat_buff.st_mode)))
     {
       if (realpath(to,buff))
-	strmake(to,buff,FN_REFLEN-1);
+	strncpy(to,buff,FN_REFLEN-1);
     }
   }
 #endif
