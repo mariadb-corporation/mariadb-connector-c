@@ -271,7 +271,6 @@ ma_time.c
 dbug.c
 default.c
 errmsg.c
-my_vsnprintf.c
 errors.c
 getopt1.c
 getopt.c 
@@ -279,7 +278,6 @@ int2str.c
 is_prefix.c
 libmariadb.c
 list.c
-llstr.c
 longlong2str.c 
 ma_pvio.c
 ma_ssl.c

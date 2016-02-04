@@ -2551,7 +2551,7 @@ mariadb_dyncol_list_named(DYNAMIC_COLUMN *str, uint *count, LEX_STRING **names)
       (*names)[i].str= pool;
       pool+= DYNCOL_NUM_CHAR;
       (*names)[i].length=
-        longlong2str(nm, (*names)[i].str, 10) - (*names)[i].str;
+        ma_longlong2str(nm, (*names)[i].str, 10) - (*names)[i].str;
     }
     else
     {
@@ -4195,8 +4195,8 @@ mariadb_dyncol_json_internal(DYNAMIC_COLUMN *str, DYNAMIC_STRING *json,
       if (dynstr_realloc(json, DYNCOL_NUM_CHAR + 3))
         goto err;
       json->str[json->length++]= '"';
-      json->length+= (ma_snprintf(json->str + json->length,
-                               DYNCOL_NUM_CHAR, "%u", nm));
+      json->length+= snprintf(json->str + json->length,
+                               DYNCOL_NUM_CHAR, "%u", nm);
     }
     else
     {

@@ -201,13 +201,13 @@ extern long strtol(const char *str, char **ptr, int base);
 extern ulong strtoul(const char *str, char **ptr, int base);
 #endif
 
-extern char *int2str(long val,char *dst,int radix);
-extern char *int10_to_str(long val,char *dst,int radix);
-extern char *str2int(const char *src,int radix,long lower,long upper,
+extern char *ma_int2str(long val,char *dst,int radix);
+extern char *ma_int10_to_str(long val,char *dst,int radix);
+extern char *ma_str2int(const char *src,int radix,long lower,long upper,
 			 long *val);
 #if SIZEOF_LONG == SIZEOF_LONG_LONG
-#define longlong2str(A,B,C) int2str((A),(B),(C))
-#define longlong10_to_str(A,B,C) int10_to_str((A),(B),(C))
+#define ma_longlong2str(A,B,C) ma_int2str((A),(B),(C))
+#define ma_longlong10_to_str(A,B,C) ma_int10_to_str((A),(B),(C))
 #define strtoll(A,B,C) strtol((A),(B),(C))
 #define strtoull(A,B,C) strtoul((A),(B),(C))
 #ifndef HAVE_STRTOULL
@@ -215,8 +215,8 @@ extern char *str2int(const char *src,int radix,long lower,long upper,
 #endif
 #else
 #ifdef HAVE_LONG_LONG
-extern char *longlong2str(longlong val,char *dst,int radix);
-extern char *longlong10_to_str(longlong val,char *dst,int radix);
+extern char *ma_longlong2str(longlong val,char *dst,int radix);
+extern char *ma_longlong10_to_str(longlong val,char *dst,int radix);
 #if (!defined(HAVE_STRTOULL) || defined(HAVE_mit_thread)) || defined(NO_STRTOLL_PROTO)
 extern longlong strtoll(const char *str, char **ptr, int base);
 extern ulonglong strtoull(const char *str, char **ptr, int base);

@@ -1,4 +1,5 @@
 /* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
+                 2016 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -16,9 +17,9 @@
    MA 02111-1307, USA */
 
 /*
-  Defines: longlong2str();
+  Defines: ma_longlong2str();
 
-  longlong2str(dst, radix, val)
+  ma_longlong2str(dst, radix, val)
   converts the (longlong) integer "val" to character form and moves it to
   the destination string "dst" followed by a terminating NUL.  The
   result is normally a pointer to this NUL character, but if the radix
@@ -42,7 +43,7 @@
 #include <my_global.h>
 #include "m_string.h"
 
-#if defined(HAVE_LONG_LONG) && !defined(longlong2str) && !defined(HAVE_LONGLONG2STR)
+#if defined(HAVE_LONG_LONG) && !defined(ma_longlong2str) && !defined(HAVE_LONGLONG2STR)
 
 extern char NEAR _dig_vec[];
 
@@ -50,7 +51,7 @@ extern char NEAR _dig_vec[];
   This assumes that longlong multiplication is faster than longlong division.
 */
 
-char *longlong2str(longlong val,char *dst,int radix)
+char *ma_longlong2str(longlong val,char *dst,int radix)
 {
   char buffer[65];
   register char *p;

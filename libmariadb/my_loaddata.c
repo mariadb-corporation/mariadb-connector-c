@@ -90,7 +90,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
     else
     {
       info->error_no = my_errno;
-      ma_snprintf((char *)info->error_msg, sizeof(info->error_msg), 
+      snprintf((char *)info->error_msg, sizeof(info->error_msg), 
                   EE(EE_FILENOTFOUND), filename, info->error_no);
     }
     DBUG_RETURN(1);

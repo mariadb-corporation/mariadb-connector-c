@@ -46,7 +46,7 @@ char NEAR _dig_vec[] =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 
-char *int2str(register long int val, register char *dst, register int radix)
+char *ma_int2str(register long int val, register char *dst, register int radix)
 {
   char buffer[65];
   register char *p;
@@ -104,7 +104,7 @@ char *int2str(register long int val, register char *dst, register int radix)
    radix 10 / -10
 */
 
-char *int10_to_str(long int val, char *dst, int radix)
+char *ma_int10_to_str(long int val, char *dst, int radix)
 {
   char buffer[65];
   register char *p;
@@ -140,13 +140,13 @@ char *int10_to_str(long int val, char *dst, int radix)
 
 char *my_itoa(int val, char *dst, int radix)
 {
-  VOID(int2str((long) val,dst,(radix == 10 ? -10 : radix)));
+  VOID(ma_int2str((long) val,dst,(radix == 10 ? -10 : radix)));
   return dst;
 }
 
 char *my_ltoa(long int val, char *dst, int radix)
 {
-  VOID(int2str((long) val,dst,(radix == 10 ? -10 : radix)));
+  VOID(ma_int2str((long) val,dst,(radix == 10 ? -10 : radix)));
   return dst;
 }
 

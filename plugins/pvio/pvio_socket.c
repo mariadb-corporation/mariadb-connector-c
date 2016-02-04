@@ -733,7 +733,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     int rc= 0;
 
     bzero(&server_port, NI_MAXSERV);
-    ma_snprintf(server_port, NI_MAXSERV, "%d", cinfo->port);
+    snprintf(server_port, NI_MAXSERV, "%d", cinfo->port);
 
     /* set hints for getaddrinfo */
     bzero(&hints, sizeof(hints));

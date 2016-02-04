@@ -1988,8 +1988,8 @@ void my_set_error(MYSQL *mysql,
   mysql->net.last_errno= error_nr;
   strncpy(mysql->net.sqlstate, sqlstate, SQLSTATE_LENGTH);
   va_start(ap, format);
-  ma_vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE, 
-               format ? format : ER(error_nr), ap);
+  vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE, 
+            format ? format : ER(error_nr), ap);
   DBUG_PRINT("info", ("error(%d) %s", error_nr, mysql->net.last_error));
   va_end(ap);
   DBUG_VOID_RETURN;
@@ -3408,7 +3408,7 @@ int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname)
   {
     char buff[64];
 
-    ma_snprintf(buff, 63, "SET NAMES %s", cs->csname);
+    snprintf(buff, 63, "SET NAMES %s", cs->csname);
     if (!mysql_real_query(mysql, buff, (uint)strlen(buff)))
     {
       mysql->charset= cs;

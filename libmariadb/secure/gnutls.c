@@ -58,7 +58,7 @@ static void ma_ssl_set_error(MYSQL *mysql, int ssl_errno)
                    ssl_error_reason);
     return;
   }
-  ma_snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
+  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
   pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                  ssl_error);
 }
