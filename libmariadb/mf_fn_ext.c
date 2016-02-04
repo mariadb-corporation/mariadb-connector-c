@@ -35,7 +35,7 @@ my_string fn_ext(const char *name)
 #if defined(FN_DEVCHAR) || defined(FN_C_AFTER_DIR)
   {
     char buff[FN_REFLEN];
-    gpos=(my_string) name+dirname_part(buff,(char*) name);
+    gpos=(my_string) name + ma_dirname_part(buff,(char*) name);
   }
 #else
   if (!(gpos=strrchr(name,FNLIBCHAR)))

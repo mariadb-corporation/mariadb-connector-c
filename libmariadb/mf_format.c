@@ -54,12 +54,12 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
 		       name,dsk,form,flag));
 
 	/* Kopiera & skippa enheten */
-  name+=(length=dirname_part(dev,(startpos=(my_string) name)));
+  name+=(length=ma_dirname_part(dev,(startpos=(my_string) name)));
   if (length == 0 || flag & 1)
   {
     strncpy(dev,dsk, sizeof(dev) - 2);
       /* Use given directory */
-    convert_dirname(dev);			/* Fix to this OS */
+    ma_convert_dirname(dev);			/* Fix to this OS */
   }
   if (flag & 8)
     ma_pack_dirname(dev,dev);			/* Put in ./.. and ~/.. */

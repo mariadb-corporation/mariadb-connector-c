@@ -345,7 +345,7 @@ my_string ma_unpack_filename(my_string to, const char *from)
   char buff[FN_REFLEN];
   DBUG_ENTER("ma_unpack_filename");
 
-  length=dirname_part(buff,from);		/* copy & convert dirname */
+  length=ma_dirname_part(buff,from);		/* copy & convert dirname */
   n_length=unma_pack_dirname(buff,buff);
   if (n_length+strlen(from+length) < FN_REFLEN)
   {
@@ -435,14 +435,14 @@ my_string ma_intern_filename(my_string to, const char *from)
 {
 #ifndef VMS
   {
-    uint length;
+    uint length= 0;
     char buff[FN_REFLEN];
     if (from == to)
     {						/* Dirname may destroy from */
       strcpy(buff,from);
       from=buff;
     }
-    length=dirname_part(to,from);			/* Copy dirname & fix chars */
+    length=ma_dirname_part(to,from);			/* Copy dirname & fix chars */
     (void) strcat(to,from+length);
     return (to);
   }

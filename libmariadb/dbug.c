@@ -104,9 +104,9 @@
 
 extern int ma_snprintf(char* to, size_t n, const char* fmt, ...);
 
-char _dig_vec_upper[] =
+static const char _dig_vec_upper[] =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-char _dig_vec_lower[] =
+static const char _dig_vec_lower[] =
   "0123456789abcdefghijklmnopqrstuvwxyz";
 
 #ifndef DBUG_OFF

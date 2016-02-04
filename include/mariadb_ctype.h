@@ -34,6 +34,7 @@ extern "C" {
 
 #define MADB_DEFAULT_CHARSET_NAME "latin1"
 #define MADB_DEFAULT_COLLATION_NAME "latin1_swedish_ci"
+#define MADB_AUTODETECT_CHARSET_NAME "auto"
 
 /* we use the mysqlnd implementation */
 typedef struct ma_charset_info_st

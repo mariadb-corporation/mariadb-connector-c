@@ -454,11 +454,11 @@ extern void casedn(my_string str,uint length);
 extern void caseup_str(my_string str);
 extern void casedn_str(my_string str);
 extern void case_sort(my_string str,uint length);
-extern uint dirname_part(my_string to,const char *name);
-extern uint dirname_length(const char *name);
+extern uint ma_dirname_part(my_string to,const char *name);
+extern uint ma_dirname_length(const char *name);
 #define base_name(A) (A+dirname_length(A))
 extern int test_if_hard_path(const char *dir_name);
-extern char *convert_dirname(my_string name);
+extern char *ma_convert_dirname(my_string name);
 extern void to_unix_path(my_string name);
 extern my_string fn_ext(const char *name);
 extern my_string fn_same(my_string toname,const char *name,int flag);

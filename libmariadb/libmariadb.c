@@ -879,7 +879,7 @@ static void mysql_read_default_options(struct st_mysql_options *options,
             if (strlen(opt_arg) >= FN_REFLEN)
               opt_arg[FN_REFLEN]= 0;
             if (!my_realpath(directory, opt_arg, 0))
-              OPT_SET_EXTENDED_VALUE_STR(options, plugin_dir, convert_dirname(directory));
+              OPT_SET_EXTENDED_VALUE_STR(options, plugin_dir, ma_convert_dirname(directory));
           }
           break;
         case OPT_default_auth:
@@ -1608,7 +1608,19 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
    
   /* Set character set */
   if (mysql->options.charset_name)
-    mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
+  {
+    if (!strcmp(mysql->options.charset_name, MADB_AUTODETECT_CHARSET_NAME))
+    {
+      char *csname= madb_get_os_character_set();
+      if (csname)
+      {
+        if (mysql->charset= mysql_find_charset_name(csname))
+          mysql_options(mysql, MYSQL_SET_CHARSET_NAME, csname);
+      }
+    }
+    else 
+      mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
+  }
   else if (mysql->server_language)
     mysql->charset= mysql_find_charset_nr(mysql->server_language);
   else

@@ -135,7 +135,7 @@ void mariadb_load_defaults(const char *conf_file, const char **groups,
 			    &group))
       goto err;
   }
-  else if (dirname_length(conf_file))
+  else if (ma_dirname_length(conf_file))
   {
     if (search_default_file(&args, &alloc, NullS, conf_file, default_ext,
 			    &group))
@@ -238,7 +238,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
     if (dir)
     {
       strcpy(name,dir);
-      convert_dirname(name);
+      ma_convert_dirname(name);
       if (dir[0] == FN_HOMELIB)		/* Add . to filenames in home */
         strcat(name,".");
       strcat(strcat(name, config_file), ext);
@@ -399,7 +399,7 @@ void ma_print_defaults(const char *conf_file, const char **groups)
   const char **dirs;
   puts("\nDefault options are read from the following files in the given order:");
 
-  if (dirname_length(conf_file))
+  if (ma_dirname_length(conf_file))
     fputs(conf_file,stdout);
   else
   {
@@ -419,7 +419,7 @@ void ma_print_defaults(const char *conf_file, const char **groups)
 	strcpy(name,defaults_extra_file);
       else
 	continue;
-      convert_dirname(name);
+      ma_convert_dirname(name);
       if (name[0] == FN_HOMELIB)	/* Add . to filenames in home */
 	strcat(name,".");
       strcat(strcat(strcat(name, conf_file), default_ext), " ");

@@ -38,9 +38,9 @@ my_string my_path(my_string to, const char *progname,
   DBUG_ENTER("my_path");
 
   start=to;					/* Return this */
-  if (progname && (dirname_part(to, progname) ||
+  if (progname && (ma_dirname_part(to, progname) ||
 		   find_file_in_path(to,progname) ||
-		   ((prog=getenv("_")) != 0 && dirname_part(to,prog))))
+		   ((prog=getenv("_")) != 0 && ma_dirname_part(to,prog))))
   {
     VOID(ma_intern_filename(to,to));
     if (!test_if_hard_path(to))
