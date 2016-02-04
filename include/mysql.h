@@ -527,6 +527,8 @@ int STDCALL mysql_close_start(MYSQL *sock);
 int STDCALL mysql_close_cont(MYSQL *sock, int status);
 int STDCALL mysql_commit_start(my_bool *ret, MYSQL * mysql);
 int STDCALL mysql_commit_cont(my_bool *ret, MYSQL * mysql, int status);
+int STDCALL mysql_dump_debug_info_cont(int *ret, MYSQL *mysql, int ready_status);
+int STDCALL mysql_dump_debug_info_start(int *ret, MYSQL *mysql);
 int STDCALL mysql_rollback_start(my_bool *ret, MYSQL * mysql);
 int STDCALL mysql_rollback_cont(my_bool *ret, MYSQL * mysql, int status);
 int STDCALL mysql_autocommit_start(my_bool *ret, MYSQL * mysql,
