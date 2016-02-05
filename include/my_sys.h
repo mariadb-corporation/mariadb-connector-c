@@ -561,14 +561,14 @@ extern void ma_freeze_size(DYNAMIC_ARRAY *array);
 extern int ma_find_type(my_string x,TYPELIB *typelib,uint full_name);
 extern void ma_make_type(my_string to,uint nr,TYPELIB *typelib);
 extern const char *ma_get_type(TYPELIB *typelib,uint nr);
-extern my_bool init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
+extern my_bool ma_init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
 				   size_t init_alloc, size_t alloc_increment);
-extern my_bool dynstr_append(DYNAMIC_STRING *str, const char *append);
-my_bool dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
+extern my_bool ma_dynstr_append(DYNAMIC_STRING *str, const char *append);
+my_bool ma_dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
 			  size_t length);
-extern my_bool dynstr_set(DYNAMIC_STRING *str, const char *init_str);
-extern my_bool dynstr_realloc(DYNAMIC_STRING *str, size_t additional_size);
-extern void dynstr_free(DYNAMIC_STRING *str);
+extern my_bool ma_dynstr_set(DYNAMIC_STRING *str, const char *init_str);
+extern my_bool ma_dynstr_realloc(DYNAMIC_STRING *str, size_t additional_size);
+extern void ma_dynstr_free(DYNAMIC_STRING *str);
 void set_all_changeable_vars(CHANGEABLE_VAR *vars);
 my_bool set_changeable_var(my_string str,CHANGEABLE_VAR *vars);
 my_bool set_changeable_varval(const char *var, ulong val,

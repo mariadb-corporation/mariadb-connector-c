@@ -260,8 +260,10 @@ extern int my_pthread_mutex_init(pthread_mutex_t *mp,
 				 const pthread_mutexattr_t *attr);
 #endif /* SAFE_MUTEX */
 #define pthread_cond_init(a,b) my_pthread_cond_init((a),(b))
-extern int my_pthread_cond_init(pthread_cond_t *mp,
+/*
+ extern int my_pthread_cond_init(pthread_cond_t *mp,
 				const pthread_condattr_t *attr);
+                                */
 #endif /* HAVE_NONPOSIX_PTHREAD_MUTEX_INIT */
 
 #if defined(HAVE_SIGTHREADMASK) && !defined(HAVE_PTHREAD_SIGMASK)

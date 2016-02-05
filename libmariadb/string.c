@@ -24,11 +24,12 @@
 #include "mysys_priv.h"
 #include <m_string.h>
 
-my_bool init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
+my_bool ma_init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
+
 			    size_t init_alloc, size_t alloc_increment)
 {
   uint length;
-  DBUG_ENTER("init_dynamic_string");
+  DBUG_ENTER("ma_init_dynamic_string");
 
   if (!alloc_increment)
     alloc_increment=128;
@@ -48,11 +49,10 @@ my_bool init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
   DBUG_RETURN(FALSE);
 }
 
-
-my_bool dynstr_set(DYNAMIC_STRING *str, const char *init_str)
+my_bool ma_dynstr_set(DYNAMIC_STRING *str, const char *init_str)
 {
   uint length;
-  DBUG_ENTER("dynstr_set");
+  DBUG_ENTER("ma_dynstr_set");
 
   if (init_str && (length= (uint) strlen(init_str)+1) > str->max_length)
   {
@@ -74,9 +74,9 @@ my_bool dynstr_set(DYNAMIC_STRING *str, const char *init_str)
 }
 
 
-my_bool dynstr_realloc(DYNAMIC_STRING *str, size_t additional_size)
+my_bool ma_dynstr_realloc(DYNAMIC_STRING *str, size_t additional_size)
 {
-  DBUG_ENTER("dynstr_realloc");
+  DBUG_ENTER("ma_dynstr_realloc");
 
   if (!additional_size) DBUG_RETURN(FALSE);
   if (str->length + additional_size > str->max_length)
@@ -90,13 +90,13 @@ my_bool dynstr_realloc(DYNAMIC_STRING *str, size_t additional_size)
 }
 
 
-my_bool dynstr_append(DYNAMIC_STRING *str, const char *append)
+my_bool ma_dynstr_append(DYNAMIC_STRING *str, const char *append)
 {
-  return dynstr_append_mem(str,append,strlen(append));
+  return ma_dynstr_append_mem(str,append,strlen(append));
 }
 
 
-my_bool dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
+my_bool ma_dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
 			  size_t length)
 {
   char *new_ptr;
@@ -117,7 +117,7 @@ my_bool dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
 }
 
 
-void dynstr_free(DYNAMIC_STRING *str)
+void ma_dynstr_free(DYNAMIC_STRING *str)
 {
   if (str->str)
   {

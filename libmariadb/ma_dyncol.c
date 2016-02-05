@@ -705,7 +705,7 @@ static my_bool dynamic_column_init_named(DYNAMIC_COLUMN *str, size_t size)
     - First \0 is flags
     - other 2 \0 is number of fields
   */
-  if (init_dynamic_string(str, NULL, size, DYNCOL_SYZERESERVE))
+  if (ma_init_dynamic_string(str, NULL, size, DYNCOL_SYZERESERVE))
     return TRUE;
   return FALSE;
 }
@@ -749,7 +749,7 @@ static size_t dynamic_column_var_uint_bytes(ulonglong val)
 static enum enum_dyncol_func_result
 dynamic_column_var_uint_store(DYNAMIC_COLUMN *str, ulonglong val)
 {
-  if (dynstr_realloc(str, 10))                  /* max what we can use */
+  if (ma_dynstr_realloc(str, 10))                  /* max what we can use */
     return ER_DYNCOL_RESOURCE;
 
   do
@@ -829,7 +829,7 @@ static size_t dynamic_column_uint_bytes(ulonglong val)
 static enum enum_dyncol_func_result
 dynamic_column_uint_store(DYNAMIC_COLUMN *str, ulonglong val)
 {
-  if (dynstr_realloc(str, 8)) /* max what we can use */
+  if (ma_dynstr_realloc(str, 8)) /* max what we can use */
     return ER_DYNCOL_RESOURCE;
 
   for (; val; val>>= 8)
@@ -1022,7 +1022,7 @@ dynamic_column_value_len(DYNAMIC_COLUMN_VALUE *value,
 static enum enum_dyncol_func_result
 dynamic_column_double_store(DYNAMIC_COLUMN *str, double val)
 {
-   if (dynstr_realloc(str, 8))
+   if (ma_dynstr_realloc(str, 8))
      return ER_DYNCOL_RESOURCE;
    float8store(str->str + str->length, val);
    str->length+= 8;
@@ -1071,7 +1071,7 @@ dynamic_column_string_store(DYNAMIC_COLUMN *str, LEX_STRING *string,
   if ((rc= dynamic_column_var_uint_store(str, charset->number)))
 #endif
     return rc;
-  if (dynstr_append_mem(str, string->str, string->length))
+  if (ma_dynstr_append_mem(str, string->str, string->length))
     return ER_DYNCOL_RESOURCE;
   return ER_DYNCOL_OK;
 }
@@ -1088,7 +1088,7 @@ dynamic_column_string_store(DYNAMIC_COLUMN *str, LEX_STRING *string,
 static enum enum_dyncol_func_result
 dynamic_column_dyncol_store(DYNAMIC_COLUMN *str, LEX_STRING *string)
 {
-  if (dynstr_append_mem(str, string->str, string->length))
+  if (ma_dynstr_append_mem(str, string->str, string->length))
     return ER_DYNCOL_RESOURCE;
   return ER_DYNCOL_OK;
 }
@@ -1166,7 +1166,7 @@ dynamic_column_decimal_store(DYNAMIC_COLUMN *str,
     return ER_DYNCOL_OK;
 
   bin_size= decimal_bin_size(precision, value->frac);
-  if (dynstr_realloc(str, bin_size + 20))
+  if (ma_dynstr_realloc(str, bin_size + 20))
     return ER_DYNCOL_RESOURCE;
 
   /* The following can't fail as memory is already allocated */
@@ -1321,7 +1321,7 @@ dynamic_column_time_store(DYNAMIC_COLUMN *str, MYSQL_TIME *value,
                           enum enum_dyncol_format format)
 {
   uchar *buf;
-  if (dynstr_realloc(str, 6))
+  if (ma_dynstr_realloc(str, 6))
     return ER_DYNCOL_RESOURCE;
 
   buf= ((uchar *)str->str) + str->length;
@@ -1464,7 +1464,7 @@ static enum enum_dyncol_func_result
 dynamic_column_date_store(DYNAMIC_COLUMN *str, MYSQL_TIME *value)
 {
   uchar *buf;
-  if (dynstr_realloc(str, 3))
+  if (ma_dynstr_realloc(str, 3))
     return ER_DYNCOL_RESOURCE;
 
   buf= ((uchar *)str->str) + str->length;
@@ -1668,7 +1668,7 @@ dynamic_new_column_store(DYNAMIC_COLUMN *str,
   else
   {
     str->length= 0;
-    if (dynstr_realloc(str,
+    if (ma_dynstr_realloc(str,
                        fmt->fixed_hdr +
                        hdr->header_size +
                        hdr->nmpool_size +
@@ -3848,21 +3848,21 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
   switch (val->type) {
     case DYN_COL_INT:
       len= snprintf(buff, sizeof(buff), "%lld", val->x.long_value);
-      if (dynstr_append_mem(str, buff, len))
+      if (ma_dynstr_append_mem(str, buff, len))
         return ER_DYNCOL_RESOURCE;
       break;
     case DYN_COL_UINT:
       len= snprintf(buff, sizeof(buff), "%llu", val->x.ulong_value);
-      if (dynstr_append_mem(str, buff, len))
+      if (ma_dynstr_append_mem(str, buff, len))
         return ER_DYNCOL_RESOURCE;
       break;
     case DYN_COL_DOUBLE:
       len= snprintf(buff, sizeof(buff), "%g", val->x.double_value);
-      if (dynstr_realloc(str, len + (quote ? 2 : 0)))
+      if (ma_dynstr_realloc(str, len + (quote ? 2 : 0)))
         return ER_DYNCOL_RESOURCE;
       if (quote)
         str->str[str->length++]= quote;
-      dynstr_append_mem(str, buff, len);
+      ma_dynstr_append_mem(str, buff, len);
       if (quote)
         str->str[str->length++]= quote;
       break;
@@ -3877,7 +3877,7 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
         my_bool rc;
         len= val->x.string.value.length;
         bufflen= (ulong)(len * (conv ? cs->char_maxlen : 1));
-        if (dynstr_realloc(str, bufflen))
+        if (ma_dynstr_realloc(str, bufflen))
             return ER_DYNCOL_RESOURCE;
 
         // guaranty UTF-8 string for value
@@ -3922,10 +3922,10 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
             return ER_DYNCOL_RESOURCE;
         }
         if (quote)
-          rc= dynstr_append_mem(str, &quote, 1);
-        rc= dynstr_append_mem(str, from, len);
+          rc= ma_dynstr_append_mem(str, &quote, 1);
+        rc= ma_dynstr_append_mem(str, from, len);
         if (quote)
-          rc= dynstr_append_mem(str, &quote, 1);
+          rc= ma_dynstr_append_mem(str, &quote, 1);
         if (alloc)
           free(alloc);
         if (rc)
@@ -3939,7 +3939,7 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
         decimal2string(&val->x.decimal.value, buff, &len,
                        0, val->x.decimal.value.frac,
                        '0');
-        if (dynstr_append_mem(str, buff, len))
+        if (ma_dynstr_append_mem(str, buff, len))
           return ER_DYNCOL_RESOURCE;
         break;
       }
@@ -3952,16 +3952,16 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
 #else
       len= mariadb_time_to_string(&val->x.time_value, buff, 39, AUTO_SEC_PART_DIGITS);
 #endif
-      if (dynstr_realloc(str, len + (quote ? 2 : 0)))
+      if (ma_dynstr_realloc(str, len + (quote ? 2 : 0)))
         return ER_DYNCOL_RESOURCE;
       if (quote)
         str->str[str->length++]= '"';
-      dynstr_append_mem(str, buff, len);
+      ma_dynstr_append_mem(str, buff, len);
       if (quote)
         str->str[str->length++]= '"';
       break;
     case DYN_COL_NULL:
-      if (dynstr_append_mem(str, "null", 4))
+      if (ma_dynstr_append_mem(str, "null", 4))
         return ER_DYNCOL_RESOURCE;
       break;
     default:
@@ -4165,14 +4165,14 @@ mariadb_dyncol_json_internal(DYNAMIC_COLUMN *str, DYNAMIC_STRING *json,
 
   rc= ER_DYNCOL_RESOURCE;
 
-  if (dynstr_append_mem(json, "{", 1))
+  if (ma_dynstr_append_mem(json, "{", 1))
     goto err;
   for (i= 0, header.entry= header.header;
        i < header.column_count;
        i++, header.entry+= header.entry_size)
   {
     DYNAMIC_COLUMN_VALUE val;
-    if (i != 0 && dynstr_append_mem(json, ",", 1))
+    if (i != 0 && ma_dynstr_append_mem(json, ",", 1))
       goto err;
     header.length=
       hdr_interval_length(&header, header.entry + header.entry_size);
@@ -4192,7 +4192,7 @@ mariadb_dyncol_json_internal(DYNAMIC_COLUMN *str, DYNAMIC_STRING *json,
     if (header.format == dyncol_fmt_num)
     {
       uint nm= uint2korr(header.entry);
-      if (dynstr_realloc(json, DYNCOL_NUM_CHAR + 3))
+      if (ma_dynstr_realloc(json, DYNCOL_NUM_CHAR + 3))
         goto err;
       json->str[json->length++]= '"';
       json->length+= snprintf(json->str + json->length,
@@ -4206,7 +4206,7 @@ mariadb_dyncol_json_internal(DYNAMIC_COLUMN *str, DYNAMIC_STRING *json,
         rc= ER_DYNCOL_FORMAT;
         goto err;
       }
-      if (dynstr_realloc(json, name.length + 3))
+      if (ma_dynstr_realloc(json, name.length + 3))
         goto err;
       json->str[json->length++]= '"';
       memcpy(json->str + json->length, name.str, name.length);
@@ -4235,7 +4235,7 @@ mariadb_dyncol_json_internal(DYNAMIC_COLUMN *str, DYNAMIC_STRING *json,
         goto err;
     }
   }
-  if (dynstr_append_mem(json, "}", 1))
+  if (ma_dynstr_append_mem(json, "}", 1))
   {
     rc= ER_DYNCOL_RESOURCE;
     goto err;
@@ -4251,7 +4251,7 @@ enum enum_dyncol_func_result
 mariadb_dyncol_json(DYNAMIC_COLUMN *str, DYNAMIC_STRING *json)
 {
 
-  if (init_dynamic_string(json, NULL, str->length * 2, 100))
+  if (ma_init_dynamic_string(json, NULL, str->length * 2, 100))
     return ER_DYNCOL_RESOURCE;
 
   return mariadb_dyncol_json_internal(str, json, 1);
@@ -4397,5 +4397,5 @@ mariadb_dyncol_column_count(DYNAMIC_COLUMN *str, uint *column_count)
 */
 void mariadb_dyncol_free(DYNAMIC_COLUMN *str)
 {
-  dynstr_free(str);
+  ma_dynstr_free(str);
 }

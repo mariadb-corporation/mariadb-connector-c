@@ -132,7 +132,7 @@ my_bool ma_thread_init(void)
   }
 
   pthread_mutex_init(&tmp->mutex,MY_MUTEX_INIT_FAST);
-  pthread_cond_init(&tmp->suspend, NULL);
+//  pthread_cond_init(&tmp->suspend, NULL);
   pthread_mutex_lock(&THR_LOCK_lock);
   tmp->id= ++thread_id;
   pthread_mutex_unlock(&THR_LOCK_lock);
@@ -159,7 +159,7 @@ void ma_thread_end(void)
     }
 #endif
 #if !defined(__bsdi__) || defined(HAVE_mit_thread) /* bsdi dumps core here */
-    pthread_cond_destroy(&tmp->suspend);
+//    pthread_cond_destroy(&tmp->suspend);
 #endif
     pthread_mutex_destroy(&tmp->mutex);
     free(tmp);
