@@ -553,7 +553,7 @@ struct st_ma_thread_var
 };
 
 extern struct st_ma_thread_var *_ma_thread_var(void) __attribute__ ((const));
-extern void **my_thread_var_dbug();
+extern void **ma_thread_var_dbug();
 #define my_thread_var (_ma_thread_var())
 #define my_errno my_thread_var->thr_errno
 

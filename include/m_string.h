@@ -90,8 +90,8 @@ extern "C" {
 #define strmov(A,B) stpcpy((A),(B))
 #define strnmov(A,B,C) stpncpy((A),(B),(C))
 #else
-#define strmov(A,B) (strcpy((A),(B)) + strlen((B));
-#define strnmov(A,B,C) (strncpy((A),(B),(C)) + strlen((B));
+#define strmov(A,B) (strcpy((A),(B)) + strlen((B)))
+#define strnmov(A,B,C) (strncpy((A),(B),(C)) + strlen((B)))
 #endif
 
 extern char NEAR _dig_vec[];		/* Declared in int2str() */

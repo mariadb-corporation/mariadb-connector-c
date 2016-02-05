@@ -99,8 +99,7 @@ static char *find_file_in_path(char *to, const char *name)
   {
     if (path != pos)
     {
-      sprintf(to, "%s%s%s%s%s", path, pos - path, dir, name, ext);
-//      strxmov(strnmov(to,path,(uint) (pos-path)),dir,name,ext,NullS);
+      snprintf(to, pos - path, "%s%s%s%s", path, dir, name, ext);
       if (!access(to,F_OK))
       {
 	to[(uint) (pos-path)+1]=0;	/* Return path only */

@@ -16,7 +16,7 @@
    MA 02111-1307, USA */
 
 /*
-  str2int(src, radix, lower, upper, &val)
+  ma_str2int(src, radix, lower, upper, &val)
   converts the string pointed to by src to an integer and stores it in
   val.	It skips leading spaces and tabs (but not newlines, formfeeds,
   backspaces), then it accepts an optional sign and a sequence of digits
@@ -50,7 +50,7 @@
 		     X >= 'a' && X <= 'z' ? X-'a'+10 :\
 		     '\177')
 
-char *str2int(register const char *src, register int radix, long int lower, long int upper, long int *val)
+char *ma_str2int(register const char *src, register int radix, long int lower, long int upper, long int *val)
 {
   int sign;			/* is number negative (+1) or positive (-1) */
   int n;			/* number of digits yet to be converted */
@@ -187,7 +187,7 @@ char *str2int(register const char *src, register int radix, long int lower, long
 int atoi(const char *src)
 {
   long val;
-  str2int(src, 10, (long) INT_MIN, (long) INT_MAX, &val);
+  ma_str2int(src, 10, (long) INT_MIN, (long) INT_MAX, &val);
   return (int) val;
 }
 
@@ -195,7 +195,7 @@ int atoi(const char *src)
 long atol(const char *src)
 {
   long val;
-  str2int(src, 10, LONG_MIN, LONG_MAX, &val);
+  ma_str2int(src, 10, LONG_MIN, LONG_MAX, &val);
   return val;
 }
 

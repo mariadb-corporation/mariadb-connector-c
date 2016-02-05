@@ -102,8 +102,6 @@
 #include <sys/time.h>
 #endif
 
-extern int ma_snprintf(char* to, size_t n, const char* fmt, ...);
-
 static const char _dig_vec_upper[] =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static const char _dig_vec_lower[] =
@@ -391,7 +389,7 @@ static CODE_STATE *code_state(void)
     init_settings.flags=OPEN_APPEND;
   }
 
-  if (!(cs_ptr= (CODE_STATE**) my_thread_var_dbug()))
+  if (!(cs_ptr= (CODE_STATE**) ma_thread_var_dbug()))
     return 0;                                   /* Thread not initialised */
   if (!(cs= *cs_ptr))
   {
@@ -1051,7 +1049,7 @@ void _db_pop_()
       } while (0)
 #define int_to_buf(i)  do {                     \
         char b[50];                             \
-        int10_to_str((i), b, 10);               \
+        ma_int10_to_str((i), b, 10);            \
         str_to_buf(b);                          \
       } while (0)
 #define colon_to_buf   do {                     \
@@ -1291,7 +1289,7 @@ void _db_return_(uint _line_, struct _db_stack_frame_ *_stack_frame_)
   if (cs->framep != _stack_frame_)
   {
     char buf[512];
-    ma_snprintf(buf, sizeof(buf), ERR_MISSING_RETURN, cs->func);
+    snprintf(buf, sizeof(buf), ERR_MISSING_RETURN, cs->func);
     DbugExit(buf);
   }
 

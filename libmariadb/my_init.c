@@ -35,7 +35,6 @@
 #include <locale.h>
 #include <crtdbg.h>
 #endif
-my_bool have_tcpip=0;
 static my_bool my_win_init(void);
 #else
 #define my_win_init()
@@ -50,14 +49,14 @@ static ulong atoi_octal(const char *str)
   long int tmp;
   while (*str && isspace(*str))
     str++;
-  str2int(str,
-	  (*str == '0' ? 8 : 10),		/* Octalt or decimalt */
-	  0, INT_MAX, &tmp);
+  ma_str2int(str,
+             (*str == '0' ? 8 : 10),		/* Octalt or decimalt */
+	     0, INT_MAX, &tmp);
   return (ulong) tmp;
 }
 
 
-	/* Init my_sys functions and my_sys variabels */
+/* Init my_sys functions and my_sys variabels */
 
 void ma_init(void)
 {
@@ -194,7 +193,7 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
 void setEnvString(char *ret, const char *name, const char *value)
 {
   DBUG_ENTER("setEnvString");
-  sprintf(ret, "%s=%S", name, value);
+  sprintf(ret, "%s=%s", name, value);
   DBUG_VOID_RETURN ;
 }
 

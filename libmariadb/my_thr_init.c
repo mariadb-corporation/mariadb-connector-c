@@ -221,7 +221,7 @@ const char *ma_thread_name(void)
   return tmp->name;
 }
 
-extern void **my_thread_var_dbug()
+extern void **ma_thread_var_dbug()
 {
   struct st_ma_thread_var *tmp;
   /*

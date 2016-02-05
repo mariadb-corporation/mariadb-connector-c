@@ -55,7 +55,6 @@
 
 #include <iconv.h>
 
-extern int ma_snprintf(char* to, size_t n, const char* fmt, ...);
 /*
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
@@ -1086,8 +1085,8 @@ char *madb_get_os_character_set()
   char *p= NULL;
 #ifdef _WIN32
   char codepage[FN_REFLEN];
-  ma_snprintf(codepage, FN_REFLEN, "%u", GetConsoleWindow() ?
-              GetConsoleCP() : GetACP());
+  snprintf(codepage, FN_REFLEN, "%u", GetConsoleWindow() ?
+           GetConsoleCP() : GetACP());
   p= codepage;
 #elif defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)
   if (setlocale(LC_CTYPE, "") && (p= nl_langinfo(CODESET))); 
@@ -1135,9 +1134,7 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
   if (sscanf(cs_name, "UTF%2[0-9]%2[LBE]", digits, endianness))
   {
     /* We should have at least digits. Endianness we write either default(BE), or what we found in the string */
-    ptr= strnmov(ptr, "UTF-", (uint)buff_len);
-    ptr= strnmov(ptr, digits, (uint)(buff_len - (ptr - buffer)));
-    ptr= strnmov(ptr, endianness, (uint)(buff_len - (ptr - buffer)));
+    snprintf(ptr, buff_len, "UTF-%s%s", digits, endianness);
   }
   else
   {

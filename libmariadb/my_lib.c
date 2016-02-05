@@ -23,6 +23,7 @@
 #include	<m_string.h>
 #include	<my_dir.h>	/* Structs used by my_dir,includes sys/types */
 #include	"mysys_err.h"
+#include        <memory.h>
 #if defined(HAVE_DIRENT_H)
 # include <dirent.h>
 # define NAMLEN(dirent) strlen((dirent)->d_name)
@@ -391,7 +392,7 @@ MY_DIR	*my_dir(const char *path, myf MyFlags)
   size = STARTSIZE;
   firstfcnt = maxfcnt = (size - sizeof(MY_DIR)) /
     (sizeof(struct fileinfo) + FN_LEN);
-  if ((buffer = (char *) malloc(size) == 0)
+  if (!(buffer = (char *)malloc(size)))
     goto error;
   fnames=   (struct fileinfo *) (buffer + sizeof(MY_DIR));
   tempptr = (char *) (fnames + maxfcnt);
