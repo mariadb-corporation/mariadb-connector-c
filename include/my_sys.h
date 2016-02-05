@@ -462,9 +462,9 @@ extern char *ma_convert_dirname(my_string name);
 extern void to_unix_path(my_string name);
 extern my_string fn_ext(const char *name);
 extern my_string fn_same(my_string toname,const char *name,int flag);
-extern my_string fn_format(my_string to,const char *name,const char *dsk,
+extern my_string ma_fn_format(my_string to,const char *name,const char *dsk,
 			   const char *form,int flag);
-extern size_s strlength(const char *str);
+extern size_s ma_strlength(const char *str);
 extern void ma_pack_dirname(my_string to,const char *from);
 extern uint unma_pack_dirname(my_string to,const char *from);
 extern uint ma_cleanup_dirname(my_string to,const char *from);

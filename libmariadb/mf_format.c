@@ -43,10 +43,10 @@
 #endif
 #endif
 
-my_string fn_format(my_string to, const char *name, const char *dsk,
+my_string ma_fn_format(my_string to, const char *name, const char *dsk,
 		    const char *form, int flag)
 {
-  reg1 uint length;
+  reg1 uint length= 0;
   char dev[FN_REFLEN], buff[BUFF_LEN], *pos, *startpos;
   const char *ext;
   DBUG_ENTER("fn_format");
@@ -69,7 +69,7 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
   {
     if ((flag & 2) == 0)			/* Skall vi byta extension ? */
     {
-      length=strlength(name);			/* Old extension */
+      length=ma_strlength(name);			/* Old extension */
       ext = "";
     }
     else
@@ -80,7 +80,7 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
   }
   else
   {
-    length=strlength(name);			/* Har ingen ext- tag nya */
+    length=ma_strlength(name);			/* Har ingen ext- tag nya */
     ext=form;
   }
 
@@ -89,7 +89,7 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
     uint tmp_length;
     if (flag & 64)
       return 0;
-    tmp_length=strlength(startpos);
+    tmp_length=ma_strlength(startpos);
     DBUG_PRINT("error",("dev: '%s'  ext: '%s'  length: %d",dev,ext,length));
     strncpy(to,startpos,min(tmp_length,FN_REFLEN-1));
   }
@@ -126,15 +126,15 @@ my_string fn_format(my_string to, const char *name, const char *dsk,
 
 
 	/*
-	  strlength(const string str)
+	  ma_strlength(const string str)
 	  Return length of string with end-space:s not counted.
 	  */
 
-size_s strlength(const char *str)
+size_s ma_strlength(const char *str)
 {
   reg1 my_string pos;
   reg2 my_string found;
-  DBUG_ENTER("strlength");
+  DBUG_ENTER("ma_strlength");
 
   pos=found=(char*) str;
 
@@ -153,4 +153,4 @@ size_s strlength(const char *str)
     while (*++pos == ' ') {};
   }
   DBUG_RETURN((size_s) (found-(char*) str));
-} /* strlength */
+} /* ma_strlength */

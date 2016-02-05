@@ -1508,8 +1508,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
   if (!(mysql->host_info= strdup(host_info ? host_info : "")) ||
       !(mysql->host= strdup(cinfo.host ? cinfo.host : "")) ||
-      !(mysql->unix_socket= strdup(cinfo.unix_socket ? cinfo.unix_socket : "")) ||
-      !(mysql->server_version = malloc((size_t)(end - (char*) net->read_pos))) ||
       !(mysql->user=strdup(user)) ||
       !(mysql->passwd=strdup(passwd)))
   {
@@ -1519,7 +1517,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   strcpy(mysql->host_info,host_info);
   strcpy(mysql->host, cinfo.host);
   if (cinfo.unix_socket)
-    strcpy(mysql->unix_socket, cinfo.unix_socket);
+    mysql->unix_socket= strdup(cinfo.unix_socket);
   else
     mysql->unix_socket=0;
   mysql->port=port;
@@ -1527,11 +1525,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
   if (strncmp(end, MA_RPL_VERSION_HACK, sizeof(MA_RPL_VERSION_HACK) - 1) == 0)
   {
-    if (!(mysql->server_version= strdup(end + sizeof(MA_RPL_VERSION_HACK) - 1)))
-    {
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      goto error;
-    }
+    mysql->server_version= strdup(end + sizeof(MA_RPL_VERSION_HACK) - 1);
     is_maria= 1;
   }
   else

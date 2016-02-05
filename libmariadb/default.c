@@ -247,7 +247,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
     {
       strcpy(name,config_file);
     }
-    fn_format(name,name,"","",4);
+    ma_fn_format(name,name,"","",4);
 #if !defined(_WIN32) && !defined(OS2)
     {
       MY_STAT stat_info;
