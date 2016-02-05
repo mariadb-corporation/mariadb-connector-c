@@ -133,14 +133,14 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
 */
 void ma_ssl_end()
 {
-  pthread_mutex_lock(&LOCK_schannel_config);
   if (ma_ssl_initialized)
   {
-
+	pthread_mutex_lock(&LOCK_schannel_config);
     ma_ssl_initialized= FALSE;
+	pthread_mutex_unlock(&LOCK_schannel_config);
+	pthread_mutex_destroy(&LOCK_schannel_config);
   }
-  pthread_mutex_unlock(&LOCK_schannel_config);
-  pthread_mutex_destroy(&LOCK_schannel_config);
+  
   return;
 }
 

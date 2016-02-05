@@ -1412,11 +1412,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 #endif
 #else
    /* named pipe */
-  if ((unix_socket ||
-      (!host && is_NT()) ||
-      (host && strcmp(host,LOCAL_HOST_NAMEDPIPE) == 0) ||
-      mysql->options.named_pipe) &&
-      mysql->options.protocol != MYSQL_PROTOCOL_TCP)
+  if (mysql->options.protocol == MYSQL_PROTOCOL_PIPE ||
+	  (host && strcmp(host,LOCAL_HOST_NAMEDPIPE) == 0))
   {
     cinfo.type= PVIO_TYPE_NAMEDPIPE;
     sprintf(host_info=buff,ER(CR_NAMEDPIPE_CONNECTION),cinfo.host);

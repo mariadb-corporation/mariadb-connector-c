@@ -268,7 +268,6 @@ hash.c
 net.c
 charset.c
 ma_time.c
-dbug.c
 default.c
 errmsg.c
 errors.c
@@ -322,6 +321,9 @@ ${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c
 ma_io.c
 ${SSL_SOURCES}
 )
+IF(WITH_DBUG)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} dbug.c)
+ENDIF()
 
 
 IF(WIN32)

@@ -116,6 +116,11 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE "Relwithdebinfo")
 ENDIF()
 
+OPTION(WITH_DBUG "enables use of DBUG library" OFF)
+IF(NOT WITH_DBUG)
+  ADD_DEFINITIONS(-DDBUG_OFF=1)
+ENDIF()
+
 # various defines for generating include/mysql_version.h
 
 SET(PROTOCOL_VERSION 10) # we adapted new password option from PHP's mysqlnd !
