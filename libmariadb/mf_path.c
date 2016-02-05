@@ -91,7 +91,7 @@ static char *find_file_in_path(char *to, const char *name)
     return NullS;
   dir[0]=FN_LIBCHAR; dir[1]=0;
 #ifdef PROGRAM_EXTENSION
-  if (!fn_ext(name)[0])
+  if (!ma_fn_ext(name)[0])
     ext=PROGRAM_EXTENSION;
 #endif
 

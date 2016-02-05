@@ -393,7 +393,7 @@ static my_bool search_default_file(DYNAMIC_ARRAY *args, MA_MEM_ROOT *alloc,
 void ma_print_defaults(const char *conf_file, const char **groups)
 {
 #ifdef _WIN32
-  bool have_ext=fn_ext(conf_file)[0] != 0;
+  bool have_ext=ma_fn_ext(conf_file)[0] != 0;
 #endif
   char name[FN_REFLEN];
   const char **dirs;

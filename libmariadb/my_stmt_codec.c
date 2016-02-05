@@ -363,7 +363,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       char *endptr;
       uint len;
 
-      endptr= longlong10_to_str(val, buffer, is_unsigned ? 10 : -10);
+      endptr= ma_longlong10_to_str(val, buffer, is_unsigned ? 10 : -10);
       len= (uint)(endptr - buffer);
 
       /* check if field flag is zerofill */

@@ -29,7 +29,7 @@
 #ifdef _WIN32
 
 int 
-pthread_cond_init (pthread_cond_t *cv, const pthread_condattr_t *attr)
+ma_pthread_cond_init (pthread_cond_t *cv, const pthread_condattr_t *attr)
 {
   DBUG_ENTER("pthread_cond_init");
   /* Initialize the count to 0 */
@@ -45,9 +45,9 @@ pthread_cond_init (pthread_cond_t *cv, const pthread_condattr_t *attr)
   DBUG_RETURN(0);
 }
 
-int pthread_cond_timedwait(pthread_cond_t *cond, 
-	                       pthread_mutex_t *mutex,
-                           struct timespec *abstime)
+int ma_pthread_cond_timedwait(pthread_cond_t *cond, 
+                              pthread_mutex_t *mutex,
+                              struct timespec *abstime)
 {
   int result= 0;
   return result == WAIT_TIMEOUT ? ETIMEDOUT : 0;

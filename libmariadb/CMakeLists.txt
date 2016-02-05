@@ -303,7 +303,6 @@ my_messnc.c
 my_net.c
 my_once.c
 my_port.c 
-my_pthread.c
 my_seek.c
 my_static.c
 my_symlink.c
@@ -315,7 +314,6 @@ str2int.c
 string.c
 strtoll.c
 strtoull.c 
-thr_mutex.c
 typelib.c
 sha1.c
 my_stmt.c

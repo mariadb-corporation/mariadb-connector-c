@@ -99,8 +99,8 @@ char *ma_longlong2str(longlong val,char *dst,int radix)
 
 #endif
 
-#ifndef longlong10_to_str
-char *longlong10_to_str(longlong val,char *dst,int radix)
+#ifndef ma_longlong10_to_str
+char *ma_longlong10_to_str(longlong val,char *dst,int radix)
 {
   char buffer[65];
   register char *p;

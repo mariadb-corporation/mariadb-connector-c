@@ -460,7 +460,7 @@ extern uint ma_dirname_length(const char *name);
 extern int test_if_hard_path(const char *dir_name);
 extern char *ma_convert_dirname(my_string name);
 extern void to_unix_path(my_string name);
-extern my_string fn_ext(const char *name);
+extern my_string ma_fn_ext(const char *name);
 extern my_string fn_same(my_string toname,const char *name,int flag);
 extern my_string ma_fn_format(my_string to,const char *name,const char *dsk,
 			   const char *form,int flag);
