@@ -3,6 +3,9 @@
 
 /* Version numbers for protocol & mysqld */
 
+#ifndef _mariadb_version_h_
+#define _mariadb_version_h_
+
 #ifdef _CUSTOMCONFIG_
 #include <custom_conf.h>
 #else
@@ -26,3 +29,4 @@
 #endif
 #endif
 
+#endif /* _mariadb_version_h_ */
