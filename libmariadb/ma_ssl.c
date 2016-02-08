@@ -32,20 +32,19 @@
 
 #ifdef HAVE_SSL
 
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <ma_common.h>
 #include <string.h>
-//#include <ma_secure.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 #include <ma_pvio.h>
 #include <ma_ssl.h>
 #include <mysql/client_plugin.h>
 
-/*
-#include <mysql_async.h>
-#include <my_context.h>
-*/
+#ifdef HAVE_NONBLOCK
+#include <mariadb_async.h>
+#include <ma_context.h>
+#endif
 
 /* Errors should be handled via pvio callback function */
 my_bool ma_ssl_initialized= FALSE;

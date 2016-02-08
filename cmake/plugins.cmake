@@ -90,7 +90,7 @@ ENDIF()
 # since some files contain multiple plugins, remove duplicates from source files 
 LIST(REMOVE_DUPLICATES LIBMARIADB_SOURCES)
 
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/libmariadb/client_plugin.c.in
-  ${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c)
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
+  ${CMAKE_BINARY_DIR}/libmariadb/ma_client_plugin.c)
 
 MARK_AS_ADVANCED(LIBMARIADB_SOURCES)

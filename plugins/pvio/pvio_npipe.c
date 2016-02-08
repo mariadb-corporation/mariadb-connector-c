@@ -22,13 +22,13 @@
 
 #ifdef _WIN32
 
-#include <my_global.h>
-#include <my_sys.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
-#include <m_string.h>
+#include <ma_string.h>
 
 /* Function prototypes */
 my_bool pvio_npipe_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
@@ -223,7 +223,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
     return 1;
   }
-  bzero(cpipe, sizeof(struct st_pvio_npipe));
+  memset(cpipe, 0, sizeof(struct st_pvio_npipe));
   pvio->data= (void *)cpipe;
   cpipe->pipe= INVALID_HANDLE_VALUE;
   pvio->mysql= cinfo->mysql;

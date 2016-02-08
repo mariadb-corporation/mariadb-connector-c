@@ -21,13 +21,13 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <mysql.h>
 #include <tap.h>
-#include <getopt.h>
+#include "ma_getopt.h"
 #include <memory.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 
 #ifndef WIN32
 #include <pthread.h>

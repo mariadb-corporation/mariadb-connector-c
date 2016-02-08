@@ -41,6 +41,8 @@ ELSE()
 ENDIF()
 
 OPTION(WITH_UNITTEST "build test suite" ON)
+OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
+OPTION(WITH_NONBLOCK "Enables support for non blocking operations" ON)
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 IF(WITH_SIGNCODE)
@@ -113,12 +115,7 @@ ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
 IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE "Relwithdebinfo")
-ENDIF()
-
-OPTION(WITH_DBUG "enables use of DBUG library" OFF)
-IF(NOT WITH_DBUG)
-  ADD_DEFINITIONS(-DDBUG_OFF=1)
+  SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
 ENDIF()
 
 # various defines for generating include/mysql_version.h
@@ -243,14 +240,10 @@ IF(NOT WIN32)
   INCLUDE(${CMAKE_SOURCE_DIR}/cmake/FindIconv.cmake)
 ENDIF()
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
-  ${CMAKE_CURRENT_BINARY_DIR}/include/mysql_version.h)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
-               ${CMAKE_CURRENT_BINARY_DIR}/include/my_config.h)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/ma_config.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/include/ma_config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mariadb_version.h.in
+               ${CMAKE_CURRENT_SOURCE_DIR}/include/mariadb_version.h)
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
@@ -293,8 +286,6 @@ ADD_SUBDIRECTORY(plugins)
 IF(NOT WIN32)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
-
-ADD_SUBDIRECTORY(client)
 
 IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
   IF(WITH_UNITTEST STREQUAL "ON")

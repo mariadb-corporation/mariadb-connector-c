@@ -21,13 +21,13 @@
 
 #ifdef _WIN32
 
-#include <my_global.h>
-#include <my_sys.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
-#include <m_string.h>
+#include <ma_string.h>
 
 #define SHM_DEFAULT_NAME "MYSQL"
 #define PVIO_SHM_BUFFER_SIZE 16000 + 4

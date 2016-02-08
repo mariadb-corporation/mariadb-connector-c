@@ -22,13 +22,13 @@
 
 /* MariaDB Connection plugin for load balancing  */
 
-#include <my_global.h>
-#include <my_sys.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
-#include <m_string.h>
+#include <ma_string.h>
 
 #ifndef WIN32
 #include <sys/time.h>
@@ -108,8 +108,8 @@ my_bool repl_parse_url(const char *url, REPL_DATA *data)
   if (!url || url[0] == 0)
     return 1;
 
-  bzero(slaves, 64 * sizeof(char *));
-  bzero(&port, 64 * sizeof(int));
+  memset(slaves, 0, 64 * sizeof(char *));
+  memset(&port, 0, 64 * sizeof(int));
 
   memset(data->host, 0, 2 * sizeof(char *));
   memset(data->port, 0, 2 * sizeof(int));

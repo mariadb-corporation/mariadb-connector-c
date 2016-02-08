@@ -1,7 +1,7 @@
-#include <my_global.h>
-#include <my_sys.h>
-#include <m_string.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
+#include <string.h>
 #include <ma_common.h>
 #include <mysql/client_plugin.h>
 
@@ -211,7 +211,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     int4store(buff,mysql->client_flag);
     int4store(buff+4, net->max_packet_size);
     buff[8]= (char) mysql->charset->nr;
-    bzero(buff + 9, 32-9);
+    memset(buff + 9, 0, 32-9);
     if (!(mysql->server_capabilities & CLIENT_MYSQL))
     {
       mysql->client_flag |= MARIADB_CLIENT_SUPPORTED_FLAGS;
@@ -258,10 +258,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   }
 #endif /* HAVE_SSL */
 
-  DBUG_PRINT("info",("Server version = '%s'  capabilites: %lu  status: %u  client_flag: %lu",
-		     mysql->server_version, mysql->server_capabilities,
-		     mysql->server_status, mysql->client_flag));
-
   /* This needs to be changed as it's not useful with big packets */
   if (mysql->user[0])
     strncpy(end, mysql->user, USERNAME_LENGTH);
@@ -269,8 +265,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     read_user_name(end);
 
   /* We have to handle different version of handshake here */
-  DBUG_PRINT("info",("user: %s",end));
-  end= strend(end) + 1;
+  end= strchr(end, '\0') + 1;
   if (data_len)
   {
     if (mysql->server_capabilities & CLIENT_SECURE_CONNECTION)
@@ -424,7 +419,7 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
 
 void mpvio_info(MARIADB_PVIO *pvio, MYSQL_PLUGIN_VIO_INFO *info)
 {
-  bzero(info, sizeof(*info));
+  memset(info, 0, sizeof(*info));
   switch (pvio->type) {
   case PVIO_TYPE_SOCKET:
     info->protocol= MYSQL_VIO_TCP;

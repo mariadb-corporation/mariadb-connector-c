@@ -6,7 +6,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <my_dir.h>
-#include <m_string.h>
+#include <ma_string.h>
 
 #define CLIENT_PLUGIN_INFO_VERSION "1.0.0"
 

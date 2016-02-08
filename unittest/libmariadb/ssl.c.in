@@ -18,7 +18,7 @@
  *************************************************************************************/
 
 #include "my_test.h"
-#include <my_pthread.h>
+#include <ma_pthread.h>
 
 static int skip_ssl= 1;
 

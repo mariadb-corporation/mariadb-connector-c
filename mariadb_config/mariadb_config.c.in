@@ -1,7 +1,9 @@
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <getopt.h>
 #include <stdio.h>
+
+static char *mariadb_progname;
 
 #define INCLUDE "-I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@/mysql"
 #define LIBS    "-L@PREFIX_INSTALL_DIR@/@LIB_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -lmariadb" \
@@ -44,7 +46,7 @@ void usage(void)
   int i=0;
   puts("Copyright 2011-2015 MariaDB Corporation AB");
   puts("Get compiler flags for using the MariaDB Connector/C.");
-  printf("Usage: %s [OPTIONS]\n", ma_progname);
+  printf("Usage: %s [OPTIONS]\n", mariadb_progname);
   while (long_options[i].name)
   {
     if (values[i])
@@ -57,7 +59,7 @@ void usage(void)
 int main(int argc, char **argv)
 {
   int c;
-  ma_progname= argv[0];
+  mariadb_progname= argv[0];
 
   if (argc <= 1)
   {

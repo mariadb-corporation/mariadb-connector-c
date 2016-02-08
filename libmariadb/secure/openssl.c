@@ -17,11 +17,11 @@
   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
  *************************************************************************************/
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 #include <string.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
@@ -38,7 +38,7 @@
 #define ma_vsnprintf vsnprintf
 #undef SAFE_MUTEX
 #endif
-#include <my_pthread.h>
+#include <ma_pthread.h>
 
 extern my_bool ma_ssl_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
@@ -64,6 +64,7 @@ static void ma_ssl_set_error(MYSQL *mysql)
   }
   if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
   {
+    printf("reason: %s\n", ssl_error_reason);
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                    0, ssl_error_reason);
     return;
@@ -246,7 +247,7 @@ void ma_ssl_end()
 
 int ma_ssl_get_password(char *buf, int size, int rwflag, void *userdata)
 {
-  bzero(buf, size);
+  memset(buf, 0, size);
   if (userdata)
     strncpy(buf, (char *)userdata, size);
   return strlen(buf);
@@ -426,6 +427,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   rc= SSL_get_verify_result(ssl);
   if (rc != X509_V_OK)
   {
+    printf("--------------------\n");
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                  ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
     /* restore blocking mode */

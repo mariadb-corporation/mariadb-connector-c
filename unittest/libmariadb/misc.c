@@ -1085,7 +1085,35 @@ static int test_get_info(MYSQL *mysql)
   return OK;
 }
 
+static int test_zerofill(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_ROW row;
+  MYSQL_RES *res;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int(10) zerofill)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SELECT a FROM t1");
+  check_mysql_rc(rc, mysql);
+
+  if (res= mysql_store_result(mysql))
+  {
+    row= mysql_fetch_row(res);
+    diag("zerofill: %s", row[0]);
+    mysql_free_result(res);
+  }
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_zerofill", test_zerofill, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #ifdef HAVE_REMOTEIO
   {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL},

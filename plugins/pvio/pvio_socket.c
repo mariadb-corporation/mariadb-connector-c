@@ -24,16 +24,17 @@
    default and compiled into Connector/C.
 */
 
-#include <my_global.h>
-#include <my_sys.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
-#include <my_context.h>
-#include <mysql_async.h>
+#ifdef HAVE_NONBLOCK
+#include <ma_context.h>
+#include <mariadb_async.h>
+#endif
 #include <ma_common.h>
 #include <string.h>
-#include <m_string.h>
 #ifndef _WIN32
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
@@ -64,9 +65,11 @@
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
 size_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+#ifdef HAVE_NONBLOCK
 size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+#endif
+size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
 my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
@@ -88,9 +91,17 @@ struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_set_timeout,
   pvio_socket_get_timeout,
   pvio_socket_read,
+#ifdef HAVE_NONBLOCK
   pvio_socket_async_read,
+#else
+  NULL,
+#endif
   pvio_socket_write,
+#ifdef HAVE_NONBLOCK
   pvio_socket_async_write,
+#else
+  NULL,
+#endif
   pvio_socket_wait_io_or_timeout,
   pvio_socket_blocking,
   pvio_socket_connect,
@@ -275,6 +286,7 @@ size_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 }
 /* }}} */
 
+#ifdef HAVE_NONBLOCK
 /* {{{ pvio_socket_async_read */
 /*
    read from socket
@@ -372,7 +384,7 @@ size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t l
   return r;
 }
 /* }}} */
-
+#endif
 
 /* {{{ pvio_socket_write */
 /*
@@ -666,6 +678,7 @@ static int
 pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
                           const struct sockaddr *name, uint namelen)
 {
+#ifdef HAVE_NONBLOCK
   MYSQL *mysql= pvio->mysql;
   if (mysql->options.extension && mysql->options.extension->async_context &&
       mysql->options.extension->async_context->active)
@@ -676,6 +689,7 @@ pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
     pvio_socket_blocking(pvio, 0, 0);
     return my_connect_async(pvio, name, namelen, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
   }
+#endif
 
   return pvio_socket_internal_connect(pvio, name, namelen);
 }
@@ -707,9 +721,9 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       PVIO_SET_ERROR(cinfo->mysql, CR_SOCKET_CREATE_ERROR, unknown_sqlstate, 0, errno);
       goto error;
     }
-    bzero((char*) &UNIXaddr,sizeof(UNIXaddr));
+    memset((char*) &UNIXaddr, 0, sizeof(UNIXaddr));
     UNIXaddr.sun_family = AF_UNIX;
-    strmov(UNIXaddr.sun_path, cinfo->unix_socket);
+    strcpy(UNIXaddr.sun_path, cinfo->unix_socket);
     if (pvio_socket_connect_sync_or_async(pvio, (struct sockaddr *) &UNIXaddr, 
                                     sizeof(UNIXaddr)))
     {
@@ -732,11 +746,11 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     int gai_rc;
     int rc= 0;
 
-    bzero(&server_port, NI_MAXSERV);
+    memset(&server_port, 0, NI_MAXSERV);
     snprintf(server_port, NI_MAXSERV, "%d", cinfo->port);
 
     /* set hints for getaddrinfo */
-    bzero(&hints, sizeof(hints));
+    memset(&hints, 0, sizeof(hints));
     hints.ai_protocol= IPPROTO_TCP; /* TCP connections only */
     hints.ai_family= AF_UNSPEC;     /* includes: IPv4, IPv6 or hostname */
     hints.ai_socktype= SOCK_STREAM;
@@ -792,10 +806,12 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       rc= pvio_socket_connect_sync_or_async(pvio, save_res->ai_addr, (uint)save_res->ai_addrlen);
       if (!rc)
       {
+#ifdef HAVE_NONBLOCK        
         MYSQL *mysql= pvio->mysql;
         if (mysql->options.extension && mysql->options.extension->async_context &&
              mysql->options.extension->async_context->active)
           break;
+#endif        
         if (pvio_socket_blocking(pvio, 0, 0) == SOCKET_ERROR)
         {
           closesocket(csock->socket);

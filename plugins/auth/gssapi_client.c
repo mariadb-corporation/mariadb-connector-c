@@ -30,7 +30,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <stdio.h>
 #include <mysql/plugin_auth.h>
-#include <mysqld_error.h>
+#include <ma_server_error.h>
 #include <mysql.h>
 #include "gssapi_errmsg.h"
 

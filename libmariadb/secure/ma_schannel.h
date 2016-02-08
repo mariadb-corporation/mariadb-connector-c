@@ -23,11 +23,11 @@
 #define _ma_schannel_h_
 
 #define SECURITY_WIN32
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 
 
 typedef void VOID;
@@ -46,12 +46,7 @@ typedef void VOID;
 #define SC_IO_BUFFER_SIZE 0x4000
 
 
-#ifndef HAVE_SCHANNEL_DEFAULT
-#define ma_snprintf snprintf
-#define ma_vsnprintf vsnprintf
-#undef SAFE_MUTEX
-#endif
-#include <my_pthread.h>
+#include <ma_pthread.h>
 
 struct st_schannel {
   HCERTSTORE cert_store;

@@ -53,9 +53,9 @@ typedef int my_socket;
 #endif
 #endif
 #endif
-#include "mysql_com.h"
-#include "mysql_version.h"
-#include "my_list.h"
+#include "mariadb_com.h"
+#include "mariadb_version.h"
+#include "ma_list.h"
 #include "mariadb_ctype.h"
 
 #ifndef ST_MA_USED_MEM_DEFINED
@@ -225,6 +225,17 @@ extern unsigned int mariadb_deinitialize_ssl;
     MYSQL_OPT_CONNECT_ATTRS,        /* for mysql_get_optionv */
     MARIADB_OPT_USERDATA,
     MARIADB_OPT_CONNECTION_HANDLER,
+    MARIADB_OPT_PORT,
+    MARIADB_OPT_UNIXSOCKET,
+    MARIADB_OPT_PASSWORD,
+    MARIADB_OPT_HOST,
+    MARIADB_OPT_USER,
+    MARIADB_OPT_SCHEMA,
+    MARIADB_OPT_DEBUG,
+    MARIADB_OPT_FOUND_ROWS,
+    MARIADB_OPT_MULTI_RESULTS,
+    MARIADB_OPT_MULTI_STATEMENTS,
+    MARIADB_OPT_INTERACTIVE,
     MARIADB_OPT_COM_MULTI,
   };
 
@@ -400,7 +411,7 @@ typedef struct character_set
 /* Local infile support functions */
 #define LOCAL_INFILE_ERROR_LEN 512
 
-#include "my_stmt.h"
+#include "mariadb_stmt.h"
 
 void STDCALL mysql_set_local_infile_handler(MYSQL *mysql,
         int (*local_infile_init)(void **, const char *, void *),
@@ -501,9 +512,6 @@ unsigned long	STDCALL mysql_escape_string(char *to,const char *from,
 unsigned long STDCALL mysql_real_escape_string(MYSQL *mysql,
 					       char *to,const char *from,
 					       unsigned long length);
-void		STDCALL mysql_debug(const char *debug);
-#define mysql_debug_init(A) mysql_debug((A));
-void    STDCALL mysql_debug_end(void);
 unsigned int	STDCALL mysql_thread_safe(void);
 unsigned int STDCALL mysql_warning_count(MYSQL *mysql);
 const char * STDCALL mysql_sqlstate(MYSQL *mysql);
@@ -531,6 +539,7 @@ unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 my_bool STDCALL mysql_reconnect(MYSQL *mysql);
 
 /* Async API */
+#ifdef HAVE_NONBLOCK
 int STDCALL mysql_close_start(MYSQL *sock);
 int STDCALL mysql_close_cont(MYSQL *sock, int status);
 int STDCALL mysql_commit_start(my_bool *ret, MYSQL * mysql);
@@ -641,7 +650,7 @@ int STDCALL mysql_stmt_send_long_data_start(my_bool *ret, MYSQL_STMT *stmt,
                                             size_t len);
 int STDCALL mysql_stmt_send_long_data_cont(my_bool *ret, MYSQL_STMT *stmt,
                                            int status);
-
+#endif
 
 /* API function calls (used by dynmic plugins) */
 struct st_mariadb_api {
@@ -706,8 +715,6 @@ struct st_mariadb_api {
   MYSQL_FIELD * (STDCALL *mysql_fetch_field)(MYSQL_RES *result);
   unsigned long (STDCALL *mysql_escape_string)(char *to,const char *from, unsigned long from_length);
   unsigned long (STDCALL *mysql_real_escape_string)(MYSQL *mysql, char *to,const char *from, unsigned long length);
-  void (STDCALL *mysql_debug)(const char *debug);
-  void (STDCALL *mysql_debug_end)(void);
   unsigned int (STDCALL *mysql_thread_safe)(void);
   unsigned int (STDCALL *mysql_warning_count)(MYSQL *mysql);
   const char * (STDCALL *mysql_sqlstate)(MYSQL *mysql);

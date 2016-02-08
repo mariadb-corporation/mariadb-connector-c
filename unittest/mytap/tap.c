@@ -19,7 +19,7 @@
 
 #include "tap.h"
 
-#include "my_global.h"
+#include "ma_global.h"
 
 #include <stdlib.h>
 #include <stdarg.h>

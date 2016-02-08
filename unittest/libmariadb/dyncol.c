@@ -16,7 +16,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include "my_test.h"
-#include "ma_dyncol.h"
+#include "mariadb_dyncol.h"
 
 static int create_dyncol_named(MYSQL *mysql)
 {

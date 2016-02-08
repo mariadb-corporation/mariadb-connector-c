@@ -17,10 +17,9 @@
    MA 02111-1307, USA 
 */
 
-#include <my_global.h>
-#include <my_sys.h>
-#include <mysys_err.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <mariadb/ma_io.h>
@@ -53,11 +52,6 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
   {
     if (!(fp= fopen(location, mode)))
     {
-#ifdef _WIN32
-      my_errno= GetLastError();
-#else
-      my_errno= errno;
-#endif
       return NULL;
     }
   }
@@ -104,7 +98,6 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
       return NULL;
     }
     fp= _wfopen(w_filename, w_mode);
-    my_errno= GetLastError();
     free(w_filename);
     free(w_mode);
   }
