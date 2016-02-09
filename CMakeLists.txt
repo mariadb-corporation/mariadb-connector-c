@@ -36,6 +36,7 @@ SET(MARIADB_CONNECTOR_C_COPYRIGHT "2013-2016 MariaDB Corporation Ab")
 IF(NOT WIN32)
   OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
 ELSE()
+  OPTION(WITH_MSI "Build MSI installation package" OFF)
   OPTION(WITH_SIGNCODE "digitally sign files" OFF)
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
@@ -300,8 +301,8 @@ IF(CLIENT_DOCS)
 ENDIF()
 
 
-IF(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  ADD_SUBDIRECTORY(win/packaging)
+IF(WIN32 AND WITH_MSI AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  DD_SUBDIRECTORY(win/packaging)
 ENDIF()
 
 SET(CPACK_PACKAGE_VENDOR "MariaDB Corporation Ab")
