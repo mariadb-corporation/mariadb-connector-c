@@ -539,7 +539,6 @@ unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 my_bool STDCALL mysql_reconnect(MYSQL *mysql);
 
 /* Async API */
-#ifdef HAVE_NONBLOCK
 int STDCALL mysql_close_start(MYSQL *sock);
 int STDCALL mysql_close_cont(MYSQL *sock, int status);
 int STDCALL mysql_commit_start(my_bool *ret, MYSQL * mysql);
@@ -650,7 +649,6 @@ int STDCALL mysql_stmt_send_long_data_start(my_bool *ret, MYSQL_STMT *stmt,
                                             size_t len);
 int STDCALL mysql_stmt_send_long_data_cont(my_bool *ret, MYSQL_STMT *stmt,
                                            int status);
-#endif
 
 /* API function calls (used by dynmic plugins) */
 struct st_mariadb_api {
