@@ -4010,7 +4010,52 @@ static int test_conc154(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc155(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind;
+  char buffer[50];
+  int rc;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a TEXT)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES ('zero terminated string')");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, "SELECT a FROM t1", strlen("SELECT a FROM t1"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(buffer, 'X', 50);
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+
+  bind.buffer= buffer;
+  bind.buffer_length= 50;
+  bind.buffer_type= MYSQL_TYPE_STRING;
+
+  rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  if (strlen(buffer) != strlen("zero terminated string"))
+  {
+    diag("Wrong buffer length");
+    return FAIL;
+  }
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc155", test_conc155, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc154", test_conc154, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_conc141", test_conc141, TEST_CONNECTION_NEW, 0, NULL , NULL},
   {"test_conc67", test_conc67, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
@@ -4081,3 +4126,4 @@ int main(int argc, char **argv)
 
   return(exit_status());
 }
+
