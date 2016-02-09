@@ -818,9 +818,19 @@ void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
   ulong field_length= net_field_length(row);
   size_t copylen;
 
+  /* Bug conc-155: For text columns we need to store terminating zero character */
+  if (!(field->flags & BINARY_FLAG) && r_param->buffer_type == MYSQL_TYPE_STRING)
+    field_length++;
+
   copylen= MIN(field_length, r_param->buffer_length);
   memcpy(r_param->buffer, *row, copylen);
   *r_param->error= copylen < field_length;
+
+  /* don't count trailing zero if we fetch into string */
+  if (r_param->buffer_type == MYSQL_TYPE_STRING &&
+      !*r_param->error)
+    field_length--;
+
   *r_param->length= field_length;
 
   (*row) += field_length;
