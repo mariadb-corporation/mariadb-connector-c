@@ -50,7 +50,7 @@
 #pragma comment (lib, "ws2_32")
 #endif
 
-#if !defined(MSDOS) && !defined(_WIN32) && !defined(HAVE_BROKEN_NETINET_INCLUDES) && !defined(__BEOS__) && !defined(__FreeBSD__)
+#if !defined(_WIN32) && !defined(HAVE_BROKEN_NETINET_INCLUDES)  
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #if !defined(alpha_linux_port)
