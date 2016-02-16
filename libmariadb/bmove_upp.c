@@ -24,28 +24,10 @@
     "src-len" to the destination "dst-len" counting downwards.
 */
 
-#include <my_global.h>
-#include "m_string.h"
+#include <ma_global.h>
+#include "ma_string.h"
 
-#if defined(MC68000) && defined(DS90)
-
-/* 0 <= len <= 65535 */
-void bmove_upp(byte *dst, const byte *src, size_t len)
-{
-asm("		movl	12(a7),d0	");
-asm("		subql	#1,d0		");
-asm("		blt	.L5		");
-asm("		movl	4(a7),a1	");
-asm("		movl	8(a7),a0	");
-asm(".L4:	movb	-(a0),-(a1)	");
-asm("		dbf	d0,.L4		");
-asm(".L5:				");
-}
-#else
-
-void bmove_upp(register char *dst, register const char *src, register size_t len)
+void ma_bmove_upp(register char *dst, register const char *src, register size_t len)
 {
   while (len-- != 0) *--dst = *--src;
 }
-
-#endif

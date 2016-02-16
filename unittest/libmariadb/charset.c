@@ -658,12 +658,11 @@ static int test_bug_54100(MYSQL *mysql)
 
 
 /* We need this internal function for the test */
-CHARSET_INFO * mysql_find_charset_name(const char *name); 
 
 static int test_utf16_utf32_noboms(MYSQL *mysql)
 {
   char          *csname[]= {"utf16", "utf16le", "utf32", "utf8"};
-  CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
+  MARIADB_CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
 
   const int     UTF8= sizeof(csname)/sizeof(char*) - 1;
 
@@ -713,6 +712,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
     rc= mariadb_convert_string(in_string[UTF8], &in_len, csinfo[UTF8], buffer, &out_len, csinfo[i], &error);
 
     FAIL_IF(rc==-1, "Conversion failed");
+    diag("rc=%d oct_len: %d", rc, in_oct_len[i]);
     FAIL_IF(rc != in_oct_len[i], "Incorrect number of written bytes");
 
     if (memcmp(buffer, in_string[i], rc) != 0)

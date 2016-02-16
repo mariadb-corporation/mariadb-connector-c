@@ -21,12 +21,12 @@
 
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
-#include <errmsg.h>
-#include <my_pthread.h>
+#include <ma_errmsg.h>
+#include <ma_pthread.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <ma_ssl.h>
@@ -58,7 +58,7 @@ static void ma_ssl_set_error(MYSQL *mysql, int ssl_errno)
                    ssl_error_reason);
     return;
   }
-  my_snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
+  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
   pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                  ssl_error);
 }
@@ -187,7 +187,7 @@ static int ma_ssl_set_certs(MYSQL *mysql)
 
 error:
   if (cipher)
-    my_free(cipher);
+    free(cipher);
   return ssl_error;
 }
 

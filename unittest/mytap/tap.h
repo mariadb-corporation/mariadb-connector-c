@@ -20,7 +20,7 @@
 #ifndef TAP_H
 #define TAP_H
 
-#include "my_global.h"
+#include "ma_global.h"
 
 /*
   @defgroup MyTAP MySQL support for performing unit tests according to

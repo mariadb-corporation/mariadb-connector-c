@@ -16,7 +16,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include "my_test.h"
-#include "ma_dyncol.h"
+#include "mariadb_dyncol.h"
 
 static int create_dyncol_named(MYSQL *mysql)
 {
@@ -39,7 +39,7 @@ static int create_dyncol_named(MYSQL *mysql)
     vals[i].type= DYN_COL_STRING;
     vals[i].x.string.value.str= strval[i];
     vals[i].x.string.value.length= strlen(strval[i]);
-    vals[i].x.string.charset= (CHARSET_INFO *)mysql->charset;
+    vals[i].x.string.charset= (MARIADB_CHARSET_INFO *)mysql->charset;
     diag("%s", keys3[i].str);
   }
 
@@ -132,7 +132,7 @@ static int create_dyncol_num(MYSQL *mysql)
     vals[i].type= DYN_COL_STRING;
     vals[i].x.string.value.str= strval[i];
     vals[i].x.string.value.length= strlen(strval[i]);
-    vals[i].x.string.charset= (CHARSET_INFO *)mysql->charset;
+    vals[i].x.string.charset= (MARIADB_CHARSET_INFO *)mysql->charset;
   }
   FAIL_IF(mariadb_dyncol_create_many_num(&dyncol, column_count, keys1, vals, 1) <0, "Error (keys1)");
 
@@ -176,7 +176,7 @@ static int mdev_x1(MYSQL *mysql)
     vals[i].type= DYN_COL_STRING;
     vals[i].x.string.value.str= strval[i];
     vals[i].x.string.value.length= strlen(strval[i]);
-    vals[i].x.string.charset= (CHARSET_INFO *)mysql->charset;
+    vals[i].x.string.charset= (MARIADB_CHARSET_INFO *)mysql->charset;
   }
 
   mariadb_dyncol_init(&dynstr);

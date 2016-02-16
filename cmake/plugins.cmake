@@ -50,7 +50,7 @@ IF(CURL_FOUND)
   IF(WIN32)
     REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
   ELSE()
-    REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "STATIC" "remote_io" 1)
+    REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
   ENDIF()
 ENDIF()
 
@@ -90,7 +90,7 @@ ENDIF()
 # since some files contain multiple plugins, remove duplicates from source files 
 LIST(REMOVE_DUPLICATES LIBMARIADB_SOURCES)
 
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/libmariadb/client_plugin.c.in
-  ${CMAKE_BINARY_DIR}/libmariadb/client_plugin.c)
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
+  ${CMAKE_BINARY_DIR}/libmariadb/ma_client_plugin.c)
 
 MARK_AS_ADVANCED(LIBMARIADB_SOURCES)

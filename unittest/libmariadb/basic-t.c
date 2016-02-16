@@ -705,6 +705,9 @@ static int test_reconnect_maxpackage(MYSQL *my)
   SKIP_CONNECTION_HANDLER;
   mysql= mysql_init(NULL);
 
+  SKIP_CONNECTION_HANDLER;
+  mysql= mysql_init(NULL);
+
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
                               port, socketname, 
                               CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));

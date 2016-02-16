@@ -16,11 +16,11 @@
    or write to the Free Software Foundation, Inc., 
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 *************************************************************************************/
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include "mysql.h"
-#include <m_string.h>
-#include <m_ctype.h>
+#include <ma_string.h>
+#include <mariadb_ctype.h>
 #include <stdio.h>
 #include <memory.h>
 

@@ -1,7 +1,7 @@
-#include <my_global.h>
-#include <my_sys.h>
-#include <m_string.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
+#include <string.h>
 #include <ma_common.h>
 #include <mysql/client_plugin.h>
 
@@ -102,9 +102,9 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   size_t conn_attr_len= (mysql->options.extension) ? 
                          mysql->options.extension->connect_attrs_len : 0;
 
-  buff= my_alloca(USERNAME_LENGTH+1 + data_len+1 + NAME_LEN+1 + 2 + NAME_LEN+1 + 9 + conn_attr_len);
+  buff= malloc(USERNAME_LENGTH+1 + data_len+1 + NAME_LEN+1 + 2 + NAME_LEN+1 + 9 + conn_attr_len);
 
-  end= strmake(buff, mysql->user, USERNAME_LENGTH) + 1;
+  end= strncpy(buff, mysql->user, USERNAME_LENGTH) + strlen(buff) + 1;
 
   if (!data_len)
     *end++= 0;
@@ -128,7 +128,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
     memcpy(end, data, data_len);
     end+= data_len;
   }
-  end= strmake(end, mpvio->db ? mpvio->db : "", NAME_LEN) + 1;
+  end= strncpy(end, mpvio->db ? mpvio->db : "", NAME_LEN) + strlen(end) + 1;
 
   if (mysql->server_capabilities & CLIENT_PROTOCOL_41)
   {
@@ -137,15 +137,15 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   }
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
-    end= strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
+    end= strncpy(end, mpvio->plugin->name, NAME_LEN) + strlen(end) + 1;
 
   end= ma_send_connect_attr(mysql, end);
 
-  res= simple_command(mysql, COM_CHANGE_USER,
+  res= ma_simple_command(mysql, COM_CHANGE_USER,
                       buff, (ulong)(end-buff), 1, NULL);
 
 error:
-  my_afree(buff);
+  free(buff);
   return res;
 }
 
@@ -161,7 +161,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                          mysql->options.extension->connect_attrs_len : 0;
 
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
-  buff= my_alloca(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
+  buff= malloc(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
   
   mysql->client_flag|= mysql->options.client_flag;
   mysql->client_flag|= CLIENT_CAPABILITIES;
@@ -211,7 +211,12 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     int4store(buff,mysql->client_flag);
     int4store(buff+4, net->max_packet_size);
     buff[8]= (char) mysql->charset->nr;
-    bzero(buff+9, 32-9);
+    memset(buff + 9, 0, 32-9);
+    if (!(mysql->server_capabilities & CLIENT_MYSQL))
+    {
+      mysql->client_flag |= MARIADB_CLIENT_SUPPORTED_FLAGS;
+      int4store(buff + 28, mysql->client_flag >> 32);
+    }
     end= buff+32;
   }
   else
@@ -253,19 +258,14 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   }
 #endif /* HAVE_SSL */
 
-  DBUG_PRINT("info",("Server version = '%s'  capabilites: %lu  status: %u  client_flag: %lu",
-		     mysql->server_version, mysql->server_capabilities,
-		     mysql->server_status, mysql->client_flag));
-
   /* This needs to be changed as it's not useful with big packets */
   if (mysql->user[0])
-    strmake(end, mysql->user, USERNAME_LENGTH);
+    strncpy(end, mysql->user, USERNAME_LENGTH);
   else
     read_user_name(end);
 
   /* We have to handle different version of handshake here */
-  DBUG_PRINT("info",("user: %s",end));
-  end= strend(end) + 1;
+  end= strchr(end, '\0') + 1;
   if (data_len)
   {
     if (mysql->server_capabilities & CLIENT_SECURE_CONNECTION)
@@ -287,12 +287,12 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   /* Add database if needed */
   if (mpvio->db && (mysql->server_capabilities & CLIENT_CONNECT_WITH_DB))
   {
-    end= strmake(end, mpvio->db, NAME_LEN) + 1;
-    mysql->db= my_strdup(mpvio->db, MYF(MY_WME));
+    end= strncpy(end, mpvio->db, NAME_LEN) + strlen(end) + 1;
+    mysql->db= strdup(mpvio->db);
   }
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
-    end= strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
+    end= strncpy(end, mpvio->plugin->name, NAME_LEN) + strlen(end) + 1;
 
   end= ma_send_connect_attr(mysql, end);
 
@@ -305,11 +305,11 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                         errno);
     goto error;
   }
-  my_afree(buff);
+  free(buff);
   return 0;
   
 error:
-  my_afree(buff);
+  free(buff);
   return 1;
 }
 
@@ -419,7 +419,7 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
 
 void mpvio_info(MARIADB_PVIO *pvio, MYSQL_PLUGIN_VIO_INFO *info)
 {
-  bzero(info, sizeof(*info));
+  memset(info, 0, sizeof(*info));
   switch (pvio->type) {
   case PVIO_TYPE_SOCKET:
     info->protocol= MYSQL_VIO_TCP;

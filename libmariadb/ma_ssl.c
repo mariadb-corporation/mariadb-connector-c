@@ -32,20 +32,19 @@
 
 #ifdef HAVE_SSL
 
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <ma_common.h>
 #include <string.h>
-//#include <ma_secure.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 #include <ma_pvio.h>
 #include <ma_ssl.h>
 #include <mysql/client_plugin.h>
 
-/*
-#include <mysql_async.h>
-#include <my_context.h>
-*/
+#ifdef HAVE_NONBLOCK
+#include <mariadb_async.h>
+#include <ma_context.h>
+#endif
 
 /* Errors should be handled via pvio callback function */
 my_bool ma_ssl_initialized= FALSE;
@@ -60,8 +59,7 @@ MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
   if (!ma_ssl_initialized)
     ma_ssl_start(mysql->net.last_error, MYSQL_ERRMSG_SIZE);
 
-  if (!(cssl= (MARIADB_SSL *)my_malloc(sizeof(MARIADB_SSL), 
-                                      MYF(MY_WME | MY_ZEROFILL))))
+  if (!(cssl= (MARIADB_SSL *)calloc(1, sizeof(MARIADB_SSL))))
   {
     return NULL;
   }
@@ -70,7 +68,7 @@ MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
   cssl->pvio= mysql->net.pvio;
   if (!(cssl->ssl= ma_ssl_init(mysql)))
   {
-    my_free(cssl);
+    free(cssl);
     cssl= NULL;
   }
   return cssl;

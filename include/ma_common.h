@@ -21,7 +21,7 @@
 #define _ma_common_h
 
 #include <mysql.h>
-#include <hash.h>
+#include <ma_hash.h>
 
 
 typedef struct st_mariadb_db_driver
@@ -52,10 +52,13 @@ struct st_mysql_options_extension {
   char *ssl_fp; /* finger print of server certificate */
   char *ssl_fp_list; /* white list of finger prints */
   char *ssl_pw; /* password for encrypted certificates */
+  my_bool multi_command; /* indicates if client wants to send multiple
+                            commands in one packet */
   char *url; /* for connection handler we need to save URL for reconnect */
   unsigned int ssl_cipher_strength;
   my_bool read_only;
   char *connection_handler;
+  my_bool (*set_option)(MYSQL *mysql, const char *config_option, const char *config_value);
   HASH userdata;
 };
 

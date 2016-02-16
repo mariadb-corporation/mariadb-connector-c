@@ -58,8 +58,10 @@
       <File Id="libpdb" Name="libmariadb.pdf"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.pdb" />
     </Component>
     <Component Id="Binaries" Guid="4b074269-7d81-11e5-8cf9-a0a8cd7fad46" KeyPath="yes" DiskId="1" Directory="inst_bin" Win64="@IS_WIN64@">
+      <!--
       <File Id="mariadb_client_plugin_info" Name="mariadb_clent_plugin_info.exe"  DiskId="1"
-            Source="@CLIENT_BIN_DIR@/mariadb_client_plugin_info.exe" />
+        Source="@CLIENT_BIN_DIR@/mariadb_client_plugin_info.exe" />
+      -->
     </Component>
     <Component Id="Plugins" Guid="5B2E98C9-DFF2-4129-8360-C6AD16F6BBEA" KeyPath="yes" DiskId="1" Directory="instlib_plugin" Win64="@IS_WIN64@">
       <Environment Id="PLUGIN_PATH" Name="PATH" Value="[instlib_plugin]" Permanent="no" Action="set" Part="last" System="yes"/>

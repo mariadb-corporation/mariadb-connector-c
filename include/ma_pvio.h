@@ -18,6 +18,7 @@
 struct st_ma_pvio_methods;
 typedef struct st_ma_pvio_methods PVIO_METHODS;
 
+#ifdef HAVE_NONBLOCK
 #define IS_PVIO_ASYNC(a) \
   ((a)->mysql && (a)->mysql->options.extension && (a)->mysql->options.extension->async_context)
 
@@ -29,6 +30,12 @@ typedef struct st_ma_pvio_methods PVIO_METHODS;
 
 #define IS_MYSQL_ASYNC_ACTIVE(a) \
   (IS_MYSQL_ASYNC(a)&& (a)->options.extension->async_context->active)
+#else
+#define IS_PVIO_ASYNC(a) (0)
+#define IS_PVIO_ASYNC_ACTIVE(a) (0)
+#define IS_MYSQL_ASYNC(a) (0)
+#define IS_MYSQL_ASYNC_ACTIVE(a) (0)
+#endif
 
 enum enum_pvio_timeout {
   PVIO_CONNECT_TIMEOUT= 0,
@@ -75,7 +82,6 @@ struct st_ma_pvio {
   MYSQL *mysql;
   struct mysql_async_context *async_context; /* For non-blocking API */
   PVIO_METHODS *methods;
-  FILE *fp;
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
   void (*callback)(MARIADB_PVIO *pvio, my_bool is_read, const char *buffer, size_t length);
 };

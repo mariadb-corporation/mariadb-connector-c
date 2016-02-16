@@ -7,8 +7,8 @@ PROJECT(mariadb-connector-c C)
 SET(PACKAGE_STATUS_SUFFIX "alpha")
 
 SET(CPACK_PACKAGE_VERSION_MAJOR 3)
-SET(CPACK_PACKAGE_VERSION_MINOR 0)
-SET(CPACK_PACKAGE_VERSION_PATCH 1)
+SET(CPACK_PACKAGE_VERSION_MINOR 1)
+SET(CPACK_PACKAGE_VERSION_PATCH 0)
 SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
 #Minimum required version is Cmake 2.8.8, since we need to build object libraries
@@ -19,6 +19,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
 ENDIF()
 IF(COMMAND CMAKE_POLICY)
   CMAKE_POLICY(SET CMP0003 NEW)
+  CMAKE_POLICY(SET CMP0022 NEW)
+  CMAKE_POLICY(SET CMP0023 NEW)
 ENDIF()
 
 #Allow access to non existing targets  
@@ -34,10 +36,14 @@ SET(MARIADB_CONNECTOR_C_COPYRIGHT "2013-2016 MariaDB Corporation Ab")
 IF(NOT WIN32)
   OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
 ELSE()
+  OPTION(WITH_MSI "Build MSI installation package" OFF)
   OPTION(WITH_SIGNCODE "digitally sign files" OFF)
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
 
+OPTION(WITH_UNITTEST "build test suite" ON)
+OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
+OPTION(WITH_NONBLOCK "Enables support for non blocking operations" ON)
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 IF(WITH_SIGNCODE)
@@ -46,7 +52,6 @@ IF(WITH_SIGNCODE)
   ENDIF()
   MARK_AS_ADVANCED(SIGN_OPTIONS)
 ENDIF()
-
 
 IF(WITH_RTC)
   SET(RTC_OPTIONS "/RTC1 /RTCc")
@@ -111,7 +116,7 @@ ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
 IF(NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE "Relwithdebinfo")
+  SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
 ENDIF()
 
 # various defines for generating include/mysql_version.h
@@ -236,14 +241,10 @@ IF(NOT WIN32)
   INCLUDE(${CMAKE_SOURCE_DIR}/cmake/FindIconv.cmake)
 ENDIF()
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
-  ${CMAKE_CURRENT_BINARY_DIR}/include/mysql_version.h)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
-               ${CMAKE_CURRENT_BINARY_DIR}/include/my_config.h)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/my_config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/ma_config.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/include/ma_config.h)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mariadb_version.h.in
+               ${CMAKE_CURRENT_SOURCE_DIR}/include/mariadb_version.h)
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
@@ -287,11 +288,11 @@ IF(NOT WIN32)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
 
-ADD_SUBDIRECTORY(client)
-
 IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
-  ADD_SUBDIRECTORY(unittest/mytap)
-  ADD_SUBDIRECTORY(unittest/libmariadb)
+  IF(WITH_UNITTEST STREQUAL "ON")
+    ADD_SUBDIRECTORY(unittest/mytap)
+    ADD_SUBDIRECTORY(unittest/libmariadb)
+  ENDIF()
 ENDIF()
 
 IF(CLIENT_DOCS)
@@ -300,8 +301,8 @@ IF(CLIENT_DOCS)
 ENDIF()
 
 
-IF(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  ADD_SUBDIRECTORY(win/packaging)
+IF(WIN32 AND WITH_MSI AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  DD_SUBDIRECTORY(win/packaging)
 ENDIF()
 
 SET(CPACK_PACKAGE_VENDOR "MariaDB Corporation Ab")

@@ -1,11 +1,14 @@
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <getopt.h>
 #include <stdio.h>
+
+static char *mariadb_progname;
 
 #define INCLUDE "-I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@/mysql"
 #define LIBS    "-L@PREFIX_INSTALL_DIR@/@LIB_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -lmariadb" \
                 "@extra_dynamic_LDFLAGS@"
+#define LIBS_SYS "@extra_dynamic_LDFLAGS@"
 #define CFLAGS  INCLUDE " @CMAKE_C_FLAGS@"
 #define VERSION "@MYSQL_CLIENT_VERSION@"
 #define PLUGIN_DIR "@PREFIX_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@/@PLUGIN_INSTALL_DIR@"
@@ -19,6 +22,7 @@ static struct option long_options[]=
   {"include", no_argument, 0, 'c'},
   {"libs", no_argument, 0, 'd'},
   {"libs_r", no_argument, 0, 'e'},
+  {"libs_sys", no_argument, 0, 'y'},
   {"version", no_argument, 0, 'f'},
   {"socket", no_argument, 0, 'g'},
   {"port", no_argument, 0, 'h'},
@@ -33,6 +37,7 @@ static char *values[]=
   INCLUDE,
   LIBS,
   LIBS,
+  LIBS_SYS,
   VERSION,
   SOCKET,
   PORT,
@@ -44,7 +49,7 @@ void usage(void)
   int i=0;
   puts("Copyright 2011-2015 MariaDB Corporation AB");
   puts("Get compiler flags for using the MariaDB Connector/C.");
-  printf("Usage: %s [OPTIONS]\n", my_progname);
+  printf("Usage: %s [OPTIONS]\n", mariadb_progname);
   while (long_options[i].name)
   {
     if (values[i])
@@ -57,7 +62,7 @@ void usage(void)
 int main(int argc, char **argv)
 {
   int c;
-  my_progname= argv[0];
+  mariadb_progname= argv[0];
 
   if (argc <= 1)
   {
@@ -95,6 +100,9 @@ int main(int argc, char **argv)
       break;
     case 'p':
       puts(PLUGINDIR);
+      break;
+    case 'y':
+      puts(LIBS_SYS);
       break;
     default:
       exit(0);

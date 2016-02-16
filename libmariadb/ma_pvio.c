@@ -43,18 +43,18 @@
                         register callback functions for read and write
  */
 
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <mysql.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
-#include <mysql_async.h>
-#include <my_context.h>
-
-extern pthread_mutex_t THR_LOCK_lock;
+#ifdef HAVE_NONBLOCK
+#include <mariadb_async.h>
+#include <ma_context.h>
+#endif
 
 /* callback functions for read/write */
 LIST *pvio_callback= NULL;
@@ -104,8 +104,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
   }
 
 
-  if (!(pvio= (MARIADB_PVIO *)my_malloc(sizeof(MARIADB_PVIO), 
-                                      MYF(MY_WME | MY_ZEROFILL))))
+  if (!(pvio= (MARIADB_PVIO *)calloc(1, sizeof(MARIADB_PVIO)))) 
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
     return NULL;
@@ -124,9 +123,10 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
     pvio->methods->set_timeout(pvio, PVIO_WRITE_TIMEOUT, cinfo->mysql->options.write_timeout);
   }
 
-  if (!(pvio->cache= my_malloc(PVIO_READ_AHEAD_CACHE_SIZE, MYF(MY_ZEROFILL))))
+  if (!(pvio->cache= calloc(1, PVIO_READ_AHEAD_CACHE_SIZE)))
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+    free(pvio);
     return NULL;
   }
   pvio->cache_size= 0;
@@ -177,6 +177,7 @@ my_bool ma_pvio_set_timeout(MARIADB_PVIO *pvio,
 }
 /* }}} */
 
+#ifdef HAVE_NONBLOCK
 /* {{{ size_t ma_pvio_read_async */
 static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
@@ -212,6 +213,7 @@ static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t lengt
   }
 }
 /* }}} */
+#endif
 
 /* {{{ size_t ma_pvio_read */
 size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
@@ -219,13 +221,14 @@ size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   size_t r= -1;
   if (!pvio)
     return -1;
-
+#ifdef HAVE_NONBLOCK
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r= ma_pvio_read_async(pvio, buffer, length);
     goto end;
   }
   else
+#endif
   {
     if (IS_PVIO_ASYNC(pvio))
     {
@@ -303,6 +306,7 @@ size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 }
 /* }}} */
 
+#ifdef HAVE_NONBLOCK
 /* {{{ size_t ma_pvio_write_async */
 static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
@@ -332,6 +336,7 @@ static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_
   }
 }
 /* }}} */
+#endif
 
 /* {{{ size_t ma_pvio_write */
 size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
@@ -350,13 +355,14 @@ size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   }
   else
 #endif
-//  printf("No ssl (write): %x\n", pvio->cssl);
+#ifdef HAVE_NONBLOCK
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r= ma_pvio_write_async(pvio, buffer, length);
     goto end;
   }
   else
+#endif
   {
     if (IS_PVIO_ASYNC(pvio))
     {
@@ -386,19 +392,16 @@ void ma_pvio_close(MARIADB_PVIO *pvio)
   if (pvio && pvio->cssl)
   {
     ma_pvio_ssl_close(pvio->cssl);
-    my_free((gptr)pvio->cssl);
+    free(pvio->cssl);
   }
 #endif
   if (pvio && pvio->methods->close)
     pvio->methods->close(pvio);
 
   if (pvio->cache)
-    my_free((gptr)pvio->cache);
+    free(pvio->cache);
 
-  if (pvio->fp)
-    my_fclose(pvio->fp, MYF(0));
-
-  my_free((gptr)pvio);
+  free(pvio);
 }
 /* }}} */
 
@@ -411,6 +414,7 @@ my_bool ma_pvio_get_handle(MARIADB_PVIO *pvio, void *handle)
 }
 /* }}} */
 
+#ifdef HAVE_NONBLOCK
 /* {{{ ma_pvio_wait_async */
 static my_bool
 ma_pvio_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
@@ -442,15 +446,17 @@ ma_pvio_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
   return (b->events_occured & MYSQL_WAIT_TIMEOUT) ? 0 : 1;
 }
 /* }}} */
+#endif
 
 /* {{{ ma_pvio_wait_io_or_timeout */
 int ma_pvio_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
+#ifdef HAVE_NONBLOCK
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
     return ma_pvio_wait_async(pvio->mysql->options.extension->async_context, 
                              (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
                               timeout);
-
+#endif
 
   if (pvio && pvio->methods->wait_io_or_timeout)
     return pvio->methods->wait_io_or_timeout(pvio, is_read, timeout);
@@ -511,7 +517,7 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
   }
   if (ma_pvio_ssl_connect(pvio->cssl))
   {
-    my_free(pvio->cssl);
+    free(pvio->cssl);
     pvio->cssl= NULL;
     return 1;
   }

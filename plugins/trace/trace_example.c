@@ -20,7 +20,7 @@
 #define _GNU_SOURCE 1
 #endif
 
-#include <my_global.h>
+#include <ma_global.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>

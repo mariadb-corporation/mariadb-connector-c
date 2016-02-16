@@ -18,7 +18,7 @@
  *************************************************************************************/
 
 #include "my_test.h"
-#include <my_pthread.h>
+#include <ma_pthread.h>
 
 static int skip_ssl= 1;
 
@@ -787,7 +787,6 @@ static int test_ssl_version(MYSQL *mysql)
 
   mariadb_get_infov(my, MARIADB_SSL_LIBRARY, &library);
   diag("library: %s", library);
-
 
   mysql_close(my);
 

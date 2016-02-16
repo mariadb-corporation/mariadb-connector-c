@@ -830,6 +830,7 @@ static int test_prepare_alter(MYSQL *mysql)
   FAIL_IF(!(mysql_real_connect(mysql_new, hostname, username, password,
                            schema, port, socketname, 0)), "mysql_real_connect failed");
   rc= mysql_query(mysql_new, "ALTER TABLE test_prep_alter change id id_new varchar(20)");
+  diag("Error: %d %s", mysql_errno(mysql_new), mysql_error(mysql_new));
   check_mysql_rc(rc, mysql_new);
   mysql_close(mysql_new);
 

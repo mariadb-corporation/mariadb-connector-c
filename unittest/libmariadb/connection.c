@@ -37,16 +37,20 @@ static int test_conc66(MYSQL *my)
   if (!(fp= fopen("./my.cnf", "w")))
     return FAIL;
 
+  fprintf(fp, "[notmygroup]\n");
+  fprintf(fp, "user=foo\n");
   fprintf(fp, "[conc-66]\n");
   fprintf(fp, "user=conc66\n");
+  fprintf(fp, "port=3306\n");
+  fprintf(fp, "enable-local-infile\n");
   fprintf(fp, "password='test\\\";#test'\n");
 
   fclose(fp);
 
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
   check_mysql_rc(rc, mysql);
-  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
-  check_mysql_rc(rc, mysql);
+//  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
+//  check_mysql_rc(rc, mysql);
 
   sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname);
   rc= mysql_query(my, query);

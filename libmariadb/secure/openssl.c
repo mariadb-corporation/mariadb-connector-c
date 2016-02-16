@@ -17,11 +17,11 @@
   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
  *************************************************************************************/
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 #include <string.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
@@ -31,14 +31,14 @@
 
 #ifndef HAVE_OPENSSL_DEFAULT
 #include <memory.h>
-#define my_malloc(A,B) malloc((A))
-#undef my_free
-#define my_free(A) free((A))
-#define my_snprintf snprintf
-#define my_vsnprintf vsnprintf
+#define ma_malloc(A,B) malloc((A))
+#undef ma_free
+#define ma_free(A) free((A))
+#define ma_snprintf snprintf
+#define ma_vsnprintf vsnprintf
 #undef SAFE_MUTEX
 #endif
-#include <my_pthread.h>
+#include <ma_pthread.h>
 
 extern my_bool ma_ssl_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
@@ -64,6 +64,7 @@ static void ma_ssl_set_error(MYSQL *mysql)
   }
   if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
   {
+    printf("reason: %s\n", ssl_error_reason);
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                    0, ssl_error_reason);
     return;
@@ -126,7 +127,7 @@ static int ssl_thread_init()
   if (LOCK_crypto == NULL)
   {
     if (!(LOCK_crypto= 
-          (pthread_mutex_t *)my_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
+          (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
       return 1;
 
     for (i=0; i < max; i++)
@@ -219,7 +220,7 @@ void ma_ssl_end()
     for (i=0; i < CRYPTO_num_locks(); i++)
       pthread_mutex_destroy(&LOCK_crypto[i]);
 
-    my_free((gptr)LOCK_crypto);
+    ma_free((gptr)LOCK_crypto);
     LOCK_crypto= NULL;
 
     if (SSL_context)
@@ -246,7 +247,7 @@ void ma_ssl_end()
 
 int ma_ssl_get_password(char *buf, int size, int rwflag, void *userdata)
 {
-  bzero(buf, size);
+  memset(buf, 0, size);
   if (userdata)
     strncpy(buf, (char *)userdata, size);
   return strlen(buf);
@@ -426,6 +427,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   rc= SSL_get_verify_result(ssl);
   if (rc != X509_V_OK)
   {
+    printf("--------------------\n");
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                  ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
     /* restore blocking mode */
@@ -572,7 +574,7 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
   fp_len= len;
   if (!X509_digest(cert, digest, fp, &fp_len))
   {
-    my_free(fp);
+    ma_free(fp);
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                         ER(CR_SSL_CONNECTION_ERROR), 
                         "invalid finger print of server certificate");

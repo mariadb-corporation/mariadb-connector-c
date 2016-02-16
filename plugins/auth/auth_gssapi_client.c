@@ -33,9 +33,9 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 #include <string.h>
 #include <stdarg.h>
-#include <my_global.h>
+#include <ma_global.h>
 #include <mysql.h>
-#include <mysqld_error.h>
+#include <ma_server_error.h>
 #include <mysql/client_plugin.h>
 #include <mysql.h>
 #include <stdio.h>

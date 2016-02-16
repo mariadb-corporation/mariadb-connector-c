@@ -21,13 +21,13 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
-#include <my_global.h>
-#include <my_sys.h>
+#include <ma_global.h>
+#include <ma_sys.h>
 #include <mysql.h>
 #include <tap.h>
-#include <getopt.h>
+#include "ma_getopt.h"
 #include <memory.h>
-#include <errmsg.h>
+#include <ma_errmsg.h>
 
 #ifndef WIN32
 #include <pthread.h>
@@ -165,7 +165,7 @@ int do_verify_prepare_field(MYSQL_RES *result,
                             const char *file, int line)
 {
   MYSQL_FIELD *field;
-/*  CHARSET_INFO *cs; */
+/*  MARIADB_CHARSET_INFO *cs; */
 
   FAIL_IF(!(field= mysql_fetch_field_direct(result, no)), "FAILED to get result");
 /*  cs= mysql_find_charset_nr(field->charsetnr);
@@ -189,6 +189,8 @@ int do_verify_prepare_field(MYSQL_RES *result,
     FAIL_UNLESS(strcmp(field->table, table) == 0, "field->table differs");
   if (org_table)
     FAIL_UNLESS(strcmp(field->org_table, org_table) == 0, "field->org_table differs");
+  if (strcmp(field->db,db))
+    diag("%s / %s", field->db, db);
   FAIL_UNLESS(strcmp(field->db, db) == 0, "field->db differs");
   /*
     Character set should be taken into account for multibyte encodings, such
@@ -411,7 +413,6 @@ MYSQL *test_connect(struct my_tests_st *test) {
     mysql_close(mysql);
     return(NULL);
   }
-
   return(mysql);
 }
 

@@ -22,14 +22,14 @@
 
 /* MariaDB Connection plugin for Aurora failover  */
 
-#include <my_global.h>
-#include <my_sys.h>
-#include <errmsg.h>
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_errmsg.h>
 #include <ma_common.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
-#include <m_string.h>
+#include <ma_string.h>
 
 #ifndef WIN32
 #include <sys/time.h>
@@ -172,8 +172,8 @@ my_bool aurora_parse_url(const char *url, AURORA *aurora)
   if (!url || url[0] == 0)
     return 1;
 
-  bzero(aurora->instance, (AURORA_MAX_INSTANCES + 1) * sizeof(char *));
-  bzero(&aurora->port, (AURORA_MAX_INSTANCES + 1) * sizeof(int));
+  memset(aurora->instance, 0, (AURORA_MAX_INSTANCES + 1) * sizeof(char *));
+  memset(&aurora->port, 0, (AURORA_MAX_INSTANCES + 1) * sizeof(int));
 
   if (aurora->url)
     free(aurora->url);
