@@ -34,61 +34,57 @@ struct st_cipher_suite {
   CHAR *cipher;
 };
 
+const struct st_cipher_suite valid_ciphers[] =
+{
+  { CALG_3DES, "CALG_3DES" },
+  { CALG_3DES_112, "CALG_3DES_112" },
+  { CALG_AES, "CALG_AES" },
+  { CALG_AES_128, "CALG_AES_128" },
+  { CALG_AES_192, "CALG_AES_192" },
+  { CALG_AES_256, "CALG_AES_256" },
+  { CALG_AGREEDKEY_ANY, "CALG_AGREEDKEY_ANY" },
+  { CALG_CYLINK_MEK, "CALG_CYLINK_MEK" },
+  { CALG_DES, "CALG_DES" },
+  { CALG_DESX, "CALG_DESX" },
+  { CALG_DH_EPHEM, "CALG_DH_EPHEM" },
+  { CALG_DH_SF, "CALG_DH_SF" },
+  { CALG_DSS_SIGN, "CALG_DSS_SIGN" },
+  { CALG_ECDH, "CALG_ECDH" },
+  { CALG_ECDSA, "CALG_ECDSA" },
+  { CALG_ECMQV, "CALG_ECMQV" },
+  { CALG_HASH_REPLACE_OWF, "CALG_HASH_REPLACE_OWF" },
+  { CALG_HUGHES_MD5, "CALG_HUGHES_MD5" },
+  { CALG_HMAC, "CALG_HMAC" },
+  { CALG_KEA_KEYX, "CALG_KEA_KEYX" },
+  { CALG_MAC, "CALG_MAC" },
+  { CALG_MD2, "CALG_MD2" },
+  { CALG_MD4, "CALG_MD4" },
+  { CALG_MD4, "CALG_MD5" },
+  { CALG_NO_SIGN, "CALG_NO_SIGN" },
+  { CALG_OID_INFO_CNG_ONLY, "CALG_OID_INFO_CNG_ONLY" },
+  { CALG_OID_INFO_PARAMETERS, "CALG_OID_INFO_PARAMETERS" },
+  { CALG_RC2, "CALG_RC2" },
+  { CALG_RC4, "CALG_RC4" },
+  { CALG_RC5, "CALG_RC5" },
+  { CALG_RSA_KEYX, "CALG_RSA_KEYX" },
+  { CALG_RSA_SIGN, "CALG_RSA_SIGN" },
+  { CALG_SHA, "CALG_SHA" },
+  { CALG_SHA1, "CALG_SHA1" },
+  { CALG_SHA_256, "CALG_SHA_256" },
+  { CALG_SHA_384, "CALG_SHA_384" },
+  { CALG_SHA_512, "CALG_SHA_512" },
+  { 0, NULL }
+};
+
+#define MAX_ALG_ID 50
+
 void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
 void ma_schannel_set_win_error(MYSQL *mysql);
 
-const struct st_cipher_suite sc_ciphers[]=
-{
-  {CALG_3DES, "CALG_3DES"},
-  {CALG_3DES_112, "CALG_3DES_112"},
-  {CALG_AES, "CALG_AES"},
-  {CALG_AES_128, "CALG_AES_128"},
-  {CALG_AES_192, "CALG_AES_192"},
-  {CALG_AES_256, "CALG_AES_256"},
-  {CALG_AGREEDKEY_ANY, "CALG_AGREEDKEY_ANY"},
-  {CALG_CYLINK_MEK, "CALG_CYLINK_MEK"},
-  {CALG_DES, "CALG_DES"},
-  {CALG_DESX, "CALG_DESX"},
-  {CALG_DH_EPHEM, "CALG_DH_EPHEM"},
-  {CALG_DH_SF, "CALG_DH_SF"},
-  {CALG_DSS_SIGN, "CALG_DSS_SIGN"},
-  {CALG_ECDH, "CALG_ECDH"},
-  {CALG_ECDSA, "CALG_ECDSA"},
-  {CALG_ECMQV, "CALG_ECMQV"},
-  {CALG_HASH_REPLACE_OWF, "CALG_HASH_REPLACE_OWF"},
-  {CALG_HUGHES_MD5, "CALG_HUGHES_MD5"},
-  {CALG_HMAC, "CALG_HMAC"},
-  {CALG_KEA_KEYX, "CALG_KEA_KEYX"},
-  {CALG_MAC, "CALG_MAC"},
-  {CALG_MD2, "CALG_MD2"},
-  {CALG_MD4, "CALG_MD4"},
-  {CALG_MD4, "CALG_MD5"},
-  {CALG_NO_SIGN, "CALG_NO_SIGN"},
-  {CALG_OID_INFO_CNG_ONLY, "CALG_OID_INFO_CNG_ONLY"},
-  {CALG_OID_INFO_PARAMETERS, "CALG_OID_INFO_PARAMETERS"},
-  {CALG_PCT1_MASTER, "CALG_PCT1_MASTER"},
-  {CALG_RC2, "CALG_RC2"},
-  {CALG_RC4, "CALG_RC4"},
-  {CALG_RC5, "CALG_RC5"},
-  {CALG_RSA_KEYX, "CALG_RSA_KEYX"},
-  {CALG_RSA_SIGN, "CALG_RSA_SIGN"},
-  {CALG_SCHANNEL_MAC_KEY, "CALG_SCHANNEL_MAC_KEY"},
-  {CALG_SCHANNEL_MASTER_HASH, "CALG_SCHANNEL_MASTER_HASH"},
-  {CALG_SEAL, "CALG_SEAL"},
-  {CALG_SHA, "CALG_SHA"},
-  {CALG_SHA1, "CALG_SHA1"},
-  {CALG_SHA_256, "CALG_SHA_256"},
-  {CALG_SHA_384, "CALG_SHA_384"},
-  {CALG_SHA_512, "CALG_SHA_512"},
-  {CALG_SKIPJACK, "CALG_SKIPJACK"},
-  {CALG_SSL2_MASTER, "CALG_SSL2_MASTER"},
-  {CALG_SSL3_MASTER, "CALG_SSL3_MASTER"},
-  {CALG_SSL3_SHAMD5, "CALG_SSL3_SHAMD5"},
-  {CALG_TEK, "CALG_TEK"},
-  {CALG_TLS1_MASTER, "CALG_TLS1_MASTER"},
-  {CALG_TLS1PRF, "CALG_TLS1PRF"},
-  {0, NULL}
-};
+HCERTSTORE ca_CertStore= NULL,
+           crl_CertStore= NULL;
+my_bool ca_Check = 0, crl_Check = 0;
+
 
 static int ssl_thread_init()
 {
@@ -113,7 +109,17 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
   {
     pthread_mutex_init(&LOCK_schannel_config,MY_MUTEX_INIT_FAST);
     pthread_mutex_lock(&LOCK_schannel_config);
-    ma_ssl_initialized= TRUE;
+    if (!ca_CertStore)
+    {
+      if (!(ca_CertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, 0, 0, 0, NULL)) ||
+          !(crl_CertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, 0, 0, 0, NULL)))
+      {
+        snprintf(errmsg, errmsg_len, "Can't open in-memory certstore. Error=%d", GetLastError());
+        return 1;
+      }
+      
+    }
+    ma_ssl_initialized = TRUE;
     pthread_mutex_unlock(&LOCK_schannel_config);
   }
   return 0;
@@ -133,14 +139,23 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
 */
 void ma_ssl_end()
 {
-  pthread_mutex_lock(&LOCK_schannel_config);
   if (ma_ssl_initialized)
   {
-
+    pthread_mutex_lock(&LOCK_schannel_config);
+    if (ca_CertStore)
+    {
+      CertCloseStore(ca_CertStore, 0);
+      ca_CertStore = 0;
+    }
+    if (crl_CertStore)
+    {
+      CertCloseStore(crl_CertStore, 0);
+      crl_CertStore = 0;
+    }
     ma_ssl_initialized= FALSE;
+    pthread_mutex_unlock(&LOCK_schannel_config);
+    pthread_mutex_destroy(&LOCK_schannel_config);
   }
-  pthread_mutex_unlock(&LOCK_schannel_config);
-  pthread_mutex_destroy(&LOCK_schannel_config);
   return;
 }
 
@@ -151,32 +166,26 @@ static int ma_ssl_set_client_certs(MARIADB_SSL *cssl)
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key,
        *cafile= mysql->options.ssl_ca;
+  PCERT_CONTEXT ca_ctx= NULL;
+  PCRL_CONTEXT crl_ctx = NULL;
        
   SC_CTX *sctx= (SC_CTX *)cssl->ssl;
   MARIADB_PVIO *pvio= cssl->pvio;
 
   if (cafile)
   {
-    HCERTSTORE myCS= NULL;
-
-    if (!(sctx->client_ca_ctx = ma_schannel_create_cert_context(pvio, cafile)))
+    if (!(ca_ctx = ma_schannel_create_cert_context(pvio, cafile)))
       goto end;
 
-    /* For X509 authentication we need to add ca certificate to local MY store.
-       Schannel doesn't provide a callback to send ca to server during handshake */
-    if ((myCS= CertOpenStore(CERT_STORE_PROV_SYSTEM,
-                             0, //X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                             0,
-                             CERT_SYSTEM_STORE_CURRENT_USER,
-                             L"CA")))
+    /* Add ca to in-memory certificate store */
+    if (CertAddCertificateContextToStore(ca_CertStore, ca_ctx, CERT_STORE_ADD_NEWER, NULL) != TRUE &&
+        GetLastError() != CRYPT_E_EXISTS)
     {
-      CertAddCertificateContextToStore(myCS, sctx->client_ca_ctx, CERT_STORE_ADD_NEWER, NULL);
-      CertCloseStore(myCS, 0);
-    }
-    else {
       ma_schannel_set_win_error(sctx->mysql);
       goto end;
     }
+    ca_Check= 0;
+    CertFreeCertificateContext(ca_ctx);
   }
 
   if (!certfile && keyfile)
@@ -194,20 +203,28 @@ static int ma_ssl_set_client_certs(MARIADB_SSL *cssl)
  
   if (mysql->options.extension && mysql->options.extension->ssl_crl)
   {
-    if (!(sctx->client_crl_ctx= (CRL_CONTEXT *)ma_schannel_create_crl_context(pvio, mysql->options.extension->ssl_crl)))
+    if (!(crl_ctx= (CRL_CONTEXT *)ma_schannel_create_crl_context(pvio, mysql->options.extension->ssl_crl)))
       goto end;
+    /* Add ca to in-memory certificate store */
+    if (CertAddCRLContextToStore(crl_CertStore, crl_ctx, CERT_STORE_ADD_NEWER, NULL) != TRUE &&
+        GetLastError() != CRYPT_E_EXISTS)
+    {
+      ma_schannel_set_win_error(sctx->mysql);
+      goto end;
+    }
+    crl_Check = 1;
+    CertFreeCertificateContext(ca_ctx);
   }
   return 0;
   
 end:
-  if (sctx->client_ca_ctx)
-    CertFreeCertificateContext(sctx->client_ca_ctx);
+  if (ca_ctx)
+    CertFreeCertificateContext(ca_ctx);
   if (sctx->client_cert_ctx)
     CertFreeCertificateContext(sctx->client_cert_ctx);
-  if (sctx->client_crl_ctx)
-    CertFreeCRLContext(sctx->client_crl_ctx);
-  sctx->client_ca_ctx= sctx->client_cert_ctx= NULL;
-  sctx->client_crl_ctx= NULL;
+  if (crl_ctx)
+    CertFreeCRLContext(crl_ctx);
+  sctx->client_cert_ctx= NULL;
   return 1;
 }
 /* }}} */
@@ -243,7 +260,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   SECURITY_STATUS sRet;
   PCCERT_CONTEXT pRemoteCertContext = NULL,
                  pLocalCertContext= NULL;
-  ALG_ID AlgId[2]= {0, 0};
+  ALG_ID AlgId[MAX_ALG_ID]= {0};
   
   if (!cssl || !cssl->pvio)
     return 1;;
@@ -260,31 +277,42 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   if (ma_ssl_set_client_certs(cssl))
     goto end;
 
+  ZeroMemory(&Cred, sizeof(SCHANNEL_CRED));
+
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
-    DWORD i= 0;
-    while (sc_ciphers[i].cipher) {
-      if (!strcmp(sc_ciphers[i].cipher, mysql->options.ssl_cipher))
+    WORD validTokens = 0;
+    char *token = strtok(mysql->options.ssl_cipher, ":");
+    while (token)
+    {
+      struct st_cipher_suite *valid;
+      for (valid = valid_ciphers; valid && valid->aid; valid++)
       {
-        AlgId[0]= sc_ciphers[i].aid;
-        break;
+        if (!strcmp(token, valid->cipher))
+        {
+          AlgId[validTokens++] = valid->aid;
+          break;
+        }
       }
+      token = strtok(NULL, ":");
     }
-    Cred.palgSupportedAlgs= (ALG_ID *)&AlgId;
   }
-
-
-  ZeroMemory(&Cred, sizeof(SCHANNEL_CRED));
+  Cred.palgSupportedAlgs = (ALG_ID *)&AlgId;
+  
   Cred.dwVersion= SCHANNEL_CRED_VERSION;
-  Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK | SCH_SEND_ROOT_CERT | 
-			SCH_CRED_NO_DEFAULT_CREDS |	SCH_CRED_MANUAL_CRED_VALIDATION;
+  if (mysql->options.extension)
+    Cred.dwMinimumCipherStrength = MAX(128, mysql->options.extension->ssl_cipher_strength);
+  else
+    Cred.dwMinimumCipherStrength = 128;
+  Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK | SCH_SEND_ROOT_CERT |
+    SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
 	if (sctx->client_cert_ctx)
 	{
     Cred.cCreds = 1;
     Cred.paCred = &sctx->client_cert_ctx;
   }
-  Cred.grbitEnabledProtocols= SP_PROT_TLS1_1PLUS;
+    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_1 | SP_PROT_TLS1_2;
 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
  									            NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
@@ -315,15 +343,9 @@ end:
   if (rc && sctx->IoBufferSize)
     LocalFree(sctx->IoBuffer);
   sctx->IoBufferSize= 0;
-  if (sctx->client_ca_ctx)
-    CertFreeCertificateContext(sctx->client_ca_ctx);
   if (sctx->client_cert_ctx)
     CertFreeCertificateContext(sctx->client_cert_ctx);
-  if (sctx->client_crl_ctx)
-    CertFreeCRLContext(sctx->client_crl_ctx);
-  sctx->client_ca_ctx= 0;
   sctx->client_cert_ctx= 0;
-  sctx->client_crl_ctx= 0;
   return 1;
 }
 
@@ -363,12 +385,8 @@ my_bool ma_ssl_close(MARIADB_SSL *cssl)
   {
     if (sctx->IoBufferSize)
       LocalFree(sctx->IoBuffer);
-    if (sctx->client_ca_ctx)
-      CertFreeCertificateContext(sctx->client_ca_ctx);
     if (sctx->client_cert_ctx)
       CertFreeCertificateContext(sctx->client_cert_ctx);
-    if (sctx->client_crl_ctx)
-      CertFreeCRLContext(sctx->client_crl_ctx);
     FreeCredentialHandle(&sctx->CredHdl);
     DeleteSecurityContext(&sctx->ctxt);
   }
@@ -458,10 +476,10 @@ const char *ma_ssl_get_cipher(MARIADB_SSL *cssl)
   if (sRet != SEC_E_OK)
     return NULL;
 
-  while (sc_ciphers[i].cipher)
+  while (valid_ciphers[i].cipher)
   {
-    if (sc_ciphers[i].aid == cinfo.aiCipher)
-      return sc_ciphers[i].cipher;
+    if (valid_ciphers[i].aid == cinfo.aiCipher)
+      return valid_ciphers[i].cipher;
     i++;
   }
   return NULL;

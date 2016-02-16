@@ -2930,6 +2930,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     my_free(mysql->options.bind_address);
     mysql->options.bind_address= my_strdup(arg1, MYF(MY_WME));
     break;
+  case MARIADB_OPT_SSL_CIPHER_STRENGTH:
+    OPT_SET_EXTENDED_VALUE_INT(&mysql->options, ssl_cipher_strength, *((unsigned int *)arg1));
+    break;
   case MARIADB_OPT_SSL_FP:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp, (char *)arg1);
     break;
@@ -3107,6 +3110,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MYSQL_OPT_BIND:
     *((char **)arg)= mysql->options.bind_address;
+    break;
+  case MARIADB_OPT_SSL_CIPHER_STRENGTH:
+    *((unsigned int *)arg) = mysql->options.extension ? mysql->options.extension->ssl_cipher_strength : 0;
     break;
   case MARIADB_OPT_SSL_FP:
     *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_fp : NULL;

@@ -51,21 +51,21 @@ IF(WITH_SSL AND OPENSSL_FOUND)
   STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
   STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
 
+ENDIF()
   CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
                  ${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c)
   CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
                  ${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
-  SET(API_TESTS ${API_TESTS} "ssl")
-ENDIF()
+SET(API_TESTS ${API_TESTS} "ssl")
 
 FOREACH(API_TEST ${API_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c ${CMAKE_SOURCE_DIR}/libmariadb/getopt.c)
-  TARGET_LINK_LIBRARIES(${API_TEST} mytap libmariadb)
+  TARGET_LINK_LIBRARIES(${API_TEST} mytap mariadbclient)
   ADD_TEST(${API_TEST} ${EXECUTABLE_OUTPUT_PATH}/${API_TEST})
   SET_TESTS_PROPERTIES(${API_TEST} PROPERTIES TIMEOUT 120)
 ENDFOREACH(API_TEST)
 
 FOREACH(API_TEST ${MANUAL_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c ${CMAKE_SOURCE_DIR}/libmariadb/getopt.c)
-  TARGET_LINK_LIBRARIES(${API_TEST} mytap libmariadb)
+  TARGET_LINK_LIBRARIES(${API_TEST} mytap mariadbclient)
 ENDFOREACH()

@@ -140,6 +140,7 @@ my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_l
   unsigned int cert_fp_len= 64;
   unsigned char cert_fp[64];
   my_bool rc=1;
+  MYSQL *mysql= cssl->pvio->mysql;
 
   if ((cert_fp_len= ma_ssl_get_finger_print(cssl, cert_fp, cert_fp_len)) < 1)
     goto end;
@@ -147,20 +148,15 @@ my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_l
     rc= ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, (char *)fp, (unsigned int)strlen(fp));
   else if (fp_list)
   {
-    FILE *fp;
+    MA_FILE *fp;
     char buff[255];
 
-    if (!(fp = fopen(fp_list, "r")))
+    if (!(fp = ma_open(fp_list, "r", mysql)))
     {
-/*      
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                          ER(CR_SSL_CONNECTION_ERROR), 
-                          "Can't open finger print list");
-                          */
-      goto end;
+      return 1;
     }
 
-    while (fgets(buff, sizeof(buff)-1, fp))
+    while (ma_gets(buff, sizeof(buff)-1, fp))
     {
       /* remove trailing new line character */
       char *pos= strchr(buff, '\r');
@@ -172,18 +168,23 @@ my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_l
       if (!ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, buff, (unsigned int)strlen(buff)))
       {
         /* finger print is valid: close file and exit */
-        fclose(fp);
+        ma_close(fp);
         rc= 0;
         goto end;
       }
     }
 
     /* No finger print matched - close file and return error */
-    fclose(fp);
+    ma_close(fp);
   }
 
-
 end:
+  if (rc)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                         ER(CR_SSL_CONNECTION_ERROR), 
+                         "Fingerprint verification of server certificate failed");
+  }
   return rc;
 }
 #endif /* HAVE_SSL */

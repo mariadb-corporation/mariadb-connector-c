@@ -97,20 +97,20 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
 {
   int rc= 0;
 
+  if (ma_ssl_initialized)
+    return 0;
+
   pthread_mutex_init(&LOCK_gnutls_config,MY_MUTEX_INIT_FAST);
   pthread_mutex_lock(&LOCK_gnutls_config);
 
-  if (!ma_ssl_initialized)
+  if ((rc= gnutls_global_init()) != GNUTLS_E_SUCCESS)
   {
-    if ((rc= gnutls_global_init()) != GNUTLS_E_SUCCESS)
-    {
-      ma_ssl_get_error(errmsg, errmsg_len, rc);
-      goto end;
-    }
-    ma_ssl_initialized= TRUE;
+    ma_ssl_get_error(errmsg, errmsg_len, rc);
+    goto end;
   }
   /* Allocate a global context for credentials */
   rc= gnutls_certificate_allocate_credentials(&GNUTLS_xcred);
+  ma_ssl_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_gnutls_config);
   return rc;
@@ -130,9 +130,9 @@ end:
 */
 void ma_ssl_end()
 {
-  pthread_mutex_lock(&LOCK_gnutls_config);
   if (ma_ssl_initialized)
   {
+    pthread_mutex_lock(&LOCK_gnutls_config);
     gnutls_certificate_free_keys(GNUTLS_xcred);
     gnutls_certificate_free_cas(GNUTLS_xcred);
     gnutls_certificate_free_crls(GNUTLS_xcred);
@@ -141,9 +141,9 @@ void ma_ssl_end()
     if (mariadb_deinitialize_ssl)
       gnutls_global_deinit();
     ma_ssl_initialized= FALSE;
+    pthread_mutex_unlock(&LOCK_gnutls_config);
+    pthread_mutex_destroy(&LOCK_gnutls_config);
   }
-  pthread_mutex_unlock(&LOCK_gnutls_config);
-  pthread_mutex_destroy(&LOCK_gnutls_config);
   return;
 }
 

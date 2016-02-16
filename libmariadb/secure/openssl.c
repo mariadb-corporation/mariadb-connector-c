@@ -159,37 +159,37 @@ static int ssl_thread_init()
 int ma_ssl_start(char *errmsg, size_t errmsg_len)
 {
   int rc= 1;
+  if (ma_ssl_initialized)
+    return 0;
+
   /* lock mutex to prevent multiple initialization */
   pthread_mutex_init(&LOCK_openssl_config,MY_MUTEX_INIT_FAST);
   pthread_mutex_lock(&LOCK_openssl_config);
-  if (!ma_ssl_initialized)
+  if (ssl_thread_init())
   {
-    if (ssl_thread_init())
-    {
-      strncpy(errmsg, "Not enough memory", errmsg_len);
-      goto end;
-    }
-    SSL_library_init();
+    strncpy(errmsg, "Not enough memory", errmsg_len);
+    goto end;
+  }
+  SSL_library_init();
 
 #if SSLEAY_VERSION_NUMBER >= 0x00907000L
-    OPENSSL_config(NULL);
+  OPENSSL_config(NULL);
 #endif
-    /* load errors */
-    SSL_load_error_strings();
-    /* digests and ciphers */
-    OpenSSL_add_all_algorithms();
+  /* load errors */
+  SSL_load_error_strings();
+  /* digests and ciphers */
+  OpenSSL_add_all_algorithms();
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
-    if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
+  if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
 #else
-    if (!(SSL_context= SSL_CTX_new(SSLv23_client_method())))
+  if (!(SSL_context= SSL_CTX_new(SSLv23_client_method())))
 #endif
-    {
-      ma_ssl_get_error(errmsg, errmsg_len);
-      goto end;
-    }
-    rc= 0;
-    ma_ssl_initialized= TRUE;
+  {
+    ma_ssl_get_error(errmsg, errmsg_len);
+    goto end;
   }
+  rc= 0;
+  ma_ssl_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_openssl_config);
   return rc;
@@ -209,10 +209,10 @@ end:
 */
 void ma_ssl_end()
 {
-  pthread_mutex_lock(&LOCK_openssl_config);
   if (ma_ssl_initialized)
   {
     int i;
+    pthread_mutex_lock(&LOCK_openssl_config);
     CRYPTO_set_locking_callback(NULL);
     CRYPTO_set_id_callback(NULL);
 
@@ -238,9 +238,9 @@ void ma_ssl_end()
       sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
     }
     ma_ssl_initialized= FALSE;
+    pthread_mutex_unlock(&LOCK_openssl_config);
+    pthread_mutex_destroy(&LOCK_openssl_config);
   }
-  pthread_mutex_unlock(&LOCK_openssl_config);
-  pthread_mutex_destroy(&LOCK_openssl_config);
   return;
 }
 

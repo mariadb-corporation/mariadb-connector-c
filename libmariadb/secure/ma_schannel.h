@@ -56,19 +56,10 @@ typedef void VOID;
 struct st_schannel {
   HCERTSTORE cert_store;
   CERT_CONTEXT *client_cert_ctx;
-  CERT_CONTEXT *client_ca_ctx;
-  CRL_CONTEXT *client_crl_ctx;
   CredHandle CredHdl;
   my_bool FreeCredHdl;
   PUCHAR IoBuffer;
   DWORD IoBufferSize;
-/*  PUCHAR EncryptBuffer;
-  DWORD EncryptBufferSize;
-  DWORD EncryptBufferLength;
-  PUCHAR DecryptBuffer;
-  DWORD DecryptBufferSize;
-  DWORD DecryptBufferLength;
-    uchar thumbprint[21]; */
   SecPkgContext_StreamSizes Sizes;
 
   CtxtHandle ctxt;
@@ -76,6 +67,9 @@ struct st_schannel {
 };
 
 typedef struct st_schannel SC_CTX;
+
+extern HCERTSTORE ca_CertStore, crl_CertStore;
+extern my_bool ca_Check, crl_Check;
 
 CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file);
 SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl);

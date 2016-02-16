@@ -521,7 +521,8 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
     return 1;
 
   if (pvio->mysql->options.extension &&
-      (pvio->mysql->options.extension->ssl_fp || pvio->mysql->options.extension->ssl_fp_list))
+      (pvio->mysql->options.extension->ssl_fp && pvio->mysql->options.extension->ssl_fp[0]) ||
+      (pvio->mysql->options.extension->ssl_fp_list && pvio->mysql->options.extension->ssl_fp_list[0]))
   {
 
     if (ma_pvio_ssl_check_fp(pvio->cssl, 

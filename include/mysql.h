@@ -221,6 +221,7 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_OPT_CONNECTION_READ_ONLY,
     MYSQL_OPT_CONNECT_ATTRS,        /* for mysql_get_optionv */
     MARIADB_OPT_USERDATA,
+    MARIADB_OPT_SSL_CIPHER_STRENGTH,
     MARIADB_OPT_CONNECTION_HANDLER
   };
 

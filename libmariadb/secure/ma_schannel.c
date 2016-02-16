@@ -387,7 +387,7 @@ end:
 SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData)
 {
   SecBufferDesc   OutBuffer, InBuffer;
-  SecBuffer       InBuffers[2], OutBuffers[1];
+  SecBuffer       InBuffers[2], OutBuffers;
   DWORD           dwSSPIFlags, dwSSPIOutFlags, cbData, cbIoBuffer;
   TimeStamp       tsExpiry;
   SECURITY_STATUS rc;
@@ -457,12 +457,12 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
 
 
     /* output buffer */
-    OutBuffers[0].pvBuffer  = NULL;
-    OutBuffers[0].BufferType= SECBUFFER_TOKEN;
-    OutBuffers[0].cbBuffer  = 0;
+    OutBuffers.pvBuffer  = NULL;
+    OutBuffers.BufferType= SECBUFFER_TOKEN;
+    OutBuffers.cbBuffer  = 0;
 
     OutBuffer.cBuffers      = 1;
-    OutBuffer.pBuffers      = OutBuffers;
+    OutBuffer.pBuffers      = &OutBuffers;
     OutBuffer.ulVersion     = SECBUFFER_VERSION;
 
 
@@ -484,19 +484,19 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
         rc == SEC_I_CONTINUE_NEEDED ||
         FAILED(rc) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR))
     {
-      if(OutBuffers[0].cbBuffer && OutBuffers[0].pvBuffer)
+      if(OutBuffers.cbBuffer && OutBuffers.pvBuffer)
       {
-        cbData= (DWORD)pvio->methods->write(pvio, (uchar *)OutBuffers[0].pvBuffer, (size_t)OutBuffers[0].cbBuffer);
+        cbData= (DWORD)pvio->methods->write(pvio, (uchar *)OutBuffers.pvBuffer, (size_t)OutBuffers.cbBuffer);
         if(cbData == SOCKET_ERROR || cbData == 0)
         {
-          FreeContextBuffer(OutBuffers[0].pvBuffer);
+          FreeContextBuffer(OutBuffers.pvBuffer);
           DeleteSecurityContext(&sctx->ctxt);
           return SEC_E_INTERNAL_ERROR;
         }
 
         /* Free output context buffer */
-        FreeContextBuffer(OutBuffers[0].pvBuffer);
-        OutBuffers[0].pvBuffer = NULL;
+        FreeContextBuffer(OutBuffers.pvBuffer);
+        OutBuffers.pvBuffer = NULL;
       }
     }
 
@@ -589,7 +589,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
                 ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
   
   SecBufferDesc	BufferOut;
-  SecBuffer  BuffersOut[1];
+  SecBuffer  BuffersOut;
 
   if (!cssl || !cssl->pvio)
     return 1;
@@ -598,13 +598,13 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
   sctx= (SC_CTX *)cssl->ssl;
 
   /* Initialie securifty context */
-  BuffersOut[0].BufferType= SECBUFFER_TOKEN;
-  BuffersOut[0].cbBuffer= 0;
-  BuffersOut[0].pvBuffer= NULL;
+  BuffersOut.BufferType= SECBUFFER_TOKEN;
+  BuffersOut.cbBuffer= 0;
+  BuffersOut.pvBuffer= NULL;
 
 
   BufferOut.cBuffers= 1;
-  BufferOut.pBuffers= BuffersOut;
+  BufferOut.pBuffers= &BuffersOut;
   BufferOut.ulVersion= SECBUFFER_VERSION;
 
   sRet = InitializeSecurityContext(&sctx->CredHdl,
@@ -627,9 +627,9 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
   }
 
   /* send client hello packaet */
-  if(BuffersOut[0].cbBuffer != 0 && BuffersOut[0].pvBuffer != NULL)
+  if(BuffersOut.cbBuffer != 0 && BuffersOut.pvBuffer != NULL)
   {  
-    r= (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut[0].pvBuffer, (size_t)BuffersOut[0].cbBuffer);
+    r= (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
     if (r <= 0)
     {
       sRet= SEC_E_INTERNAL_ERROR;
@@ -654,7 +654,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
 end:
   LocalFree(sctx->IoBuffer);
   sctx->IoBufferSize= 0;
-  FreeContextBuffer(BuffersOut[0].pvBuffer);
+  FreeContextBuffer(BuffersOut.pvBuffer);
   DeleteSecurityContext(&sctx->ctxt);
   return sRet;
 }
@@ -782,6 +782,9 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
   DWORD flags;
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
   PCCERT_CONTEXT pServerCert= NULL;
+  PCERT_CONTEXT ca_CTX = NULL;
+  PCRL_CONTEXT crl_CTX = NULL;
+  my_bool is_Ok = 0;
 
   if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
   {
@@ -789,16 +792,22 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
     return 0;
   }
 
-  flags= CERT_STORE_SIGNATURE_FLAG |
-         CERT_STORE_TIME_VALIDITY_FLAG;
-
-
-    
-  if (sctx->client_ca_ctx)
+  if (ca_Check)
   {
- 	  if (!(sRet= CertVerifySubjectCertificateContext(pServerCert,
-                                                    sctx->client_ca_ctx,
-                                                    &flags)))
+    flags = CERT_STORE_SIGNATURE_FLAG |
+      CERT_STORE_TIME_VALIDITY_FLAG;
+
+    while ((ca_CTX = CertFindCertificateInStore(ca_CertStore, PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
+      0, CERT_FIND_ANY, 0, ca_CTX)) && !is_Ok)
+    {
+      if (sRet = CertVerifySubjectCertificateContext(pServerCert, ca_CTX, &flags))
+        is_Ok = 1;
+    }
+
+    if (ca_CTX)
+      CertFreeCertificateContext(ca_CTX);
+
+    if (!is_Ok)
     {
       ma_schannel_set_win_error(pvio);
       return 0;
@@ -819,18 +828,23 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
   }
 
   /* Check if none of the certificates in the certificate chain have been revoked. */
-  if (sctx->client_crl_ctx)
+  if (crl_Check)
   {
-    PCRL_INFO Info[1];
-
-    Info[0]= sctx->client_crl_ctx->pCrlInfo;
-    if (!(CertVerifyCRLRevocation(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                                  pServerCert->pCertInfo,
-                                  1, Info))                               )
+    while ((crl_CTX = CertEnumCRLsInStore(crl_CertStore, crl_CTX)))
     {
-      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CRL Revocation failed");
-      return 0;
+      PCRL_INFO Info[1];
+
+      Info[0] = crl_CTX->pCrlInfo;
+      if (!(CertVerifyCRLRevocation(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+        pServerCert->pCertInfo,
+        1, Info)))
+      {
+        CertFreeCRLContext(crl_CTX);
+        pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CRL Revocation failed");
+        return 0;
+      }
     }
+    CertFreeCRLContext(crl_CTX);
   }
   return 1;
 }

@@ -53,6 +53,7 @@ struct st_mysql_options_extension {
   char *ssl_fp_list; /* white list of finger prints */
   char *ssl_pw; /* password for encrypted certificates */
   char *url; /* for connection handler we need to save URL for reconnect */
+  unsigned int ssl_cipher_strength;
   my_bool read_only;
   char *connection_handler;
   HASH userdata;
