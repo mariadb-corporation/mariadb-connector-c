@@ -2365,7 +2365,7 @@ mysql_get_proto_info(MYSQL *mysql)
 const char * STDCALL
 mysql_get_client_info(void)
 {
-  return (char*) MYSQL_CLIENT_VERSION;
+  return (char*) MARIADB_CLIENT_VERSION_STR;
 }
 
 static size_t get_store_length(size_t length)
@@ -3265,7 +3265,7 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
       struct servent *serv_ptr;
       char *env;
 
-	    mysql_port = MYSQL_PORT;
+      mysql_port = MARIADB_PORT;
       if ((serv_ptr = getservbyname("mysql", "tcp")))
         mysql_port = (uint) ntohs((ushort) serv_ptr->s_port);
       if ((env = getenv("MYSQL_TCP_PORT")))
@@ -3275,11 +3275,12 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
     {
       char *env;
 #ifdef _WIN32
-      mysql_unix_port = (char*) MYSQL_NAMEDPIPE;
+      mysql_unix_port = (char*) MARIADB_NAMEDPIPE;
 #else
-      mysql_unix_port = (char*) MYSQL_UNIX_ADDR;
+      mysql_unix_port = (char*) MARIADB_UNIX_ADDR;
 #endif
-      if ((env = getenv("MYSQL_UNIX_PORT")))
+      if ((env = getenv("MYSQL_UNIX_PORT")) ||
+          (env = getenv("MARIADB_UNIX_PORT")))
         mysql_unix_port = env;
     }
   }
@@ -3328,7 +3329,7 @@ int STDCALL mysql_set_server_option(MYSQL *mysql,
 
 ulong STDCALL mysql_get_client_version(void)
 {
-  return MYSQL_VERSION_ID;
+  return MARIADB_VERSION_ID;
 }
 
 ulong STDCALL mysql_hex_string(char *to, const char *from, size_t len)
@@ -3464,10 +3465,10 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
 #endif
     break;
   case MARIADB_CLIENT_VERSION:
-    *((char **)arg)= MYSQL_CLIENT_VERSION;
+    *((char **)arg)= MARIADB_CLIENT_VERSION_STR;
     break;
   case MARIADB_CLIENT_VERSION_ID:
-    *((size_t *)arg)= MYSQL_VERSION_ID;
+    *((size_t *)arg)= MARIADB_VERSION_ID;
     break;
   case MARIADB_CONNECTION_SERVER_VERSION:
     if (mysql)

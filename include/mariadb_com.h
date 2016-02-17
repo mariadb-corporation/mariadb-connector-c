@@ -44,7 +44,7 @@
 #define LOCAL_HOST_NAMEDPIPE "."
 
 #if defined(_WIN32) && !defined( _CUSTOMCONFIG_)
-#define MYSQL_NAMEDPIPE "MySQL"
+#define MARIADB_NAMEDPIPE "MySQL"
 #define MYSQL_SERVICENAME "MySql"
 #endif /* _WIN32 */
 

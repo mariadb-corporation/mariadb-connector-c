@@ -23,6 +23,8 @@ FOREACH (LIB_NAME ${SYSTEM_LIBS})
   GET_LIB_NAME(${LIB_NAME} LIB_OUT)
   SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${LIB_OUT}")
 ENDFOREACH()
+STRING(STRIP ${extra_dynamic_LDFLAGS} extra_dynamic_LDFLAGS)
+
 
 IF(UNIX)
   IF(ICONV_EXTERNAL)
