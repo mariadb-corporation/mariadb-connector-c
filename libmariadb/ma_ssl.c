@@ -40,6 +40,7 @@
 #include <ma_pvio.h>
 #include <ma_ssl.h>
 #include <mysql/client_plugin.h>
+#include <mariadb/ma_io.h>
 
 #ifdef HAVE_NONBLOCK
 #include <mariadb_async.h>

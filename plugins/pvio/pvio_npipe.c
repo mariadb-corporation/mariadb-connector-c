@@ -236,7 +236,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     DWORD dwMode;
 
     if ( ! cinfo->unix_socket || (cinfo->unix_socket)[0] == 0x00)
-      cinfo->unix_socket = MYSQL_NAMEDPIPE;
+      cinfo->unix_socket = MARIADB_NAMEDPIPE;
     if (!cinfo->host || !strcmp(cinfo->host,LOCAL_HOST))
       cinfo->host=LOCAL_HOST_NAMEDPIPE;
 
