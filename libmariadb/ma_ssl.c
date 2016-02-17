@@ -111,7 +111,7 @@ const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl)
 
 void ma_pvio_ssl_end()
 {
-  return ma_ssl_end();
+  ma_ssl_end();
 }
 
 my_bool ma_pvio_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)

@@ -185,14 +185,14 @@ void net_get_error(char *buf, size_t buf_len,
 *****************************************************************************/
 
 ulong
-net_safe_read(MYSQL *mysql)
+ma_net_safe_read(MYSQL *mysql)
 {
   NET *net= &mysql->net;
   ulong len=0;
 
 restart:
   if (net->pvio != 0)
-    len=my_net_read(net);
+    len=ma_net_read(net);
 
   if (len == packet_error || len == 0)
   {
@@ -396,11 +396,11 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
   mysql->info=0;
   mysql->affected_rows= ~(my_ulonglong) 0;
-  net_clear(net);			/* Clear receive buffer */
+  ma_net_clear(net);			/* Clear receive buffer */
   if (!arg)
     arg="";
 
-  if (net_write_command(net,(uchar) command,arg,
+  if (ma_net_write_command(net,(uchar) command,arg,
 			length ? length : (ulong) strlen(arg)))
   {
     if (net->last_errno == ER_NET_PACKET_TOO_LARGE)
@@ -411,7 +411,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
     end_server(mysql);
     if (mysql_reconnect(mysql))
       goto end;
-    if (net_write_command(net,(uchar) command,arg,
+    if (ma_net_write_command(net,(uchar) command,arg,
 			  length ? length : (ulong) strlen(arg)))
     {
       my_set_error(mysql, CR_SERVER_GONE_ERROR, SQLSTATE_UNKNOWN, 0);
@@ -420,7 +420,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   }
   result=0;
   if (!skipp_check) {
-    result= ((mysql->packet_length=net_safe_read(mysql)) == packet_error ?
+    result= ((mysql->packet_length=ma_net_safe_read(mysql)) == packet_error ?
 	     1 : 0);
   }
  end:
@@ -509,7 +509,7 @@ end_server(MYSQL *mysql)
     ma_pvio_close(mysql->net.pvio);
     mysql->net.pvio= 0;    /* Marker */
   }
-  net_end(&mysql->net);
+  ma_net_end(&mysql->net);
   free_old_query(mysql);
   return;
 }
@@ -519,7 +519,7 @@ void mthd_my_skip_result(MYSQL *mysql)
   ulong pkt_len;
 
   do {
-    pkt_len= net_safe_read(mysql);
+    pkt_len= ma_net_safe_read(mysql);
     if (pkt_len == packet_error)
       break;
   } while (pkt_len > 8 || mysql->net.read_pos[0] != 254);
@@ -794,7 +794,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
   MYSQL_ROWS **prev_ptr,*cur;
   NET *net = &mysql->net;
 
-  if ((pkt_len= net_safe_read(mysql)) == packet_error)
+  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
     return(0);
   if (!(result=(MYSQL_DATA*) calloc(1, sizeof(MYSQL_DATA))))
   {
@@ -850,7 +850,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
       }
     }
     cur->data[field]=to;			/* End of last field */
-    if ((pkt_len=net_safe_read(mysql)) == packet_error)
+    if ((pkt_len=ma_net_safe_read(mysql)) == packet_error)
     {
       free_rows(result);
       return(0);
@@ -881,7 +881,7 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
   ulong pkt_len,len;
   uchar *pos,*prev_pos, *end_pos;
 
-  if ((pkt_len=(uint) net_safe_read(mysql)) == packet_error)
+  if ((pkt_len=(uint) ma_net_safe_read(mysql)) == packet_error)
     return -1;
   
   if (pkt_len <= 8 && mysql->net.read_pos[0] == 254)
@@ -1232,7 +1232,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     goto error;
   }
 
-  if (my_net_init(net, pvio))
+  if (ma_net_init(net, pvio))
     goto error;
 
   ma_pvio_keepalive(net->pvio);
@@ -1250,7 +1250,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     goto error;
   }
  */ 
-  if ((pkt_length=net_safe_read(mysql)) == packet_error)
+  if ((pkt_length=ma_net_safe_read(mysql)) == packet_error)
   {
     if (mysql->net.last_errno == CR_SERVER_LOST)
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
@@ -1584,7 +1584,7 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
   mysql_close(mysql);
   *mysql=tmp_mysql;
   mysql->net.pvio->mysql= mysql;
-  net_clear(&mysql->net);
+  ma_net_clear(&mysql->net);
   mysql->affected_rows= ~(my_ulonglong) 0;
   return(0);
 }
@@ -1886,7 +1886,7 @@ int mthd_my_read_query_result(MYSQL *mysql)
   MYSQL_DATA *fields;
   ulong length;
 
-  if (!mysql || (length = net_safe_read(mysql)) == packet_error)
+  if (!mysql || (length = ma_net_safe_read(mysql)) == packet_error)
   {
     return(1);
   }
@@ -1909,7 +1909,7 @@ get_info:
   {
     int error=mysql_handle_local_infile(mysql, (char *)pos);
 
-    if ((length=net_safe_read(mysql)) == packet_error || error)
+    if ((length=ma_net_safe_read(mysql)) == packet_error || error)
       return(-1);
     goto get_info;				/* Get info packet */
   }

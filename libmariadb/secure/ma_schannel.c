@@ -782,8 +782,8 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
   DWORD flags;
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
   PCCERT_CONTEXT pServerCert= NULL;
-  PCERT_CONTEXT ca_CTX = NULL;
-  PCRL_CONTEXT crl_CTX = NULL;
+  PCCERT_CONTEXT ca_CTX = NULL;
+  PCCRL_CONTEXT crl_CTX = NULL;
   my_bool is_Ok = 0;
 
   if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)

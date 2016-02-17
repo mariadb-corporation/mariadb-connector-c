@@ -123,7 +123,7 @@ static int stmt_unbuffered_fetch(MYSQL_STMT *stmt, uchar **row)
 {
   ulong pkt_len;
 
-  pkt_len= net_safe_read(stmt->mysql);
+  pkt_len= ma_net_safe_read(stmt->mysql);
 
   if (pkt_len == packet_error)
   {
@@ -167,7 +167,7 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
 
   pprevious= &result->data;
 
-  while ((packet_len = net_safe_read(stmt->mysql)) != packet_error)
+  while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
   {
     p= stmt->mysql->net.read_pos;
     if (packet_len > 7 || p[0] != 254)
@@ -295,7 +295,7 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
 void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
 {
   ulong packet_len;
-  while ((packet_len = net_safe_read(stmt->mysql)) != packet_error)
+  while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
     if (packet_len < 8 && stmt->mysql->net.read_pos[0] == 254)
       return;
 }
@@ -1165,7 +1165,7 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
   ulong packet_length;
   uchar *p;
 
-  if ((packet_length= net_safe_read(stmt->mysql)) == packet_error)
+  if ((packet_length= ma_net_safe_read(stmt->mysql)) == packet_error)
     return(1);
 
   p= (uchar *)stmt->mysql->net.read_pos;

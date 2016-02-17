@@ -355,15 +355,15 @@ extern unsigned long net_buffer_length;
 
 #define net_new_transaction(net) ((net)->pkt_nr=0)
 
-int	my_net_init(NET *net, MARIADB_PVIO *pvio);
-void	net_end(NET *net);
-void	net_clear(NET *net);
-int	net_flush(NET *net);
-int	my_net_write(NET *net,const unsigned char *packet, size_t len);
-int	net_write_command(NET *net,unsigned char command,const char *packet,
+int	ma_net_init(NET *net, MARIADB_PVIO *pvio);
+void	ma_net_end(NET *net);
+void	ma_net_clear(NET *net);
+int	ma_net_flush(NET *net);
+int	ma_net_write(NET *net,const unsigned char *packet, size_t len);
+int	ma_net_write_command(NET *net,unsigned char command,const char *packet,
 			  size_t len);
-int	net_real_write(NET *net,const char *packet, size_t len);
-extern unsigned long my_net_read(NET *net);
+int	ma_net_real_write(NET *net,const char *packet, size_t len);
+extern unsigned long ma_net_read(NET *net);
 
 struct rand_struct {
   unsigned long seed1,seed2,max_value;

@@ -245,7 +245,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       Send mysql->client_flag, max_packet_size - unencrypted otherwise
       the server does not know we want to do SSL
     */
-    if (my_net_write(net, (char*)buff, (size_t) (end-buff)) || net_flush(net))
+    if (ma_net_write(net, (char*)buff, (size_t) (end-buff)) || ma_net_flush(net))
     {
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                           ER(CR_SERVER_LOST_EXTENDED),
@@ -297,7 +297,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   end= ma_send_connect_attr(mysql, end);
 
   /* Write authentication package */
-  if (my_net_write(net, buff, (size_t) (end-buff)) || net_flush(net))
+  if (ma_net_write(net, buff, (size_t) (end-buff)) || ma_net_flush(net))
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                         ER(CR_SERVER_LOST_EXTENDED),
@@ -348,7 +348,7 @@ static int client_mpvio_read_packet(struct st_plugin_vio *mpv, uchar **buf)
   }
 
   /* otherwise read the data */
-  pkt_len= net_safe_read(mysql);
+  pkt_len= ma_net_safe_read(mysql);
   mpvio->last_read_packet_len= pkt_len;
   *buf= mysql->net.read_pos;
 
@@ -401,7 +401,7 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
     if (mpvio->mysql->thd)
       res= 1; /* no chit-chat in embedded */
     else
-      res= my_net_write(net, (char *)pkt, pkt_len) || net_flush(net);
+      res= ma_net_write(net, (char *)pkt, pkt_len) || ma_net_flush(net);
     if (res)
       my_set_error(mpvio->mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                                  ER(CR_SERVER_LOST_EXTENDED),
@@ -554,7 +554,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
 
   /* read the OK packet (or use the cached value in mysql->net.read_pos */
   if (res == CR_OK)
-    pkt_length= net_safe_read(mysql);
+    pkt_length= ma_net_safe_read(mysql);
   else /* res == CR_OK_HANDSHAKE_COMPLETE */
     pkt_length= mpvio.last_read_packet_len;
 
@@ -583,7 +583,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
       /* new "use different plugin" packet */
       uint len;
       auth_plugin_name= (char*)mysql->net.read_pos + 1;
-      len= (uint)strlen(auth_plugin_name); /* safe as my_net_read always appends \0 */
+      len= (uint)strlen(auth_plugin_name); /* safe as ma_net_read always appends \0 */
       mpvio.cached_server_reply.pkt_len= pkt_length - len - 2;
       mpvio.cached_server_reply.pkt= mysql->net.read_pos + len + 2;
     }
@@ -608,7 +608,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
     if (res != CR_OK_HANDSHAKE_COMPLETE)
     {
       /* Read what server thinks about out new auth message report */
-      if (net_safe_read(mysql) == packet_error)
+      if (ma_net_safe_read(mysql) == packet_error)
       {
         if (mysql->net.last_errno == CR_SERVER_LOST)
           my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,

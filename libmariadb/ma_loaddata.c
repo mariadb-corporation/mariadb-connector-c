@@ -201,8 +201,8 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
   if (!(conn->options.client_flag & CLIENT_LOCAL_FILES)) {
     my_set_error(conn, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, "Load data local infile forbidden");
     /* write empty packet to server */
-    my_net_write(&conn->net, "", 0);
-    net_flush(&conn->net);
+    ma_net_write(&conn->net, "", 0);
+    ma_net_flush(&conn->net);
     goto infile_error;
   }
 
@@ -218,15 +218,15 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
 
     tmp_errno= conn->options.local_infile_error(info, tmp_buf, sizeof(tmp_buf));
     my_set_error(conn, tmp_errno, SQLSTATE_UNKNOWN, tmp_buf);
-    my_net_write(&conn->net, "", 0);
-    net_flush(&conn->net);
+    ma_net_write(&conn->net, "", 0);
+    ma_net_flush(&conn->net);
     goto infile_error;
   }
 
   /* read data */
   while ((bufread= conn->options.local_infile_read(info, (char *)buf, buflen)) > 0)
   {
-    if (my_net_write(&conn->net, (char *)buf, bufread))
+    if (ma_net_write(&conn->net, (char *)buf, bufread))
     {
       my_set_error(conn, CR_SERVER_LOST, SQLSTATE_UNKNOWN, NULL);
       goto infile_error;
@@ -234,7 +234,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
   }
 
   /* send empty packet for eof */
-  if (my_net_write(&conn->net, "", 0) || net_flush(&conn->net))
+  if (ma_net_write(&conn->net, "", 0) || ma_net_flush(&conn->net))
   {
     my_set_error(conn, CR_SERVER_LOST, SQLSTATE_UNKNOWN, NULL);
     goto infile_error;

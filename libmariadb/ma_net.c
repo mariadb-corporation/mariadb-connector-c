@@ -93,12 +93,12 @@ extern pthread_mutex_t LOCK_bytes_sent , LOCK_bytes_received;
 ** can't normally do this the client should have a bigger max-buffer.
 */
 
-static int net_write_buff(NET *net,const char *packet, size_t len);
+static int ma_net_write_buff(NET *net,const char *packet, size_t len);
 
 
 	/* Init with packet info */
 
-int my_net_init(NET *net, MARIADB_PVIO* pvio)
+int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 {
   if (!(net->buff=(uchar*) calloc(1, net_buffer_length)))
     return 1;
@@ -128,7 +128,7 @@ int my_net_init(NET *net, MARIADB_PVIO* pvio)
   return 0;
 }
 
-void net_end(NET *net)
+void ma_net_end(NET *net)
 {
   free(net->buff);
   free(net->mbuff);
@@ -172,7 +172,7 @@ static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
 }
 
 /* Remove unwanted characters from connection */
-void net_clear(NET *net)
+void ma_net_clear(NET *net)
 {
 //  size_t len;
 /*  if (net->pvio)
@@ -185,13 +185,13 @@ void net_clear(NET *net)
 }
 
 /* Flush write_buffer if not empty. */
-int net_flush(NET *net)
+int ma_net_flush(NET *net)
 {
   int error=0;
 
   if (net->buff != net->write_pos)
   {
-    error=net_real_write(net,(char*) net->buff,
+    error=ma_net_real_write(net,(char*) net->buff,
 			 (size_t) (net->write_pos - net->buff));
     net->write_pos=net->buff;
   }
@@ -212,7 +212,7 @@ int net_flush(NET *net)
 */
 
 int
-my_net_write(NET *net, const uchar *packet, size_t len)
+ma_net_write(NET *net, const uchar *packet, size_t len)
 {
   uchar buff[NET_HEADER_SIZE];
   while (len >= MAX_PACKET_LENGTH)
@@ -220,8 +220,8 @@ my_net_write(NET *net, const uchar *packet, size_t len)
     const ulong max_len= MAX_PACKET_LENGTH;
     int3store(buff,max_len);
     buff[3]= (uchar)net->pkt_nr++;
-    if (net_write_buff(net,(char*) buff,NET_HEADER_SIZE) ||
-        net_write_buff(net, packet, max_len))
+    if (ma_net_write_buff(net,(char*) buff,NET_HEADER_SIZE) ||
+        ma_net_write_buff(net, packet, max_len))
       return 1;
     packet+= max_len;
     len-= max_len;
@@ -229,14 +229,14 @@ my_net_write(NET *net, const uchar *packet, size_t len)
   /* write last remaining packet, size can be zero */
   int3store(buff, len);
   buff[3]= (uchar)net->pkt_nr++;
-  if (net_write_buff(net,(char*) buff,NET_HEADER_SIZE) ||
-      net_write_buff(net, packet, len))
+  if (ma_net_write_buff(net,(char*) buff,NET_HEADER_SIZE) ||
+      ma_net_write_buff(net, packet, len))
     return 1;
   return 0;
 }
 
 int
-net_write_command(NET *net, uchar command,
+ma_net_write_command(NET *net, uchar command,
                   const char *packet, size_t len)
 {
   uchar buff[NET_HEADER_SIZE+1];
@@ -255,8 +255,8 @@ net_write_command(NET *net, uchar command,
       int3store(buff, MAX_PACKET_LENGTH);
       buff[3]= (net->compress) ? 0 : (uchar) (net->pkt_nr++);
  
-      if (net_write_buff(net, (char *)buff, buff_size) ||
-          net_write_buff(net, packet, len))
+      if (ma_net_write_buff(net, (char *)buff, buff_size) ||
+          ma_net_write_buff(net, packet, len))
         return(1);
       packet+= len;
       length-= MAX_PACKET_LENGTH;
@@ -267,15 +267,15 @@ net_write_command(NET *net, uchar command,
   }
   int3store(buff,length);
   buff[3]= (net->compress) ? 0 : (uchar) (net->pkt_nr++);
-  rc= test (net_write_buff(net,(char *)buff, buff_size) || 
-            net_write_buff(net,packet,len) || 
-            net_flush(net));
+  rc= test (ma_net_write_buff(net,(char *)buff, buff_size) || 
+            ma_net_write_buff(net,packet,len) || 
+            ma_net_flush(net));
   return rc;
 }
 
 
 static int
-net_write_buff(NET *net,const char *packet, size_t len)
+ma_net_write_buff(NET *net,const char *packet, size_t len)
 {
   size_t left_length;
 
@@ -290,7 +290,7 @@ net_write_buff(NET *net,const char *packet, size_t len)
     if (net->write_pos != net->buff)
     {
       memcpy((char*) net->write_pos,packet,left_length);
-      if (net_real_write(net,(char*) net->buff,
+      if (ma_net_real_write(net,(char*) net->buff,
                          (size_t)(net->write_pos - net->buff) + left_length))
         return 1;
       packet+=left_length;
@@ -304,14 +304,14 @@ net_write_buff(NET *net,const char *packet, size_t len)
       left_length= MAX_PACKET_LENGTH;
       while (len > left_length)
       {
-        if (net_real_write(net, packet, left_length))
+        if (ma_net_real_write(net, packet, left_length))
           return 1;
         packet+= left_length;
         len-= left_length;
       }
     }
     if (len > net->max_packet)
-      return(test(net_real_write(net, packet, len)));
+      return(test(ma_net_real_write(net, packet, len)));
   }
   memcpy((char*) net->write_pos,packet,len);
   net->write_pos+=len;
@@ -325,7 +325,7 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
   size_t required_length, current_length;
   required_length= length + 1 + NET_HEADER_SIZE;
 
-  /* We didn't allocate memory in my_net_init since it was to early to
+  /* We didn't allocate memory in ma_net_init since it was to early to
    * detect if the server supports COM_MULTI command */
   if (!net->mbuff)
   {
@@ -370,7 +370,7 @@ error:
 /*  Read and write using timeouts */
 
 int
-net_real_write(NET *net,const char *packet,size_t  len)
+ma_net_real_write(NET *net,const char *packet,size_t  len)
 {
   size_t length;
   char *pos,*end;
@@ -431,7 +431,7 @@ net_real_write(NET *net,const char *packet,size_t  len)
 ** Read something from server/clinet
 *****************************************************************************/
 static ulong
-my_real_read(NET *net, size_t *complen)
+ma_real_read(NET *net, size_t *complen)
 {
   uchar *pos;
   size_t length;
@@ -507,7 +507,7 @@ end:
   return(len);
 }
 
-ulong my_net_read(NET *net)
+ulong ma_net_read(NET *net)
 {
   size_t len,complen;
 
@@ -515,7 +515,7 @@ ulong my_net_read(NET *net)
   if (!net->compress)
   {
 #endif
-    len = my_real_read (net,(size_t *)&complen);
+    len = ma_real_read (net,(size_t *)&complen);
     if (len == MAX_PACKET_LENGTH)
     {
       /* multi packet read */
@@ -526,7 +526,7 @@ ulong my_net_read(NET *net)
       {
         length+= len;
         net->where_b+= (unsigned long)len;
-        len= my_real_read(net, &complen);
+        len= ma_real_read(net, &complen);
       } while (len == MAX_PACKET_LENGTH);
       net->where_b= last_pos;
       if (len != packet_error)
@@ -636,7 +636,7 @@ ulong my_net_read(NET *net)
 
       net->where_b=(unsigned long)buffer_length;
 
-      if ((packet_length = my_real_read(net,(size_t *)&complen)) == packet_error)
+      if ((packet_length = ma_real_read(net,(size_t *)&complen)) == packet_error)
         return packet_error;
       if (_mariadb_uncompress((unsigned char*) net->buff + net->where_b, &packet_length, &complen))
       {

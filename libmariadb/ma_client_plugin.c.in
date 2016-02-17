@@ -391,8 +391,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   snprintf(dlpath, sizeof(dlpath) - 1, "%s/%s%s",
            mysql->options.extension && mysql->options.extension->plugin_dir ?
            mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
-           PLUGINDIR, "/",
-           name, SO_EXT);
+           PLUGINDIR, name, SO_EXT);
 
   /* Open new dll handle */
   if (!(dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))
