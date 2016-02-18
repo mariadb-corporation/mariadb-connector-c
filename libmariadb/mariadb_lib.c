@@ -939,6 +939,7 @@ mysql_init(MYSQL *mysql)
   }
   else
     memset((char*) (mysql), 0, sizeof(*(mysql)));
+  mysql->options.report_data_truncation= 1;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
   mysql->charset= ma_default_charset_info;
   mysql->methods= &MARIADB_DEFAULT_METHODS;
@@ -3104,12 +3105,12 @@ my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql)
 
 uint STDCALL mysql_errno(MYSQL *mysql)
 {
-  return (mysql)->net.last_errno;
+  return mysql ? mysql->net.last_errno : 0;
 }
 
 char * STDCALL mysql_error(MYSQL *mysql)
 {
-  return (mysql)->net.last_error;
+  return mysql ? (mysql)->net.last_error : "";
 }
 
 char *STDCALL mysql_info(MYSQL *mysql)

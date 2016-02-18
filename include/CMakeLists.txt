@@ -1,6 +1,8 @@
 SET(MARIADB_CLIENT_INCLUDES ${CMAKE_SOURCE_DIR}/include/mariadb_com.h
                             ${CMAKE_SOURCE_DIR}/include/mysql.h
                             ${CMAKE_SOURCE_DIR}/include/mariadb_stmt.h
+                            ${CMAKE_SOURCE_DIR}/include/ma_pvio.h
+                            ${CMAKE_SOURCE_DIR}/include/ma_ssl.h
                             ${CMAKE_SOURCE_DIR}/include/mariadb_version.h
                             ${CMAKE_SOURCE_DIR}/include/ma_list.h
                             ${CMAKE_SOURCE_DIR}/include/ma_errmsg.h

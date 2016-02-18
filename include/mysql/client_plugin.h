@@ -102,9 +102,6 @@ typedef struct st_ma_connection_plugin
 
 /*******************  Communication IO plugin *****************/
 #include <ma_pvio.h>
-#ifdef HAVE_SSL
-#include <ma_ssl.h>
-#endif
 
 typedef struct st_mariadb_client_plugin_PVIO
 {

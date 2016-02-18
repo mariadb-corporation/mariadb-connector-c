@@ -66,10 +66,11 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
   MYSQL_INFILE_INFO *info;
   MYSQL *mysql= (MYSQL *)userdata;
 
-  info = (MYSQL_INFILE_INFO *)calloc(1, sizeof(MYSQL_INFILE_INFO));
+  info = (MYSQL_INFILE_INFO *)malloc(sizeof(MYSQL_INFILE_INFO));
   if (!info) {
     return(1);
   }
+  memset(info, 0, sizeof(MYSQL_INFILE_INFO));
   *ptr = info;
 
   info->filename = filename;
