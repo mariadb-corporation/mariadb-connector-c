@@ -580,6 +580,9 @@ int STDCALL mysql_rollback_start(my_bool *ret, MYSQL * mysql);
 int STDCALL mysql_rollback_cont(my_bool *ret, MYSQL * mysql, int status);
 int STDCALL mysql_autocommit_start(my_bool *ret, MYSQL * mysql,
                                    my_bool auto_mode);
+int STDCALL mysql_list_fields_cont(MYSQL_RES **ret, MYSQL *mysql, int status);
+int STDCALL mysql_list_fields_start(MYSQL_RES **ret, MYSQL *mysql, const char *table,
+					 const char *wild);
 int STDCALL mysql_autocommit_cont(my_bool *ret, MYSQL * mysql, int status);
 int STDCALL mysql_next_result_start(int *ret, MYSQL *mysql);
 int STDCALL mysql_next_result_cont(int *ret, MYSQL *mysql, int status);

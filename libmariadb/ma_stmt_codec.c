@@ -732,11 +732,6 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
     break;
   case MYSQL_TYPE_TIME:
     convert_to_datetime(t, row, len, field->type);
-    if (t->day)
-    {
-      t->hour+= t->day * 24;
-      t->day= 0;
-    }
     t->year= t->day= t->month= 0;
     break;
   case MYSQL_TYPE_YEAR:

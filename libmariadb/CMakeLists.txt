@@ -188,6 +188,8 @@ SET(MARIADB_NONBLOCK_SYMBOLS
  mysql_get_timeout_value_ms
  mysql_kill_cont
  mysql_kill_start
+ mysql_list_fields_cont
+ mysql_list_fields_start
  mysql_next_result_cont
  mysql_next_result_start
  mysql_ping_cont
