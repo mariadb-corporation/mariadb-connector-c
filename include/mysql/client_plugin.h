@@ -67,6 +67,7 @@
 #define mysql_end_client_plugin             }
 
 /* generic plugin header structure */
+#ifndef MYSQL_CLIENT_PLUGIN_HEADER
 #define MYSQL_CLIENT_PLUGIN_HEADER                      \
   int type;                                             \
   unsigned int interface_version;                       \
@@ -81,6 +82,7 @@ struct st_mysql_client_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER
 };
+#endif
 
 struct st_mysql;
 

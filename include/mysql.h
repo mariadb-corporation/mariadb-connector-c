@@ -414,8 +414,7 @@ typedef struct character_set
 
 #include "mariadb_stmt.h"
 
-#ifndef _have_client_plugin_declarations_
-#define _have_client_plugin_declarations_
+#ifndef MYSQL_CLIENT_PLUGIN_HEADER
 #define MYSQL_CLIENT_PLUGIN_HEADER                      \
   int type;                                             \
   unsigned int interface_version;                       \
