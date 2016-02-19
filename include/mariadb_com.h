@@ -412,17 +412,10 @@ typedef struct st_udf_init
 extern "C" {
 #endif
   
-void randominit(struct rand_struct *,unsigned long seed1,
-		unsigned long seed2);
-double rnd(struct rand_struct *);
-void make_scrambled_password(char *to,const char *password);
-void get_salt_from_password(unsigned long *res,const char *password);
-void make_password_from_salt(char *to, unsigned long *hash_res);
-char *scramble_323(char *to,const char *message,const char *password);
-void my_scramble_41(const unsigned char *buffer, const char *scramble, const char *password);
-my_bool check_scramble(const char *, const char *message,
-		       unsigned long *salt,my_bool old_ver);
-void hash_password(unsigned long *result, const char *password, size_t len);
+char *ma_scramble_323(char *to,const char *message,const char *password);
+void ma_scramble_41(const unsigned char *buffer, const char *scramble, const char *password);
+void ma_hash_password(unsigned long *result, const char *password, size_t len);
+void ma_make_scrambled_password(char *to,const char *password);
 
 /* Some other useful functions */
 

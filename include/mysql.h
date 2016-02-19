@@ -281,6 +281,7 @@ extern unsigned int mariadb_deinitialize_ssl;
                       MYSQL_STATUS_FETCHING_DATA,
                       MYSQL_STATUS_NEXT_RESULT_PENDING,
                       MYSQL_STATUS_QUIT_SENT, /* object is "destroyed" at this stage */
+                      MYSQL_STATUS_STMT_RESULT
   };
 
   enum mysql_protocol_type
@@ -580,9 +581,9 @@ int STDCALL mysql_rollback_start(my_bool *ret, MYSQL * mysql);
 int STDCALL mysql_rollback_cont(my_bool *ret, MYSQL * mysql, int status);
 int STDCALL mysql_autocommit_start(my_bool *ret, MYSQL * mysql,
                                    my_bool auto_mode);
-int STDCALL mysql_list_fields_cont(MYSQL_RES **ret, MYSQL *mysql, int status);
+int STDCALL mysql_list_fields_cont(MYSQL_RES **ret, MYSQL *mysql, int ready_status);
 int STDCALL mysql_list_fields_start(MYSQL_RES **ret, MYSQL *mysql, const char *table,
-					 const char *wild);
+                        const char *wild);
 int STDCALL mysql_autocommit_cont(my_bool *ret, MYSQL * mysql, int status);
 int STDCALL mysql_next_result_start(int *ret, MYSQL *mysql);
 int STDCALL mysql_next_result_cont(int *ret, MYSQL *mysql, int status);

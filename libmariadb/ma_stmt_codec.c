@@ -126,6 +126,7 @@ static longlong my_atoll(const char *number, const char *end, int *error)
   char buffer[255];
   longlong llval= 0;
   size_t i;
+  *error= 0;
   /* set error at the following conditions:
      - string contains invalid character(s)
      - length > 254
@@ -135,6 +136,7 @@ static longlong my_atoll(const char *number, const char *end, int *error)
   memcpy(buffer, number, MIN((uint)(end - number), 254));
   buffer[(uint)(end - number)]= 0;
 
+  errno= 0;
   llval= strtoll(buffer, NULL, 10);
 
   /* check size */
@@ -147,7 +149,7 @@ static longlong my_atoll(const char *number, const char *end, int *error)
   /* check characters */
   for (i=0; i < strlen(buffer); i++)
   {
-     if (buffer[i] < '0' || buffer[i] > '9')
+     if ((buffer[i] < '0' || buffer[i] > '9') && !isspace(buffer[i]))
      {
        *error= 1;
        return llval;
@@ -497,7 +499,144 @@ void ma_bmove_upp(register char *dst, register const char *src, register size_t 
   while (len-- != 0) *--dst = *--src;
 }
 
-static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, double val, int size)
+static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, float val, int size)
+{
+  double check_trunc_val= (val > 0) ? floor(val) : -floor(-val);
+  char *buf= (char *)r_param->buffer;
+  switch (r_param->buffer_type)
+  {
+    case MYSQL_TYPE_TINY:
+      *buf= (r_param->is_unsigned) ? (uint8)val : (int8)val;
+      *r_param->error= check_trunc_val != (r_param->is_unsigned ? (double)((uint8)*buf) :
+                                          (double)((int8)*buf));
+      r_param->buffer_length= 1;
+    break;
+    case MYSQL_TYPE_SHORT:
+    case MYSQL_TYPE_YEAR:
+    {
+      if (r_param->is_unsigned)
+      {
+        ushort sval= (ushort)val;
+        shortstore(buf, sval);
+        *r_param->error= check_trunc_val != (double)sval;
+      } else { 
+        short sval= (short)val;
+        shortstore(buf, sval);
+        *r_param->error= check_trunc_val != (double)sval;
+      } 
+      r_param->buffer_length= 2;
+    }
+    break; 
+    case MYSQL_TYPE_LONG:
+    {
+      if (r_param->is_unsigned)
+      {
+        uint32 lval= (uint32)val;
+        longstore(buf, lval);
+        *r_param->error= (check_trunc_val != (double)lval);
+      } else {
+        int32 lval= (int32)val;
+        longstore(buf, lval);
+        *r_param->error= (check_trunc_val != (double)lval);
+      }
+      r_param->buffer_length= 4;
+    }
+    break; 
+    case MYSQL_TYPE_LONGLONG:
+    {
+      if (r_param->is_unsigned)
+      {
+        ulonglong llval= (ulonglong)val;
+        longlongstore(buf, llval);
+        *r_param->error= (check_trunc_val != (double)llval);
+      } else {
+        longlong llval= (longlong)val;
+        longlongstore(buf, llval);
+        *r_param->error= (check_trunc_val != (double)llval);
+      }
+      r_param->buffer_length= 8;
+    }
+    break; 
+    case MYSQL_TYPE_DOUBLE:
+    {
+      double dval= (double)val;
+      memcpy(buf, &dval, sizeof(double));
+      r_param->buffer_length= 8;
+    }
+    break;
+    default:
+    {
+ #define MAX_DOUBLE_STRING_REP_LENGTH 300
+     char buff[MAX_DOUBLE_STRING_REP_LENGTH];
+     size_t length;
+     char *end;
+
+     length= MIN(MAX_DOUBLE_STRING_REP_LENGTH - 1, r_param->buffer_length);
+
+/*     if (field->decimals >= NOT_FIXED_DEC)
+     {
+       sprintf(buff, "%-*.*g", (int) length-1, DBL_DIG, val);
+       length= strlen(buff);
+     }
+     else */
+     {
+#ifdef _WIN32
+       _gcvt(val, 6, buff);
+#else
+       gcvt(val, 6, buff);
+#endif
+       length= strlen(buff);
+     }
+
+     /* remove trailing blanks */
+     end= strchr(buff, '\0') - 1;
+     while (end > buff && *end == ' ')
+       *end--= '\0';
+
+     /* check if ZEROFILL flag is active */
+     if (field->flags & ZEROFILL_FLAG)
+     {
+       /* enough space available ? */
+       if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
+         break;
+       ma_bmove_upp(buff + field->length, buff + length, length);
+       memset((char*) buff, 0, field->length - length);
+     }
+     convert_froma_string(r_param, buff, strlen(buff));
+    }  
+    break;
+  } 
+}
+
+
+/* {{{ ps_fetch_float */
+static
+void ps_fetch_float(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row)
+{
+  switch(r_param->buffer_type)
+  {
+    case MYSQL_TYPE_FLOAT:
+    {
+      float *value= (float *)r_param->buffer;
+      float4get(*value, *row);
+      r_param->buffer_length= 4;
+      *r_param->error= 0;
+    }
+    break;
+    default:
+    {
+      float value;
+      memcpy(&value, *row, sizeof(float));
+      float4get(value, (char *)*row);
+      convert_from_float(r_param, field, value, sizeof(float));
+    }
+    break;
+  }
+  (*row)+= 4;
+}
+/* }}} */
+
+static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, double val, int size)
 {
   double check_trunc_val= (val > 0) ? floor(val) : -floor(-val);
   char *buf= (char *)r_param->buffer;
@@ -563,12 +702,6 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
       r_param->buffer_length= 4;
     }
     break;
-    case MYSQL_TYPE_DOUBLE:
-    {
-      memcpy(buf, &val, sizeof(double));
-      r_param->buffer_length= 8;
-    }
-    break;
     default:
     {
  #define MAX_DOUBLE_STRING_REP_LENGTH 300
@@ -585,7 +718,11 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
      }
      else
      {
-       sprintf(buff, "%.*f", field->decimals, val);
+#ifdef _WIN32
+#else
+       gcvt(val, field->decimals, buff);
+#endif
+//       sprintf(buff, "%.*f", field->decimals, val);
        length= strlen(buff);
      }
 
@@ -610,34 +747,6 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, do
 }
 
 
-/* {{{ ps_fetch_float */
-static
-void ps_fetch_float(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row)
-{
-  switch(r_param->buffer_type)
-  {
-    case MYSQL_TYPE_FLOAT:
-    {
-      float *value= (float *)r_param->buffer;
-      float4get(*value, *row);
-      r_param->buffer_length= 4;
-      *r_param->error= 0;
-    }
-    break;
-    default:
-    {
-      float value;
-      memcpy(&value, *row, sizeof(float));
-      float4get(value, (char *)*row);
-      convert_from_float(r_param, field, value, sizeof(float));
-    }
-    break;
-  }
-  (*row)+= 4;
-}
-/* }}} */
-
-
 /* {{{ ps_fetch_double */
 static
 void ps_fetch_double(MYSQL_BIND *r_param, const MYSQL_FIELD * field , unsigned char **row)
@@ -655,7 +764,7 @@ void ps_fetch_double(MYSQL_BIND *r_param, const MYSQL_FIELD * field , unsigned c
     {
       double value;
       float8get(value, *row);
-      convert_from_float(r_param, field, value, sizeof(double));
+      convert_from_double(r_param, field, value, sizeof(double));
     }
     break;
   }
@@ -673,7 +782,6 @@ static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, en
      7-bytes:  DATE + TIME
      >7 bytes: DATE + TIME with second_part
   */
-
   if (len)
   {
     unsigned char *to= *row;
@@ -701,6 +809,8 @@ static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, en
     if (len > 4)
     {
       t->hour= (uint) to[4];
+      if (type == MYSQL_TYPE_TIME)
+        t->hour+= t->day * 24;
       t->minute= (uint) to[5];
       t->second= (uint) to[6];
       if (has_date)
@@ -747,12 +857,13 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
     MYSQL_TIME tm;
     unsigned int length;
     convert_to_datetime(&tm, row, len, field->type);
-    
+ /*   
     if (tm.time_type== MYSQL_TIMESTAMP_TIME && tm.day)
     {
       tm.hour+= tm.day * 24;
       tm.day=0;
     }
+*/
     switch(field->type) {
     case MYSQL_TYPE_DATE:
       length= sprintf(dtbuffer, "%04u-%02u-%02u", tm.year, tm.month, tm.day);
@@ -810,12 +921,26 @@ static
 void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
              unsigned char **row)
 {
-  ulong field_length= net_field_length(row);
+  ulong field_length;
   size_t copylen;
 
-  /* Bug conc-155: For text columns we need to store terminating zero character */
-  if (!(field->flags & BINARY_FLAG) && r_param->buffer_type == MYSQL_TYPE_STRING)
-    field_length++;
+
+  /* If r_praram->buffer_type is not a binary type or binary_flag isn't set,
+     we do conversion from string */
+  if (!(field->flags & BINARY_FLAG) || 
+         (r_param->buffer_type != MYSQL_TYPE_NEWDECIMAL &&
+          r_param->buffer_type != MYSQL_TYPE_DECIMAL &&
+          r_param->buffer_type != MYSQL_TYPE_GEOMETRY &&
+          r_param->buffer_type != MYSQL_TYPE_ENUM &&
+          r_param->buffer_type != MYSQL_TYPE_SET &&
+          r_param->buffer_type != MYSQL_TYPE_TINY_BLOB &&
+          r_param->buffer_type != MYSQL_TYPE_MEDIUM_BLOB &&
+          r_param->buffer_type != MYSQL_TYPE_LONG_BLOB &&
+          r_param->buffer_type != MYSQL_TYPE_BLOB))
+  {
+    return ps_fetch_string(r_param, field, row);
+  }
+  field_length= net_field_length(row);
 
   copylen= MIN(field_length, r_param->buffer_length);
   memcpy(r_param->buffer, *row, copylen);

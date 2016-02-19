@@ -101,7 +101,7 @@ static int auth_old_password(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (mysql->passwd[0])
   {
     char scrambled[SCRAMBLE_LENGTH_323 + 1];
-    scramble_323(scrambled, (char*)pkt, mysql->passwd);
+    ma_scramble_323(scrambled, (char*)pkt, mysql->passwd);
     if (vio->write_packet(vio, (uchar*)scrambled, SCRAMBLE_LENGTH_323 + 1))
       return CR_ERROR;
   }

@@ -1236,6 +1236,9 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (ma_net_init(net, pvio))
     goto error;
 
+  if (mysql->options.max_allowed_packet)
+    net->max_packet_size= mysql->options.max_allowed_packet;
+
   ma_pvio_keepalive(net->pvio);
   strcpy(mysql->net.sqlstate, "00000"); 
 

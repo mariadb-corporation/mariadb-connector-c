@@ -43,7 +43,7 @@
 #include "mysql.h"
 
 
-void randominit(struct rand_struct *rand_st,ulong seed1, ulong seed2)
+void ma_randominit(struct rand_struct *rand_st,ulong seed1, ulong seed2)
 {						/* For mysql 3.21.# */
 #ifdef HAVE_purify
   memset((char*) rand_st, 0m sizeof(*rand_st));		/* Avoid UMC varnings */
@@ -54,7 +54,7 @@ void randominit(struct rand_struct *rand_st,ulong seed1, ulong seed2)
   rand_st->seed2=seed2%rand_st->max_value;
 }
 
-static void old_randominit(struct rand_struct *rand_st,ulong seed1)
+static void ma_old_randominit(struct rand_struct *rand_st,ulong seed1)
 {						/* For mysql 3.20.# */
   rand_st->max_value= 0x01FFFFFFL;
   rand_st->max_value_dbl=(double) rand_st->max_value;
@@ -69,7 +69,7 @@ double rnd(struct rand_struct *rand_st)
   return (((double) rand_st->seed1)/rand_st->max_value_dbl);
 }
 
-void hash_password(ulong *result, const char *password, size_t len)
+void ma_hash_password(ulong *result, const char *password, size_t len)
 {
   register ulong nr=1345345333L, add=7, nr2=0x12345671L;
   ulong tmp;
@@ -113,7 +113,7 @@ void my_crypt(unsigned char *buffer, const unsigned char *s1, const unsigned cha
 	}
 }
 
-void my_scramble_41(const unsigned char *buffer, const char *scramble, const char *password)
+void ma_scramble_41(const unsigned char *buffer, const char *scramble, const char *password)
 {
 	_MA_SHA1_CTX context;
 	unsigned char sha1[SHA1_MAX_LENGTH];
@@ -141,46 +141,18 @@ void my_scramble_41(const unsigned char *buffer, const char *scramble, const cha
 }
 /* }}} */
 
-void make_scrambled_password(char *to,const char *password)
+void ma_make_scrambled_password(char *to,const char *password)
 {
   ulong hash_res[2];
-  hash_password(hash_res,password, strlen(password));
+  ma_hash_password(hash_res,password, strlen(password));
   sprintf(to,"%08lx%08lx",hash_res[0],hash_res[1]);
 }
-
-/*
-** This code assumes that len(password) is divideable with 8 and that
-** res is big enough (2 in mysql)
-*/
-
-void get_salt_from_password(ulong *res,const char *password)
-{
-  res[0]=res[1]=0;
-  if (password)
-  {
-    while (*password)
-    {
-      ulong val=0;
-      uint i;
-      for (i=0 ; i < 8 ; i++)
-	val=(val << 4)+char_val(*password++);
-      *res++=val;
-    }
-  }
-  return;
-}
-
-void make_password_from_salt(char *to, ulong *hash_res)
-{
-  sprintf(to,"%08lx%08lx",hash_res[0],hash_res[1]);
-}
-
 
 /*
  * Genererate a new message based on message and password
  * The same thing is done in client and server and the results are checked.
  */
-char *scramble_323(char *to, const char *message, const char *password)
+char *ma_scramble_323(char *to, const char *message, const char *password)
 {
   struct rand_struct rand_st;
   ulong hash_pass[2], hash_message[2];
@@ -189,10 +161,10 @@ char *scramble_323(char *to, const char *message, const char *password)
   {
     char extra, *to_start=to;
     const char *end_scramble323= message + SCRAMBLE_LENGTH_323;
-    hash_password(hash_pass,password, (uint) strlen(password));
+    ma_hash_password(hash_pass,password, (uint) strlen(password));
     /* Don't use strlen, could be > SCRAMBLE_LENGTH_323 ! */
-    hash_password(hash_message, message, SCRAMBLE_LENGTH_323);
-    randominit(&rand_st, hash_pass[0] ^ hash_message[0],
+    ma_hash_password(hash_message, message, SCRAMBLE_LENGTH_323);
+    ma_randominit(&rand_st, hash_pass[0] ^ hash_message[0],
                hash_pass[1] ^ hash_message[1]);
     for (; message < end_scramble323; message++)
       *to++= (char) (floor(rnd(&rand_st) * 31) + 64);
@@ -202,34 +174,4 @@ char *scramble_323(char *to, const char *message, const char *password)
   }
   *to= 0;
   return to;
-}
-
-my_bool check_scramble(const char *scrambled, const char *message,
-		       ulong *hash_pass, my_bool old_ver)
-{
-  struct rand_struct rand_st;
-  ulong hash_message[2];
-  char buff[16],*to,extra;			/* Big enough for check */
-  const char *pos;
-
-  hash_password(hash_message,message, strlen(message));
-  if (old_ver)
-    old_randominit(&rand_st,hash_pass[0] ^ hash_message[0]);
-  else
-    randominit(&rand_st,hash_pass[0] ^ hash_message[0],
-	       hash_pass[1] ^ hash_message[1]);
-  to=buff;
-  for (pos=scrambled ; *pos ; pos++)
-    *to++=(char) (floor(rnd(&rand_st)*31)+64);
-  if (old_ver)
-    extra=0;
-  else
-    extra=(char) (floor(rnd(&rand_st)*31));
-  to=buff;
-  while (*scrambled)
-  {
-    if (*scrambled++ != (char) (*to++ ^ extra))
-      return 1;					/* Wrong password */
-  }
-  return 0;
 }

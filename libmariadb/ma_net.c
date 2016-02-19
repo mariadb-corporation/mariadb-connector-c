@@ -105,7 +105,6 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 
   /* We don't allocate memory for multi buffer, since we don't know in advance if the server
    * supports COM_MULTI comand. It will be allocated on demand in net_add_multi_command */
-     
   max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
   net->pvio = pvio;

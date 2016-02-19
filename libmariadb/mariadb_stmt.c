@@ -359,7 +359,7 @@ MYSQL_RES *_mysql_stmt_use_result(MYSQL_STMT *stmt)
   MYSQL *mysql= stmt->mysql;
 
   if (!stmt->field_count ||
-      (!stmt->cursor_exists && mysql->status != MYSQL_STATUS_GET_RESULT) ||
+      (!stmt->cursor_exists && mysql->status != MYSQL_STATUS_STMT_RESULT) ||
       (stmt->cursor_exists && mysql->status != MYSQL_STATUS_READY) ||
       (stmt->state != MYSQL_STMT_WAITING_USE_OR_STORE))
   {
@@ -1220,6 +1220,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   int rc= 1;
   enum mariadb_com_multi multi= MARIADB_COM_MULTI_END;
 
+
   if (!stmt->mysql)
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
@@ -1349,7 +1350,7 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
       return(1);
     /* todo: cursor */
   }
-  else if (stmt->mysql->status != MYSQL_STATUS_GET_RESULT)
+  else if (stmt->mysql->status != MYSQL_STATUS_STMT_RESULT)
   {
     SET_CLIENT_ERROR(stmt->mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     SET_CLIENT_STMT_ERROR(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
@@ -1534,10 +1535,12 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
 
       /* preferred is buffered read */
       mysql_stmt_store_result(stmt);
+      stmt->mysql->status= MYSQL_STATUS_STMT_RESULT;
     } else
     {
       /* preferred is unbuffered read */
       stmt->default_rset_handler = _mysql_stmt_use_result;
+      stmt->mysql->status= MYSQL_STATUS_STMT_RESULT;
     }
     stmt->state= MYSQL_STMT_WAITING_USE_OR_STORE;
     /* in certain cases parameter types can change: For example see bug
@@ -1918,6 +1921,9 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
         stmt->mysql->net.last_error);
     return(1);
   }
+
+  if (stmt->mysql->status == MYSQL_STATUS_GET_RESULT)
+    stmt->mysql->status= MYSQL_STATUS_STMT_RESULT;
 
   if (stmt->mysql->field_count)
     rc= madb_alloc_stmt_fields(stmt);

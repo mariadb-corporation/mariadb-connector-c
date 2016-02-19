@@ -375,6 +375,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   struct st_mysql_client_plugin *plugin;
   char *env_plugin_dir= getenv("MARIADB_PLUGIN_DIR");
 
+  CLEAR_CLIENT_ERROR(mysql);
   if (is_not_initialized(mysql, name))
     return NULL;
 
@@ -391,7 +392,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   snprintf(dlpath, sizeof(dlpath) - 1, "%s/%s%s",
            mysql->options.extension && mysql->options.extension->plugin_dir ?
            mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
-           PLUGINDIR, name, SO_EXT);
+           MARIADB_PLUGINDIR, name, SO_EXT);
 
   /* Open new dll handle */
   if (!(dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))
@@ -485,5 +486,4 @@ mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
   /* not found, load it */
   return mysql_load_plugin(mysql, name, type, 0);
 }
-
 

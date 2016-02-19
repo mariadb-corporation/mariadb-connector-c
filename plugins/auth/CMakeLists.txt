@@ -30,20 +30,20 @@ ENDIF()
 IF(AUTH_OLDPASSWORD_PLUGIN_TYPE MATCHES "DYNAMIC")
   ADD_DEFINITIONS(-DHAVE_OLDPASSWORD_DYNAMIC=1)
   IF(WIN32)
-    SET_VERSION_INFO("TARGET:old_password"
+    SET_VERSION_INFO("TARGET:mysql_old_password"
                      "FILE_TYPE:VFT_DLL"
                      "SOURCE_FILE:plugins/auth/old_password.c"
-                     "ORIGINAL_FILE_NAME:old_password.dll"
+                     "ORIGINAL_FILE_NAME:mysql_old_password.dll"
                      "FILE_DESCRIPTION:Authentication plugin")
   ENDIF()
   SET(OLDPASSWORD_SOURCES ${old_password_RC} old_password.c)
   IF(WIN32)
     SET(OLDPASSWORD_SOURCES ${DIALOG_SOURCES} ${CMAKE_SOURCE_DIR}/plugins/plugin.def)
   ENDIF()
-  ADD_LIBRARY(old_password SHARED ${OLDPASSWORD_SOURCES})
-  SET_TARGET_PROPERTIES(old_password PROPERTIES PREFIX "")
-  INSTALL_PLUGIN(old_password ${CMAKE_BINARY_DIR}/plugins/auth)
-  SIGN_TARGET(old_password)
+  ADD_LIBRARY(mysql_old_password SHARED ${OLDPASSWORD_SOURCES})
+  SET_TARGET_PROPERTIES(mysql_old_password PROPERTIES PREFIX "")
+  INSTALL_PLUGIN(mysql_old_password ${CMAKE_BINARY_DIR}/plugins/auth)
+  SIGN_TARGET(mysql_old_password)
 ENDIF()
 
 # Cleartext
