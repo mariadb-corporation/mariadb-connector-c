@@ -1026,9 +1026,28 @@ DROP TABLE IF EXISTS test_multi_tab";
   return OK;
 }
 
+static int test_conc160(MYSQL *mysql)
+{
+  MYSQL_RES *result;
+  MYSQL_FIELD *field;
+  int rc;
+
+  rc= mysql_query(mysql, "SELECT cast(1.234 AS DECIMAL)");
+  check_mysql_rc(rc, mysql);
+
+  result= mysql_store_result(mysql);
+  field= mysql_fetch_field(result);
+
+  FAIL_UNLESS(field->flags & NUM_FLAG, "Numceric flag not set");
+
+  mysql_free_result(result);
+  return OK;
+}
+
 
 
 struct my_tests_st my_tests[] = {
+  {"test_conc160", test_conc160, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"client_store_result", client_store_result, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"client_use_result", client_use_result, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_free_result", test_free_result, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},

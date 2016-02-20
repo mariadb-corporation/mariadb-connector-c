@@ -697,7 +697,7 @@ static int test_ssl_fp_list(MYSQL *unused)
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-  {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+//  {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp", test_ssl_fp, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp_list", test_ssl_fp_list, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
