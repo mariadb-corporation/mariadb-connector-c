@@ -47,7 +47,7 @@ typedef struct {
 } MCPVIO_EXT;
 
 #ifndef HAVE_OLDPASSWORD_DYNAMIC
-struct st_mysql_client_plugin_AUTHENTICATION auth_old_password_plugin=
+struct st_mysql_client_plugin_AUTHENTICATION old_password_client_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 #endif

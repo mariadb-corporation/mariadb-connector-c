@@ -10,10 +10,10 @@ static char *mariadb_progname;
                 "@extra_dynamic_LDFLAGS@"
 #define LIBS_SYS "@extra_dynamic_LDFLAGS@"
 #define CFLAGS  INCLUDE " @CMAKE_C_FLAGS@"
-#define VERSION "@MYSQL_CLIENT_VERSION@"
+#define VERSION "@MARIADB_CLIENT_VERSION@"
 #define PLUGIN_DIR "@PREFIX_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@/@PLUGIN_INSTALL_DIR@"
-#define SOCKET  "@MYSQL_UNIX_ADDR@"
-#define PORT "@MYSQL_PORT@"
+#define SOCKET  "@MARIADBL_UNIX_ADDR@"
+#define PORT "@MARIADB_PORT@"
 
 static struct option long_options[]=
 {
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
       puts(PORT);
       break;
     case 'p':
-      puts(PLUGINDIR);
+      puts(MARIADB_PLUGINDIR);
       break;
     case 'y':
       puts(LIBS_SYS);

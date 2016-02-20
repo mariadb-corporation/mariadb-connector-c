@@ -141,7 +141,7 @@ INCLUDE("${CMAKE_SOURCE_DIR}/cmake/install.cmake")
 # todo: we don't character sets in share - all is compiled in
 SET(SHAREDIR "share")
 SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
-SET(PLUGINDIR "${CMAKE_INSTALL_PREFIX}/lib/plugin")
+# SET(MARIADB_PLUGINDIR "${CMAKE_INSTALL_PREFIX}/lib/plugin")
 
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/SearchLibrary.cmake)
 
