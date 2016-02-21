@@ -73,7 +73,7 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       return CR_SERVER_HANDSHAKE_ERR;
 
     /* save it in MYSQL */
-    memcpy(mysql->scramble_buff, pkt, SCRAMBLE_LENGTH);
+    memmove(mysql->scramble_buff, pkt, SCRAMBLE_LENGTH);
     mysql->scramble_buff[SCRAMBLE_LENGTH] = 0;
   }
 
