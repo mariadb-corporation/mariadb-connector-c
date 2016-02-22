@@ -124,4 +124,11 @@ void ma_dynstr_free(DYNAMIC_STRING *str)
   }
 }
 
-
+char *ma_strmake(register char *dst, register const char *src, size_t length)
+{
+  while (length--)
+    if (! (*dst++ = *src++))
+      return dst-1;
+  *dst=0;
+  return dst;
+}

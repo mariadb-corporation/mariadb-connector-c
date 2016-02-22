@@ -127,8 +127,10 @@ MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_
   "MariaDB virtual IO plugin for socket communication",
   {1, 0, 0},
   "LGPL",
+  NULL,
   &pvio_socket_init,
   &pvio_socket_end,
+  NULL,
   &pvio_socket_methods
 };
 

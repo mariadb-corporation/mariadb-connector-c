@@ -62,6 +62,19 @@ struct st_mysql_options_extension {
   HASH userdata;
 };
 
+typedef struct st_connection_handler
+{
+  struct st_ma_connection_plugin *plugin;
+  void *data;
+  my_bool active;
+  my_bool free_data;
+} MA_CONNECTION_HANDLER;
+
+struct st_mariadb_net_extension {
+  unsigned char *mbuff, *mbuff_end, *mbuff_pos;
+  MA_CONNECTION_HANDLER *conn_hdlr;
+};
+
 #define OPT_HAS_EXT_VAL(a,key) \
   ((a)->options.extension && (a)->options.extension->key)
 

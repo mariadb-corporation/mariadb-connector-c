@@ -57,8 +57,10 @@ struct st_mysql_client_plugin _mysql_client_plugin_declaration_ =
   "Trace example plugin",
   {1,0,0},
   "LGPL",
+  NULL,
   &trace_init,
-  &trace_deinit
+  &trace_deinit,
+  NULL
 };
 
 static char *commands[]= {

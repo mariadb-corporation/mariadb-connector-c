@@ -78,6 +78,8 @@ MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_ =
   "LGPL",
   NULL,
   NULL,
+  NULL,
+  NULL,
   &pvio_npipe_methods
 };
 

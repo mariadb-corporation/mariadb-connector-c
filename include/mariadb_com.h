@@ -246,19 +246,11 @@ typedef struct st_ma_pvio MARIADB_PVIO;
 
 struct st_ma_connection_plugin;
 
-typedef struct st_connection_handler
-{
-  struct st_ma_connection_plugin *plugin;
-  void *data;
-  my_bool active;
-  my_bool free_data;
-} MA_CONNECTION_HANDLER;
 
 typedef struct st_net {
   MARIADB_PVIO *pvio;
   unsigned char *buff;
   unsigned char *buff_end,*write_pos,*read_pos;
-  unsigned char *mbuff, *mbuff_end, *mbuff_pos;
   my_socket fd;					/* For Perl DBI/dbd */
   unsigned long remain_in_buf,length;
   unsigned long buf_length, where_b;
@@ -269,18 +261,18 @@ typedef struct st_net {
   unsigned int *return_status;
   unsigned char reading_or_writing;
   char save_char;
-  my_bool unused_1, unused_2;
+  char unused_1;
+  my_bool unused_2;
   my_bool compress;
   my_bool unused_3;
-  MA_CONNECTION_HANDLER *conn_hdlr;
+  void *unused_4;
   unsigned int last_errno;
   unsigned char error;
-  my_bool unused_4;
   my_bool unused_5;
-  
+  my_bool unused_6;
   char last_error[MYSQL_ERRMSG_SIZE];
   char sqlstate[SQLSTATE_LENGTH+1];
-  void *extension;
+  struct st_mariadb_net_extension *extension;
 } NET;
 
 #define packet_error ((unsigned int) -1)

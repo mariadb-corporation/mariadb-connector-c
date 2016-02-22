@@ -179,6 +179,8 @@ extern MARIADB_CHARSET_INFO *get_charset(uint cs_number, myf flags);
 extern MARIADB_CHARSET_INFO *get_charset_by_name(const char *cs_name);
 extern MARIADB_CHARSET_INFO *get_charset_by_nr(uint cs_number);
 
+/* string functions */
+char *ma_strmake(register char *dst, register const char *src, size_t length);
 
 /* statistics */
 #ifdef TBR

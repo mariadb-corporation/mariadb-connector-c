@@ -45,6 +45,8 @@ auth_plugin_t native_password_client_plugin=
   "LGPL",
   NULL,
   NULL,
+  NULL,
+  NULL,
   native_password_auth_client
 };
 
@@ -104,7 +106,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
 
   buff= malloc(USERNAME_LENGTH+1 + data_len+1 + NAME_LEN+1 + 2 + NAME_LEN+1 + 9 + conn_attr_len);
 
-  end= strncpy(buff, mysql->user, USERNAME_LENGTH) + strlen(buff) + 1;
+  end= ma_strmake(buff, mysql->user, USERNAME_LENGTH) + 1;
 
   if (!data_len)
     *end++= 0;
@@ -162,6 +164,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
   buff= malloc(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
+  end= buff;
   
   mysql->client_flag|= mysql->options.client_flag;
   mysql->client_flag|= CLIENT_CAPABILITIES;
@@ -172,7 +175,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 #if defined(HAVE_SSL) && !defined(EMBEDDED_LIBRARY)
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
-      mysql->options.ssl_cipher)
+      mysql->options.ssl_cipher ||
+      (mysql->options.client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
     mysql->options.use_ssl= 1;
   if (mysql->options.use_ssl)
     mysql->client_flag|= CLIENT_SSL;
@@ -190,7 +194,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     {
       my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                           ER(CR_SSL_CONNECTION_ERROR), 
-                          "Server doesn't support SSL");
+                          "SSL is required, but the server does not support it");
       goto error;
     }
   }
@@ -259,13 +263,13 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 #endif /* HAVE_SSL */
 
   /* This needs to be changed as it's not useful with big packets */
-  if (mysql->user[0])
-    strncpy(end, mysql->user, USERNAME_LENGTH);
+  if (mysql->user && mysql->user[0])
+    ma_strmake(end, mysql->user, USERNAME_LENGTH);
   else
     read_user_name(end);
 
   /* We have to handle different version of handshake here */
-  end= strchr(end, '\0') + 1;
+  end+= strlen(end) + 1;
   if (data_len)
   {
     if (mysql->server_capabilities & CLIENT_SECURE_CONNECTION)
@@ -287,12 +291,12 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   /* Add database if needed */
   if (mpvio->db && (mysql->server_capabilities & CLIENT_CONNECT_WITH_DB))
   {
-    end= strncpy(end, mpvio->db, NAME_LEN) + strlen(end) + 1;
+    end= ma_strmake(end, mpvio->db, NAME_LEN) + 1;
     mysql->db= strdup(mpvio->db);
   }
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
-    end= strncpy(end, mpvio->plugin->name, NAME_LEN) + strlen(end) + 1;
+    end= ma_strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
 
   end= ma_send_connect_attr(mysql, end);
 
@@ -547,8 +551,9 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
     if (res > CR_ERROR)
       my_set_error(mysql, res, SQLSTATE_UNKNOWN, 0);
     else
-      if (!mysql->net.last_errno)
+      if (!mysql->net.last_errno) {
         my_set_error(mysql, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, 0);
+      }
     return 1;
   }
 
@@ -587,7 +592,6 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
       mpvio.cached_server_reply.pkt_len= pkt_length - len - 2;
       mpvio.cached_server_reply.pkt= mysql->net.read_pos + len + 2;
     }
-
     if (!(auth_plugin= (auth_plugin_t *) mysql_client_find_plugin(mysql,
                          auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
       return 1;

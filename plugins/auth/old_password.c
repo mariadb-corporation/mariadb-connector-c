@@ -54,11 +54,13 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
-  "old_password",
+  "mysql_old_password",
   "Sergei Golubchik, R.J. Silk, Georg Richter",
   "Old (pre 4.1) authentication plugin",
   {1,0,0},
   "LGPL",
+  NULL,
+  NULL,
   NULL,
   NULL,
   auth_old_password
@@ -94,11 +96,11 @@ static int auth_old_password(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
         return CR_SERVER_HANDSHAKE_ERR;
 
     /* save it in MYSQL */
-    memcpy(mysql->scramble_buff, pkt, pkt_len);
+    memmove(mysql->scramble_buff, pkt, pkt_len);
     mysql->scramble_buff[pkt_len] = 0;
   }
 
-  if (mysql->passwd[0])
+  if (mysql && mysql->passwd[0])
   {
     char scrambled[SCRAMBLE_LENGTH_323 + 1];
     ma_scramble_323(scrambled, (char*)pkt, mysql->passwd);

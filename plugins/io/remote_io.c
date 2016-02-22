@@ -104,8 +104,10 @@ MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declaration_ =
   "Remote IO plugin",
   {0,1,0},
   "LGPL",
+  NULL,
   ma_rio_init, 
   ma_rio_deinit,
+  NULL,
   &ma_rio_methods
 mysql_end_client_plugin;
 

@@ -68,6 +68,8 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   "LGPL",
   NULL,
   NULL,
+  NULL,
+  NULL,
   clear_password_auth_client
 };
 

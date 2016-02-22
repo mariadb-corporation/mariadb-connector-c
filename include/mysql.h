@@ -424,8 +424,10 @@ typedef struct character_set
   const char *desc;                                     \
   unsigned int version[3];                              \
   const char *license;                                  \
+  void *mariadb_api;                                    \
   int (*init)(char *, size_t, int, va_list);            \
-  int (*deinit)();
+  int (*deinit)();                                      \
+  int (*options)(const char *option, const void *);
 struct st_mysql_client_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER

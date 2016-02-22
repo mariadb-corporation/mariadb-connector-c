@@ -136,7 +136,7 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 #define native_password_plugin_name "mysql_native_password"
 
 #define IS_CONNHDLR_ACTIVE(mysql)\
-  (((mysql)->net.conn_hdlr))
+  (((mysql)->net.extension->conn_hdlr))
 
 static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
@@ -226,14 +226,14 @@ restart:
       net->last_errno= last_errno;
       if (pos[0]== '#')
       {
-        strncpy(net->sqlstate, pos+1, SQLSTATE_LENGTH);
+        ma_strmake(net->sqlstate, pos+1, SQLSTATE_LENGTH);
         pos+= SQLSTATE_LENGTH + 1;
       }
       else
       {
         strcpy(net->sqlstate, SQLSTATE_UNKNOWN);
       }
-      strncpy(net->last_error,(char*) pos,
+      ma_strmake(net->last_error,(char*) pos,
               min(len,sizeof(net->last_error)-1));
     }
     else
@@ -387,7 +387,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
   if (IS_CONNHDLR_ACTIVE(mysql))
   {
-    result= mysql->net.conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
+    result= mysql->net.extension->conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
     if (result== -1)
       return(result);
   }
@@ -467,11 +467,11 @@ void read_user_name(char *name)
 	       !(str=getenv("LOGIN")))
 	str="UNKNOWN_USER";
     }
-    strncpy(name,str,USERNAME_LENGTH);
+    ma_strmake(name,str,USERNAME_LENGTH);
 #elif HAVE_CUSERID
     (void) cuserid(name);
 #else
-    strncpy(name,"UNKNOWN_USER", USERNAME_LENGTH);
+    ma_strmake(name,"UNKNOWN_USER", USERNAME_LENGTH);
 #endif
   }
   return;
@@ -482,7 +482,7 @@ void read_user_name(char *name)
 void read_user_name(char *name)
 {
   char *str=getenv("USERNAME");		/* ODBC will send user variable */
-  strncpy(name,str ? str : "ODBC", USERNAME_LENGTH);
+  ma_strmake(name,str ? str : "ODBC", USERNAME_LENGTH);
 }
 
 #endif
@@ -582,6 +582,7 @@ struct st_default_options mariadb_defaults[] =
   {MYSQL_OPT_SSL_CERT, MARIADB_OPTION_STR,"ssl-cert"},
   {MYSQL_OPT_SSL_CA, MARIADB_OPTION_STR,"ssl-ca"},
   {MYSQL_OPT_SSL_CAPATH, MARIADB_OPTION_STR,"ssl-capath"},
+  {MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MARIADB_OPTION_BOOL,"ssl-verify-server-cert"},
   {MYSQL_SET_CHARSET_DIR, MARIADB_OPTION_STR, "character-sets-dir"},
   {MYSQL_SET_CHARSET_NAME, MARIADB_OPTION_STR, "default-character-set"},
   {MARIADB_OPT_INTERACTIVE, MARIADB_OPTION_NONE, "interactive-timeout"},
@@ -936,9 +937,38 @@ mysql_init(MYSQL *mysql)
       return 0;
     mysql->free_me=1;
     mysql->net.pvio= 0;
+    mysql->net.extension= 0;
   }
   else
+  {
     memset((char*) (mysql), 0, sizeof(*(mysql)));
+    mysql->net.pvio= 0;
+    mysql->net.extension= 0;
+  }
+
+  if (!(mysql->net.extension= (struct st_mariadb_net_extension *)
+                               calloc(1, sizeof(struct st_mariadb_net_extension))))
+  {
+    if (mysql->free_me)
+      free(mysql);
+    return 0;
+  }
+  mysql->options.report_data_truncation= 1;
+  mysql->options.connect_timeout=CONNECT_TIMEOUT;
+  mysql->charset= ma_default_charset_info;
+  mysql->methods= &MARIADB_DEFAULT_METHODS;
+  strcpy(mysql->net.sqlstate, "00000");
+  mysql->net.last_error[0]= mysql->net.last_errno= 0;
+
+/*
+  }
+  if (!(mysql->net.extension= (struct st_mariadb_net_extension *)
+                               calloc(1, sizeof(struct st_mariadb_net_extension))))
+  {
+    if (mysql->free_me)
+      free(mysql);
+    return 0;
+  }
   mysql->options.report_data_truncation= 1;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
   mysql->charset= ma_default_charset_info;
@@ -1081,16 +1111,16 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
     if (!connection_handler || !connection_handler[0])
     {
       memset(plugin_name, 0, 64);
-      strncpy(plugin_name, host, MIN(end - host, 63));
+      ma_strmake(plugin_name, host, MIN(end - host, 63));
       end+= 3;
     }
     else
-      strncpy(plugin_name, connection_handler, MIN(63, strlen(connection_handler)));
+      ma_strmake(plugin_name, connection_handler, MIN(63, strlen(connection_handler)));
 
     if (!(plugin= (MARIADB_CONNECTION_PLUGIN *)mysql_client_find_plugin(mysql, plugin_name, MARIADB_CLIENT_CONNECTION_PLUGIN)))
       return NULL;
 
-    if (!(mysql->net.conn_hdlr= (MA_CONNECTION_HANDLER *)calloc(1, sizeof(MA_CONNECTION_HANDLER))))
+    if (!(mysql->net.extension->conn_hdlr= (MA_CONNECTION_HANDLER *)calloc(1, sizeof(MA_CONNECTION_HANDLER))))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return NULL;
@@ -1099,15 +1129,15 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
     /* save URL for reconnect */
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, url, host);
 
-    mysql->net.conn_hdlr->plugin= plugin;
+    mysql->net.extension->conn_hdlr->plugin= plugin;
 
     if (plugin && plugin->connect)
     {
       MYSQL *my= plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
       if (!my)
       {
-        free(mysql->net.conn_hdlr);
-        mysql->net.conn_hdlr= NULL;
+        free(mysql->net.extension->conn_hdlr);
+        mysql->net.extension->conn_hdlr= NULL;
       }
       return my;
     }
@@ -1166,6 +1196,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 #ifndef DONT_USE_MYSQL_PWD
     if (!passwd)
       passwd=getenv("MYSQL_PWD");  /* get it from environment (haneke) */
+    if (!passwd)
+      passwd= "";
 #endif
   }
   if (!db || !db[0])
@@ -1514,8 +1546,8 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
   /* check if connection handler is active */
   if (IS_CONNHDLR_ACTIVE(mysql))
   {
-    if (mysql->net.conn_hdlr->plugin && mysql->net.conn_hdlr->plugin->reconnect)
-      return(mysql->net.conn_hdlr->plugin->reconnect(mysql));
+    if (mysql->net.extension->conn_hdlr->plugin && mysql->net.extension->conn_hdlr->plugin->reconnect)
+      return(mysql->net.extension->conn_hdlr->plugin->reconnect(mysql));
   }
 
   if (!mysql->options.reconnect ||
@@ -1529,10 +1561,10 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
 
   mysql_init(&tmp_mysql);
   tmp_mysql.options=mysql->options;
-  if (mysql->net.conn_hdlr)
+  if (mysql->net.extension->conn_hdlr)
   {
-    tmp_mysql.net.conn_hdlr= mysql->net.conn_hdlr;
-    mysql->net.conn_hdlr= 0;
+    tmp_mysql.net.extension->conn_hdlr= mysql->net.extension->conn_hdlr;
+    mysql->net.extension->conn_hdlr= 0;
   }
 
 
@@ -1803,7 +1835,7 @@ void my_set_error(MYSQL *mysql,
   va_list ap;
 
   mysql->net.last_errno= error_nr;
-  strncpy(mysql->net.sqlstate, sqlstate, SQLSTATE_LENGTH);
+  ma_strmake(mysql->net.sqlstate, sqlstate, SQLSTATE_LENGTH);
   va_start(ap, format);
   vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE, 
             format ? format : ER(error_nr), ap);
@@ -1829,9 +1861,9 @@ mysql_close(MYSQL *mysql)
 {
   if (mysql)					/* Some simple safety */
   {
-    if (mysql->net.conn_hdlr)
+    if (mysql->net.extension->conn_hdlr)
     {
-      MA_CONNECTION_HANDLER *p= mysql->net.conn_hdlr;
+      MA_CONNECTION_HANDLER *p= mysql->net.extension->conn_hdlr;
       p->plugin->close(mysql);
       free(p);
     }
@@ -1851,6 +1883,8 @@ mysql_close(MYSQL *mysql)
 
     if (mysql->extension)
       free(mysql->extension);
+    if (mysql->net.extension)
+      free(mysql->net.extension);
 
     mysql->net.pvio= 0;
     if (mysql->free_me)
@@ -2405,16 +2439,16 @@ void ma_hash_free(void *p)
 int mariadb_flush_multi_command(MYSQL *mysql)
 {
   int rc;
-  size_t length= mysql->net.mbuff_pos - mysql->net.mbuff;
+  size_t length= mysql->net.extension->mbuff_pos - mysql->net.extension->mbuff;
 
-  rc= ma_simple_command(mysql, COM_MULTI, mysql->net.mbuff,
+  rc= ma_simple_command(mysql, COM_MULTI, mysql->net.extension->mbuff,
                      length, 1, 0);
   /* reset multi_buff */
-  mysql->net.mbuff_pos= mysql->net.mbuff;
+  mysql->net.extension->mbuff_pos= mysql->net.extension->mbuff;
 
   if (!rc)
-    if (mysql->net.mbuff && length > 3 &&
-        (mysql->net.mbuff[3] == COM_STMT_PREPARE || mysql->net.mbuff[3] == COM_STMT_EXECUTE))
+    if (mysql->net.extension->mbuff && length > 3 &&
+        (mysql->net.extension->mbuff[3] == COM_STMT_PREPARE || mysql->net.extension->mbuff[3] == COM_STMT_EXECUTE))
       return rc;
     else
       return mysql->methods->db_read_query_result(mysql);
@@ -2774,7 +2808,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
                mysql->options.extension->multi_command != MARIADB_COM_MULTI_BEGIN)
             return(-1);
           /* reset multi_buff */
-          mysql->net.mbuff_pos= mysql->net.mbuff;
+          mysql->net.extension->mbuff_pos= mysql->net.extension->mbuff;
           OPT_SET_EXTENDED_VALUE_INT(&mysql->options, multi_command, MARIADB_COM_MULTI_END);
           break;
         case MARIADB_COM_MULTI_END:

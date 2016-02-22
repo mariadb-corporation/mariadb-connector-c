@@ -84,7 +84,7 @@ int mysql_local_infile_init(void **ptr, const char *filename, void *userdata)
     if (mysql_errno(mysql) && !info->error_no)
     {
       info->error_no= mysql_errno(mysql);
-      strncpy(info->error_msg, mysql_error(mysql), MYSQL_ERRMSG_SIZE);
+      ma_strmake(info->error_msg, mysql_error(mysql), MYSQL_ERRMSG_SIZE);
     }
     else
     {
@@ -127,11 +127,11 @@ int mysql_local_infile_error(void *ptr, char *error_buf, unsigned int error_buf_
   MYSQL_INFILE_INFO *info = (MYSQL_INFILE_INFO *)ptr;
 
   if (info) {
-    strncpy(error_buf, info->error_msg, error_buf_len);
+    ma_strmake(error_buf, info->error_msg, error_buf_len);
     return(info->error_no);
   }
 
-  strncpy(error_buf, "Unknown error", error_buf_len);
+  ma_strmake(error_buf, "Unknown error", error_buf_len);
   return(CR_UNKNOWN_ERROR);
 }
 /* }}} */

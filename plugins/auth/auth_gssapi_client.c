@@ -115,5 +115,7 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   "BSD",
   NULL,
   NULL,
+  NULL,
+  NULL,
   gssapi_auth_client
 };

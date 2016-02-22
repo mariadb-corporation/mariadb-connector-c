@@ -75,6 +75,8 @@ MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_=
   "LGPPL",
   NULL,
   NULL,
+  NULL,
+  NULL,
   &pvio_shm_methods,
  
 };

@@ -62,6 +62,8 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   "LGPL",
   NULL,
   NULL,
+  NULL,
+  NULL,
   repl_connect,
   repl_close,
   repl_set_options,

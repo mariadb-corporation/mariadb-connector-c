@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <ma_pvio.h>
+#include <ma_common.h>
 #ifndef _WIN32
 #include <poll.h>
 #endif
@@ -103,6 +104,11 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
   if (!(net->buff=(uchar*) calloc(1, net_buffer_length)))
     return 1;
 
+  if (!net->extension)
+  {
+    printf("Fatal\n");
+    exit(-1);
+  }
   /* We don't allocate memory for multi buffer, since we don't know in advance if the server
    * supports COM_MULTI comand. It will be allocated on demand in net_add_multi_command */
   max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
@@ -130,9 +136,9 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 void ma_net_end(NET *net)
 {
   free(net->buff);
-  free(net->mbuff);
+  free(net->extension->mbuff);
   net->buff=0;
-  net->mbuff= 0;
+  net->extension->mbuff= 0;
 }
 
 /* Realloc the packet buffer */
@@ -151,7 +157,7 @@ static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
   pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
   /* reallocate buffer:
      size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
-  if (!(buff=(uchar*) realloc(is_multi ? net->mbuff : net->buff, 
+  if (!(buff=(uchar*) realloc(is_multi ? net->extension->mbuff : net->buff, 
                                pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE)))
   {
     net->error=1;
@@ -164,8 +170,8 @@ static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
   }
   else
   {
-    net->mbuff=net->mbuff_pos=buff;
-    net->mbuff_end=buff+(net->max_packet=(unsigned long)pkt_length);
+    net->extension->mbuff=net->extension->mbuff_pos=buff;
+    net->extension->mbuff_end=buff+(net->max_packet=(unsigned long)pkt_length);
   }
   return(0);
 }
@@ -178,8 +184,8 @@ void ma_net_clear(NET *net)
     ma_pvio_has_data(net->pvio, &len); */
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
-  if (net->mbuff)
-    net->mbuff_pos= net->mbuff;
+  if (net->extension->mbuff)
+    net->extension->mbuff_pos= net->extension->mbuff;
   return;
 }
 
@@ -326,42 +332,42 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
 
   /* We didn't allocate memory in ma_net_init since it was to early to
    * detect if the server supports COM_MULTI command */
-  if (!net->mbuff)
+  if (!net->extension->mbuff)
   {
     size_t alloc_size= (required_length + IO_SIZE - 1) & ~(IO_SIZE - 1);
-    if (!(net->mbuff= (char *)malloc(alloc_size)))
+    if (!(net->extension->mbuff= (char *)malloc(alloc_size)))
     {
       net->last_errno=ER_OUT_OF_RESOURCES;
       net->error=2;
       net->reading_or_writing=0;
       return(1);
     }
-    net->mbuff_pos= net->mbuff;
-    net->mbuff_end= net->mbuff + alloc_size; 
+    net->extension->mbuff_pos= net->extension->mbuff;
+    net->extension->mbuff_end= net->extension->mbuff + alloc_size; 
   }
 
-  left_length= net->mbuff_end - net->mbuff_pos;
+  left_length= net->extension->mbuff_end - net->extension->mbuff_pos;
 
   /* check if our buffer is large enough */
   if (left_length < required_length)
   {
-    current_length= net->mbuff_pos - net->mbuff;
+    current_length= net->extension->mbuff_pos - net->extension->mbuff;
     if (net_realloc(net, 1, current_length + required_length))
       goto error;
   }
-  int3store(net->mbuff_pos, length + 1);
-  net->mbuff_pos+= 3;
-  *net->mbuff_pos= command;
-  net->mbuff_pos++;
-  memcpy(net->mbuff_pos, packet, length);
-  net->mbuff_pos+= length;
+  int3store(net->extension->mbuff_pos, length + 1);
+  net->extension->mbuff_pos+= 3;
+  *net->extension->mbuff_pos= command;
+  net->extension->mbuff_pos++;
+  memcpy(net->extension->mbuff_pos, packet, length);
+  net->extension->mbuff_pos+= length;
   return 0;
 
 error:
- if (net->mbuff)
+ if (net->extension->mbuff)
  {
-   free(net->mbuff);
-   net->mbuff= net->mbuff_pos= net->mbuff_end= 0;
+   free(net->extension->mbuff);
+   net->extension->mbuff= net->extension->mbuff_pos= net->extension->mbuff_end= 0;
  }
  return 1; 
 }

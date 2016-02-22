@@ -76,8 +76,10 @@
   const char *desc;                                     \
   unsigned int version[3];                              \
   const char *license;                                  \
+  void *mysql_api;                                      \
   int (*init)(char *, size_t, int, va_list);            \
-  int (*deinit)();
+  int (*deinit)();                                      \
+  int (*options)(const char *option, const void *);
 struct st_mysql_client_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER
@@ -94,7 +96,7 @@ typedef struct st_ma_connection_plugin
   MYSQL *(*connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd,
 		    const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
   void (*close)(MYSQL *mysql);
-  int (*options)(MYSQL *mysql, enum mysql_option, void *arg);
+  int (*set_options)(MYSQL *mysql, enum mysql_option, void *arg);
   int (*set_connection)(MYSQL *mysql,enum enum_server_command command, const char *arg,
                         size_t length, my_bool skipp_check, void *opt_arg);
   my_bool (*reconnect)(MYSQL *mysql);
