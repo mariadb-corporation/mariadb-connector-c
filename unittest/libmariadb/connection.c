@@ -738,8 +738,29 @@ static int test_wrong_bind_address(MYSQL *my)
   return OK;
 }
 
+static int test_conc_163(MYSQL *mysql)
+{
+  int rc;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc,mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc,mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1),(2),(3)");
+  check_mysql_rc(rc,mysql);
+  diag("info: %s", mysql_info(mysql));
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc,mysql);
+  diag("info: %s", mysql_info(mysql));
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc,mysql);
+  diag("info: %s", mysql_info(mysql));
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"test_conc_163", test_conc_163, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc118", test_conc118, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
