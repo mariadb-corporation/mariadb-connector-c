@@ -115,6 +115,14 @@ my_context_install_suspend_resume_hook(struct mysql_async_context *b,
 uint mysql_port=0;
 my_string mysql_unix_port=0;
 
+static char *mariadb_protocols[]= {"TCP", 
+#ifndef WIN32
+                                   "SOCKET",
+#else
+                                   "PIPE", "MEMORY",
+#endif
+                                    0};
+
 #ifdef _WIN32
 #define CONNECT_TIMEOUT 20
 #else
@@ -441,6 +449,7 @@ static void free_old_query(MYSQL *mysql)
   ma_init_ma_alloc_root(&mysql->field_alloc,8192,0);	/* Assume rowlength < 8192 */
   mysql->fields=0;
   mysql->field_count=0;				/* For API */
+  mysql->info= 0;
   return;
 }
 
@@ -1185,6 +1194,14 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
   }
 
+#ifndef WIN32
+  if (mysql->options.protocol > MYSQL_PROTOCOL_SOCKET)
+  {
+    SET_CLIENT_ERROR(mysql, CR_CONN_UNKNOWN_PROTOCOL, SQLSTATE_UNKNOWN, 0);
+    return(NULL);
+  }
+#endif
+
   /* Some empty-string-tests are done because of ODBC */
   if (!host || !host[0])
     host=mysql->options.host;
@@ -1207,9 +1224,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!unix_socket)
     unix_socket=mysql->options.unix_socket;
 
-
   mysql->server_status=SERVER_STATUS_AUTOCOMMIT;
-
 
   /* try to connect via pvio_init */
   cinfo.host= host;
@@ -1622,6 +1637,7 @@ my_bool STDCALL mysql_reconnect(MYSQL *mysql)
   mysql->net.pvio->mysql= mysql;
   ma_net_clear(&mysql->net);
   mysql->affected_rows= ~(my_ulonglong) 0;
+  mysql->info= 0;
   return(0);
 }
 
@@ -2502,10 +2518,10 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_VALUE_STR(&mysql->options, charset_name, (char *)arg1);
     break;
   case MYSQL_OPT_RECONNECT:
-    mysql->options.reconnect= *(uint *)arg1;
+    mysql->options.reconnect= *(my_bool *)arg1;
     break;
   case MYSQL_OPT_PROTOCOL:
-    mysql->options.protocol= *(uint *)arg1;
+    mysql->options.protocol= *((uint *)arg1);
     break;
   case MYSQL_OPT_READ_TIMEOUT:
     mysql->options.read_timeout= *(uint *)arg1;
@@ -2578,6 +2594,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_NET_BUFFER_LENGTH:
     net_buffer_length= (*(size_t *)arg1);
+    break;
+  case MYSQL_OPT_SSL_ENFORCE:
+    mysql->options.use_ssl= (*(my_bool *)arg1);
     break;
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
     if (*(my_bool *)arg1)
@@ -2921,6 +2940,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     }
     else
       return(-1);
+    break;
+  case MYSQL_OPT_SSL_ENFORCE:
+    *((my_bool *)arg)= mysql->options.use_ssl;
     break;
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
     *((my_bool *)arg)= test(mysql->options.client_flag & CLIENT_SSL_VERIFY_SERVER_CERT);

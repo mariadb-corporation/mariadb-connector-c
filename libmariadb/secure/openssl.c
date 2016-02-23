@@ -64,7 +64,6 @@ static void ma_ssl_set_error(MYSQL *mysql)
   }
   if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
   {
-    printf("reason: %s\n", ssl_error_reason);
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                    0, ssl_error_reason);
     return;
@@ -424,19 +423,20 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
       pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
   }
-  rc= SSL_get_verify_result(ssl);
-  if (rc != X509_V_OK)
+  if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
   {
-    printf("--------------------\n");
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
-                 ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
-    /* restore blocking mode */
-    if (!blocking)
-      pvio->methods->blocking(pvio, FALSE, 0);
+    rc= SSL_get_verify_result(ssl);
+    if (rc != X509_V_OK)
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+                   ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
+      /* restore blocking mode */
+      if (!blocking)
+        pvio->methods->blocking(pvio, FALSE, 0);
 
-    return 1;
+      return 1;
+    }
   }
-
   pvio->cssl->ssl= cssl->ssl= (void *)ssl;
 
   return 0;

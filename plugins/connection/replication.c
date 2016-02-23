@@ -29,6 +29,7 @@
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <ma_string.h>
+#include <ma_common.h>
 
 #ifndef WIN32
 #include <sys/time.h>
@@ -181,7 +182,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
 		    const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag)
 {
   REPL_DATA *data= NULL;
-  MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
+  MA_CONNECTION_HANDLER *hdlr= mysql->net.extension->conn_hdlr;
 
   if (!mariadb_api)
     mariadb_api= mysql->methods->api;
@@ -242,7 +243,7 @@ error:
 
 void repl_close(MYSQL *mysql)
 {
-  MA_CONNECTION_HANDLER *hdlr= mysql->net.conn_hdlr;
+  MA_CONNECTION_HANDLER *hdlr= mysql->net.extension->conn_hdlr;
   REPL_DATA *data= (REPL_DATA *)hdlr->data;
 
   /* restore master */
@@ -261,7 +262,7 @@ void repl_close(MYSQL *mysql)
   /* free masrwe information and close connection */
   free(data->url);
   free(data);
-  mysql->net.conn_hdlr->data= NULL;
+  mysql->net.extension->conn_hdlr->data= NULL;
 }
 
 static my_bool is_slave_command(const char *buffer, size_t buffer_len)
@@ -299,7 +300,7 @@ static my_bool is_slave_stmt(MYSQL *mysql, const char *buffer)
 int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
                      size_t length, my_bool skipp_check, void *opt_arg)
 {
-  REPL_DATA *data= (REPL_DATA *)mysql->net.conn_hdlr->data; 
+  REPL_DATA *data= (REPL_DATA *)mysql->net.extension->conn_hdlr->data; 
 
   /* if we don't have slave or slave became unavailable root traffic to master */
   if (!data->pvio[MARIADB_SLAVE] || !data->read_only)
@@ -332,7 +333,7 @@ int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
 int repl_set_options(MYSQL *mysql, enum mysql_option option, void *arg)
 {
-  REPL_DATA *data= (REPL_DATA *)mysql->net.conn_hdlr->data; 
+  REPL_DATA *data= (REPL_DATA *)mysql->net.extension->conn_hdlr->data; 
  
   switch(option) {
   case MARIADB_OPT_CONNECTION_READ_ONLY:

@@ -175,7 +175,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 #if defined(HAVE_SSL) && !defined(EMBEDDED_LIBRARY)
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
-      mysql->options.ssl_cipher ||
+      mysql->options.ssl_cipher || mysql->options.use_ssl ||
       (mysql->options.client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
     mysql->options.use_ssl= 1;
   if (mysql->options.use_ssl)

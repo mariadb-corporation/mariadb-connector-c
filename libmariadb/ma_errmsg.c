@@ -127,7 +127,7 @@ const char *client_errors[]=
 /* 2044 */  "",
 /* 2045 */  "",
 /* 2046 */  "",
-/* 2047 */  "",
+/* 2047 */  "Wrong or unknown protocol",
 /* 2048 */  "",
 /* 2049 */  "Connection with old authentication protocol refused.",
 /* 2050 */  "",
@@ -138,8 +138,9 @@ const char *client_errors[]=
 /* 2055 */  "Lost connection to MySQL server at '%s', system error: %d",
 /* 2056 */  "Server closed statement due to a prior %s function call",
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
-/* 2058 */  "Plugin %s could not be loaded: %s",
 /* 2059 */  "Can't connect twice. Already connected",
+/* 2058 */  "Plugin %s could not be loaded: %s",
+/* 2059 */  "An attribute with same name already exists"
 /* 2060 */  "Plugin doesn't support this function",
             ""
 };

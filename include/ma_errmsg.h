@@ -72,6 +72,7 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_SHARED_MEMORY_CONNECTION 2037
 #define CR_SHARED_MEMORY_CONNECT_ERROR 2038
 
+#define CR_CONN_UNKNOWN_PROTOCOL 2047
 #define CR_SECURE_AUTH          2049
 #define CR_NO_DATA              2051
 #define CR_NO_STMT_METADATA     2052
@@ -79,9 +80,10 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_SERVER_LOST_EXTENDED 2055
 #define CR_STMT_CLOSED          2056
 #define CR_NEW_STMT_METADATA    2057
-#define CR_AUTH_PLUGIN_CANNOT_LOAD 2058
-#define CR_ALREADY_CONNECTED    2059
-#define CR_PLUGIN_FUNCTION_NOT_SUPPORTED 2060
+#define CR_ALREADY_CONNECTED    2058
+#define CR_AUTH_PLUGIN_CANNOT_LOAD 2059
+#define CR_DUPLICATE_CONNECTION_ATTR 2060
+#define CR_AUTH_PLUGIN_ERR 2061
 
 /* 
  * MariaDB Connector/C errors: 
