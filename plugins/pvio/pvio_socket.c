@@ -699,6 +699,7 @@ pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
 my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 {
   struct st_pvio_socket *csock= NULL;
+  struct timeval tm;
 
   if (!pvio || !cinfo)
     return 1;
@@ -844,13 +845,27 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
       goto error;
   }
-#ifdef _WIN32
   /* apply timeouts */
   if (pvio->timeout[PVIO_WRITE_TIMEOUT] > 0)
+  {
+#ifndef _WIN32
+    tm.tv_sec= pvio->timeout[PVIO_WRITE_TIMEOUT] / 1000;
+    tm.tv_usec= pvio->timeout[PVIO_WRITE_TIMEOUT] % 1000;
+    setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&tm, sizeof(tm));
+#else    
     setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&pvio->timeout[PVIO_WRITE_TIMEOUT], sizeof(int));
-  if (pvio->timeout[PVIO_READ_TIMEOUT] > 0)
-    setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&pvio->timeout[PVIO_READ_TIMEOUT], sizeof(int));
 #endif
+  }
+  if (pvio->timeout[PVIO_READ_TIMEOUT] > 0)
+  {
+#ifndef _WIN32
+    tm.tv_sec= pvio->timeout[PVIO_READ_TIMEOUT] / 1000;
+    tm.tv_usec= pvio->timeout[PVIO_READ_TIMEOUT] % 1000;
+    setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tm, sizeof(tm));
+#else
+    setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&pvio->timeout[PVIO_WRITE_TIMEOUT], sizeof(int));
+#endif
+  }
   return 0;
 error:
   if (pvio->data)

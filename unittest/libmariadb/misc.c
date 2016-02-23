@@ -973,6 +973,24 @@ static int test_conc117(MYSQL *mysql)
   return OK;
 }
 
+static int test_read_timeout(MYSQL *mysql)
+{
+  int timeout= 5, rc;
+  MYSQL *my= mysql_init(NULL);
+  mysql_options(my, MYSQL_OPT_READ_TIMEOUT, &timeout);
+  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(my));
+  
+  rc= mysql_query(my, "SELECT SLEEP(50)");
+
+  FAIL_IF(rc == 0, "error expected");
+  diag("error: %s", mysql_error(my));
+  
+  mysql_close(my);
+
+  return OK;
+}
+
 #ifdef HAVE_REMOTEIO
 void *remote_plugin;
 static int test_remote1(MYSQL *mysql)
@@ -1113,6 +1131,7 @@ static int test_zerofill(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_read_timeout", test_read_timeout, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_zerofill", test_zerofill, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #ifdef HAVE_REMOTEIO
   {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
