@@ -78,7 +78,7 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_ping
  mysql_ps_fetch_functions
  mysql_query
- mysql_reconnect
+ mariadb_reconnect
  mysql_read_query_result
  mysql_real_connect
  mysql_real_escape_string
