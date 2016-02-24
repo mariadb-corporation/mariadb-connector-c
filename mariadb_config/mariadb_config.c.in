@@ -2,6 +2,7 @@
 #include <ma_sys.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <mariadb_version.h>
 
 static char *mariadb_progname;
 

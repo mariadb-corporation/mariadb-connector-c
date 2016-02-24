@@ -149,7 +149,7 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
 void read_user_name(char *name);
-my_bool STDCALL mysql_reconnect(MYSQL *mysql);
+my_bool STDCALL mariadb_reconnect(MYSQL *mysql);
 static int cli_report_progress(MYSQL *mysql, uchar *packet, uint length);
 
 extern int mysql_client_plugin_init();
@@ -381,7 +381,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
   if (mysql->net.pvio == 0)
   {						/* Do reconnect if possible */
-    if (mysql_reconnect(mysql))
+    if (mariadb_reconnect(mysql))
     {
       return(1);
     }
@@ -417,7 +417,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
       goto end;
     }
     end_server(mysql);
-    if (mysql_reconnect(mysql))
+    if (mariadb_reconnect(mysql))
       goto end;
     if (ma_net_write_command(net,(uchar) command,arg,
 			  length ? length : (ulong) strlen(arg)))
@@ -1549,7 +1549,7 @@ my_suspend_hook(my_bool suspend, void *data)
 }
 #endif
 
-my_bool STDCALL mysql_reconnect(MYSQL *mysql)
+my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
 {
   MYSQL tmp_mysql;
 #ifdef HAVE_NONBLOCK
@@ -3767,7 +3767,7 @@ struct st_mariadb_api MARIADB_API=
   mysql_get_socket,
   mysql_get_timeout_value,
   mysql_get_timeout_value_ms,
-  mysql_reconnect,
+  mariadb_reconnect,
   mysql_stmt_init,
   mysql_stmt_prepare,
   mysql_stmt_execute,

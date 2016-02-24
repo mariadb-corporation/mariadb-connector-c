@@ -570,7 +570,7 @@ unsigned long STDCALL mysql_hex_string(char *to, const char *from, size_t len);
 my_socket STDCALL mysql_get_socket(MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
-my_bool STDCALL mysql_reconnect(MYSQL *mysql);
+my_bool STDCALL mariadb_reconnect(MYSQL *mysql);
 
 /* Async API */
 int STDCALL mysql_close_start(MYSQL *sock);
@@ -768,7 +768,7 @@ struct st_mariadb_api {
   my_socket (STDCALL *mysql_get_socket)(MYSQL *mysql);
   unsigned int (STDCALL *mysql_get_timeout_value)(const MYSQL *mysql);
   unsigned int (STDCALL *mysql_get_timeout_value_ms)(const MYSQL *mysql);
-  my_bool (STDCALL *mysql_reconnect)(MYSQL *mysql);
+  my_bool (STDCALL *mariadb_reconnect)(MYSQL *mysql);
   MYSQL_STMT * (STDCALL *mysql_stmt_init)(MYSQL *mysql);
   int (STDCALL *mysql_stmt_prepare)(MYSQL_STMT *stmt, const char *query, size_t length);
   int (STDCALL *mysql_stmt_execute)(MYSQL_STMT *stmt);
