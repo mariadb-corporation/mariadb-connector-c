@@ -307,12 +307,13 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
     Cred.dwMinimumCipherStrength = 128;
   Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK | SCH_SEND_ROOT_CERT |
     SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
-	if (sctx->client_cert_ctx)
-	{
+  if (sctx->client_cert_ctx)
+  {
     Cred.cCreds = 1;
     Cred.paCred = &sctx->client_cert_ctx;
   }
-    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_1 | SP_PROT_TLS1_2;
+  /* Disable TLS v_1.2 for now, we need a separate option for */    
+  Cred.grbitEnabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_1; // | SP_PROT_TLS1_2;
 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
  									            NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
