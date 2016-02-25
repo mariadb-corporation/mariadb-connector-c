@@ -1443,11 +1443,12 @@ static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
 int stmt_read_execute_response(MYSQL_STMT *stmt)
 {
   MYSQL *mysql= stmt->mysql;
-
+  int ret;
+  
   if (!mysql)
     return(1);
 
-  int ret= test((mysql->methods->db_read_stmt_result && 
+  ret= test((mysql->methods->db_read_stmt_result && 
                  mysql->methods->db_read_stmt_result(mysql)));
   /* if a reconnect occured, our connection handle is invalid */
   if (!stmt->mysql)
