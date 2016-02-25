@@ -116,10 +116,10 @@ static struct {
 
 void sspi_errmsg(int err, char *buf, size_t size)
 {
-  buf[size - 1] = 0;
-  size_t len;
+  size_t len,i;
 
-  for (size_t i= 0; error_symbols[i].sym; i++)
+  buf[size - 1] = 0;
+  for (i= 0; error_symbols[i].sym; i++)
   {
     if (error_symbols[i].error == err)
     {
