@@ -322,7 +322,6 @@ static int my_verify_callback(gnutls_session_t ssl)
   unsigned int status;
   const gnutls_datum_t *cert_list;
   unsigned int cert_list_size;
-  int ret;
   MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
   MARIADB_PVIO *pvio= mysql->net.pvio;
   gnutls_x509_crt_t cert;
@@ -331,15 +330,11 @@ static int my_verify_callback(gnutls_session_t ssl)
   /* read hostname */
   hostname = mysql->host;
 
-  /* skip verification if no ca_file/path was specified */
-  if (!mysql->options.ssl_ca)
-    return 0;
-
   /* This verification function uses the trusted CAs in the credentials
    * structure. So you must have installed one or more CA certificates.
    */
-  ret = gnutls_certificate_verify_peers2 (ssl, &status);
-  if (ret < 0)
+  if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT)  &&
+        gnutls_certificate_verify_peers2 (ssl, &status) < 0)
   {
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CA verification failed");
     return GNUTLS_E_CERTIFICATE_ERROR;
