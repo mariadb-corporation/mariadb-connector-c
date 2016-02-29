@@ -29,6 +29,8 @@ extern "C" {
 #define LIBMARIADB
 #endif
 
+#include <stdarg.h>
+
 #ifndef _global_h				/* If not standard header */
 #include <sys/types.h>
 typedef char my_bool;
