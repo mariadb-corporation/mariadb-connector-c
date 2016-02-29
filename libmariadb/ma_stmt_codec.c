@@ -137,7 +137,11 @@ static longlong my_atoll(const char *number, const char *end, int *error)
   buffer[(uint)(end - number)]= 0;
 
   errno= 0;
+#ifdef _MSC_VER
+  llval =  _strtoi64(buffer, NULL, 10);
+#else
   llval= strtoll(buffer, NULL, 10);
+#endif
 
   /* check size */
   if ((uint)(end - number) > 254)
