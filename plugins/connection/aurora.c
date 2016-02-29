@@ -186,7 +186,7 @@ my_bool aurora_parse_url(const char *url, AURORA *aurora)
   /* get instances */ 
   while((c))
   {
-    if (p= strchr(c, ','))
+    if ((p= strchr(c, ',')))
     {
       *p= '\0';
       p++;
@@ -256,7 +256,7 @@ int aurora_get_instance_type(MYSQL *mysql)
   if (!mariadb_api->mysql_query(mysql, query))
   {
     MYSQL_RES *res= mariadb_api->mysql_store_result(mysql);
-    rc= mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
+    rc= mariadb_api->mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
     mariadb_api->mysql_free_result(res);
   }
   mysql->net.extension->conn_hdlr= save_hdlr;
