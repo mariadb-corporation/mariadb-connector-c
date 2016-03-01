@@ -503,10 +503,26 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
                   (is_read) ? NULL : &fds,
                   &exc_fds, 
                   (timeout >= 0) ? &tv : NULL);
+
     if (rc == SOCKET_ERROR)
+    {
       errno= WSAGetLastError();
-    if (rc == 0)
+    }
+    else if (rc == 0)
+    {
+      rc= SOCKET_ERROR;
       errno= ETIMEDOUT;
+    }
+    else if (FD_ISSET(csock->socket, &exc_fds))
+    {
+      int err;
+      if (getsockopt(csock->socket, SOL_SOCKET, SO_ERROR, (char *)&err, sizeof(err)) != SOCKET_ERROR)
+      {
+        errno= err;
+      }
+      rc= SOCKET_ERROR;
+    }
+   
 #endif
   }
   return rc;
