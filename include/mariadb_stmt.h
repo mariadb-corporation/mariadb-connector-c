@@ -111,8 +111,8 @@ typedef struct st_mysqlnd_upsert_result
 {
   unsigned int  warning_count;
   unsigned int  server_status;
-  my_ulonglong affected_rows;
-  my_ulonglong last_insert_id;
+  unsigned long long affected_rows;
+  unsigned long long last_insert_id;
 } mysql_upsert_status;
 
 typedef struct st_mysql_cmd_buffer
@@ -137,7 +137,7 @@ struct st_mysqlnd_stmt_methods
   MYSQL_RES * (*store_result)(const MYSQL_STMT * stmt);
   MYSQL_RES * (*get_result)(const MYSQL_STMT * stmt);
   my_bool (*free_result)(const MYSQL_STMT * stmt);
-  my_bool (*seek_data)(const MYSQL_STMT * stmt, my_ulonglong row);
+  my_bool (*seek_data)(const MYSQL_STMT * stmt, unsigned long long row);
   my_bool (*reset)(const MYSQL_STMT * stmt);
   my_bool (*close)(const MYSQL_STMT * stmt); /* private */
   my_bool (*dtor)(const MYSQL_STMT * stmt); /* use this for mysqlnd_stmt_close */
@@ -151,9 +151,9 @@ struct st_mysqlnd_stmt_methods
                             const char * const data, size_t length);
   MYSQL_RES *(*get_parameter_metadata)(const MYSQL_STMT * stmt);
   MYSQL_RES *(*get_result_metadata)(const MYSQL_STMT * stmt);
-  my_ulonglong (*get_last_insert_id)(const MYSQL_STMT * stmt);
-  my_ulonglong (*get_affected_rows)(const MYSQL_STMT * stmt);
-  my_ulonglong (*get_num_rows)(const MYSQL_STMT * stmt);
+  unsigned long long (*get_last_insert_id)(const MYSQL_STMT * stmt);
+  unsigned long long (*get_affected_rows)(const MYSQL_STMT * stmt);
+  unsigned long long (*get_num_rows)(const MYSQL_STMT * stmt);
 
   unsigned int (*get_param_count)(const MYSQL_STMT * stmt);
   unsigned int (*get_field_count)(const MYSQL_STMT * stmt);
@@ -246,10 +246,10 @@ const char *STDCALL mysql_stmt_error(MYSQL_STMT * stmt);
 const char *STDCALL mysql_stmt_sqlstate(MYSQL_STMT * stmt);
 MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_seek(MYSQL_STMT *stmt, MYSQL_ROW_OFFSET offset);
 MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_tell(MYSQL_STMT *stmt);
-void STDCALL mysql_stmt_data_seek(MYSQL_STMT *stmt, my_ulonglong offset);
-my_ulonglong STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt);
-my_ulonglong STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt);
-my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt);
+void STDCALL mysql_stmt_data_seek(MYSQL_STMT *stmt, unsigned long long offset);
+unsigned long long STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt);
+unsigned long long STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt);
+unsigned long long STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt);
 unsigned int STDCALL mysql_stmt_field_count(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt);
 my_bool STDCALL mysql_stmt_more_results(MYSQL_STMT *stmt);

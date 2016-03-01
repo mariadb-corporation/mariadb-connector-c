@@ -586,7 +586,7 @@ static int test_bug21726(MYSQL *mysql)
   };
   const char *update_query= "UPDATE t1 SET i= LAST_INSERT_ID(i + 1)";
   int rc;
-  my_ulonglong insert_id;
+  unsigned long long insert_id;
   const char *select_query= "SELECT * FROM t1";
   MYSQL_RES  *result;
 

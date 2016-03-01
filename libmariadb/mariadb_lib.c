@@ -320,35 +320,35 @@ net_field_length(uchar **packet)
 
 /* Same as above, but returns ulonglong values */
 
-static my_ulonglong
+static unsigned long long
 net_field_length_ll(uchar **packet)
 {
   reg1 uchar *pos= *packet;
   if (*pos < 251)
   {
     (*packet)++;
-    return (my_ulonglong) *pos;
+    return (unsigned long long) *pos;
   }
   if (*pos == 251)
   {
     (*packet)++;
-    return (my_ulonglong) NULL_LENGTH;
+    return (unsigned long long) NULL_LENGTH;
   }
   if (*pos == 252)
   {
     (*packet)+=3;
-    return (my_ulonglong) uint2korr(pos+1);
+    return (unsigned long long) uint2korr(pos+1);
   }
   if (*pos == 253)
   {
     (*packet)+=4;
-    return (my_ulonglong) uint3korr(pos+1);
+    return (unsigned long long) uint3korr(pos+1);
   }
   (*packet)+=9;					/* Must be 254 when here */
 #ifdef NO_CLIENT_LONGLONG
-  return (my_ulonglong) uint4korr(pos+1);
+  return (unsigned long long) uint4korr(pos+1);
 #else
-  return (my_ulonglong) uint8korr(pos+1);
+  return (unsigned long long) uint8korr(pos+1);
 #endif
 }
 
@@ -403,7 +403,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   CLEAR_CLIENT_ERROR(mysql);
 
   mysql->info=0;
-  mysql->affected_rows= ~(my_ulonglong) 0;
+  mysql->affected_rows= ~(unsigned long long) 0;
   ma_net_clear(net);			/* Clear receive buffer */
   if (!arg)
     arg="";
@@ -1636,7 +1636,7 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   *mysql=tmp_mysql;
   mysql->net.pvio->mysql= mysql;
   ma_net_clear(&mysql->net);
-  mysql->affected_rows= ~(my_ulonglong) 0;
+  mysql->affected_rows= ~(unsigned long long) 0;
   mysql->info= 0;
   return(0);
 }
@@ -2182,7 +2182,7 @@ mysql_fetch_lengths(MYSQL_RES *res)
 **************************************************************************/
 
 void STDCALL
-mysql_data_seek(MYSQL_RES *result, my_ulonglong row)
+mysql_data_seek(MYSQL_RES *result, unsigned long long row)
 {
   MYSQL_ROWS	*tmp=0;
   if (result->data)
@@ -3093,7 +3093,7 @@ mysql_options4(MYSQL *mysql,enum mysql_option option, const void *arg1, const vo
 ****************************************************************************/
 
 /* MYSQL_RES */
-my_ulonglong STDCALL mysql_num_rows(MYSQL_RES *res)
+unsigned long long STDCALL mysql_num_rows(MYSQL_RES *res)
 {
   return res->row_count;
 }
@@ -3136,7 +3136,7 @@ unsigned int STDCALL mysql_field_count(MYSQL *mysql)
   return mysql->field_count;
 }
 
-my_ulonglong STDCALL mysql_affected_rows(MYSQL *mysql)
+unsigned long long STDCALL mysql_affected_rows(MYSQL *mysql)
 {
   return (mysql)->affected_rows;
 }
@@ -3157,7 +3157,7 @@ my_bool STDCALL mysql_rollback(MYSQL *mysql)
   return((my_bool)mysql_real_query(mysql, "ROLLBACK", sizeof("ROLLBACK")));
 }
 
-my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql)
+unsigned long long STDCALL mysql_insert_id(MYSQL *mysql)
 {
   return (mysql)->insert_id;
 }

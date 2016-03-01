@@ -395,7 +395,7 @@ static int test_bad_union(MYSQL *mysql)
 */
 static int test_mysql_insert_id(MYSQL *mysql)
 {
-  my_ulonglong res;
+  unsigned long long res;
   int rc;
 
   if (mysql_get_server_version(mysql) < 50100) {

@@ -380,18 +380,18 @@ MYSQL_RES *_mysql_stmt_use_result(MYSQL_STMT *stmt)
 
 unsigned char *mysql_net_store_length(unsigned char *packet, size_t length)
 {
-  if (length < (my_ulonglong) L64(251)) {
+  if (length < (unsigned long long) L64(251)) {
     *packet = (unsigned char) length;
     return packet + 1;
   }
 
-  if (length < (my_ulonglong) L64(65536)) {
+  if (length < (unsigned long long) L64(65536)) {
     *packet++ = 252;
     int2store(packet,(uint) length);
     return packet + 2;
   }
 
-  if (length < (my_ulonglong) L64(16777216)) {
+  if (length < (unsigned long long) L64(16777216)) {
     *packet++ = 253;
     int3store(packet,(ulong) length);
     return packet + 3;
@@ -422,7 +422,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     (*p) += 8;
     break;
   case MYSQL_TYPE_LONGLONG:
-    int8store(*p, *(my_ulonglong *)stmt->params[column].buffer);
+    int8store(*p, *(unsigned long long *)stmt->params[column].buffer);
     (*p) += 8;
     break;
   case MYSQL_TYPE_LONG:
@@ -695,14 +695,14 @@ mem_error:
 /*!
  *******************************************************************************
 
- \fn        my_ulonglong mysql_stmt_affected_rows
+ \fn        unsigned long long mysql_stmt_affected_rows
  \brief     returns the number of affected rows from last mysql_stmt_execute 
  call
 
  \param[in]  stmt The statement handle
  *******************************************************************************
  */
-my_ulonglong STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt)
+unsigned long long STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt)
 {
   return stmt->upsert_status.affected_rows;
 }
@@ -1006,9 +1006,9 @@ my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
   return(0);
 }
 
-void STDCALL mysql_stmt_data_seek(MYSQL_STMT *stmt, my_ulonglong offset)
+void STDCALL mysql_stmt_data_seek(MYSQL_STMT *stmt, unsigned long long offset)
 {
-  my_ulonglong i= offset;
+  unsigned long long i= offset;
   MYSQL_ROWS *ptr= stmt->result.data;
 
   while(i-- && ptr)
@@ -1235,7 +1235,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   /* clear flags */
   CLEAR_CLIENT_STMT_ERROR(stmt);
   CLEAR_CLIENT_ERROR(stmt->mysql);
-  stmt->upsert_status.affected_rows= mysql->affected_rows= (my_ulonglong) ~0;
+  stmt->upsert_status.affected_rows= mysql->affected_rows= (unsigned long long) ~0;
 
   /* check if we have to clear results */
   if (stmt->state > MYSQL_STMT_INITTED)
@@ -1859,12 +1859,12 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
   return(0);
 }
 
-my_ulonglong STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt)
+unsigned long long STDCALL mysql_stmt_insert_id(MYSQL_STMT *stmt)
 {
   return stmt->upsert_status.last_insert_id;
 }
 
-my_ulonglong STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt)
+unsigned long long STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt)
 {
   return stmt->result.rows;
 }

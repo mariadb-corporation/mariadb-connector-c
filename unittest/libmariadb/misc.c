@@ -51,7 +51,7 @@ static int test_bug28075(MYSQL *mysql)
 
 static int test_bug28505(MYSQL *mysql)
 {
-  my_ulonglong res;
+  unsigned long long res;
   int rc;
 
   rc= mysql_query(mysql, "drop table if exists t1");

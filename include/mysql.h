@@ -31,7 +31,7 @@ extern "C" {
 
 #include <stdarg.h>
 
-#ifndef _global_h				/* If not standard header */
+#if !defined (_global_h) && !defined (MY_GLOBAL_INCLUDED) /* If not standard header */
 #include <sys/types.h>
 typedef char my_bool;
 
@@ -40,7 +40,6 @@ typedef char my_bool;
 #else
 #define STDCALL __stdcall
 #endif
-typedef char * gptr;
 
 
 
@@ -120,14 +119,6 @@ extern unsigned int mariadb_deinitialize_ssl;
   typedef char **MYSQL_ROW;		/* return data as array of strings */
   typedef unsigned int MYSQL_FIELD_OFFSET; /* offset to current field */
 
-#if defined(NO_CLIENT_LONG_LONG)
-  typedef unsigned long my_ulonglong;
-#elif defined (_WIN32)
-  typedef unsigned __int64 my_ulonglong;
-#else
-  typedef unsigned long long my_ulonglong;
-#endif
-
 #define SET_CLIENT_ERROR(a, b, c, d) \
   { \
     (a)->net.last_errno= (b);\
@@ -146,7 +137,7 @@ extern unsigned int mariadb_deinitialize_ssl;
     (a)->net.last_error[0]= '\0';\
   }
 
-#define MYSQL_COUNT_ERROR (~(my_ulonglong) 0)
+#define MYSQL_COUNT_ERROR (~(unsigned long long) 0)
 
 
   typedef struct st_mysql_rows {
@@ -158,7 +149,7 @@ extern unsigned int mariadb_deinitialize_ssl;
   typedef MYSQL_ROWS *MYSQL_ROW_OFFSET;	/* offset to current row */
 
   typedef struct st_mysql_data {
-    my_ulonglong rows;
+    unsigned long long rows;
     unsigned int fields;
     MYSQL_ROWS *data;
     MA_MEM_ROOT alloc;
@@ -330,9 +321,9 @@ struct st_mysql_options {
     const struct ma_charset_info_st *charset;      /* character set */
     MYSQL_FIELD *fields;
     MA_MEM_ROOT field_alloc;
-    my_ulonglong affected_rows;
-    my_ulonglong insert_id;		/* id if insert on table with NEXTNR */
-    my_ulonglong extra_info;		/* Used by mysqlshow */
+    unsigned long long affected_rows;
+    unsigned long long insert_id;		/* id if insert on table with NEXTNR */
+    unsigned long long extra_info;		/* Used by mysqlshow */
     unsigned long thread_id;		/* Id for connection in server */
     unsigned long packet_length;
     unsigned int port;
@@ -360,7 +351,7 @@ struct st_mysql_options {
 } MYSQL;
 
 typedef struct st_mysql_res {
-  my_ulonglong  row_count;
+  unsigned long long  row_count;
   unsigned int	field_count, current_field;
   MYSQL_FIELD	*fields;
   MYSQL_DATA	*data;
@@ -463,7 +454,7 @@ void my_set_error(MYSQL *mysql, unsigned int error_nr,
 /* Functions to get information from the MYSQL and MYSQL_RES structures */
 /* Should definitely be used if one uses shared libraries */
 
-my_ulonglong STDCALL mysql_num_rows(MYSQL_RES *res);
+unsigned long long STDCALL mysql_num_rows(MYSQL_RES *res);
 unsigned int STDCALL mysql_num_fields(MYSQL_RES *res);
 my_bool STDCALL mysql_eof(MYSQL_RES *res);
 MYSQL_FIELD *STDCALL mysql_fetch_field_direct(MYSQL_RES *res,
@@ -475,11 +466,11 @@ unsigned int STDCALL mysql_field_tell(MYSQL_RES *res);
 unsigned int STDCALL mysql_field_count(MYSQL *mysql);
 my_bool STDCALL mysql_more_results(MYSQL *mysql);
 int STDCALL mysql_next_result(MYSQL *mysql);
-my_ulonglong STDCALL mysql_affected_rows(MYSQL *mysql);
+unsigned long long STDCALL mysql_affected_rows(MYSQL *mysql);
 my_bool STDCALL mysql_autocommit(MYSQL *mysql, my_bool mode);
 my_bool STDCALL mysql_commit(MYSQL *mysql);
 my_bool STDCALL mysql_rollback(MYSQL *mysql);
-my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql);
+unsigned long long STDCALL mysql_insert_id(MYSQL *mysql);
 unsigned int STDCALL mysql_errno(MYSQL *mysql);
 char * STDCALL mysql_error(MYSQL *mysql);
 char * STDCALL mysql_info(MYSQL *mysql);
@@ -536,7 +527,7 @@ int		STDCALL mysql_options4(MYSQL *mysql,enum mysql_option option,
 				      const void *arg1, const void *arg2);
 void		STDCALL mysql_free_result(MYSQL_RES *result);
 void		STDCALL mysql_data_seek(MYSQL_RES *result,
-					my_ulonglong offset);
+					unsigned long long offset);
 MYSQL_ROW_OFFSET STDCALL mysql_row_seek(MYSQL_RES *result, MYSQL_ROW_OFFSET);
 MYSQL_FIELD_OFFSET STDCALL mysql_field_seek(MYSQL_RES *result,
 					   MYSQL_FIELD_OFFSET offset);
@@ -687,7 +678,7 @@ int STDCALL mysql_stmt_send_long_data_cont(my_bool *ret, MYSQL_STMT *stmt,
 
 /* API function calls (used by dynmic plugins) */
 struct st_mariadb_api {
-  my_ulonglong (STDCALL *mysql_num_rows)(MYSQL_RES *res);
+  unsigned long long (STDCALL *mysql_num_rows)(MYSQL_RES *res);
   unsigned int (STDCALL *mysql_num_fields)(MYSQL_RES *res);
   my_bool (STDCALL *mysql_eof)(MYSQL_RES *res);
   MYSQL_FIELD *(STDCALL *mysql_fetch_field_direct)(MYSQL_RES *res, unsigned int fieldnr);
@@ -697,11 +688,11 @@ struct st_mariadb_api {
   unsigned int (STDCALL *mysql_field_count)(MYSQL *mysql);
   my_bool (STDCALL *mysql_more_results)(MYSQL *mysql);
   int (STDCALL *mysql_next_result)(MYSQL *mysql);
-  my_ulonglong (STDCALL *mysql_affected_rows)(MYSQL *mysql);
+  unsigned long long (STDCALL *mysql_affected_rows)(MYSQL *mysql);
   my_bool (STDCALL *mysql_autocommit)(MYSQL *mysql, my_bool mode);
   my_bool (STDCALL *mysql_commit)(MYSQL *mysql);
   my_bool (STDCALL *mysql_rollback)(MYSQL *mysql);
-  my_ulonglong (STDCALL *mysql_insert_id)(MYSQL *mysql);
+  unsigned long long (STDCALL *mysql_insert_id)(MYSQL *mysql);
   unsigned int (STDCALL *mysql_errno)(MYSQL *mysql);
   char * (STDCALL *mysql_error)(MYSQL *mysql);
   char * (STDCALL *mysql_info)(MYSQL *mysql);
@@ -740,7 +731,7 @@ struct st_mariadb_api {
   MYSQL_RES * (STDCALL *mysql_use_result)(MYSQL *mysql);
   int (STDCALL *mysql_options)(MYSQL *mysql,enum mysql_option option, const void *arg);
   void (STDCALL *mysql_free_result)(MYSQL_RES *result);
-  void (STDCALL *mysql_data_seek)(MYSQL_RES *result, my_ulonglong offset);
+  void (STDCALL *mysql_data_seek)(MYSQL_RES *result, unsigned long long offset);
   MYSQL_ROW_OFFSET (STDCALL *mysql_row_seek)(MYSQL_RES *result, MYSQL_ROW_OFFSET);
   MYSQL_FIELD_OFFSET (STDCALL *mysql_field_seek)(MYSQL_RES *result, MYSQL_FIELD_OFFSET offset);
   MYSQL_ROW (STDCALL *mysql_fetch_row)(MYSQL_RES *result);
@@ -793,10 +784,10 @@ struct st_mariadb_api {
   const char *(STDCALL *mysql_stmt_sqlstate)(MYSQL_STMT * stmt);
   MYSQL_ROW_OFFSET (STDCALL *mysql_stmt_row_seek)(MYSQL_STMT *stmt, MYSQL_ROW_OFFSET offset);
   MYSQL_ROW_OFFSET (STDCALL *mysql_stmt_row_tell)(MYSQL_STMT *stmt);
-  void (STDCALL *mysql_stmt_data_seek)(MYSQL_STMT *stmt, my_ulonglong offset);
-  my_ulonglong (STDCALL *mysql_stmt_num_rows)(MYSQL_STMT *stmt);
-  my_ulonglong (STDCALL *mysql_stmt_affected_rows)(MYSQL_STMT *stmt);
-  my_ulonglong (STDCALL *mysql_stmt_insert_id)(MYSQL_STMT *stmt);
+  void (STDCALL *mysql_stmt_data_seek)(MYSQL_STMT *stmt, unsigned long long offset);
+  unsigned long long (STDCALL *mysql_stmt_num_rows)(MYSQL_STMT *stmt);
+  unsigned long long (STDCALL *mysql_stmt_affected_rows)(MYSQL_STMT *stmt);
+  unsigned long long (STDCALL *mysql_stmt_insert_id)(MYSQL_STMT *stmt);
   unsigned int (STDCALL *mysql_stmt_field_count)(MYSQL_STMT *stmt);
   int (STDCALL *mysql_stmt_next_result)(MYSQL_STMT *stmt);
   my_bool (STDCALL *mysql_stmt_more_results)(MYSQL_STMT *stmt);

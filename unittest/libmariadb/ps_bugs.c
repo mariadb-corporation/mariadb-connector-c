@@ -1260,7 +1260,7 @@ static int test_bug23383(MYSQL *mysql)
   const char *insert_query= "INSERT INTO t1 VALUES (1), (2)";
   const char *update_query= "UPDATE t1 SET i= 4 WHERE i = 3";
   MYSQL_STMT *stmt;
-  my_ulonglong row_count;
+  unsigned long long row_count;
   int rc;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
@@ -1277,7 +1277,7 @@ static int test_bug23383(MYSQL *mysql)
   rc= mysql_query(mysql, insert_query);
   FAIL_IF(!rc, "Error expected");
   row_count= mysql_affected_rows(mysql);
-  FAIL_UNLESS(row_count == (my_ulonglong)-1, "rowcount != -1");
+  FAIL_UNLESS(row_count == (unsigned long long)-1, "rowcount != -1");
 
   rc= mysql_query(mysql, update_query);
   check_mysql_rc(rc, mysql);
@@ -1300,7 +1300,7 @@ static int test_bug23383(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   FAIL_UNLESS(rc != 0, "");
   row_count= mysql_stmt_affected_rows(stmt);
-  FAIL_UNLESS(row_count == (my_ulonglong)-1, "rowcount != -1");
+  FAIL_UNLESS(row_count == (unsigned long long)-1, "rowcount != -1");
 
   rc= mysql_stmt_prepare(stmt, update_query, strlen(update_query));
   check_stmt_rc(rc, stmt);
