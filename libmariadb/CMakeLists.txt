@@ -354,6 +354,10 @@ IF(UNIX)
 ENDIF()
 SIGN_TARGET(libmariadb)
 
+IF(CMAKE_SIZEOF_VOID_P EQUAL 8 AND MSVC)
+  SET_TARGET_PROPERTIES(mariadbclient PROPERTIES STATIC_LIBRARY_FLAGS "/machine:x64")
+ENDIF()
+
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
   TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
   TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${CMAKE_BINARY_DIR}/libmariadb/mariadbclient.def")

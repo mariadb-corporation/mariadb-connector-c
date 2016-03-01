@@ -28,6 +28,7 @@
 #include <openssl/ssl.h> /* SSL and SSL_CTX */
 #include <openssl/err.h> /* error reporting */
 #include <openssl/conf.h>
+#include <openssl/md4.h>
 
 #ifndef HAVE_OPENSSL_DEFAULT
 #include <memory.h>
@@ -110,6 +111,85 @@ static void my_cb_threadid(CRYPTO_THREADID *id)
 }
 #endif
 
+#ifdef HAVE_OPENSSL_SESSION_TICKET
+typedef struct st_ma_ssl_session {
+  char md4_hash[17];
+  SSL_SESSION *session;
+} MA_SSL_SESSION;
+
+MA_SSL_SESSION *ma_ssl_sessions= NULL;
+unsigned int ma_ssl_session_cache_size= 128;
+
+static char *ma_md4_hash(const char *host, unsigned int port, char *md4)
+{
+  char buffer[260];
+  snprintf(buffer, 258, "%s:%d", host, port);
+  MD4(buffer, strlen(buffer), md4);
+  return md4;
+}
+
+MA_SSL_SESSION *ma_ssl_get_session(MYSQL *mysql)
+{
+  char md4[17];
+  int i;
+
+  if (!ma_ssl_sessions)
+    return NULL;
+
+  memset(md4, 0, 16);
+  ma_md4_hash(mysql->host, mysql->port, md4);
+  for (i=0; i < ma_ssl_session_cache_size; i++)
+  {
+    if (ma_ssl_sessions[i].session &&
+        !strncmp(ma_ssl_sessions[i].md4_hash, md4, 16))
+    {
+      return &ma_ssl_sessions[i];
+    }
+  }
+  return NULL;
+}
+
+static int ma_ssl_session_cb(SSL *ssl, SSL_SESSION *session)
+{
+  MYSQL *mysql;
+  MA_SSL_SESSION *stored_session;
+  int i;
+
+  mysql= (MYSQL *)SSL_get_app_data(ssl);
+
+  /* check if we already stored session key */
+  if ((stored_session= ma_ssl_get_session(mysql)))
+  {
+    SSL_SESSION_free(stored_session->session);
+    stored_session->session= session;
+    return 1;
+  }
+
+  for (i=0; i < ma_ssl_session_cache_size; i++)
+  {
+    if (!ma_ssl_sessions[i].session)
+    {
+      ma_md4_hash(mysql->host, mysql->port, ma_ssl_sessions[i].md4_hash);
+      ma_ssl_sessions[i].session= session;
+    }
+    return 1;
+  }
+  return 0;
+}
+
+static void ma_ssl_remove_session_cb(SSL_CTX* ctx, SSL_SESSION* session)
+{
+  int i;
+  for (i=0; i < ma_ssl_session_cache_size; i++)
+    if (session == ma_ssl_sessions[i].session)
+    {
+      ma_ssl_sessions[i].md4_hash[0]= 0;
+      SSL_SESSION_free(ma_ssl_sessions[i].session);
+      ma_ssl_sessions[i].session= NULL;
+    }
+}
+#endif
+
 static void my_cb_locking(int mode, int n, const char *file, int line)
 {
   if (mode & CRYPTO_LOCK)
@@ -188,6 +268,12 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
     ma_ssl_get_error(errmsg, errmsg_len);
     goto end;
   }
+#ifdef HAVE_OPENSSL_SESSION_TICKET
+  SSL_CTX_set_session_cache_mode(SSL_context, SSL_SESS_CACHE_CLIENT);
+  ma_ssl_sessions= (MA_SSL_SESSION *)calloc(1, sizeof(struct st_ma_ssl_session) * ma_ssl_session_cache_size);
+  SSL_CTX_sess_set_new_cb(SSL_context, ma_ssl_session_cb);
+  SSL_CTX_sess_set_remove_cb(SSL_context, ma_ssl_remove_session_cb);
+#endif
   rc= 0;
   ma_ssl_initialized= TRUE;
 end:
@@ -366,7 +452,9 @@ void *ma_ssl_init(MYSQL *mysql)
 {
   int verify;
   SSL *ssl= NULL;
-
+#ifdef HAVE_OPENSSL_SESSION_TICKET
+  MA_SSL_SESSION *session= ma_ssl_get_session(mysql);
+#endif
   pthread_mutex_lock(&LOCK_openssl_config);
 
   if (ma_ssl_set_certs(mysql))
@@ -379,6 +467,11 @@ void *ma_ssl_init(MYSQL *mysql)
 
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
+
+#ifdef HAVE_OPENSSL_SESSION_TICKET
+  if (session)
+    SSL_set_session(ssl, session->session);
+#endif
 
   verify= (!mysql->options.ssl_ca && !mysql->options.ssl_capath) ?
            SSL_VERIFY_NONE : SSL_VERIFY_PEER;
