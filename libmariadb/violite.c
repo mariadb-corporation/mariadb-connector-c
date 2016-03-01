@@ -109,7 +109,7 @@ void vio_timeout(Vio *vio, int type, uint timeval)
   uint timeout= timeval; /* milli secs */
 #else
   struct timeval timeout;
-  timeout.tv_sec= timeval;
+  timeout.tv_sec= timeval / 1000;
   timeout.tv_usec= (timeval % 1000) * 1000;
 #endif
 
