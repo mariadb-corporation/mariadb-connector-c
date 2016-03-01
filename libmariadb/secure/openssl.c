@@ -689,18 +689,26 @@ my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *ve
   ssl = (SSL *)cssl->ssl;
   switch(ssl->version)
   {
+#ifdef SSL3_VERSION
     case SSL3_VERSION:
       version->iversion= 1;
       break;
+#endif
+#ifdef TLS1_VERSION
     case TLS1_VERSION:
       version->iversion= 2;
       break;
+#endif
+#ifdef TLS1_1_VERSION
     case TLS1_1_VERSION:
       version->iversion= 3;
       break;
+#endif
+#ifdef TLS1_2_VERSION
     case TLS1_2_VERSION:
       version->iversion= 4;
       break;
+#endif
     default:
       version->iversion= 0;
       break;
