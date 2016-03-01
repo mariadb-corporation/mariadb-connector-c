@@ -516,7 +516,8 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
     else if (FD_ISSET(csock->socket, &exc_fds))
     {
       int err;
-      if (getsockopt(csock->socket, SOL_SOCKET, SO_ERROR, (char *)&err, sizeof(err)) != SOCKET_ERROR)
+      int len = sizeof(int);
+      if (getsockopt(csock->socket, SOL_SOCKET, SO_ERROR, (char *)&err, &len) != SOCKET_ERROR)
       {
         errno= err;
       }
