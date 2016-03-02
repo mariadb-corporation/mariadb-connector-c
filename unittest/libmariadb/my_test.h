@@ -27,6 +27,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <tap.h>
 #include "ma_getopt.h"
 #include <memory.h>
+#include <string.h>
 #include <ma_errmsg.h>
 
 #ifndef WIN32
