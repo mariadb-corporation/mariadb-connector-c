@@ -327,7 +327,9 @@ size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 #endif
   return r;
 }
+/* }}} */
 
+#ifndef _WIN32
 ssize_t ma_send(int socket, const uchar *buffer, size_t length, int flags)
 {
   ssize_t r;
@@ -342,7 +344,7 @@ ssize_t ma_send(int socket, const uchar *buffer, size_t length, int flags)
 #endif
   return r;
 }
-/* }}} */
+#endif
 
 /* {{{ pvio_socket_async_write */
 /*
