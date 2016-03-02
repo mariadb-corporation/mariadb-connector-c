@@ -942,7 +942,8 @@ void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
           r_param->buffer_type != MYSQL_TYPE_LONG_BLOB &&
           r_param->buffer_type != MYSQL_TYPE_BLOB))
   {
-    return ps_fetch_string(r_param, field, row);
+    ps_fetch_string(r_param, field, row);
+    return;
   }
   field_length= net_field_length(row);
 

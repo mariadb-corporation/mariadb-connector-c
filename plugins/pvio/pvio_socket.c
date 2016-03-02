@@ -236,12 +236,7 @@ size_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
-#ifdef __APPLE__
   int read_flags= 0;
-#else
-  /* don't ignore SIGPIPE globally like in libmysql!! */
-  int read_flags= MSG_NOSIGNAL;
-#endif
 #endif
   struct st_pvio_socket *csock= NULL;
 
@@ -313,11 +308,7 @@ size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
-#ifdef __APPLE__
   int read_flags= MSG_DONTWAIT;
-#else
-  int read_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
-#endif
 #endif
   struct st_pvio_socket *csock= NULL;
 
@@ -333,6 +324,21 @@ size_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
      socket to non blocking */
   pvio_socket_blocking(pvio, 0, 0);
   r= recv(csock->socket, (char *)buffer, (int)length, 0);
+#endif
+  return r;
+}
+
+ssize_t ma_send(int socket, const uchar *buffer, size_t length, int flags)
+{
+  ssize_t r;
+#if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE)
+  struct sigaction act, oldact;
+  act.sa_handler= SIG_IGN;
+  sigaction(SIGPIPE, &act, &oldact);
+#endif
+  r= send(socket, buffer, length, flags);
+#if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE)
+  sigaction(SIGPIPE, &oldact, NULL);
 #endif
   return r;
 }
@@ -362,10 +368,9 @@ size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t l
 {
   ssize_t r= -1;
 #ifndef _WIN32
-#ifdef __APPLE__
   int write_flags= MSG_DONTWAIT;
-#else
-  int write_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
+#ifdef MSG_NOSIGNAL
+  write_flags|= MSG_NOSIGNAL;
 #endif
 #endif
   struct st_pvio_socket *csock= NULL;
@@ -376,13 +381,14 @@ size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t l
   csock= (struct st_pvio_socket *)pvio->data;
 
 #ifndef WIN32
-  r= send(csock->socket, buffer, length, write_flags);
+  r= ma_send(csock->socket, buffer, length, write_flags);
 #else
   /* Windows doesn't support MSG_DONTWAIT, so we need to set
      socket to non blocking */
   pvio_socket_blocking(pvio, 0, 0);
   r= send(csock->socket, buffer, (int)length, 0);
 #endif
+
   return r;
 }
 /* }}} */
@@ -412,10 +418,9 @@ size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
 #ifndef _WIN32
-#ifdef __APPLE__
   int send_flags= MSG_DONTWAIT;
-#else
-  int send_flags= MSG_NOSIGNAL | MSG_DONTWAIT;
+#ifdef MSG_NOSIGNAL
+  send_flags|= MSG_NOSIGNAL;
 #endif
 #endif
   struct st_pvio_socket *csock= NULL;
@@ -426,7 +431,7 @@ size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 
 #ifndef _WIN32
   do {
-    r= send(csock->socket, buffer, length, send_flags);
+    r= ma_send(csock->socket, buffer, length, send_flags);
   } while (r == -1 && errno == EINTR);
 
   while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) &&
@@ -435,7 +440,7 @@ size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
     if (pvio_socket_wait_io_or_timeout(pvio, FALSE, pvio->timeout[PVIO_WRITE_TIMEOUT]) < 1)
       return -1;
     do {
-      r= send(csock->socket, buffer, length, send_flags);
+      r= ma_send(csock->socket, buffer, length, send_flags);
     } while (r == -1 && errno == EINTR);
   }
 #else
