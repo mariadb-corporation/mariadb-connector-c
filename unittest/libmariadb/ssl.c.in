@@ -182,8 +182,8 @@ static int test_conc95(MYSQL *my)
   if (!mysql_real_connect(mysql, hostname, "ssluser1", sslpw, schema,
            port, socketname, 0))
   {
+    diag("could not establish x509 connection. Error: %s", mysql_error(mysql));
     mysql_close(mysql);
-    diag("could not establish x509 connection");
     return FAIL;
   }
   mysql_close(mysql);

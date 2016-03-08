@@ -1349,8 +1349,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     goto error;
   }
-  strcpy(mysql->host_info,host_info);
-  strcpy(mysql->host, cinfo.host);
   if (cinfo.unix_socket)
     mysql->unix_socket= strdup(cinfo.unix_socket);
   else
@@ -1512,6 +1510,9 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
   strcpy(mysql->net.sqlstate, "00000");
 
+  /* connection established, apply timeouts */
+  ma_pvio_set_timeout(mysql->net.pvio, PVIO_READ_TIMEOUT, mysql->options.read_timeout);
+  ma_pvio_set_timeout(mysql->net.pvio, PVIO_WRITE_TIMEOUT, mysql->options.write_timeout);
   return(mysql);
 
 error:
@@ -1557,6 +1558,7 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   struct mysql_async_context *ctxt= NULL;
 #endif
   LIST *li_stmt= mysql->stmts;
+  mysql_init(&tmp_mysql);
 
   /* check if connection handler is active */
   if (IS_CONNHDLR_ACTIVE(mysql))
@@ -1835,11 +1837,12 @@ static void mysql_close_options(MYSQL *mysql)
 static void mysql_close_memory(MYSQL *mysql)
 {
   free(mysql->host_info);
+  free(mysql->host);
   free(mysql->user);
   free(mysql->passwd);
   free(mysql->db);
   free(mysql->server_version);
-  mysql->host_info= mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
+  mysql->host_info= mysql->host= mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
 }
 
 void my_set_error(MYSQL *mysql,

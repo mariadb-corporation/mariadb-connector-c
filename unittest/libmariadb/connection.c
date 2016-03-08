@@ -49,8 +49,8 @@ static int test_conc66(MYSQL *my)
 
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
   check_mysql_rc(rc, mysql);
-//  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
-//  check_mysql_rc(rc, mysql);
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
+  check_mysql_rc(rc, mysql);
 
   sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname);
   rc= mysql_query(my, query);
@@ -63,6 +63,7 @@ static int test_conc66(MYSQL *my)
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
+  
   sprintf(query, "DROP user conc66@%s", hostname);
   rc= mysql_query(my, query);
 
@@ -660,6 +661,71 @@ int test_connection_timeout(MYSQL *my)
   return OK;
 }
 
+int test_connection_timeout2(MYSQL *my)
+{
+  unsigned int timeout= 5;
+  time_t start, elapsed;
+  MYSQL *mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
+  start= time(NULL);
+  if (mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("timeout error expected");
+    return FAIL;
+  }
+  elapsed= time(NULL) - start;
+  diag("elapsed: %lu", (unsigned long)elapsed);
+  mysql_close(mysql);
+  FAIL_IF(elapsed > 2 * timeout, "timeout ignored")
+  return OK;
+}
+
+int test_connection_timeout3(MYSQL *my)
+{
+  unsigned int timeout= 5;
+  unsigned int read_write_timeout= 10;
+  int rc;
+  time_t start, elapsed;
+  MYSQL *mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
+  mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, (unsigned int *)&read_write_timeout);
+  mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
+  start= time(NULL);
+  if (mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("timeout error expected");
+    elapsed= time(NULL) - start;
+    diag("elapsed: %lu", (unsigned long)elapsed);
+    return FAIL;
+  }
+  elapsed= time(NULL) - start;
+  diag("elapsed: %lu", (unsigned long)elapsed);
+  FAIL_IF(elapsed > timeout + 1, "timeout ignored")
+
+  mysql_close(mysql);
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
+  mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, (unsigned int *)&read_write_timeout);
+  mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+
+  start= time(NULL);
+  rc= mysql_query(mysql, "SET @a:=SLEEP(12)");
+  elapsed= time(NULL) - start;
+  diag("elapsed: %lu", (unsigned long)elapsed);
+  FAIL_IF(!rc, "timeout expected");
+  mysql_close(mysql);
+  return OK;
+}
+
+
 /* test should run with valgrind */
 static int test_conc118(MYSQL *mysql)
 {
@@ -862,6 +928,8 @@ struct my_tests_st my_tests[] = {
   {"test_conc21", test_conc21, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc26", test_conc26, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_connection_timeout", test_connection_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_connection_timeout2", test_connection_timeout2, TEST_CONNECTION_NONE, 0, NULL, NULL}, 
+  {"test_connection_timeout3", test_connection_timeout3, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

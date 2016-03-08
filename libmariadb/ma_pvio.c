@@ -100,6 +100,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
                                           pvio_plugins[type], 
                                           MARIADB_CLIENT_PVIO_PLUGIN)))
   {
+    /* error already set in mysql_client_find_plugin */
     return NULL;
   }
 
@@ -115,12 +116,11 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
   pvio->set_error= my_set_error;
   pvio->type= cinfo->type;
 
-  /* set tineouts */
+  /* set timeout to connect timeout - after successfull connect we will set 
+   * correct values for read and write */
   if (pvio->methods->set_timeout)
   {
     pvio->methods->set_timeout(pvio, PVIO_CONNECT_TIMEOUT, cinfo->mysql->options.connect_timeout);
-    pvio->methods->set_timeout(pvio, PVIO_READ_TIMEOUT, cinfo->mysql->options.read_timeout);
-    pvio->methods->set_timeout(pvio, PVIO_WRITE_TIMEOUT, cinfo->mysql->options.write_timeout);
   }
 
   if (!(pvio->cache= calloc(1, PVIO_READ_AHEAD_CACHE_SIZE)))
@@ -521,6 +521,12 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
     pvio->cssl= NULL;
     return 1;
   }
+
+  /* default behaviour:
+     1. peer certificate verification
+     2. verify CN (requires option ssl_verify_check)
+     3. verrify finger print
+  */
   if ((pvio->mysql->options.ssl_ca || pvio->mysql->options.ssl_capath) &&
         (pvio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
          ma_pvio_ssl_verify_server_cert(pvio->cssl))

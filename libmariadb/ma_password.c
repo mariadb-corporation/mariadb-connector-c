@@ -54,14 +54,6 @@ void ma_randominit(struct rand_struct *rand_st,ulong seed1, ulong seed2)
   rand_st->seed2=seed2%rand_st->max_value;
 }
 
-static void ma_old_randominit(struct rand_struct *rand_st,ulong seed1)
-{						/* For mysql 3.20.# */
-  rand_st->max_value= 0x01FFFFFFL;
-  rand_st->max_value_dbl=(double) rand_st->max_value;
-  seed1%=rand_st->max_value;
-  rand_st->seed1=seed1 ; rand_st->seed2=seed1/2;
-}
-
 double rnd(struct rand_struct *rand_st)
 {
   rand_st->seed1=(rand_st->seed1*3+rand_st->seed2) % rand_st->max_value;
