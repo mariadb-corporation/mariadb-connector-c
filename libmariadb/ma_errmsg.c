@@ -85,7 +85,7 @@ const char *client_errors[]=
 /* 2002 */  "Can't connect to local MySQL server through socket '%-.64s' (%d)",
 /* 2003 */  "Can't connect to MySQL server on '%-.64s' (%d)",
 /* 2004 */  "Can't create TCP/IP socket (%d)",
-/* 2005 */  "Unknown MySQL Server Host '%-.64s' (%d)",
+/* 2005 */  "Unknown MySQL server host '%-.100s' (%d)",
 /* 2006 */  "MySQL server has gone away",
 /* 2007 */  "Protocol mismatch. Server Version = %d Client Version = %d",
 /* 2008 */  "MySQL client run out of memory",
