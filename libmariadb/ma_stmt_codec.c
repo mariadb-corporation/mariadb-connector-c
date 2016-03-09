@@ -877,12 +877,12 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       if (field->decimals)
       {
         char microseconds[16];
-		sprintf(microseconds, ".%06u", tm.second_part);
-		if (field->decimals < 6)
-		{
-			microseconds[field->decimals+1] = '\0';
-		}
-		strcat(dtbuffer + length, microseconds);
+        sprintf(microseconds, ".%06u", tm.second_part);
+        if (field->decimals < 6)
+        {
+          microseconds[field->decimals+1] = '\0';
+        }
+        strcat(dtbuffer + length, microseconds);
         length+= strlen(microseconds);
       }
       break;
@@ -892,12 +892,12 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       if (field->decimals)
       {
         char microseconds[16];
-		sprintf(microseconds, ".%06u", tm.second_part);
-		if (field->decimals < 6)
-		{
-			microseconds[field->decimals+1] = '\0';
-		}
-		strcat(dtbuffer + length, microseconds);
+        sprintf(microseconds, ".%06u", tm.second_part);
+        if (field->decimals < 6)
+        {
+          microseconds[field->decimals+1] = '\0';
+        }
+        strcat(dtbuffer + length, microseconds);
         length+= strlen(microseconds);
       }
       break;
