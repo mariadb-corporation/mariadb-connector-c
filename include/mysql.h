@@ -28,6 +28,9 @@ extern "C" {
 #ifndef LIBMARIADB
 #define LIBMARIADB
 #endif
+#ifndef MYSQL_CLIENT
+#define MYSQL_CLIENT
+#endif
 
 #include <stdarg.h>
 
