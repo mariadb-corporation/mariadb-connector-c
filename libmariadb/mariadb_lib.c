@@ -27,9 +27,7 @@
 #include <ma_string.h>
 #include <mariadb_ctype.h>
 #include <ma_common.h>
-#ifdef HAVE_NONBLOCK
 #include "ma_context.h"
-#endif
 #include "mysql.h"
 #include "mariadb_version.h"
 #include "ma_server_error.h"
@@ -105,12 +103,10 @@ extern my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
                                      char *group);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
 
-#ifdef HAVE_NONBLOCK
 extern void
 my_context_install_suspend_resume_hook(struct mysql_async_context *b,
                                        void (*hook)(my_bool, void *),
                                        void *user_data);
-#endif
 
 uint mysql_port=0;
 my_string mysql_unix_port=0;
@@ -1535,7 +1531,6 @@ struct my_hook_data {
   Callback hook to make the new VIO accessible via the old MYSQL to calling
   application when suspending a non-blocking call during automatic reconnect.
 */
-#ifdef HAVE_NONBLOCK
 static void
 my_suspend_hook(my_bool suspend, void *data)
 {
@@ -1548,15 +1543,12 @@ my_suspend_hook(my_bool suspend, void *data)
   else
     hook_data->orig_mysql->net.pvio= hook_data->orig_pvio;
 }
-#endif
 
 my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
 {
   MYSQL tmp_mysql;
-#ifdef HAVE_NONBLOCK
   struct my_hook_data hook_data;
   struct mysql_async_context *ctxt= NULL;
-#endif
   LIST *li_stmt= mysql->stmts;
   mysql_init(&tmp_mysql);
 
@@ -1588,7 +1580,6 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
 
   /* don't reread options from configuration files */
   tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
-#ifdef HAVE_NONBLOCK
   if (IS_MYSQL_ASYNC_ACTIVE(mysql))
   {
     hook_data.orig_mysql= mysql;
@@ -1596,17 +1587,14 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
     hook_data.orig_pvio= mysql->net.pvio;
     my_context_install_suspend_resume_hook(ctxt, my_suspend_hook, &hook_data);
   }
-#endif
 
   if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
 			  mysql->db, mysql->port, mysql->unix_socket,
 			  mysql->client_flag | CLIENT_REMEMBER_OPTIONS) ||
       mysql_set_character_set(&tmp_mysql, mysql->charset->csname))
   {
-#ifdef HAVE_NONBLOCK
     if (ctxt)
       my_context_install_suspend_resume_hook(ctxt, NULL, NULL);
-#endif
     /* don't free options (CONC-118) */
     memset(&tmp_mysql.options, 0, sizeof(struct st_mysql_options));
     my_set_error(mysql, tmp_mysql.net.last_errno, 
@@ -1667,27 +1655,19 @@ void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
 unsigned int STDCALL
 mysql_get_timeout_value(const MYSQL *mysql)
 {
-#ifdef HAVE_NONBLOCK
   unsigned int timeout= mysql->options.extension->async_context->timeout_value;
   /* Avoid overflow. */
   if (timeout > UINT_MAX - 999)
     return (timeout - 1)/1000 + 1;
   else
     return (timeout+999)/1000;
-#else
-  return 0;
-#endif
 }
 
 
 unsigned int STDCALL
 mysql_get_timeout_value_ms(const MYSQL *mysql)
 {
-#ifdef HAVE_NONBLOCK
   return mysql->options.extension->async_context->timeout_value;
-#else
-  return 0;
-#endif
 }
 
 /**************************************************************************
@@ -1805,14 +1785,12 @@ static void mysql_close_options(MYSQL *mysql)
 
   if (mysql->options.extension)
   {
-#ifdef HAVE_NONBLOCK
     struct mysql_async_context *ctxt;
     if ((ctxt = mysql->options.extension->async_context) != 0)
     {
       my_context_destroy(&ctxt->async_context);
       free(ctxt);
     }
-#endif
     free(mysql->options.extension->plugin_dir);
     free(mysql->options.extension->default_auth);
     free(mysql->options.extension->db_driver);
@@ -2479,10 +2457,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
 {
   va_list ap;
   void *arg1;
-#ifdef HAVE_NONBLOCK
   size_t stacksize; 
   struct mysql_async_context *ctxt;
-#endif
 
   va_start(ap, option);
 
@@ -2548,7 +2524,6 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, default_auth, (char *)arg1);
     break;
   case MYSQL_OPT_NONBLOCK:
-#ifdef HAVE_NONBLOCK
     if (mysql->options.extension &&
         (ctxt = mysql->options.extension->async_context) != 0)
     {
@@ -2587,7 +2562,6 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     mysql->options.extension->async_context= ctxt;
     if (mysql->net.pvio)
       mysql->net.pvio->async_context= ctxt;
-#endif
     break;
   case MYSQL_OPT_MAX_ALLOWED_PACKET:
     if (mysql)
@@ -3436,13 +3410,11 @@ static my_socket mariadb_get_socket(MYSQL *mysql)
      pvio handle from async_context until the connection was 
      successfully established.
   */
-#ifdef HAVE_NONBLOCK
   else if (mysql->options.extension && mysql->options.extension->async_context &&
            mysql->options.extension->async_context->pvio)
   {
     ma_pvio_get_handle(mysql->options.extension->async_context->pvio, &sock);
   }
-#endif
   return sock;
 }
 
@@ -3576,15 +3548,10 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       goto error;
     break;
   case MARIADB_CONNECTION_ASYNC_TIMEOUT_MS:
-#ifdef HAVE_NONBLOCK
     if (mysql && mysql->options.extension && mysql->options.extension->async_context)
       *((unsigned int *)arg)= mysql->options.extension->async_context->timeout_value;
-    else
-#endif      
-      goto error;
     break;
   case MARIADB_CONNECTION_ASYNC_TIMEOUT:
-#ifdef HAVE_NONBLOCK
     if (mysql && mysql->options.extension && mysql->options.extension->async_context)
     {
       unsigned int timeout= mysql->options.extension->async_context->timeout_value;
@@ -3593,9 +3560,6 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       else
         *((unsigned int *)arg)= (timeout+999)/1000;
     }
-    else
-#endif
-      goto error;
     break;
   case MARIADB_CHARSET_NAME:
     {

@@ -43,7 +43,6 @@ ENDIF()
 
 OPTION(WITH_UNITTEST "build test suite" ON)
 OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
-OPTION(WITH_NONBLOCK "Enables support for non blocking operations" ON)
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 IF(WITH_SIGNCODE)
