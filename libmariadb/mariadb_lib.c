@@ -1516,8 +1516,6 @@ error:
   end_server(mysql);
   /* only free the allocated memory, user needs to call mysql_close */
   mysql_close_memory(mysql);
-  if (!(((ulong) client_flag) & CLIENT_REMEMBER_OPTIONS))
-    mysql_close_options(mysql);
   return(0);
 }
 
@@ -1786,10 +1784,11 @@ static void mysql_close_options(MYSQL *mysql)
   if (mysql->options.extension)
   {
     struct mysql_async_context *ctxt;
-    if ((ctxt = mysql->options.extension->async_context) != 0)
+    if ((ctxt = mysql->options.extension->async_context))
     {
       my_context_destroy(&ctxt->async_context);
       free(ctxt);
+      mysql->options.extension->async_context= 0;
     }
     free(mysql->options.extension->plugin_dir);
     free(mysql->options.extension->default_auth);

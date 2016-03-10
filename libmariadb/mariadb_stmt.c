@@ -1687,7 +1687,6 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
       } 
     }
 
-
     if (flags & MADB_RESET_SERVER)
     {
       /* reset statement on server side */
@@ -1760,9 +1759,8 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
         stmt->mysql->status= MYSQL_STATUS_READY;
       } 
     }
-    if (!stmt->execute_count)
-      if (!is_close)
-        ret= madb_reset_stmt(stmt, MADB_RESET_SERVER);
+    if (!is_close)
+      ret= madb_reset_stmt(stmt, MADB_RESET_SERVER);
   }
   stmt->state= MYSQL_STMT_PREPARED;
   stmt->upsert_status.affected_rows= mysql->affected_rows;

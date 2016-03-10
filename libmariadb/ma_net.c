@@ -101,8 +101,10 @@ static int ma_net_write_buff(NET *net,const char *packet, size_t len);
 
 int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 {
-  if (!(net->buff=(uchar*) calloc(1, net_buffer_length)))
+  if (!(net->buff=(uchar*) malloc(net_buffer_length)))
     return 1;
+
+  memset(net->buff, 0, net_buffer_length);
 
   if (!net->extension)
   {
