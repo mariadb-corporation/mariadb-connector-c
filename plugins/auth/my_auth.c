@@ -130,7 +130,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
     memcpy(end, data, data_len);
     end+= data_len;
   }
-  end= strncpy(end, mpvio->db ? mpvio->db : "", NAME_LEN) + strlen(end) + 1;
+  end= ma_strmake(end, mpvio->db ? mpvio->db : "", NAME_LEN) + 1;
 
   if (mysql->server_capabilities & CLIENT_PROTOCOL_41)
   {
@@ -139,7 +139,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   }
 
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
-    end= strncpy(end, mpvio->plugin->name, NAME_LEN) + strlen(end) + 1;
+    end= ma_strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
 
   end= ma_send_connect_attr(mysql, end);
 
