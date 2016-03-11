@@ -2339,10 +2339,6 @@ static int test_bug4172(MYSQL *mysql)
   char f[100], d[100], e[100];
   ulong f_len, d_len, e_len;
 
-  diag("numeric precision in ps not fixed now");
-  return SKIP;
-
-
   mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   mysql_query(mysql, "CREATE TABLE t1 (f float, d double, e decimal(10,4))");
   mysql_query(mysql, "INSERT INTO t1 VALUES (12345.1234, 123456.123456, "
@@ -2378,6 +2374,7 @@ static int test_bug4172(MYSQL *mysql)
   row= mysql_fetch_row(res);
 
   diag("expected %s %s %s", row[0], row[1], row[2]);
+  diag("fetched %s %s %s", f, d, e);
   FAIL_UNLESS(!strcmp(f, row[0]) && !strcmp(d, row[1]) && !strcmp(e, row[2]), "");
 
   mysql_free_result(res);

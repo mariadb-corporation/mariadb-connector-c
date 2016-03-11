@@ -530,6 +530,7 @@ extern double		my_atof(const char*);
 #define LONGLONG_MAX	((long long) 0x7FFFFFFFFFFFFFFFLL)
 #endif
 
+
 #define INT_MIN64       (~0x7FFFFFFFFFFFFFFFLL)
 #define INT_MAX64       0x7FFFFFFFFFFFFFFFLL
 #define INT_MIN32       (~0x7FFFFFFFL)
@@ -576,7 +577,7 @@ extern double		my_atof(const char*);
   Max size that must be added to a so that we know Size to make
   adressable obj.
 */
-typedef long		my_ptrdiff_t;
+typedef long my_ptrdiff_t;
 #define MY_ALIGN(A,L)	(((A) + (L) - 1) & ~((L) - 1))
 #define ALIGN_SIZE(A)	MY_ALIGN((A),sizeof(double))
 /* Size to make adressable obj. */
@@ -644,6 +645,13 @@ typedef unsigned long	ulonglong;	/* ulong or unsigned long long */
 typedef long		longlong;
 #endif
 #define longlong_defined
+#endif
+
+#ifndef HAVE_INT64
+typedef longlong int64;
+#endif
+#ifndef HAVE_UINT64
+typedef ulonglong uint64;
 #endif
 
 #ifndef MIN

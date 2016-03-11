@@ -61,6 +61,7 @@
 #endif
 #define UINT_MAX8       0xFF
 
+ #define MAX_DOUBLE_STRING_REP_LENGTH 300
 #if defined(HAVE_LONG_LONG) && !defined(LONGLONG_MIN)
 #define LONGLONG_MIN    ((long long) 0x8000000000000000LL)
 #define LONGLONG_MAX    ((long long) 0x7FFFFFFFFFFFFFFFLL)
@@ -570,75 +571,34 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
     break;
     default:
     {
- #define MAX_DOUBLE_STRING_REP_LENGTH 300
-     char buff[MAX_DOUBLE_STRING_REP_LENGTH];
-     size_t length;
-     char *end;
+      char buff[MAX_DOUBLE_STRING_REP_LENGTH];
+      size_t length;
 
-     length= MIN(MAX_DOUBLE_STRING_REP_LENGTH - 1, r_param->buffer_length);
+      length= MIN(MAX_DOUBLE_STRING_REP_LENGTH - 1, r_param->buffer_length);
 
-/*     if (field->decimals >= NOT_FIXED_DEC)
-     {
-       sprintf(buff, "%-*.*g", (int) length-1, DBL_DIG, val);
-       length= strlen(buff);
-     }
-     else */
-     {
-#ifdef _WIN32
-       _gcvt(val, 6, buff);
-#else
-       gcvt(val, 6, buff);
-#endif
-       length= strlen(buff);
-     }
+      if (field->decimals >= NOT_FIXED_DEC)
+      {
+        length= ma_gcvt(val, MY_GCVT_ARG_FLOAT, length, buff, NULL);
+      }
+      else
+      {
+        length= ma_fcvt(val, field->decimals, buff, NULL);
+      }
 
-     /* remove trailing blanks */
-     end= strchr(buff, '\0') - 1;
-     while (end > buff && *end == ' ')
-       *end--= '\0';
-
-     /* check if ZEROFILL flag is active */
-     if (field->flags & ZEROFILL_FLAG)
-     {
-       /* enough space available ? */
-       if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
-         break;
-       ma_bmove_upp(buff + field->length, buff + length, length);
-       memset((char*) buff, 0, field->length - length);
-     }
-     convert_froma_string(r_param, buff, strlen(buff));
+      /* check if ZEROFILL flag is active */
+      if (field->flags & ZEROFILL_FLAG)
+      {
+        /* enough space available ? */
+        if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
+          break;
+        ma_bmove_upp(buff + field->length, buff + length, length);
+        memset((char*) buff, 0, field->length - length);
+      }
+      convert_froma_string(r_param, buff, strlen(buff));
     }  
     break;
   } 
 }
-
-
-/* {{{ ps_fetch_float */
-static
-void ps_fetch_float(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row)
-{
-  switch(r_param->buffer_type)
-  {
-    case MYSQL_TYPE_FLOAT:
-    {
-      float *value= (float *)r_param->buffer;
-      float4get(*value, *row);
-      r_param->buffer_length= 4;
-      *r_param->error= 0;
-    }
-    break;
-    default:
-    {
-      float value;
-      memcpy(&value, *row, sizeof(float));
-      float4get(value, (char *)*row);
-      convert_from_float(r_param, field, value, sizeof(float));
-    }
-    break;
-  }
-  (*row)+= 4;
-}
-/* }}} */
 
 static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, double val, int size)
 {
@@ -708,32 +668,19 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
     break;
     default:
     {
- #define MAX_DOUBLE_STRING_REP_LENGTH 300
      char buff[MAX_DOUBLE_STRING_REP_LENGTH];
      size_t length;
-     char *end;
 
      length= MIN(MAX_DOUBLE_STRING_REP_LENGTH - 1, r_param->buffer_length);
 
      if (field->decimals >= NOT_FIXED_DEC)
      {
-       sprintf(buff, "%-*.*g", (int) length-1, DBL_DIG, val);
-       length= strlen(buff);
+       length= ma_gcvt(val, MY_GCVT_ARG_DOUBLE, length, buff, NULL);
      }
      else
      {
-#ifdef _WIN32
-#else
-       gcvt(val, field->decimals, buff);
-#endif
-//       sprintf(buff, "%.*f", field->decimals, val);
-       length= strlen(buff);
+       length= ma_fcvt(val, field->decimals, buff, NULL);
      }
-
-     /* remove trailing blanks */
-     end= strchr(buff, '\0') - 1;
-     while (end > buff && *end == ' ')
-       *end--= '\0';
 
      /* check if ZEROFILL flag is active */
      if (field->flags & ZEROFILL_FLAG)
@@ -776,6 +723,32 @@ void ps_fetch_double(MYSQL_BIND *r_param, const MYSQL_FIELD * field , unsigned c
 }
 /* }}} */
 
+/* {{{ ps_fetch_float */
+static
+void ps_fetch_float(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row)
+{
+  switch(r_param->buffer_type)
+  {
+    case MYSQL_TYPE_FLOAT:
+    {
+      float *value= (float *)r_param->buffer;
+      float4get(*value, *row);
+      r_param->buffer_length= 4;
+      *r_param->error= 0;
+    }
+    break;
+    default:
+    {
+      float value;
+      memcpy(&value, *row, sizeof(float));
+      float4get(value, (char *)*row);
+      convert_from_float(r_param, field, value, sizeof(float));
+    }
+    break;
+  }
+  (*row)+= 4;
+}
+/* }}} */
 
 static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, enum enum_field_types type)
 {

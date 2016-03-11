@@ -262,6 +262,7 @@ mariadb_stmt.c
 ma_loaddata.c
 ma_stmt_codec.c
 ma_string.c
+ma_dtoa.c
 ${CMAKE_BINARY_DIR}/libmariadb/ma_client_plugin.c
 ma_io.c
 ${SSL_SOURCES}
