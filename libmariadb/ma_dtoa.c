@@ -54,7 +54,6 @@
 /* Magic value returned by dtoa() to indicate overflow */
 #define DTOA_OVERFLOW 9999
 
-static double my_strtod_int(const char *, char **, int *, char *, size_t);
 static char *dtoa(double, int, int, int *, int *, char **, char *, size_t);
 static void dtoa_free(char *, char *, size_t);
 
@@ -443,45 +442,6 @@ end:
   return dst - to;
 }
 
-/**
-   @brief
-   Converts string to double (string does not have to be zero-terminated)
-
-   @details
-   This is a wrapper around dtoa's version of strtod().
-
-   @param str     input string
-   @param end     address of a pointer to the first character after the input
-                  string. Upon return the pointer is set to point to the first
-                  rejected character.
-   @param error   Upon return is set to EOVERFLOW in case of underflow or
-                  overflow.
-   
-   @return        The resulting double value. In case of underflow, 0.0 is
-                  returned. In case overflow, signed DBL_MAX is returned.
-*/
-
-double my_strtod(const char *str, char **end, int *error)
-{
-  char buf[DTOA_BUFF_SIZE];
-  double res;
-  DBUG_ASSERT(end != NULL && ((str != NULL && *end != NULL) ||
-                              (str == NULL && *end == NULL)) &&
-              error != NULL);
-
-  res= my_strtod_int(str, end, error, buf, sizeof(buf));
-  return (*error == 0) ? res : (res < 0 ? -DBL_MAX : DBL_MAX);
-}
-
-
-double my_atof(const char *nptr)
-{
-  int error;
-  const char *end= nptr+65535;                  /* Should be enough */
-  return (my_strtod(nptr, (char**) &end, &error));
-}
-
-
 /****************************************************************
  *
  * The author of this software is David M. Gay.
@@ -794,7 +754,7 @@ static Bigint *multadd(Bigint *b, int m, int a, Stack_alloc *alloc)
   Unless nd0 == nd, in which case we have a number of the form:
      ".xxxxxx"    or    "xxxxxx."
 
-  @param s     Input string, already partially parsed by my_strtod_int().
+  @param s     Input string, already partially parsed by ma_strtod_int().
   @param nd0   Number of digits before decimal point.
   @param nd    Total number of digits.
   @param y9    Pre-computed value of the first nine digits.
@@ -1350,7 +1310,7 @@ static const double tinytens[]=
      for 0 <= k <= 22).
 */
 
-static double my_strtod_int(const char *s00, char **se, int *error, char *buf, size_t buf_size)
+static double ma_strtod_int(const char *s00, char **se, int *error, char *buf, size_t buf_size)
 {
   int scale;
   int bb2, bb5, bbe, bd2, bd5, bbbits, bs2, UNINIT_VAR(c), dsign,
