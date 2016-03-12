@@ -148,7 +148,7 @@ size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   }
   if (GetLastError() == ERROR_IO_PENDING)
   {
-    if (!pvio_npipe_wait_io_or_timeout(pvio, 1, 0))
+    if (!pvio_npipe_wait_io_or_timeout(pvio, 0, 0))
       r= cpipe->rw_size;
   }
 end:  
@@ -166,6 +166,8 @@ int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeo
 
   if (!timeout)
     timeout= (is_read) ? pvio->timeout[PVIO_READ_TIMEOUT] : pvio->timeout[PVIO_WRITE_TIMEOUT];
+  if (!timeout)
+    timeout= INFINITE;
 
   status= WaitForSingleObject(cpipe->overlapped.hEvent, timeout);
   if (status == WAIT_OBJECT_0)
@@ -219,6 +221,12 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 
   if (!pvio || !cinfo)
     return 1;
+
+  /* if connect timeout is set, we will overwrite read/write timeout */
+  if (pvio->timeout[PVIO_CONNECT_TIMEOUT])
+  {
+    pvio->timeout[PVIO_READ_TIMEOUT]= pvio->timeout[PVIO_WRITE_TIMEOUT]= pvio->timeout[PVIO_CONNECT_TIMEOUT];
+  }
 
   if (!(cpipe= (struct st_pvio_npipe *)LocalAlloc(LMEM_ZEROINIT, sizeof(struct st_pvio_npipe))))
   {
