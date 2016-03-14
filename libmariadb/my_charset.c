@@ -53,7 +53,11 @@
 #include <m_ctype.h>
 #include <m_string.h>
 
+#ifdef _WIN32
+#include "../win-iconv/iconv.h"
+#else
 #include <iconv.h>
+#endif
 
 extern int my_snprintf(char* to, size_t n, const char* fmt, ...);
 /*
