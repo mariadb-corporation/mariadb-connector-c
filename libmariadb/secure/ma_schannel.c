@@ -32,6 +32,9 @@ void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
 {
   MYSQL *mysql= pvio->mysql;
   switch(ErrorNo) {
+  case SEC_E_ILLEGAL_MESSAGE:
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "The message received was unexpected or badly formatted");
+    break;
   case SEC_E_UNTRUSTED_ROOT:
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Untrusted root certificate");
     break;
