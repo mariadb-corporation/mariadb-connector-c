@@ -24,6 +24,11 @@
 #include <m_string.h>
 #include <dbug.h>
 
+#ifdef HAVE_OPENSSL
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
+
 #ifdef THREAD
 #ifdef USE_TLS
 pthread_key(struct st_my_thread_var*, THR_KEY_mysys);

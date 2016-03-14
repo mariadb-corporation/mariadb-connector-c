@@ -223,6 +223,15 @@ static int connect2(my_socket s, const struct sockaddr *name, size_t namelen,
       errno= ETIMEDOUT;
       break;
   }
+  s_err=0;
+  if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char*) &s_err, &s_err_size) != 0)
+    return(-1);
+
+  if (s_err)
+  {						/* getsockopt could succeed */
+    errno = s_err;
+    return(-1);					/* but return an error... */
+  }
 #else
   FD_ZERO(&sfds);
   FD_ZERO(&efds);
@@ -233,19 +242,28 @@ static int connect2(my_socket s, const struct sockaddr *name, size_t namelen,
   tv.tv_sec= timeout;
 
   res= select((int)s+1, NULL, &sfds, &efds, &tv);
+  if (res== -1)
+  {
+    errno= WSAGetLastError();
+  }
+  else if (res == 0)
+  {
+    errno= ETIMEDOUT;
+    res= SOCKET_ERROR;
+  }
+  else if (FD_ISSET(s, &efds))
+  {
+    int err;
+    int len = sizeof(int);
+    if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char *)&err, &len) != SOCKET_ERROR)
+    {
+      errno= err;
+    }
+    res= SOCKET_ERROR;
+  }
   if (res < 1)
     return -1;
 #endif
-
-  s_err=0;
-  if (getsockopt(s, SOL_SOCKET, SO_ERROR, (char*) &s_err, &s_err_size) != 0)
-    return(-1);
-
-  if (s_err)
-  {						/* getsockopt could succeed */
-    errno = s_err;
-    return(-1);					/* but return an error... */
-  }
   return (0);					/* ok */
 }
 
