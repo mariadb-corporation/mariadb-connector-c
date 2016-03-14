@@ -53,7 +53,11 @@
 #include <mariadb_ctype.h>
 #include <ma_string.h>
 
+#ifdef _WIN32
+#include "../win-iconv/iconv.h"
+#else
 #include <iconv.h>
+#endif
 
 /*
   +----------------------------------------------------------------------+
