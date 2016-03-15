@@ -319,10 +319,15 @@ CREATE_EXPORT_FILE(mariadbclient
                    "${MARIADB_LIB_SYMBOLS}")
 
 
-# CREATE OBJECT LIBRARY 
-ADD_LIBRARY(mariadb_obj OBJECT ${LIBMARIADB_SOURCES})
-IF(UNIX)
-  SET_TARGET_PROPERTIES(mariadb_obj PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
+IF(CMAKE_VERSION VERSION_GREATER 2.8.7)
+  # CREATE OBJECT LIBRARY 
+  ADD_LIBRARY(mariadb_obj OBJECT ${LIBMARIADB_SOURCES})
+  IF(UNIX)
+    SET_TARGET_PROPERTIES(mariadb_obj PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
+  ENDIF()
+  SET (MARIADB_OBJECTS $<TARGET_OBJECTS:mariadb_obj>)
+ELSE()
+  SET (MARIADB_OBJECTS ${LIBMARIADB_SOURCES})
 ENDIF()
 
 # Xcode doesn't support targets that have only object files,
@@ -345,9 +350,9 @@ IF(WIN32)
                    "FILE_DESCRIPTION:Static lib for client/server communication")
 ENDIF()
 
-ADD_LIBRARY(mariadbclient STATIC ${mariadbclient_RC} $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} mariadbclient.def)
+ADD_LIBRARY(mariadbclient STATIC ${mariadbclient_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE} mariadbclient.def)
 TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
-ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} mariadbclient.def)
+ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE} mariadbclient.def)
 TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
 IF(UNIX)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
