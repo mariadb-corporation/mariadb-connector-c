@@ -312,11 +312,23 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     Cred.cCreds = 1;
     Cred.paCred = &sctx->client_cert_ctx;
   }
-  /* Disable TLS v_1.2 for now, we need a separate option for */    
-  Cred.grbitEnabledProtocols = SP_PROT_TLS1_0 | SP_PROT_TLS1_1; // | SP_PROT_TLS1_2;
+  if (mysql->options.extension && mysql->options.extension->tls_version)
+  {
+    Cred.grbitEnabledProtocols= 0;
+    if (strstr("TLSv1.0", mysql->options.extension->tls_version))
+      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_0;
+    if (strstr("TLSv1.1", mysql->options.extension->tls_version))
+      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1;
+    if (strstr("TLSv1.2", mysql->options.extension->tls_version))
+      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2;
+  }
+  else
+    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0 |
+                                 SP_PROT_TLS1_1 |
+                                 SP_PROT_TLS1_2;
 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
- 									            NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
+                                       NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
   {
     ma_schannel_set_sec_error(pvio, sRet);
     goto end;
