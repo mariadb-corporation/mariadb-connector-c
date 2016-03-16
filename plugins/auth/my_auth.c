@@ -189,8 +189,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
   {
     if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) ||
-        (mysql->options.extension && (mysql->options.extension->ssl_fp || 
-                                      mysql->options.extension->ssl_fp_list)))
+        (mysql->options.extension && (mysql->options.extension->tls_fp || 
+                                      mysql->options.extension->tls_fp_list)))
     {
       my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                           ER(CR_SSL_CONNECTION_ERROR), 

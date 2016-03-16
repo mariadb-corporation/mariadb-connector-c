@@ -29,19 +29,19 @@
 #include <ma_pthread.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
-#include <ma_ssl.h>
+#include <ma_tls.h>
 
 pthread_mutex_t LOCK_gnutls_config;
 
 static gnutls_certificate_credentials_t GNUTLS_xcred;
-extern my_bool ma_ssl_initialized;
+extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
 
 static int my_verify_callback(gnutls_session_t ssl);
 
 #define MAX_SSL_ERR_LEN 100
 
-static void ma_ssl_set_error(MYSQL *mysql, int ssl_errno)
+static void ma_tls_set_error(MYSQL *mysql, int ssl_errno)
 {
   char  ssl_error[MAX_SSL_ERR_LEN];
   const char *ssl_error_reason;
@@ -64,7 +64,7 @@ static void ma_ssl_set_error(MYSQL *mysql, int ssl_errno)
 }
 
 
-static void ma_ssl_get_error(char *errmsg, size_t length, int ssl_errno)
+static void ma_tls_get_error(char *errmsg, size_t length, int ssl_errno)
 {
   const char *ssl_error_reason;
 
@@ -93,11 +93,11 @@ static void ma_ssl_get_error(char *errmsg, size_t length, int ssl_errno)
     0  success
     1  error
 */
-int ma_ssl_start(char *errmsg, size_t errmsg_len)
+int ma_tls_start(char *errmsg, size_t errmsg_len)
 {
   int rc= 0;
 
-  if (ma_ssl_initialized)
+  if (ma_tls_initialized)
     return 0;
 
   pthread_mutex_init(&LOCK_gnutls_config,MY_MUTEX_INIT_FAST);
@@ -105,12 +105,12 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
 
   if ((rc= gnutls_global_init()) != GNUTLS_E_SUCCESS)
   {
-    ma_ssl_get_error(errmsg, errmsg_len, rc);
+    ma_tls_get_error(errmsg, errmsg_len, rc);
     goto end;
   }
   /* Allocate a global context for credentials */
   rc= gnutls_certificate_allocate_credentials(&GNUTLS_xcred);
-  ma_ssl_initialized= TRUE;
+  ma_tls_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_gnutls_config);
   return rc;
@@ -128,9 +128,9 @@ end:
    RETURN VALUES
      void
 */
-void ma_ssl_end()
+void ma_tls_end()
 {
-  if (ma_ssl_initialized)
+  if (ma_tls_initialized)
   {
     pthread_mutex_lock(&LOCK_gnutls_config);
     gnutls_certificate_free_keys(GNUTLS_xcred);
@@ -140,14 +140,14 @@ void ma_ssl_end()
     gnutls_certificate_free_credentials(GNUTLS_xcred);
     if (mariadb_deinitialize_ssl)
       gnutls_global_deinit();
-    ma_ssl_initialized= FALSE;
+    ma_tls_initialized= FALSE;
     pthread_mutex_unlock(&LOCK_gnutls_config);
     pthread_mutex_destroy(&LOCK_gnutls_config);
   }
   return;
 }
 
-static int ma_ssl_set_certs(MYSQL *mysql)
+static int ma_tls_set_certs(MYSQL *mysql)
 {
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
@@ -179,7 +179,7 @@ static int ma_ssl_set_certs(MYSQL *mysql)
     if ((ssl_error= gnutls_certificate_set_x509_key_file2(GNUTLS_xcred,
                                                          certfile, keyfile,
                                                          GNUTLS_X509_FMT_PEM,
-                                                         OPT_HAS_EXT_VAL(mysql, ssl_pw) ? mysql->options.extension->ssl_pw : NULL,
+                                                         OPT_HAS_EXT_VAL(mysql, tls_pw) ? mysql->options.extension->tls_pw : NULL,
                                                          0)) < 0)
       goto error;
   }
@@ -191,7 +191,7 @@ error:
   return ssl_error;
 }
 
-void *ma_ssl_init(MYSQL *mysql)
+void *ma_tls_init(MYSQL *mysql)
 {
   gnutls_session_t ssl= NULL;
   int ssl_error= 0;
@@ -199,7 +199,7 @@ void *ma_ssl_init(MYSQL *mysql)
 
   pthread_mutex_lock(&LOCK_gnutls_config);
 
-  if ((ssl_error= ma_ssl_set_certs(mysql)) < 0)
+  if ((ssl_error= ma_tls_set_certs(mysql)) < 0)
     goto error;
 
   if ((ssl_error = gnutls_init(&ssl, GNUTLS_CLIENT & GNUTLS_NONBLOCK)) < 0)
@@ -216,36 +216,36 @@ void *ma_ssl_init(MYSQL *mysql)
   pthread_mutex_unlock(&LOCK_gnutls_config);
   return (void *)ssl;
 error:
-  ma_ssl_set_error(mysql, ssl_error);
+  ma_tls_set_error(mysql, ssl_error);
   if (ssl)
     gnutls_deinit(ssl);
   pthread_mutex_unlock(&LOCK_gnutls_config);
   return NULL;
 }
 
-ssize_t ma_ssl_push(gnutls_transport_ptr_t ptr, const void* data, size_t len)
+ssize_t ma_tls_push(gnutls_transport_ptr_t ptr, const void* data, size_t len)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
   ssize_t rc= pvio->methods->write(pvio, data, len);
   return rc;
 }
 
-ssize_t ma_ssl_pull(gnutls_transport_ptr_t ptr, void* data, size_t len)
+ssize_t ma_tls_pull(gnutls_transport_ptr_t ptr, void* data, size_t len)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
   ssize_t rc= pvio->methods->read(pvio, data, len);
   return rc;
 }
 
-static int ma_ssl_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
+static int ma_tls_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
   return pvio->methods->wait_io_or_timeout(pvio, 0, ms);
 }
 
-my_bool ma_ssl_connect(MARIADB_SSL *cssl)
+my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
-  gnutls_session_t ssl = (gnutls_session_t)cssl->ssl;
+  gnutls_session_t ssl = (gnutls_session_t)ctls->ssl;
   my_bool blocking;
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
@@ -263,9 +263,9 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
 
   /* we don't use GnuTLS read/write functions */
   gnutls_transport_set_ptr(ssl, pvio);
-  gnutls_transport_set_push_function(ssl, ma_ssl_push);
-  gnutls_transport_set_pull_function(ssl, ma_ssl_pull);
-  gnutls_transport_set_pull_timeout_function(ssl, ma_ssl_pull_timeout);
+  gnutls_transport_set_push_function(ssl, ma_tls_push);
+  gnutls_transport_set_pull_function(ssl, ma_tls_pull);
+  gnutls_transport_set_pull_timeout_function(ssl, ma_tls_pull_timeout);
   gnutls_handshake_set_timeout(ssl, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
 
   do {
@@ -274,47 +274,47 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
 
   if (ret < 0)
   {
-    ma_ssl_set_error(mysql, ret);
+    ma_tls_set_error(mysql, ret);
     /* restore blocking mode */
     if (!blocking)
       pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
   }
-  cssl->ssl= (void *)ssl;
+  ctls->ssl= (void *)ssl;
 
   return 0;
 }
 
-size_t ma_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return gnutls_record_recv((gnutls_session_t )cssl->ssl, (void *)buffer, length);
+  return gnutls_record_recv((gnutls_session_t )ctls->ssl, (void *)buffer, length);
 }
 
-size_t ma_ssl_write(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
-  return gnutls_record_send((gnutls_session_t )cssl->ssl, (void *)buffer, length);
+  return gnutls_record_send((gnutls_session_t )ctls->ssl, (void *)buffer, length);
 }
 
-my_bool ma_ssl_close(MARIADB_SSL *cssl)
+my_bool ma_tls_close(MARIADB_TLS *ctls)
 {
-  gnutls_bye((gnutls_session_t )cssl->ssl, GNUTLS_SHUT_WR);
-  gnutls_deinit((gnutls_session_t )cssl->ssl);
-  cssl->ssl= NULL;
+  gnutls_bye((gnutls_session_t )ctls->ssl, GNUTLS_SHUT_WR);
+  gnutls_deinit((gnutls_session_t )ctls->ssl);
+  ctls->ssl= NULL;
 
   return 0;
 }
 
-int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
+int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
 {
   /* server verification is already handled before */
   return 0;
 }
 
-const char *ma_ssl_get_cipher(MARIADB_SSL *cssl)
+const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 {
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return NULL;
-  return gnutls_cipher_get_name (gnutls_cipher_get((gnutls_session_t )cssl->ssl));
+  return gnutls_cipher_get_name (gnutls_cipher_get((gnutls_session_t )ctls->ssl));
 }
 
 static int my_verify_callback(gnutls_session_t ssl)
@@ -388,19 +388,19 @@ static int my_verify_callback(gnutls_session_t ssl)
   return 0;
 }
 
-unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsigned int len)
 {
   MYSQL *mysql;
   size_t fp_len= len;
   const gnutls_datum_t *cert_list;
   unsigned int cert_list_size;
 
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return 0;
 
-  mysql= (MYSQL *)gnutls_session_get_ptr(cssl->ssl);
+  mysql= (MYSQL *)gnutls_session_get_ptr(ctls->ssl);
 
-  cert_list = gnutls_certificate_get_peers (cssl->ssl, &cert_list_size);
+  cert_list = gnutls_certificate_get_peers (ctls->ssl, &cert_list_size);
   if (cert_list == NULL)
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
@@ -420,12 +420,12 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
   }
 }
 
-my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
 {
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return 1;
 
-  version->iversion= gnutls_protocol_get_version(cssl->ssl);
+  version->iversion= gnutls_protocol_get_version(ctls->ssl);
   version->cversion= (char *)gnutls_protocol_get_name(version->iversion);
   return 0;  
 }

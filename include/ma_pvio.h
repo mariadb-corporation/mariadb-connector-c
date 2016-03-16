@@ -3,9 +3,9 @@
 #define cio_defined
 
 #ifdef HAVE_SSL
-#include <ma_ssl.h>
+#include <ma_tls.h>
 #else
-#define MARIADB_SSL void
+#define MARIADB_TLS void
 #endif
 
 #define PVIO_SET_ERROR if (pvio->set_error) \
@@ -78,7 +78,7 @@ struct st_ma_pvio {
   enum enum_pvio_type type;
   int timeout[3];
   int ssl_type;  /* todo: change to enum (ssl plugins) */
-  MARIADB_SSL *cssl;
+  MARIADB_TLS *ctls;
   MYSQL *mysql;
   struct mysql_async_context *async_context; /* For non-blocking API */
   PVIO_METHODS *methods;

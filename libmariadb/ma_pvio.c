@@ -243,9 +243,9 @@ size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 
   /* secure connection */
 #ifdef HAVE_SSL
-  if (pvio->cssl)
+  if (pvio->ctls)
   {
-    r= ma_pvio_ssl_read(pvio->cssl, buffer, length);
+    r= ma_pvio_tls_read(pvio->ctls, buffer, length);
     goto end;
   }
 #endif
@@ -348,9 +348,9 @@ size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 
   /* secure connection */
 #ifdef HAVE_SSL
-  if (pvio->cssl)
+  if (pvio->ctls)
   {
-    r= ma_pvio_ssl_write(pvio->cssl, buffer, length);
+    r= ma_pvio_tls_write(pvio->ctls, buffer, length);
     goto end;
   }
   else
@@ -389,10 +389,10 @@ void ma_pvio_close(MARIADB_PVIO *pvio)
 {
   /* free internal structures and close connection */
 #ifdef HAVE_SSL
-  if (pvio && pvio->cssl)
+  if (pvio && pvio->ctls)
   {
-    ma_pvio_ssl_close(pvio->cssl);
-    free(pvio->cssl);
+    ma_pvio_tls_close(pvio->ctls);
+    free(pvio->ctls);
   }
 #endif
   if (pvio && pvio->methods->close)
@@ -511,14 +511,14 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
   if (!pvio || !pvio->mysql)
     return 1;
   CLEAR_CLIENT_ERROR(pvio->mysql);
-  if (!(pvio->cssl= ma_pvio_ssl_init(pvio->mysql)))
+  if (!(pvio->ctls= ma_pvio_tls_init(pvio->mysql)))
   {
     return 1;
   }
-  if (ma_pvio_ssl_connect(pvio->cssl))
+  if (ma_pvio_tls_connect(pvio->ctls))
   {
-    free(pvio->cssl);
-    pvio->cssl= NULL;
+    free(pvio->ctls);
+    pvio->ctls= NULL;
     return 1;
   }
 
@@ -529,17 +529,17 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
   */
   if ((pvio->mysql->options.ssl_ca || pvio->mysql->options.ssl_capath) &&
         (pvio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
-         ma_pvio_ssl_verify_server_cert(pvio->cssl))
+         ma_pvio_tls_verify_server_cert(pvio->ctls))
     return 1;
 
   if (pvio->mysql->options.extension &&
-      (pvio->mysql->options.extension->ssl_fp && pvio->mysql->options.extension->ssl_fp[0]) ||
-      (pvio->mysql->options.extension->ssl_fp_list && pvio->mysql->options.extension->ssl_fp_list[0]))
+      (pvio->mysql->options.extension->tls_fp && pvio->mysql->options.extension->tls_fp[0]) ||
+      (pvio->mysql->options.extension->tls_fp_list && pvio->mysql->options.extension->tls_fp_list[0]))
   {
 
-    if (ma_pvio_ssl_check_fp(pvio->cssl, 
-          pvio->mysql->options.extension->ssl_fp,
-          pvio->mysql->options.extension->ssl_fp_list))
+    if (ma_pvio_tls_check_fp(pvio->ctls, 
+          pvio->mysql->options.extension->tls_fp,
+          pvio->mysql->options.extension->tls_fp_list))
       return 1;
   }
 

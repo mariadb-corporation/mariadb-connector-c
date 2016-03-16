@@ -42,7 +42,7 @@
 #endif
 #include <ma_pthread.h>
 
-extern my_bool ma_ssl_initialized;
+extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
 static SSL_CTX *SSL_context= NULL;
 
@@ -52,7 +52,7 @@ static pthread_mutex_t LOCK_openssl_config;
 static pthread_mutex_t *LOCK_crypto= NULL;
 
 
-static void ma_ssl_set_error(MYSQL *mysql)
+static void ma_tls_set_error(MYSQL *mysql)
 {
   ulong ssl_errno= ERR_get_error();
   char  ssl_error[MAX_SSL_ERR_LEN];
@@ -76,7 +76,7 @@ static void ma_ssl_set_error(MYSQL *mysql)
 }
 
 
-static void ma_ssl_get_error(char *errmsg, size_t length)
+static void ma_tls_get_error(char *errmsg, size_t length)
 {
   ulong ssl_errno= ERR_get_error();
   const char *ssl_error_reason;
@@ -113,13 +113,13 @@ static void my_cb_threadid(CRYPTO_THREADID *id)
 #endif
 
 #ifdef HAVE_SSL_SESSION_CACHE
-typedef struct st_ma_ssl_session {
+typedef struct st_ma_tls_session {
   char md4_hash[17];
   SSL_SESSION *session;
 } MA_SSL_SESSION;
 
-MA_SSL_SESSION *ma_ssl_sessions= NULL;
-unsigned int ma_ssl_session_cache_size= 128;
+MA_SSL_SESSION *ma_tls_sessions= NULL;
+unsigned int ma_tls_session_cache_size= 128;
 
 static char *ma_md4_hash(const char *host, const char *user, unsigned int port, char *md4)
 {
@@ -130,28 +130,28 @@ static char *ma_md4_hash(const char *host, const char *user, unsigned int port, 
   return md4;
 }
 
-MA_SSL_SESSION *ma_ssl_get_session(MYSQL *mysql)
+MA_SSL_SESSION *ma_tls_get_session(MYSQL *mysql)
 {
   char md4[17];
   int i;
 
-  if (!ma_ssl_sessions)
+  if (!ma_tls_sessions)
     return NULL;
 
   memset(md4, 0, 16);
   ma_md4_hash(mysql->host, mysql->user, mysql->port, md4);
-  for (i=0; i < ma_ssl_session_cache_size; i++)
+  for (i=0; i < ma_tls_session_cache_size; i++)
   {
-    if (ma_ssl_sessions[i].session &&
-        !strncmp(ma_ssl_sessions[i].md4_hash, md4, 16))
+    if (ma_tls_sessions[i].session &&
+        !strncmp(ma_tls_sessions[i].md4_hash, md4, 16))
     {
-      return &ma_ssl_sessions[i];
+      return &ma_tls_sessions[i];
     }
   }
   return NULL;
 }
 
-static int ma_ssl_session_cb(SSL *ssl, SSL_SESSION *session)
+static int ma_tls_session_cb(SSL *ssl, SSL_SESSION *session)
 {
   MYSQL *mysql;
   MA_SSL_SESSION *stored_session;
@@ -160,34 +160,34 @@ static int ma_ssl_session_cb(SSL *ssl, SSL_SESSION *session)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
 
   /* check if we already stored session key */
-  if ((stored_session= ma_ssl_get_session(mysql)))
+  if ((stored_session= ma_tls_get_session(mysql)))
   {
     SSL_SESSION_free(stored_session->session);
     stored_session->session= session;
     return 1;
   }
 
-  for (i=0; i < ma_ssl_session_cache_size; i++)
+  for (i=0; i < ma_tls_session_cache_size; i++)
   {
-    if (!ma_ssl_sessions[i].session)
+    if (!ma_tls_sessions[i].session)
     {
-      ma_md4_hash(mysql->host, mysql->user, mysql->port, ma_ssl_sessions[i].md4_hash);
-      ma_ssl_sessions[i].session= session;
+      ma_md4_hash(mysql->host, mysql->user, mysql->port, ma_tls_sessions[i].md4_hash);
+      ma_tls_sessions[i].session= session;
     }
     return 1;
   }
   return 0;
 }
 
-static void ma_ssl_remove_session_cb(SSL_CTX* ctx, SSL_SESSION* session)
+static void ma_tls_remove_session_cb(SSL_CTX* ctx, SSL_SESSION* session)
 {
   int i;
-  for (i=0; i < ma_ssl_session_cache_size; i++)
-    if (session == ma_ssl_sessions[i].session)
+  for (i=0; i < ma_tls_session_cache_size; i++)
+    if (session == ma_tls_sessions[i].session)
     {
-      ma_ssl_sessions[i].md4_hash[0]= 0;
-      SSL_SESSION_free(ma_ssl_sessions[i].session);
-      ma_ssl_sessions[i].session= NULL;
+      ma_tls_sessions[i].md4_hash[0]= 0;
+      SSL_SESSION_free(ma_tls_sessions[i].session);
+      ma_tls_sessions[i].session= NULL;
     }
 }
 #endif
@@ -238,10 +238,10 @@ static int ssl_thread_init()
     0  success
     1  error
 */
-int ma_ssl_start(char *errmsg, size_t errmsg_len)
+int ma_tls_start(char *errmsg, size_t errmsg_len)
 {
   int rc= 1;
-  if (ma_ssl_initialized)
+  if (ma_tls_initialized)
     return 0;
 
   /* lock mutex to prevent multiple initialization */
@@ -267,17 +267,17 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
   if (!(SSL_context= SSL_CTX_new(SSLv23_client_method())))
 #endif
   {
-    ma_ssl_get_error(errmsg, errmsg_len);
+    ma_tls_get_error(errmsg, errmsg_len);
     goto end;
   }
 #ifdef HAVE_SSL_SESSION_CACHE
   SSL_CTX_set_session_cache_mode(SSL_context, SSL_SESS_CACHE_CLIENT);
-  ma_ssl_sessions= (MA_SSL_SESSION *)calloc(1, sizeof(struct st_ma_ssl_session) * ma_ssl_session_cache_size);
-  SSL_CTX_sess_set_new_cb(SSL_context, ma_ssl_session_cb);
-  SSL_CTX_sess_set_remove_cb(SSL_context, ma_ssl_remove_session_cb);
+  ma_tls_sessions= (MA_SSL_SESSION *)calloc(1, sizeof(struct st_ma_tls_session) * ma_tls_session_cache_size);
+  SSL_CTX_sess_set_new_cb(SSL_context, ma_tls_session_cb);
+  SSL_CTX_sess_set_remove_cb(SSL_context, ma_tls_remove_session_cb);
 #endif
   rc= 0;
-  ma_ssl_initialized= TRUE;
+  ma_tls_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_openssl_config);
   return rc;
@@ -295,9 +295,9 @@ end:
    RETURN VALUES
      void
 */
-void ma_ssl_end()
+void ma_tls_end()
 {
-  if (ma_ssl_initialized)
+  if (ma_tls_initialized)
   {
     int i;
     pthread_mutex_lock(&LOCK_openssl_config);
@@ -325,14 +325,14 @@ void ma_ssl_end()
       CONF_modules_unload(1);
       sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
     }
-    ma_ssl_initialized= FALSE;
+    ma_tls_initialized= FALSE;
     pthread_mutex_unlock(&LOCK_openssl_config);
     pthread_mutex_destroy(&LOCK_openssl_config);
   }
   return;
 }
 
-int ma_ssl_get_password(char *buf, int size, int rwflag, void *userdata)
+int ma_tls_get_password(char *buf, int size, int rwflag, void *userdata)
 {
   memset(buf, 0, size);
   if (userdata)
@@ -341,7 +341,7 @@ int ma_ssl_get_password(char *buf, int size, int rwflag, void *userdata)
 }
 
 
-static int ma_ssl_set_certs(MYSQL *mysql)
+static int ma_tls_set_certs(MYSQL *mysql)
 {
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
@@ -375,10 +375,10 @@ static int ma_ssl_set_certs(MYSQL *mysql)
 
   /* If the private key file is encrypted, we need to register a callback function
    * for providing password. */
-  if (OPT_HAS_EXT_VAL(mysql, ssl_pw))
+  if (OPT_HAS_EXT_VAL(mysql, tls_pw))
   {
-    SSL_CTX_set_default_passwd_cb_userdata(SSL_context, (void *)mysql->options.extension->ssl_pw);
-    SSL_CTX_set_default_passwd_cb(SSL_context, ma_ssl_get_password);
+    SSL_CTX_set_default_passwd_cb_userdata(SSL_context, (void *)mysql->options.extension->tls_pw);
+    SSL_CTX_set_default_passwd_cb(SSL_context, ma_tls_get_password);
   }
 
   if (keyfile && keyfile[0])
@@ -391,7 +391,7 @@ static int ma_ssl_set_certs(MYSQL *mysql)
         goto error;
     }
   }
-  if (OPT_HAS_EXT_VAL(mysql, ssl_pw))
+  if (OPT_HAS_EXT_VAL(mysql, tls_pw))
   {
     SSL_CTX_set_default_passwd_cb_userdata(SSL_context, NULL);
     SSL_CTX_set_default_passwd_cb(SSL_context, NULL);
@@ -416,7 +416,7 @@ static int ma_ssl_set_certs(MYSQL *mysql)
   return 0;
 
 error:
-  ma_ssl_set_error(mysql);
+  ma_tls_set_error(mysql);
   return 1;
 }
 
@@ -450,16 +450,16 @@ static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
 }
 
 
-void *ma_ssl_init(MYSQL *mysql)
+void *ma_tls_init(MYSQL *mysql)
 {
   int verify;
   SSL *ssl= NULL;
 #ifdef HAVE_SSL_SESSION_CACHE
-  MA_SSL_SESSION *session= ma_ssl_get_session(mysql);
+  MA_SSL_SESSION *session= ma_tls_get_session(mysql);
 #endif
   pthread_mutex_lock(&LOCK_openssl_config);
 
-  if (ma_ssl_set_certs(mysql))
+  if (ma_tls_set_certs(mysql))
   {
     goto error;
   }
@@ -490,9 +490,9 @@ error:
   return NULL;
 }
 
-my_bool ma_ssl_connect(MARIADB_SSL *cssl)
+my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
-  SSL *ssl = (SSL *)cssl->ssl;
+  SSL *ssl = (SSL *)ctls->ssl;
   my_bool blocking;
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
@@ -512,7 +512,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
 
   if (SSL_connect(ssl) != 1)
   {
-    ma_ssl_set_error(mysql);
+    ma_tls_set_error(mysql);
     /* restore blocking mode */
     if (!blocking)
       pvio->methods->blocking(pvio, FALSE, 0);
@@ -532,29 +532,29 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
       return 1;
     }
   }
-  pvio->cssl->ssl= cssl->ssl= (void *)ssl;
+  pvio->ctls->ssl= ctls->ssl= (void *)ssl;
 
   return 0;
 }
 
-size_t ma_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return SSL_read((SSL *)cssl->ssl, (void *)buffer, (int)length);
+  return SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
 }
 
-size_t ma_ssl_write(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
-  return SSL_write((SSL *)cssl->ssl, (void *)buffer, (int)length);
+  return SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
 }
 
-my_bool ma_ssl_close(MARIADB_SSL *cssl)
+my_bool ma_tls_close(MARIADB_TLS *ctls)
 {
   int i, rc;
   SSL *ssl;
 
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return 1;
-  ssl= (SSL *)cssl->ssl;
+  ssl= (SSL *)ctls->ssl;
 
   SSL_set_quiet_shutdown(ssl, 1); 
   /* 2 x pending + 2 * data = 4 */ 
@@ -563,12 +563,12 @@ my_bool ma_ssl_close(MARIADB_SSL *cssl)
       break;
 
   SSL_free(ssl);
-  cssl->ssl= NULL;
+  ctls->ssl= NULL;
 
   return rc;
 }
 
-int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
+int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
 {
   X509 *cert;
   MYSQL *mysql;
@@ -580,9 +580,9 @@ int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
   SSL *ssl;
   MARIADB_PVIO *pvio;
 
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return 1;
-  ssl= (SSL *)cssl->ssl;
+  ssl= (SSL *)ctls->ssl;
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
@@ -632,26 +632,26 @@ error:
   return 1;
 }
 
-const char *ma_ssl_get_cipher(MARIADB_SSL *cssl)
+const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 {
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return NULL;
-  return SSL_get_cipher_name(cssl->ssl);
+  return SSL_get_cipher_name(ctls->ssl);
 }
 
-unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsigned int len)
 {
   EVP_MD *digest= (EVP_MD *)EVP_sha1();
   X509 *cert;
   MYSQL *mysql;
   unsigned int fp_len;
 
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return 0;
 
-  mysql= SSL_get_app_data(cssl->ssl);
+  mysql= SSL_get_app_data(ctls->ssl);
 
-  if (!(cert= SSL_get_peer_certificate(cssl->ssl)))
+  if (!(cert= SSL_get_peer_certificate(ctls->ssl)))
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                         ER(CR_SSL_CONNECTION_ERROR), 
@@ -681,14 +681,14 @@ unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsig
 
 extern char *ssl_protocol_version[5];
 
-my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
 {
   SSL *ssl;
 
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return 1;
 
-  ssl = (SSL *)cssl->ssl;
+  ssl = (SSL *)ctls->ssl;
   switch(ssl->version)
   {
 #ifdef SSL3_VERSION

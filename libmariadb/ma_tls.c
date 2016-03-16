@@ -38,7 +38,7 @@
 #include <string.h>
 #include <ma_errmsg.h>
 #include <ma_pvio.h>
-#include <ma_ssl.h>
+#include <ma_tls.h>
 #include <mysql/client_plugin.h>
 #include <mariadb/ma_io.h>
 
@@ -48,26 +48,26 @@
 #endif
 
 /* Errors should be handled via pvio callback function */
-my_bool ma_ssl_initialized= FALSE;
+my_bool ma_tls_initialized= FALSE;
 unsigned int mariadb_deinitialize_ssl= 1;
 
 char *ssl_protocol_version[5]= {"unknown", "SSL3", "TLS1.0", "TLS1.1", "TLS1.2"};
 
-MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
+MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 {
-  MARIADB_SSL *cssl= NULL;
+  MARIADB_TLS *cssl= NULL;
 
-  if (!ma_ssl_initialized)
-    ma_ssl_start(mysql->net.last_error, MYSQL_ERRMSG_SIZE);
+  if (!ma_tls_initialized)
+    ma_tls_start(mysql->net.last_error, MYSQL_ERRMSG_SIZE);
 
-  if (!(cssl= (MARIADB_SSL *)calloc(1, sizeof(MARIADB_SSL))))
+  if (!(cssl= (MARIADB_TLS *)calloc(1, sizeof(MARIADB_TLS))))
   {
     return NULL;
   }
 
   /* register error routine and methods */
   cssl->pvio= mysql->net.pvio;
-  if (!(cssl->ssl= ma_ssl_init(mysql)))
+  if (!(cssl->ssl= ma_tls_init(mysql)))
   {
     free(cssl);
     cssl= NULL;
@@ -75,51 +75,51 @@ MARIADB_SSL *ma_pvio_ssl_init(MYSQL *mysql)
   return cssl;
 }
 
-my_bool ma_pvio_ssl_connect(MARIADB_SSL *cssl)
+my_bool ma_pvio_tls_connect(MARIADB_TLS *cssl)
 {
   my_bool rc;
   
-  if ((rc= ma_ssl_connect(cssl)))
-    ma_ssl_close(cssl);
+  if ((rc= ma_tls_connect(cssl)))
+    ma_tls_close(cssl);
   return rc;
 }
 
-size_t ma_pvio_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_pvio_tls_read(MARIADB_TLS *cssl, const uchar* buffer, size_t length)
 {
-  return ma_ssl_read(cssl, buffer, length);
+  return ma_tls_read(cssl, buffer, length);
 }
 
-size_t ma_pvio_ssl_write(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_pvio_tls_write(MARIADB_TLS *cssl, const uchar* buffer, size_t length)
 {
-  return ma_ssl_write(cssl, buffer, length);
+  return ma_tls_write(cssl, buffer, length);
 }
 
-my_bool ma_pvio_ssl_close(MARIADB_SSL *cssl)
+my_bool ma_pvio_tls_close(MARIADB_TLS *cssl)
 {
-  return ma_ssl_close(cssl);
+  return ma_tls_close(cssl);
 }
 
-int ma_pvio_ssl_verify_server_cert(MARIADB_SSL *cssl)
+int ma_pvio_tls_verify_server_cert(MARIADB_TLS *cssl)
 {
-  return ma_ssl_verify_server_cert(cssl);
+  return ma_tls_verify_server_cert(cssl);
 }
 
-const char *ma_pvio_ssl_cipher(MARIADB_SSL *cssl)
+const char *ma_pvio_tls_cipher(MARIADB_TLS *cssl)
 {
-  return ma_ssl_get_cipher(cssl);
+  return ma_tls_get_cipher(cssl);
 }
 
-void ma_pvio_ssl_end()
+void ma_pvio_tls_end()
 {
-  ma_ssl_end();
+  ma_tls_end();
 }
 
-my_bool ma_pvio_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+my_bool ma_pvio_tls_get_protocol_version(MARIADB_TLS *cssl, struct st_ssl_version *version)
 {
-  return ma_ssl_get_protocol_version(cssl, version);
+  return ma_tls_get_protocol_version(cssl, version);
 }
 
-static my_bool ma_pvio_ssl_compare_fp(char *fp1, unsigned int fp1_len,
+static my_bool ma_pvio_tls_compare_fp(char *fp1, unsigned int fp1_len,
                                    char *fp2, unsigned int fp2_len)
 {
   char hexstr[64];
@@ -134,17 +134,17 @@ static my_bool ma_pvio_ssl_compare_fp(char *fp1, unsigned int fp1_len,
   return 0;
 }
 
-my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_list)
+my_bool ma_pvio_tls_check_fp(MARIADB_TLS *cssl, const char *fp, const char *fp_list)
 {
   unsigned int cert_fp_len= 64;
   unsigned char cert_fp[64];
   my_bool rc=1;
   MYSQL *mysql= cssl->pvio->mysql;
 
-  if ((cert_fp_len= ma_ssl_get_finger_print(cssl, cert_fp, cert_fp_len)) < 1)
+  if ((cert_fp_len= ma_tls_get_finger_print(cssl, cert_fp, cert_fp_len)) < 1)
     goto end;
   if (fp)
-    rc= ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, (char *)fp, (unsigned int)strlen(fp));
+    rc= ma_pvio_tls_compare_fp(cert_fp, cert_fp_len, (char *)fp, (unsigned int)strlen(fp));
   else if (fp_list)
   {
     MA_FILE *fp;
@@ -164,7 +164,7 @@ my_bool ma_pvio_ssl_check_fp(MARIADB_SSL *cssl, const char *fp, const char *fp_l
       if (pos)
         *pos= '\0';
         
-      if (!ma_pvio_ssl_compare_fp(cert_fp, cert_fp_len, buff, (unsigned int)strlen(buff)))
+      if (!ma_pvio_tls_compare_fp(cert_fp, cert_fp_len, buff, (unsigned int)strlen(buff)))
       {
         /* finger print is valid: close file and exit */
         ma_close(fp);

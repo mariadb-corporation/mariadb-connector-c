@@ -396,8 +396,8 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
   SECURITY_STATUS rc;
   PUCHAR          IoBuffer;
   BOOL            fDoRead;
-  MARIADB_SSL     *cssl= pvio->cssl;
-  SC_CTX          *sctx= (SC_CTX *)cssl->ssl;
+  MARIADB_TLS     *ctls= pvio->ctls;
+  SC_CTX          *sctx= (SC_CTX *)ctls->ssl;
 
 
   dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
@@ -562,13 +562,13 @@ loopend:
 }
 /* }}} */
 
-/* {{{ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl) */
+/* {{{ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls) */
 /*
    performs client side handshake 
 
    SYNOPSIS
      ma_schannel_client_handshake()
-     cssl             Pointer to a MARIADB_SSL structure
+     ctls             Pointer to a MARIADB_TLS structure
 
    DESCRIPTION
      initiates a client/server handshake. This function can be used
@@ -578,7 +578,7 @@ loopend:
      SEC_E_OK         on success
 */
 
-SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
+SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
 {
   MARIADB_PVIO *pvio;
   SECURITY_STATUS sRet;
@@ -594,11 +594,11 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_SSL *cssl)
   SecBufferDesc	BufferOut;
   SecBuffer  BuffersOut;
 
-  if (!cssl || !cssl->pvio)
+  if (!ctls || !ctls->pvio)
     return 1;
 
-  pvio= cssl->pvio;
-  sctx= (SC_CTX *)cssl->ssl;
+  pvio= ctls->pvio;
+  sctx= (SC_CTX *)ctls->ssl;
 
   /* Initialie securifty context */
   BuffersOut.BufferType= SECBUFFER_TOKEN;
@@ -701,10 +701,10 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
             *pData, *pExtra;
   int i;
 
-  if (!pvio || !pvio->methods || !pvio->methods->read || !pvio->cssl || !DecryptLength)
+  if (!pvio || !pvio->methods || !pvio->methods->read || !pvio->ctls || !DecryptLength)
     return SEC_E_INTERNAL_ERROR;
 
-  sctx= (SC_CTX *)pvio->cssl->ssl;
+  sctx= (SC_CTX *)pvio->ctls->ssl;
   *DecryptLength= 0;
 
   while (1)
@@ -880,7 +880,7 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   SecBuffer Buffers[4];
   DWORD cbMessage;
   PBYTE pbMessage;
-  SC_CTX *sctx= (SC_CTX *)pvio->cssl->ssl;
+  SC_CTX *sctx= (SC_CTX *)pvio->ctls->ssl;
   size_t payload;
 
   payload= MIN(WriteBufferSize, sctx->IoBufferSize);
@@ -920,15 +920,15 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
 
 extern char *ssl_protocol_version[5];
 
-/* {{{ ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version) */
-my_bool ma_ssl_get_protocol_version(MARIADB_SSL *cssl, struct st_ssl_version *version)
+/* {{{ ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version) */
+my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
 {
   SC_CTX *sctx;
   SecPkgContext_ConnectionInfo ConnectionInfo;
-  if (!cssl->ssl)
+  if (!ctls->ssl)
     return 1;
 
-  sctx= (SC_CTX *)cssl->ssl;
+  sctx= (SC_CTX *)ctls->ssl;
 
   if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo) != SEC_E_OK)
     return 1;

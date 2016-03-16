@@ -214,13 +214,16 @@ extern unsigned int mariadb_deinitialize_ssl;
     MYSQL_OPT_NONBLOCK,
     /* MariaDB Connector/C specific */
     MYSQL_DATABASE_DRIVER=7000,
-    MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
-    MARIADB_OPT_SSL_FP_LIST,        /* finger print white list for server certificate verification */
-    MARIADB_OPT_SSL_PASSPHRASE,     /* passphrase for encrypted certificates */
+    MARIADB_OPT_SSL_FP,             /* deprecated, use MARIADB_OPT_TLS_PEER_FP instead */
+    MARIADB_OPT_SSL_FP_LIST,        /* deprecated, use MARIADB_OPT_TLS_PEER_FP_LIST instead */
+    MARIADB_OPT_TLS_PASSPHRASE,     /* passphrase for encrypted certificates */
+    MARIADB_OPT_TLS_CIPHER_STRENGTH,
+    MARIADB_OPT_TLS_VERSION,
+    MARIADB_OPT_TLS_PEER_FP,            /* single finger print for server certificate verification */
+    MARIADB_OPT_TLS_PEER_FP_LIST,       /* finger print white list for server certificate verification */
     MARIADB_OPT_CONNECTION_READ_ONLY,
     MYSQL_OPT_CONNECT_ATTRS,        /* for mysql_get_optionv */
     MARIADB_OPT_USERDATA,
-    MARIADB_OPT_SSL_CIPHER_STRENGTH,
     MARIADB_OPT_CONNECTION_HANDLER,
     MARIADB_OPT_PORT,
     MARIADB_OPT_UNIXSOCKET,
@@ -259,14 +262,14 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_CONNECTION_SOCKET,
     MARIADB_CONNECTION_SQLSTATE,
     MARIADB_CONNECTION_SSL_CIPHER,
-    MARIADB_SSL_LIBRARY,
-    MARIADB_CONNECTION_SSL_VERSION,
-    MARIADB_CONNECTION_SSL_VERSION_ID,
+    MARIADB_TLS_LIBRARY,
+    MARIADB_CONNECTION_TLS_VERSION,
+    MARIADB_CONNECTION_TLS_VERSION_ID,
     MARIADB_CONNECTION_TYPE,
     MARIADB_CONNECTION_UNIX_SOCKET,
     MARIADB_CONNECTION_USER,
     MARIADB_MAX_ALLOWED_PACKET,
-    MARIADB_NET_BUFFER_LENGTH
+    MARIADB_NET_BUFFER_LENGTH,
   };
 
   enum mysql_status { MYSQL_STATUS_READY,

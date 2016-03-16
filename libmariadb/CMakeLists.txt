@@ -251,7 +251,7 @@ ma_errmsg.c
 mariadb_lib.c
 ma_list.c
 ma_pvio.c
-ma_ssl.c
+ma_tls.c
 ma_alloc.c
 ma_compress.c
 ma_init.c

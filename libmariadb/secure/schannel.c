@@ -24,7 +24,7 @@
 
 //#define VOID void
 
-extern my_bool ma_ssl_initialized;
+extern my_bool ma_tls_initialized;
 
 static pthread_mutex_t LOCK_schannel_config;
 static pthread_mutex_t *LOCK_crypto= NULL;
@@ -97,15 +97,15 @@ static int ssl_thread_init()
   context SSL_context
 
   SYNOPSIS
-    ma_ssl_start
+    ma_tls_start
 
   RETURN VALUES
     0  success
     1  error
 */
-int ma_ssl_start(char *errmsg, size_t errmsg_len)
+int ma_tls_start(char *errmsg, size_t errmsg_len)
 {
-  if (!ma_ssl_initialized)
+  if (!ma_tls_initialized)
   {
     pthread_mutex_init(&LOCK_schannel_config,MY_MUTEX_INIT_FAST);
     pthread_mutex_lock(&LOCK_schannel_config);
@@ -119,7 +119,7 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
       }
       
     }
-    ma_ssl_initialized = TRUE;
+    ma_tls_initialized = TRUE;
     pthread_mutex_unlock(&LOCK_schannel_config);
   }
   return 0;
@@ -131,15 +131,15 @@ int ma_ssl_start(char *errmsg, size_t errmsg_len)
    mysql_server_end() function
 
    SYNOPSIS
-     ma_ssl_end()
+     ma_tls_end()
        void
 
    RETURN VALUES
      void
 */
-void ma_ssl_end()
+void ma_tls_end()
 {
-  if (ma_ssl_initialized)
+  if (ma_tls_initialized)
   {
     pthread_mutex_lock(&LOCK_schannel_config);
     if (ca_CertStore)
@@ -152,25 +152,25 @@ void ma_ssl_end()
       CertCloseStore(crl_CertStore, 0);
       crl_CertStore = 0;
     }
-    ma_ssl_initialized= FALSE;
+    ma_tls_initialized= FALSE;
     pthread_mutex_unlock(&LOCK_schannel_config);
     pthread_mutex_destroy(&LOCK_schannel_config);
   }
   return;
 }
 
-/* {{{ static int ma_ssl_set_client_certs(MARIADB_SSL *cssl) */
-static int ma_ssl_set_client_certs(MARIADB_SSL *cssl)
+/* {{{ static int ma_tls_set_client_certs(MARIADB_TLS *ctls) */
+static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
 {
-  MYSQL *mysql= cssl->pvio->mysql;
+  MYSQL *mysql= ctls->pvio->mysql;
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key,
        *cafile= mysql->options.ssl_ca;
   PCERT_CONTEXT ca_ctx= NULL;
   PCRL_CONTEXT crl_ctx = NULL;
        
-  SC_CTX *sctx= (SC_CTX *)cssl->ssl;
-  MARIADB_PVIO *pvio= cssl->pvio;
+  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
+  MARIADB_PVIO *pvio= ctls->pvio;
 
   if (cafile)
   {
@@ -194,7 +194,7 @@ static int ma_ssl_set_client_certs(MARIADB_SSL *cssl)
     keyfile= certfile;
 
   if (certfile && certfile[0])
-    if (!(sctx->client_cert_ctx = ma_schannel_create_cert_context(cssl->pvio, certfile)))
+    if (!(sctx->client_cert_ctx = ma_schannel_create_cert_context(ctls->pvio, certfile)))
       goto end;
 
   if (sctx->client_cert_ctx && keyfile[0])
@@ -229,8 +229,8 @@ end:
 }
 /* }}} */
 
-/* {{{ void *ma_ssl_init(MARIADB_SSL *cssl, MYSQL *mysql) */
-void *ma_ssl_init(MYSQL *mysql)
+/* {{{ void *ma_tls_init(MARIADB_TLS *ctls, MYSQL *mysql) */
+void *ma_tls_init(MYSQL *mysql)
 {
   SC_CTX *sctx= NULL;
 
@@ -249,7 +249,7 @@ void *ma_ssl_init(MYSQL *mysql)
 
 
 
-my_bool ma_ssl_connect(MARIADB_SSL *cssl)
+my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   my_bool blocking;
   MYSQL *mysql;
@@ -262,11 +262,11 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
                  pLocalCertContext= NULL;
   ALG_ID AlgId[MAX_ALG_ID]= {0};
   
-  if (!cssl || !cssl->pvio)
+  if (!ctls || !ctls->pvio)
     return 1;;
   
-  pvio= cssl->pvio;
-  sctx= (SC_CTX *)cssl->ssl;
+  pvio= ctls->pvio;
+  sctx= (SC_CTX *)ctls->ssl;
 
   /* Set socket to blocking if not already set */
   if (!(blocking= pvio->methods->is_blocking(pvio)))
@@ -274,7 +274,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
 
   mysql= pvio->mysql;
  
-  if (ma_ssl_set_client_certs(cssl))
+  if (ma_tls_set_client_certs(ctls))
     goto end;
 
   ZeroMemory(&Cred, sizeof(SCHANNEL_CRED));
@@ -302,7 +302,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   
   Cred.dwVersion= SCHANNEL_CRED_VERSION;
   if (mysql->options.extension)
-    Cred.dwMinimumCipherStrength = MAX(128, mysql->options.extension->ssl_cipher_strength);
+    Cred.dwMinimumCipherStrength = MAX(128, mysql->options.extension->tls_cipher_strength);
   else
     Cred.dwMinimumCipherStrength = 128;
   Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK | SCH_SEND_ROOT_CERT |
@@ -323,7 +323,7 @@ my_bool ma_ssl_connect(MARIADB_SSL *cssl)
   }
   sctx->FreeCredHdl= 1;
 
-  if (ma_schannel_client_handshake(cssl) != SEC_E_OK)
+  if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
 
   sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext);
@@ -350,9 +350,9 @@ end:
   return 1;
 }
 
-size_t ma_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  SC_CTX *sctx= (SC_CTX *)cssl->ssl;
+  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
   DWORD dlength= -1;
 
@@ -360,9 +360,9 @@ size_t ma_ssl_read(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
   return dlength;
 }
 
-size_t ma_ssl_write(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
+size_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
-  SC_CTX *sctx= (SC_CTX *)cssl->ssl;
+  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
   size_t rc, wlength= 0;
   size_t remain= length;
@@ -377,10 +377,10 @@ size_t ma_ssl_write(MARIADB_SSL *cssl, const uchar* buffer, size_t length)
   return length;
 }
 
-/* {{{ my_bool ma_ssl_close(MARIADB_PVIO *pvio) */
-my_bool ma_ssl_close(MARIADB_SSL *cssl)
+/* {{{ my_bool ma_tls_close(MARIADB_PVIO *pvio) */
+my_bool ma_tls_close(MARIADB_TLS *ctls)
 {
-  SC_CTX *sctx= (SC_CTX *)cssl->ssl; 
+  SC_CTX *sctx= (SC_CTX *)ctls->ssl; 
   
   if (sctx)
   {
@@ -396,10 +396,10 @@ my_bool ma_ssl_close(MARIADB_SSL *cssl)
 }
 /* }}} */
 
-int ma_ssl_verify_server_cert(MARIADB_SSL *cssl)
+int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
 {
-  SC_CTX *sctx= (SC_CTX *)cssl->ssl;
-  MARIADB_PVIO *pvio= cssl->pvio;
+  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
+  MARIADB_PVIO *pvio= ctls->pvio;
   int rc= 1;
   char *szName= NULL;
   char *pszServerName= pvio->mysql->host;
@@ -461,17 +461,17 @@ end:
   return rc;
 }
 
-const char *ma_ssl_get_cipher(MARIADB_SSL *cssl)
+const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 {
   SecPkgContext_ConnectionInfo cinfo;
   SECURITY_STATUS sRet;
   SC_CTX *sctx;
   DWORD i= 0;
 
-  if (!cssl || !cssl->ssl)
+  if (!ctls || !ctls->ssl)
     return NULL;
 
-  sctx= (SC_CTX *)cssl->ssl;
+  sctx= (SC_CTX *)ctls->ssl;
 
   sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, (PVOID)&cinfo);
   if (sRet != SEC_E_OK)
@@ -486,9 +486,9 @@ const char *ma_ssl_get_cipher(MARIADB_SSL *cssl)
   return NULL;
 }
 
-unsigned int ma_ssl_get_finger_print(MARIADB_SSL *cssl, unsigned char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsigned int len)
 {
-  SC_CTX *sctx= (SC_CTX *)cssl->ssl;
+  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;
   if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
     return 0;

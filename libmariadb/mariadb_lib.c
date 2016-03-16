@@ -64,7 +64,7 @@
 #endif
 #include <ma_pvio.h>
 #ifdef HAVE_SSL
-#include <ma_ssl.h>
+#include <ma_tls.h>
 #endif
 #include <mysql/client_plugin.h>
 
@@ -610,7 +610,7 @@ struct st_default_options mariadb_defaults[] =
   {MARIADB_OPT_SSL_FP, MARIADB_OPTION_STR, "ssl-fp"},
   {MARIADB_OPT_SSL_FP_LIST, MARIADB_OPTION_STR, "ssl-fp-list"},
   {MARIADB_OPT_SSL_FP_LIST, MARIADB_OPTION_STR, "ssl-fplist"},
-  {MARIADB_OPT_SSL_PASSPHRASE, MARIADB_OPTION_STR, "ssl_passphrase"},
+  {MARIADB_OPT_TLS_PASSPHRASE, MARIADB_OPTION_STR, "ssl_passphrase"},
   {MYSQL_OPT_BIND, MARIADB_OPTION_STR, "bind-address"},
   {0, 0, NULL}
 };
@@ -1014,9 +1014,9 @@ const char * STDCALL
 mysql_get_ssl_cipher(MYSQL *mysql)
 {
 #ifdef HAVE_SSL
-  if (mysql->net.pvio && mysql->net.pvio->cssl)
+  if (mysql->net.pvio && mysql->net.pvio->ctls)
   {
-    return ma_pvio_ssl_cipher(mysql->net.pvio->cssl);
+    return ma_pvio_tls_cipher(mysql->net.pvio->ctls);
   }
 #endif
   return(NULL);
@@ -1795,9 +1795,10 @@ static void mysql_close_options(MYSQL *mysql)
     free(mysql->options.extension->db_driver);
     free(mysql->options.extension->ssl_crl);
     free(mysql->options.extension->ssl_crlpath);
-    free(mysql->options.extension->ssl_fp);
-    free(mysql->options.extension->ssl_fp_list);
-    free(mysql->options.extension->ssl_pw);
+    free(mysql->options.extension->tls_fp);
+    free(mysql->options.extension->tls_fp_list);
+    free(mysql->options.extension->tls_pw);
+    free(mysql->options.extension->tls_version);
     free(mysql->options.extension->url);
     free(mysql->options.extension->connection_handler);
     if(hash_inited(&mysql->options.extension->connect_attrs))
@@ -2776,17 +2777,19 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MYSQL_OPT_BIND:
     OPT_SET_VALUE_STR(&mysql->options, bind_address, arg1);
     break;
-  case MARIADB_OPT_SSL_CIPHER_STRENGTH:
-    OPT_SET_EXTENDED_VALUE_INT(&mysql->options, ssl_cipher_strength, *((unsigned int *)arg1));
+  case MARIADB_OPT_TLS_CIPHER_STRENGTH:
+    OPT_SET_EXTENDED_VALUE_INT(&mysql->options, tls_cipher_strength, *((unsigned int *)arg1));
     break;
   case MARIADB_OPT_SSL_FP:
-    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp, (char *)arg1);
+  case MARIADB_OPT_TLS_PEER_FP:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_fp, (char *)arg1);
     break;
   case MARIADB_OPT_SSL_FP_LIST:
-    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_fp_list, (char *)arg1);
+  case MARIADB_OPT_TLS_PEER_FP_LIST:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_fp_list, (char *)arg1);
     break;
-  case MARIADB_OPT_SSL_PASSPHRASE:
-    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, ssl_pw, (char *)arg1);
+  case MARIADB_OPT_TLS_PASSPHRASE:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_pw, (char *)arg1);
     break;
   case MARIADB_OPT_COM_MULTI:
     if (&mysql->net.pvio && 
@@ -3000,17 +3003,19 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
   case MYSQL_OPT_BIND:
     *((char **)arg)= mysql->options.bind_address;
     break;
-  case MARIADB_OPT_SSL_CIPHER_STRENGTH:
-    *((unsigned int *)arg) = mysql->options.extension ? mysql->options.extension->ssl_cipher_strength : 0;
+  case MARIADB_OPT_TLS_CIPHER_STRENGTH:
+    *((unsigned int *)arg) = mysql->options.extension ? mysql->options.extension->tls_cipher_strength : 0;
     break;
   case MARIADB_OPT_SSL_FP:
-    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_fp : NULL;
+  case MARIADB_OPT_TLS_PEER_FP:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->tls_fp : NULL;
     break;
   case MARIADB_OPT_SSL_FP_LIST:
-    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_fp_list : NULL;
+  case MARIADB_OPT_TLS_PEER_FP_LIST:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->tls_fp_list : NULL;
     break;
-  case MARIADB_OPT_SSL_PASSPHRASE:
-    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_pw : NULL;
+  case MARIADB_OPT_TLS_PASSPHRASE:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->tls_pw : NULL;
     break;
   case MARIADB_OPT_CONNECTION_READ_ONLY:
     *((my_bool *)arg)= mysql->options.extension ? mysql->options.extension->read_only : 0;
@@ -3340,7 +3345,7 @@ void STDCALL mysql_server_end(void)
   if (ma_init_done)
     ma_end(0);
 #ifdef HAVE_SSL
-  ma_pvio_ssl_end();
+  ma_pvio_tls_end();
 #endif  
   mysql_client_init= 0;
   ma_init_done= 0;
@@ -3461,31 +3466,31 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       goto error;
     *((char **)arg)= mysql->net.sqlstate;
     break;
-  case MARIADB_CONNECTION_SSL_VERSION:
+  case MARIADB_CONNECTION_TLS_VERSION:
     #ifdef HAVE_SSL
-    if (mysql && mysql->net.pvio && mysql->net.pvio->cssl)
+    if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
     {
       struct st_ssl_version version;
-      if (!ma_pvio_ssl_get_protocol_version(mysql->net.pvio->cssl, &version))
+      if (!ma_pvio_tls_get_protocol_version(mysql->net.pvio->ctls, &version))
       *((char **)arg)= version.cversion;
     }
     else
     #endif
       goto error;
     break;
-  case MARIADB_CONNECTION_SSL_VERSION_ID:
+  case MARIADB_CONNECTION_TLS_VERSION_ID:
     #ifdef HAVE_SSL
-    if (mysql && mysql->net.pvio && mysql->net.pvio->cssl)
+    if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
     {
       struct st_ssl_version version;
-      if (!ma_pvio_ssl_get_protocol_version(mysql->net.pvio->cssl, &version))
+      if (!ma_pvio_tls_get_protocol_version(mysql->net.pvio->ctls, &version))
       *((unsigned int *)arg)= version.iversion;
     }
     else
     #endif
       goto error;
     break;
-  case MARIADB_SSL_LIBRARY:
+  case MARIADB_TLS_LIBRARY:
 #ifdef HAVE_SSL
 #ifdef HAVE_GNUTLS
     *((char **)arg)= "GNUTLS";
@@ -3579,8 +3584,8 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     break;
   case MARIADB_CONNECTION_SSL_CIPHER:
     #ifdef HAVE_SSL
-    if (mysql && mysql->net.pvio && mysql->net.pvio->cssl)
-      *((char **)arg)= (char *)ma_pvio_ssl_cipher(mysql->net.pvio->cssl);
+    if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
+      *((char **)arg)= (char *)ma_pvio_tls_cipher(mysql->net.pvio->ctls);
     else
     #endif
       goto error;

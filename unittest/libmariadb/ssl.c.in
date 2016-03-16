@@ -379,7 +379,7 @@ static int test_password_protected(MYSQL *my)
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem",
                        "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
 
-  mysql_options(mysql, MARIADB_OPT_SSL_PASSPHRASE, "qwerty");
+  mysql_options(mysql, MARIADB_OPT_TLS_PASSPHRASE, "qwerty");
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0), mysql_error(mysql));
@@ -780,12 +780,12 @@ static int test_ssl_version(MYSQL *mysql)
                          port, socketname, 0), mysql_error(my));
 
   diag("cipher: %s", mysql_get_ssl_cipher(my));
-  mariadb_get_infov(my, MARIADB_CONNECTION_SSL_VERSION_ID, &iversion);
+  mariadb_get_infov(my, MARIADB_CONNECTION_TLS_VERSION_ID, &iversion);
   diag("protocol: %d", iversion);
-  mariadb_get_infov(my, MARIADB_CONNECTION_SSL_VERSION, &version);
+  mariadb_get_infov(my, MARIADB_CONNECTION_TLS_VERSION, &version);
   diag("protocol: %s", version);
 
-  mariadb_get_infov(my, MARIADB_SSL_LIBRARY, &library);
+  mariadb_get_infov(my, MARIADB_TLS_LIBRARY, &library);
   diag("library: %s", library);
 
   mysql_close(my);
@@ -806,7 +806,7 @@ static int test_schannel_cipher(MYSQL *mysql)
   FAIL_IF(!my, "mysql_init() failed");
 
   mysql_ssl_set(my,0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
-  mysql_options(my, MARIADB_OPT_SSL_CIPHER_STRENGTH, &cipher_strength);
+  mysql_options(my, MARIADB_OPT_TLS_CIPHER_STRENGTH, &cipher_strength);
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
                          port, socketname, 0), mysql_error(my));
 
