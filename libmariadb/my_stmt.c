@@ -236,8 +236,6 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
           }
         }
       }
-
-
       current->length= packet_len;
       result->rows++; 
     } else  /* end of stream */

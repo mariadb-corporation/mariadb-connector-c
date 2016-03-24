@@ -4054,7 +4054,53 @@ static int test_conc155(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc168(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+
+  MYSQL_BIND bind;
+  char buffer[100];
+  int rc;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc168");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE conc168(a datetime(3))");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO conc168 VALUES ('2016-03-09 07:51:49.000'),('2016-03-09 07:51:49.001'),('2016-03-09 07:51:49.010')");
+  check_mysql_rc(rc, mysql);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer= buffer;
+  bind.buffer_type= MYSQL_TYPE_STRING;
+  bind.buffer_length= 100;
+
+  rc= mysql_stmt_prepare(stmt, "SELECT a FROM conc168", strlen("SELECT a FROM conc168"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+  FAIL_IF(strcmp(buffer, "2016-03-09 07:51:49.000"), "expected: 2016-03-09 07:51:49.000");
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+  FAIL_IF(strcmp(buffer, "2016-03-09 07:51:49.001"), "expected: 2016-03-09 07:51:49.001");
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+  FAIL_IF(strcmp(buffer, "2016-03-09 07:51:49.010"), "expected: 2016-03-09 07:51:49.010");
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc168", test_conc168, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc155", test_conc155, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc154", test_conc154, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_conc141", test_conc141, TEST_CONNECTION_NEW, 0, NULL , NULL},
