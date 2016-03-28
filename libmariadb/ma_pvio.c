@@ -51,10 +51,8 @@
 #include <string.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
-#ifdef HAVE_NONBLOCK
 #include <mariadb_async.h>
 #include <ma_context.h>
-#endif
 
 /* callback functions for read/write */
 LIST *pvio_callback= NULL;
@@ -121,6 +119,8 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
   if (pvio->methods->set_timeout)
   {
     pvio->methods->set_timeout(pvio, PVIO_CONNECT_TIMEOUT, cinfo->mysql->options.connect_timeout);
+    pvio->methods->set_timeout(pvio, PVIO_READ_TIMEOUT, cinfo->mysql->options.connect_timeout);
+    pvio->methods->set_timeout(pvio, PVIO_WRITE_TIMEOUT, cinfo->mysql->options.connect_timeout);
   }
 
   if (!(pvio->cache= calloc(1, PVIO_READ_AHEAD_CACHE_SIZE)))
@@ -177,7 +177,6 @@ my_bool ma_pvio_set_timeout(MARIADB_PVIO *pvio,
 }
 /* }}} */
 
-#ifdef HAVE_NONBLOCK
 /* {{{ size_t ma_pvio_read_async */
 static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
@@ -213,7 +212,6 @@ static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t lengt
   }
 }
 /* }}} */
-#endif
 
 /* {{{ size_t ma_pvio_read */
 size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
@@ -221,14 +219,12 @@ size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   size_t r= -1;
   if (!pvio)
     return -1;
-#ifdef HAVE_NONBLOCK
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r= ma_pvio_read_async(pvio, buffer, length);
     goto end;
   }
   else
-#endif
   {
     if (IS_PVIO_ASYNC(pvio))
     {
@@ -242,7 +238,7 @@ size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   }
 
   /* secure connection */
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
   if (pvio->ctls)
   {
     r= ma_pvio_tls_read(pvio->ctls, buffer, length);
@@ -306,7 +302,6 @@ size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 }
 /* }}} */
 
-#ifdef HAVE_NONBLOCK
 /* {{{ size_t ma_pvio_write_async */
 static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
@@ -336,7 +331,6 @@ static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_
   }
 }
 /* }}} */
-#endif
 
 /* {{{ size_t ma_pvio_write */
 size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
@@ -347,7 +341,7 @@ size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
    return -1;
 
   /* secure connection */
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
   if (pvio->ctls)
   {
     r= ma_pvio_tls_write(pvio->ctls, buffer, length);
@@ -355,14 +349,12 @@ size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   }
   else
 #endif
-#ifdef HAVE_NONBLOCK
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r= ma_pvio_write_async(pvio, buffer, length);
     goto end;
   }
   else
-#endif
   {
     if (IS_PVIO_ASYNC(pvio))
     {
@@ -388,7 +380,7 @@ end:
 void ma_pvio_close(MARIADB_PVIO *pvio)
 {
   /* free internal structures and close connection */
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
   if (pvio && pvio->ctls)
   {
     ma_pvio_tls_close(pvio->ctls);
@@ -414,7 +406,6 @@ my_bool ma_pvio_get_handle(MARIADB_PVIO *pvio, void *handle)
 }
 /* }}} */
 
-#ifdef HAVE_NONBLOCK
 /* {{{ ma_pvio_wait_async */
 static my_bool
 ma_pvio_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
@@ -446,17 +437,14 @@ ma_pvio_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
   return (b->events_occured & MYSQL_WAIT_TIMEOUT) ? 0 : 1;
 }
 /* }}} */
-#endif
 
 /* {{{ ma_pvio_wait_io_or_timeout */
 int ma_pvio_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
-#ifdef HAVE_NONBLOCK
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
     return ma_pvio_wait_async(pvio->mysql->options.extension->async_context, 
                              (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
                               timeout);
-#endif
 
   if (pvio && pvio->methods->wait_io_or_timeout)
     return pvio->methods->wait_io_or_timeout(pvio, is_read, timeout);
@@ -504,7 +492,7 @@ my_bool ma_pvio_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
 }
 /* }}} */
 
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 /* {{{ my_bool ma_pvio_start_ssl */
 my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
 {

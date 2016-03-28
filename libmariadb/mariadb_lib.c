@@ -63,7 +63,7 @@
 #include <poll.h>
 #endif
 #include <ma_pvio.h>
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 #include <ma_tls.h>
 #endif
 #include <mysql/client_plugin.h>
@@ -966,22 +966,6 @@ mysql_init(MYSQL *mysql)
   mysql->net.last_error[0]= mysql->net.last_errno= 0;
 
 /*
-  }
-  if (!(mysql->net.extension= (struct st_mariadb_net_extension *)
-                               calloc(1, sizeof(struct st_mariadb_net_extension))))
-  {
-    if (mysql->free_me)
-      free(mysql);
-    return 0;
-  }
-  mysql->options.report_data_truncation= 1;
-  mysql->options.connect_timeout=CONNECT_TIMEOUT;
-  mysql->charset= ma_default_charset_info;
-  mysql->methods= &MARIADB_DEFAULT_METHODS;
-  strcpy(mysql->net.sqlstate, "00000");
-  mysql->net.last_error[0]= mysql->net.last_errno= 0;
-
-/*
   Only enable LOAD DATA INFILE by default if configured with
   --enable-local-infile
 */
@@ -996,7 +980,7 @@ int STDCALL
 mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
         const char *ca, const char *capath, const char *cipher)
 {
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
   return (mysql_optionsv(mysql, MYSQL_OPT_SSL_KEY, key) |
           mysql_optionsv(mysql, MYSQL_OPT_SSL_CERT, cert) |
           mysql_optionsv(mysql, MYSQL_OPT_SSL_CA, ca) |
@@ -1013,7 +997,7 @@ mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
 const char * STDCALL
 mysql_get_ssl_cipher(MYSQL *mysql)
 {
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
   if (mysql->net.pvio && mysql->net.pvio->ctls)
   {
     return ma_pvio_tls_cipher(mysql->net.pvio->ctls);
@@ -1548,7 +1532,6 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   struct my_hook_data hook_data;
   struct mysql_async_context *ctxt= NULL;
   LIST *li_stmt= mysql->stmts;
-  mysql_init(&tmp_mysql);
 
   /* check if connection handler is active */
   if (IS_CONNHDLR_ACTIVE(mysql))
@@ -1573,8 +1556,6 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
     tmp_mysql.net.extension->conn_hdlr= mysql->net.extension->conn_hdlr;
     mysql->net.extension->conn_hdlr= 0;
   }
-
-
 
   /* don't reread options from configuration files */
   tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
@@ -1873,6 +1854,10 @@ mysql_close(MYSQL *mysql)
 
     mysql_close_memory(mysql);
     mysql_close_options(mysql);
+
+    if (mysql->net.extension)
+      free(mysql->net.extension);
+
     mysql->host_info=mysql->user=mysql->passwd=mysql->db=0;
    
     /* Clear pointers for better safety */
@@ -1880,8 +1865,6 @@ mysql_close(MYSQL *mysql)
 
     if (mysql->extension)
       free(mysql->extension);
-    if (mysql->net.extension)
-      free(mysql->net.extension);
 
     mysql->net.pvio= 0;
     if (mysql->free_me)
@@ -2560,8 +2543,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         goto end;
       }
     mysql->options.extension->async_context= ctxt;
-    if (mysql->net.pvio)
-      mysql->net.pvio->async_context= ctxt;
+//    if (mysql->net.pvio)
+//      mysql->net.pvio->async_context= ctxt;
     break;
   case MYSQL_OPT_MAX_ALLOWED_PACKET:
     if (mysql)
@@ -3344,7 +3327,7 @@ void STDCALL mysql_server_end(void)
   list_free(pvio_callback, 0);
   if (ma_init_done)
     ma_end(0);
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
   ma_pvio_tls_end();
 #endif  
   mysql_client_init= 0;
@@ -3409,6 +3392,7 @@ static my_socket mariadb_get_socket(MYSQL *mysql)
   if (mysql->net.pvio)
   {
     ma_pvio_get_handle(mysql->net.pvio, &sock);
+
   }
   /* if an asynchronous connect is in progress, we need to obtain
      pvio handle from async_context until the connection was 
@@ -3467,7 +3451,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     *((char **)arg)= mysql->net.sqlstate;
     break;
   case MARIADB_CONNECTION_TLS_VERSION:
-    #ifdef HAVE_SSL
+    #ifdef HAVE_TLS
     if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
     {
       struct st_ssl_version version;
@@ -3479,7 +3463,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       goto error;
     break;
   case MARIADB_CONNECTION_TLS_VERSION_ID:
-    #ifdef HAVE_SSL
+    #ifdef HAVE_TLS
     if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
     {
       struct st_ssl_version version;
@@ -3491,7 +3475,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       goto error;
     break;
   case MARIADB_TLS_LIBRARY:
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 #ifdef HAVE_GNUTLS
     *((char **)arg)= "GNUTLS";
 #elif HAVE_OPENSSL
@@ -3583,7 +3567,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     }
     break;
   case MARIADB_CONNECTION_SSL_CIPHER:
-    #ifdef HAVE_SSL
+    #ifdef HAVE_TLS
     if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
       *((char **)arg)= (char *)ma_pvio_tls_cipher(mysql->net.pvio->ctls);
     else

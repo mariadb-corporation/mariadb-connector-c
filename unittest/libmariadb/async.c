@@ -101,7 +101,9 @@ wait_for_mysql(MYSQL *mysql, int status)
     (status & MYSQL_WAIT_WRITE ? POLLOUT : 0) |
     (status & MYSQL_WAIT_EXCEPT ? POLLPRI : 0);
   if (status & MYSQL_WAIT_TIMEOUT)
+  {
     timeout= mysql_get_timeout_value_ms(mysql);
+  }
   else
     timeout= -1;
   do {
@@ -151,11 +153,11 @@ static int async1(MYSQL *my)
     check_mysql_rc(rc, (MYSQL *)&mysql);
 
     /* set timeouts to 300 microseconds */
-    default_timeout= 300;
+    default_timeout= 3;
     mysql_options(&mysql, MYSQL_OPT_READ_TIMEOUT, &default_timeout);
     mysql_options(&mysql, MYSQL_OPT_CONNECT_TIMEOUT, &default_timeout);
     mysql_options(&mysql, MYSQL_OPT_WRITE_TIMEOUT, &default_timeout);
-    mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp");
+    mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp"); 
 
     /* Returns 0 when done, else flag for what to wait for when need to block. */
     status= mysql_real_connect_start(&ret, &mysql, hostname, username, password, NULL,

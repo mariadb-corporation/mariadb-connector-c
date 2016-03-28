@@ -34,7 +34,7 @@ pthread_mutex_t LOCK_test;
 
 int check_skip_ssl()
 {
-#ifndef HAVE_SSL
+#ifndef HAVE_TLS
   diag("client library built without OpenSSL support -> skip");
   return 1;
 #endif

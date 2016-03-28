@@ -172,7 +172,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->client_flag & CLIENT_MULTI_STATEMENTS)
     mysql->client_flag|= CLIENT_MULTI_RESULTS;
 
-#if defined(HAVE_SSL) && !defined(EMBEDDED_LIBRARY)
+#if defined(HAVE_TLS) && !defined(EMBEDDED_LIBRARY)
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
       mysql->options.ssl_cipher || mysql->options.use_ssl ||
@@ -180,7 +180,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     mysql->options.use_ssl= 1;
   if (mysql->options.use_ssl)
     mysql->client_flag|= CLIENT_SSL;
-#endif /* HAVE_SSL && !EMBEDDED_LIBRARY*/
+#endif /* HAVE_TLS && !EMBEDDED_LIBRARY*/
   if (mpvio->db)
     mysql->client_flag|= CLIENT_CONNECT_WITH_DB;
 
@@ -229,7 +229,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     int3store(buff+2, net->max_packet_size);
     end= buff+5;
   }
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
   if (mysql->options.ssl_key ||
       mysql->options.ssl_cert ||
       mysql->options.ssl_ca ||
@@ -260,7 +260,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     if (ma_pvio_start_ssl(mysql->net.pvio))
       goto error;
   }
-#endif /* HAVE_SSL */
+#endif /* HAVE_TLS */
 
   /* This needs to be changed as it's not useful with big packets */
   if (mysql->user && mysql->user[0])

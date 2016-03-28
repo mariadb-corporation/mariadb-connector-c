@@ -30,7 +30,7 @@
  * built-in plugin.
  */
 
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 
 #include <ma_global.h>
 #include <ma_sys.h>
@@ -55,58 +55,58 @@ char *ssl_protocol_version[5]= {"unknown", "SSL3", "TLS1.0", "TLS1.1", "TLS1.2"}
 
 MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 {
-  MARIADB_TLS *cssl= NULL;
+  MARIADB_TLS *ctls= NULL;
 
   if (!ma_tls_initialized)
     ma_tls_start(mysql->net.last_error, MYSQL_ERRMSG_SIZE);
 
-  if (!(cssl= (MARIADB_TLS *)calloc(1, sizeof(MARIADB_TLS))))
+  if (!(ctls= (MARIADB_TLS *)calloc(1, sizeof(MARIADB_TLS))))
   {
     return NULL;
   }
 
   /* register error routine and methods */
-  cssl->pvio= mysql->net.pvio;
-  if (!(cssl->ssl= ma_tls_init(mysql)))
+  ctls->pvio= mysql->net.pvio;
+  if (!(ctls->ssl= ma_tls_init(mysql)))
   {
-    free(cssl);
-    cssl= NULL;
+    free(ctls);
+    ctls= NULL;
   }
-  return cssl;
+  return ctls;
 }
 
-my_bool ma_pvio_tls_connect(MARIADB_TLS *cssl)
+my_bool ma_pvio_tls_connect(MARIADB_TLS *ctls)
 {
   my_bool rc;
   
-  if ((rc= ma_tls_connect(cssl)))
-    ma_tls_close(cssl);
+  if ((rc= ma_tls_connect(ctls)))
+    ma_tls_close(ctls);
   return rc;
 }
 
-size_t ma_pvio_tls_read(MARIADB_TLS *cssl, const uchar* buffer, size_t length)
+size_t ma_pvio_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return ma_tls_read(cssl, buffer, length);
+  return ma_tls_read(ctls, buffer, length);
 }
 
-size_t ma_pvio_tls_write(MARIADB_TLS *cssl, const uchar* buffer, size_t length)
+size_t ma_pvio_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return ma_tls_write(cssl, buffer, length);
+  return ma_tls_write(ctls, buffer, length);
 }
 
-my_bool ma_pvio_tls_close(MARIADB_TLS *cssl)
+my_bool ma_pvio_tls_close(MARIADB_TLS *ctls)
 {
-  return ma_tls_close(cssl);
+  return ma_tls_close(ctls);
 }
 
-int ma_pvio_tls_verify_server_cert(MARIADB_TLS *cssl)
+int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls)
 {
-  return ma_tls_verify_server_cert(cssl);
+  return ma_tls_verify_server_cert(ctls);
 }
 
-const char *ma_pvio_tls_cipher(MARIADB_TLS *cssl)
+const char *ma_pvio_tls_cipher(MARIADB_TLS *ctls)
 {
-  return ma_tls_get_cipher(cssl);
+  return ma_tls_get_cipher(ctls);
 }
 
 void ma_pvio_tls_end()
@@ -114,9 +114,9 @@ void ma_pvio_tls_end()
   ma_tls_end();
 }
 
-my_bool ma_pvio_tls_get_protocol_version(MARIADB_TLS *cssl, struct st_ssl_version *version)
+my_bool ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
 {
-  return ma_tls_get_protocol_version(cssl, version);
+  return ma_tls_get_protocol_version(ctls, version);
 }
 
 static my_bool ma_pvio_tls_compare_fp(char *fp1, unsigned int fp1_len,
@@ -134,14 +134,14 @@ static my_bool ma_pvio_tls_compare_fp(char *fp1, unsigned int fp1_len,
   return 0;
 }
 
-my_bool ma_pvio_tls_check_fp(MARIADB_TLS *cssl, const char *fp, const char *fp_list)
+my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list)
 {
   unsigned int cert_fp_len= 64;
   unsigned char cert_fp[64];
   my_bool rc=1;
-  MYSQL *mysql= cssl->pvio->mysql;
+  MYSQL *mysql= ctls->pvio->mysql;
 
-  if ((cert_fp_len= ma_tls_get_finger_print(cssl, cert_fp, cert_fp_len)) < 1)
+  if ((cert_fp_len= ma_tls_get_finger_print(ctls, cert_fp, cert_fp_len)) < 1)
     goto end;
   if (fp)
     rc= ma_pvio_tls_compare_fp(cert_fp, cert_fp_len, (char *)fp, (unsigned int)strlen(fp));
@@ -186,4 +186,4 @@ end:
   }
   return rc;
 }
-#endif /* HAVE_SSL */
+#endif /* HAVE_TLS */

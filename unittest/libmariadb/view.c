@@ -211,10 +211,10 @@ static int test_view_2where(MYSQL *mysql)
     strcpy(parms[i], "1");
     my_bind[i].buffer_type = MYSQL_TYPE_VAR_STRING;
     my_bind[i].buffer = (char *)&parms[i];
-    my_bind[i].buffer_length = 100;
+    my_bind[i].buffer_length = 1;
     my_bind[i].is_null = 0;
-    my_bind[i].length = &length[i];
     length[i] = 1;
+    my_bind[i].length = &length[i];
   }
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
@@ -687,8 +687,8 @@ struct my_tests_st my_tests[] = {
 
 int main(int argc, char **argv)
 {
-//  if (argc > 1)
-//    get_options(&argc, &argv);
+  if (argc > 1)
+    get_options(argc, argv);
 
   get_envvars();
 

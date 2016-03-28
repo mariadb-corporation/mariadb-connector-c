@@ -133,7 +133,7 @@ my_connect_async(MARIADB_PVIO *pvio,
 #endif
 #endif
 
-#ifdef HAVE_SSL_FIXME
+#ifdef HAVE_TLS_FIXME
 static my_bool
 my_ssl_async_check_result(int res, struct mysql_async_context *b, MARIADB_SSL *cssl)
 {

@@ -444,6 +444,8 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     char t_buffer[MAX_TIME_STR_LEN];
     uint len= 0;
 
+    memset(t_buffer, 0, MAX_TIME_STR_LEN);
+
     t_buffer[1]= t->neg ? 1 : 0;
     int4store(t_buffer + 2, t->day);
     t_buffer[6]= (uchar) t->hour; 
@@ -480,6 +482,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     char t_buffer[MAX_DATETIME_STR_LEN];
     uint len;
 
+    memset(t_buffer, 0, MAX_DATETIME_STR_LEN);
     int2store(t_buffer + 1, t->year);
     t_buffer[3]= (char) t->month;
     t_buffer[4]= (char) t->day;
@@ -489,7 +492,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     if (t->second_part)
     {
       int4store(t_buffer + 8, t->second_part);
-      len= 12;
+      len= 11;
     }
     else if (t->hour || t->minute || t->second)
       len= 7;
@@ -511,6 +514,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
   case MYSQL_TYPE_STRING:
   case MYSQL_TYPE_DECIMAL:
   case MYSQL_TYPE_NEWDECIMAL:
+  case MYSQL_TYPE_GEOMETRY:
   {
     ulong len= (ulong)*stmt->params[column].length;
     /* to is after p. The latter hasn't been moved */
@@ -567,7 +571,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   int1store(p, (unsigned char) stmt->flags);
   p++;
 
-  int1store(p, 1); /* and send 1 for iteration count */
+  int4store(p, 1); /* and send 1 for iteration count */
   p+= 4;
 
   if (stmt->param_count)
@@ -580,7 +584,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     {
       size_t offset= p - start;
       length+= offset + null_count + 20;
-      if (!(start= (uchar *)realloc((gptr)start, length)))
+      if (!(start= (uchar *)realloc(start, length)))
         goto mem_error;
       p= start + offset;
     }

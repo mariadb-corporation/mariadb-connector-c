@@ -184,16 +184,16 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
 {
   MYSQL_STMT   *stmt= 0;
   uint         rc, i, count= row_count;
-  ulong        length[4];
+  ulong        length[4]= {0,0,0,0};
   MYSQL_BIND   my_bind[4];
-  my_bool      is_null[4]= {0};
+  my_bool      is_null[4]= {0,0,0,0};
   MYSQL_TIME   tm[4];
   ulong        second_part;
   uint         year, month, day, hour, minute, sec;
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO test_date VALUES(?, ?, ?, ?)", strlen("INSERT INTO test_date VALUES(?, ?, ?, ?)") + 1);
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO test_date VALUES(?, ?, ?, ?)", -1); //strlen("INSERT INTO test_date VALUES(?, ?, ?, ?)"));
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 4, "param_count != 4");
@@ -203,6 +203,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
     its members.
   */
   memset(my_bind, '\0', sizeof(my_bind));
+  memset(tm,  0, sizeof(tm));
 
   my_bind[0].buffer_type= MYSQL_TYPE_TIMESTAMP;
   my_bind[1].buffer_type= MYSQL_TYPE_TIME;
@@ -2558,19 +2559,6 @@ static int test_pure_coverage(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
-  my_bind[0].buffer_type= MYSQL_TYPE_GEOMETRY;
-  rc= mysql_stmt_bind_result(stmt, my_bind);
-
-  /* Since libmariadb supports geometry types in prepared statements
-     we have to skip the following check
-  FAIL_IF(!rc, "Error expected");
-  rc= mysql_stmt_store_result(stmt);
-  FAIL_UNLESS(rc, "");
-
-  rc= mysql_stmt_store_result(stmt);
-  FAIL_UNLESS(rc, ""); 
-
-  */
   mysql_stmt_close(stmt);
 
   mysql_query(mysql, "DROP TABLE test_pure");

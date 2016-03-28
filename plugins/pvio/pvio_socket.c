@@ -270,19 +270,11 @@ size_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   csock= (struct st_pvio_socket *)pvio->data;
 
 #ifndef _WIN32
+  if (pvio_socket_wait_io_or_timeout(pvio, TRUE, pvio->timeout[PVIO_READ_TIMEOUT]) < 1)
+    return -1;
   do {
     r= recv(csock->socket, (void *)buffer, length, read_flags);
   } while (r == -1 && errno == EINTR);
-
-  while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)
-                      && pvio->timeout[PVIO_READ_TIMEOUT] > 0)
-  {
-    if (pvio_socket_wait_io_or_timeout(pvio, TRUE, pvio->timeout[PVIO_READ_TIMEOUT]) < 1)
-      return -1;
-    do {
-      r= recv(csock->socket, (void *)buffer, length, read_flags);
-    } while (r == -1 && errno == EINTR);
-  }
 #else
   {
     WSABUF wsaData;
