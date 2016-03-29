@@ -353,7 +353,7 @@ struct st_mysql_options {
     void          *thd;
     my_bool       *unbuffered_fetch_owner;
     char          *info_buffer;
-    void          *extension;
+    struct st_mariadb_extension *extension;
 } MYSQL;
 
 typedef struct st_mysql_res {

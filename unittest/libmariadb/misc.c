@@ -1023,13 +1023,14 @@ static int test_remote1(MYSQL *mysql)
 
 static int test_remote2(MYSQL *my)
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
 
   if (!remote_plugin)
   {
     diag("skip - no remote io plugin available");
     return SKIP;
   }
+  mysql= mysql_init(NULL);
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "http://localhost/test.cnf");
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "test");

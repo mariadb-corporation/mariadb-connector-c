@@ -73,6 +73,9 @@ typedef struct st_connection_handler
 
 struct st_mariadb_net_extension {
   unsigned char *mbuff, *mbuff_end, *mbuff_pos;
+};
+
+struct st_mariadb_extension {
   MA_CONNECTION_HANDLER *conn_hdlr;
 };
 

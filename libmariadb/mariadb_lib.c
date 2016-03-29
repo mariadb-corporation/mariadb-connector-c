@@ -140,7 +140,7 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 #define native_password_plugin_name "mysql_native_password"
 
 #define IS_CONNHDLR_ACTIVE(mysql)\
-  (((mysql)->net.extension->conn_hdlr))
+  (((mysql)->extension->conn_hdlr))
 
 static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
@@ -181,7 +181,6 @@ void net_get_error(char *buf, size_t buf_len,
     memcpy(sqlstate, SQLSTATE_UNKNOWN, SQLSTATE_LENGTH);
   }
 }
-
 
 /*****************************************************************************
 ** read a packet from server. Give error message if socket was down
@@ -391,7 +390,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
   if (IS_CONNHDLR_ACTIVE(mysql))
   {
-    result= mysql->net.extension->conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
+    result= mysql->extension->conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
     if (result== -1)
       return(result);
   }
@@ -952,12 +951,10 @@ mysql_init(MYSQL *mysql)
   }
 
   if (!(mysql->net.extension= (struct st_mariadb_net_extension *)
-                               calloc(1, sizeof(struct st_mariadb_net_extension))))
-  {
-    if (mysql->free_me)
-      free(mysql);
-    return 0;
-  }
+                               calloc(1, sizeof(struct st_mariadb_net_extension))) ||
+      !(mysql->extension= (struct st_mariadb_extension *)
+                          calloc(1, sizeof(struct st_mariadb_extension))))
+    goto error;
   mysql->options.report_data_truncation= 1;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
   mysql->charset= ma_default_charset_info;
@@ -974,6 +971,10 @@ mysql_init(MYSQL *mysql)
 #endif
   mysql->options.reconnect= 0;
   return mysql;
+error:
+  if (mysql->free_me)
+    free(mysql);
+  return 0;
 }
 
 int STDCALL
@@ -1109,7 +1110,7 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
     if (!(plugin= (MARIADB_CONNECTION_PLUGIN *)mysql_client_find_plugin(mysql, plugin_name, MARIADB_CLIENT_CONNECTION_PLUGIN)))
       return NULL;
 
-    if (!(mysql->net.extension->conn_hdlr= (MA_CONNECTION_HANDLER *)calloc(1, sizeof(MA_CONNECTION_HANDLER))))
+    if (!(mysql->extension->conn_hdlr= (MA_CONNECTION_HANDLER *)calloc(1, sizeof(MA_CONNECTION_HANDLER))))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return NULL;
@@ -1118,15 +1119,15 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
     /* save URL for reconnect */
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, url, host);
 
-    mysql->net.extension->conn_hdlr->plugin= plugin;
+    mysql->extension->conn_hdlr->plugin= plugin;
 
     if (plugin && plugin->connect)
     {
       MYSQL *my= plugin->connect(mysql, end, user, passwd, db, port, unix_socket, client_flag);
       if (!my)
       {
-        free(mysql->net.extension->conn_hdlr);
-        mysql->net.extension->conn_hdlr= NULL;
+        free(mysql->extension->conn_hdlr);
+        mysql->extension->conn_hdlr= NULL;
       }
       return my;
     }
@@ -1536,8 +1537,8 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   /* check if connection handler is active */
   if (IS_CONNHDLR_ACTIVE(mysql))
   {
-    if (mysql->net.extension->conn_hdlr->plugin && mysql->net.extension->conn_hdlr->plugin->reconnect)
-      return(mysql->net.extension->conn_hdlr->plugin->reconnect(mysql));
+    if (mysql->extension->conn_hdlr->plugin && mysql->extension->conn_hdlr->plugin->reconnect)
+      return(mysql->extension->conn_hdlr->plugin->reconnect(mysql));
   }
 
   if (!mysql->options.reconnect ||
@@ -1551,10 +1552,10 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
 
   mysql_init(&tmp_mysql);
   tmp_mysql.options=mysql->options;
-  if (mysql->net.extension->conn_hdlr)
+  if (mysql->extension->conn_hdlr)
   {
-    tmp_mysql.net.extension->conn_hdlr= mysql->net.extension->conn_hdlr;
-    mysql->net.extension->conn_hdlr= 0;
+    tmp_mysql.extension->conn_hdlr= mysql->extension->conn_hdlr;
+    mysql->extension->conn_hdlr= 0;
   }
 
   /* don't reread options from configuration files */
@@ -1839,9 +1840,9 @@ mysql_close(MYSQL *mysql)
 {
   if (mysql)					/* Some simple safety */
   {
-    if (mysql->net.extension->conn_hdlr)
+    if (mysql->extension->conn_hdlr)
     {
-      MA_CONNECTION_HANDLER *p= mysql->net.extension->conn_hdlr;
+      MA_CONNECTION_HANDLER *p= mysql->extension->conn_hdlr;
       p->plugin->close(mysql);
       free(p);
     }

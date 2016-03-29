@@ -245,21 +245,21 @@ my_bool aurora_parse_url(const char *url, AURORA *aurora)
 int aurora_get_instance_type(MYSQL *mysql)
 {
   int rc= -1;
-  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.extension->conn_hdlr;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
 
   char *query= "select variable_value from information_schema.global_variables where variable_name='INNODB_READ_ONLY' AND variable_value='OFF'";
 
   if (!mysql)
     return -1;
 
-  mysql->net.extension->conn_hdlr= 0;
+  mysql->extension->conn_hdlr= 0;
   if (!mariadb_api->mysql_query(mysql, query))
   {
     MYSQL_RES *res= mariadb_api->mysql_store_result(mysql);
     rc= mariadb_api->mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
     mariadb_api->mysql_free_result(res);
   }
-  mysql->net.extension->conn_hdlr= save_hdlr;
+  mysql->extension->conn_hdlr= save_hdlr;
   return rc;
 }
 /* }}} */
@@ -280,9 +280,9 @@ int aurora_get_instance_type(MYSQL *mysql)
 my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
 {
   my_bool rc= 0;
-  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.extension->conn_hdlr;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
 
-  mysql->net.extension->conn_hdlr= 0;
+  mysql->extension->conn_hdlr= 0;
   if (!mariadb_api->mysql_query(mysql, "select server_id from information_schema.replica_host_status "
         "where session_id = 'MASTER_SESSION_ID'"))
   {
@@ -302,7 +302,7 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
       mariadb_api->mysql_free_result(res);
     }
   }
-  mysql->net.extension->conn_hdlr= save_hdlr;
+  mysql->extension->conn_hdlr= save_hdlr;
   return rc;
 }
 /* }}} */
@@ -393,7 +393,7 @@ void aurora_close_internal(MYSQL *mysql)
 {
   if (mysql)
   {
-    mysql->net.extension->conn_hdlr= 0;
+    mysql->extension->conn_hdlr= 0;
     memset(&mysql->options, 0, sizeof(struct st_mysql_options));
     mariadb_api->mysql_close(mysql);
   }
@@ -421,7 +421,7 @@ my_bool aurora_find_replica(AURORA *aurora)
     mysql->options= aurora->save_mysql.options;
 
     /* don't execute init_command on slave */
-//    mysql->net.extension->conn_hdlr= aurora->save_mysql.net.extension->conn_hdlr;
+//    mysql->extension->conn_hdlr= aurora->save_mysql.extension->conn_hdlr;
     if ((aurora_connect_instance(aurora, instance[random_pick], mysql)))
     {
       switch (instance[random_pick]->type) {
@@ -522,7 +522,7 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
     const char *db, unsigned int port, const char *unix_socket, unsigned long client_flag)
 {
   AURORA *aurora= NULL;
-  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.extension->conn_hdlr;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
 
   if (!mariadb_api)
     mariadb_api= mysql->methods->api;
@@ -564,7 +564,7 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
     if (!aurora_find_replica(aurora))
       aurora->mysql[AURORA_REPLICA]= NULL;
     else
-      aurora->mysql[AURORA_REPLICA]->net.extension->conn_hdlr= save_hdlr;
+      aurora->mysql[AURORA_REPLICA]->extension->conn_hdlr= save_hdlr;
   }
 
   if (!aurora->mysql[AURORA_PRIMARY])
@@ -572,7 +572,7 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
     if (!aurora_find_primary(aurora))
       aurora->mysql[AURORA_PRIMARY]= NULL;
     else
-      aurora->mysql[AURORA_PRIMARY]->net.extension->conn_hdlr= save_hdlr;
+      aurora->mysql[AURORA_PRIMARY]->extension->conn_hdlr= save_hdlr;
   }
 
   if (!aurora->mysql[AURORA_PRIMARY] && !aurora->mysql[AURORA_REPLICA])
@@ -582,7 +582,7 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
     aurora_switch_connection(mysql, aurora, AURORA_PRIMARY);
   else
     aurora_switch_connection(mysql, aurora, AURORA_REPLICA);
-  mysql->net.extension->conn_hdlr= save_hdlr;
+  mysql->extension->conn_hdlr= save_hdlr;
   return mysql;
 error:
   aurora_close_memory(aurora);
@@ -594,7 +594,7 @@ error:
 my_bool aurora_reconnect(MYSQL *mysql)
 {
   AURORA *aurora;
-  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.extension->conn_hdlr;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
   int i;
 
   /* We can't determine if a new primary was promotoed, or if
@@ -647,7 +647,7 @@ my_bool aurora_reconnect(MYSQL *mysql)
 /* {{{  void aurora_close */
 void aurora_close(MYSQL *mysql)
 {
-  MA_CONNECTION_HANDLER *hdlr= mysql->net.extension->conn_hdlr;
+  MA_CONNECTION_HANDLER *hdlr= mysql->extension->conn_hdlr;
   AURORA *aurora;
   int i;
 
@@ -675,7 +675,7 @@ void aurora_close(MYSQL *mysql)
   /* free information  */
 end:
   aurora_close_memory(aurora);
-  mysql->net.extension->conn_hdlr= hdlr;
+  mysql->extension->conn_hdlr= hdlr;
 }
 /* }}} */
 
@@ -718,7 +718,7 @@ my_bool is_replica_stmt(MYSQL *mysql, const char *buffer)
 int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
     size_t length, my_bool skipp_check, void *opt_arg)
 {
-  MA_CONNECTION_HANDLER *save_hdlr= mysql->net.extension->conn_hdlr;
+  MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
   AURORA *aurora= (AURORA *)save_hdlr->data;
 
   /* if we don't have slave or slave became unavailable root traffic to master */
@@ -736,9 +736,9 @@ int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *ar
       /* we need to change default database on primary and replica */
       if (aurora->mysql[AURORA_REPLICA] && mysql->thread_id == aurora->mysql[AURORA_PRIMARY]->thread_id)
       {
-        aurora->mysql[AURORA_REPLICA]->net.extension->conn_hdlr= 0;
+        aurora->mysql[AURORA_REPLICA]->extension->conn_hdlr= 0;
         mariadb_api->mysql_select_db(aurora->mysql[AURORA_REPLICA], arg);
-        aurora->mysql[AURORA_REPLICA]->net.extension->conn_hdlr= mysql->net.extension->conn_hdlr;
+        aurora->mysql[AURORA_REPLICA]->extension->conn_hdlr= mysql->extension->conn_hdlr;
       }
       break;
     case COM_QUERY:
@@ -763,7 +763,7 @@ int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *ar
       break; 
   }
 end:
-  mysql->net.extension->conn_hdlr= save_hdlr;
+  mysql->extension->conn_hdlr= save_hdlr;
   return 0;
 }
 /* }}} */

@@ -913,7 +913,6 @@ static int test_get_options(MYSQL *my)
 }
 
 struct my_tests_st my_tests[] = {
-  /*
   {"test_get_options", test_get_options, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
@@ -927,7 +926,7 @@ struct my_tests_st my_tests[] = {
   {"test_compress", test_compress, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_reconnect", test_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc21", test_conc21, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
-  {"test_conc26", test_conc26, TEST_CONNECTION_NONE, 0, NULL, NULL}, */
+  {"test_conc26", test_conc26, TEST_CONNECTION_NONE, 0, NULL, NULL}, 
   {"test_connection_timeout", test_connection_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_connection_timeout2", test_connection_timeout2, TEST_CONNECTION_NONE, 0, NULL, NULL}, 
   {"test_connection_timeout3", test_connection_timeout3, TEST_CONNECTION_NONE, 0, NULL, NULL},
