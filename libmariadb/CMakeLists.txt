@@ -91,6 +91,8 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_send_query
  mysql_server_end
  mysql_server_init
+ mysql_session_track_get_next
+ mysql_session_track_get_first
  mysql_set_character_set
  mysql_set_local_infile_default
  mysql_set_local_infile_handler

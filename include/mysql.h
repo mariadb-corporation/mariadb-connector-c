@@ -660,6 +660,8 @@ int             STDCALL mysql_read_query_result_start(my_bool *ret,
                                                       MYSQL *mysql);
 int             STDCALL mysql_read_query_result_cont(my_bool *ret,
                                                      MYSQL *mysql, int status);
+int STDCALL mysql_session_track_get_next(MYSQL *mysql, enum enum_session_state_type type, const char **data, size_t *length);
+int STDCALL mysql_session_track_get_first(MYSQL *mysql, enum enum_session_state_type type, const char **data, size_t *length);
 int STDCALL mysql_stmt_prepare_start(int *ret, MYSQL_STMT *stmt,const char *query, size_t length);
 int STDCALL mysql_stmt_prepare_cont(int *ret, MYSQL_STMT *stmt, int status);
 int STDCALL mysql_stmt_execute_start(int *ret, MYSQL_STMT *stmt);

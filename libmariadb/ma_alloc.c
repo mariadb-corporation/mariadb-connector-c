@@ -151,3 +151,33 @@ char *ma_memdup_root(MA_MEM_ROOT *root, const char *str, size_t len)
     memcpy(pos,str,len);
   return pos;
 }
+
+void *ma_multi_malloc(myf myFlags, ...)
+{
+  va_list args;
+  char **ptr,*start,*res;
+  uint tot_length,length;
+
+  va_start(args,myFlags);
+  tot_length=0;
+  while ((ptr=va_arg(args, char **)))
+  {
+    length=va_arg(args,uint);
+    tot_length+=ALIGN_SIZE(length);
+  }
+  va_end(args);
+
+  if (!(start=(char *)malloc(tot_length)))
+    return 0;
+
+  va_start(args,myFlags);
+  res=start;
+  while ((ptr=va_arg(args, char **)))
+  {
+    *ptr=res;
+    length=va_arg(args,uint);
+    res+=ALIGN_SIZE(length);
+  }
+  va_end(args);
+  return start;
+}

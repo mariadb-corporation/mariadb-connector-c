@@ -155,6 +155,7 @@ enum enum_server_command
 #define CLIENT_PS_MULTI_RESULTS  (1UL << 18)
 #define CLIENT_PLUGIN_AUTH       (1UL << 19)
 #define CLIENT_CONNECT_ATTRS     (1UL << 20)
+#define CLIENT_SESSION_TRACKING  (1UL << 23)
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
 #define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
 #define CLIENT_REMEMBER_OPTIONS  (1UL << 31)
@@ -190,6 +191,7 @@ enum enum_server_command
 		                 CLIENT_SSL_VERIFY_SERVER_CERT |\
                                  CLIENT_REMEMBER_OPTIONS |\
                                  CLIENT_PLUGIN_AUTH |\
+                                 CLIENT_SESSION_TRACKING |\
                                  CLIENT_CONNECT_ATTRS)
 
 #define CLIENT_CAPABILITIES	(CLIENT_MYSQL | \
@@ -200,6 +202,7 @@ enum enum_server_command
                                  CLIENT_PS_MULTI_RESULTS |\
                                  CLIENT_PROTOCOL_41 |\
                                  CLIENT_PLUGIN_AUTH |\
+                                 CLIENT_SESSION_TRACKING |\
                                  CLIENT_CONNECT_ATTRS)
 
 #define CLIENT_DEFAULT_FLAGS ((CLIENT_SUPPORTED_FLAGS & ~CLIENT_COMPRESS)\
@@ -217,6 +220,7 @@ enum enum_server_command
 #define SERVER_STATUS_METADATA_CHANGED    1024
 #define SERVER_QUERY_WAS_SLOW             2048
 #define SERVER_PS_OUT_PARAMS              4096
+#define SERVER_SESSION_STATE_CHANGED      (1UL << 14)
 
 #define MYSQL_ERRMSG_SIZE	512
 #define NET_READ_TIMEOUT	30		/* Timeout on read */
@@ -283,6 +287,22 @@ enum enum_mysql_set_option
   MYSQL_OPTION_MULTI_STATEMENTS_ON,
   MYSQL_OPTION_MULTI_STATEMENTS_OFF
 };
+
+enum enum_session_state_type
+{
+  SESSION_TRACK_SYSTEM_VARIABLES= 0,
+  SESSION_TRACK_SCHEMA,
+  SESSION_TRACK_STATE_CHANGE,
+  /* currently not supported by MariaDB Server */
+  SESSION_TRACK_GTIDS,
+  SESSION_TRACK_TRANSACTION_CHARACTERISTICS,
+  SESSION_TRACK_TRANSACTION_TYPE /* make sure that SESSION_TRACK_END always points
+                                    to last element of enum !! */
+};
+
+#define SESSION_TRACK_BEGIN 0
+#define SESSION_TRACK_END SESSION_TRACK_TRANSACTION_TYPE
+#define SESSION_TRACK_TYPES SESSION_TRACK_END + 1
 
 enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
                         MYSQL_TYPE_SHORT,  MYSQL_TYPE_LONG,

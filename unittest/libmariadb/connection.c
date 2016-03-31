@@ -912,7 +912,70 @@ static int test_get_options(MYSQL *my)
   return OK;
 }
 
+static int test_sess_track_db(MYSQL *mysql)
+{
+  int rc;
+  const char *data;
+  size_t len;
+
+  if (!(mysql->server_capabilities & CLIENT_SESSION_TRACKING))
+  {
+    diag("Server doesn't support session tracking (cap=%u)", mysql->server_capabilities);
+    return SKIP;
+  }
+
+  rc= mysql_query(mysql, "USE mysql");
+  check_mysql_rc(rc, mysql);
+  FAIL_IF(strcmp(mysql->db, "mysql"), "Expected new schema 'mysql'");
+
+  FAIL_IF(mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len),
+          "session_track_get_first failed");
+  FAIL_IF(strncmp(data, "mysql", len), "Expected new schema 'mysql'");
+
+  rc= mysql_query(mysql, "USE testc");
+  check_mysql_rc(rc, mysql);
+  FAIL_IF(strcmp(mysql->db, "testc"), "Expected new schema 'testc'");
+
+  FAIL_IF(mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len),
+          "session_track_get_first failed");
+  FAIL_IF(strncmp(data, "testc", len), "Expected new schema 'testc'");
+
+  rc= mysql_query(mysql, "SET NAMES utf8");
+  check_mysql_rc(rc, mysql);
+  FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
+  if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
+  do {
+    printf("# SESSION_TRACK_VARIABLES: %*.*s\n", len, len, data);
+  } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
+
+  rc= mysql_query(mysql, "SET NAMES latin1");
+  check_mysql_rc(rc, mysql);
+  FAIL_IF(strcmp(mysql->charset->csname, "latin1"), "Expected charset 'latin1'");
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE PROCEDURE p1() "
+                         "BEGIN "
+                         "SET @@autocommit=0; "
+                         "SET NAMES utf8; "
+                         "SET session auto_increment_increment=2; "
+                         "END ");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CALL p1()");
+  check_mysql_rc(rc, mysql);
+
+  if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
+  do {
+    printf("# SESSION_TRACK_VARIABLES: %*.*s\n", len, len, data);
+  } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_sess_track_db", test_sess_track_db, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_get_options", test_get_options, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

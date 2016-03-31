@@ -372,7 +372,7 @@ extern gptr _mymalloc(size_t uSize,const char *sFile,
 		      uint uLine, myf MyFlag);
 extern gptr _myrealloc(gptr pPtr,size_t uSize,const char *sFile,
 		       uint uLine, myf MyFlag);
-extern gptr my_multi_malloc _VARARGS((myf MyFlags, ...));
+extern void *ma_multi_malloc(myf MyFlags, ...);
 extern void _myfree(gptr pPtr,const char *sFile,uint uLine, myf MyFlag);
 extern int _sanity(const char *sFile,unsigned int uLine);
 #ifndef TERMINATE

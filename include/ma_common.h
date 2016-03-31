@@ -75,8 +75,15 @@ struct st_mariadb_net_extension {
   unsigned char *mbuff, *mbuff_end, *mbuff_pos;
 };
 
+struct st_mariadb_session_state
+{
+  LIST *list,
+       *current;
+};
+
 struct st_mariadb_extension {
   MA_CONNECTION_HANDLER *conn_hdlr;
+  struct st_mariadb_session_state session_state[SESSION_TRACK_TYPES];
 };
 
 #define OPT_HAS_EXT_VAL(a,key) \
