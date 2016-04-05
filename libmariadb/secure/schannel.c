@@ -186,6 +186,7 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
     }
     ca_Check= 0;
     CertFreeCertificateContext(ca_ctx);
+    ca_ctx = NULL;
   }
 
   if (!certfile && keyfile)
@@ -214,6 +215,7 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
     }
     crl_Check = 1;
     CertFreeCertificateContext(ca_ctx);
+    ca_ctx = NULL;
   }
   return 0;
   

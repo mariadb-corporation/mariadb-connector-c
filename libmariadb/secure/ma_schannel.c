@@ -335,10 +335,13 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char
    /* Acquire context:
       If pvio_schannel context doesn't exist, create a new one */
    if (!CryptAcquireContext(&crypt_prov, "pvio_schannel", MS_ENHANCED_PROV, PROV_RSA_FULL, 0))
-   if (!CryptAcquireContext(&crypt_prov, "pvio_schannel", MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
    {
-     ma_schannel_set_win_error(pvio);
-     goto end;
+     DWORD last_error = GetLastError();
+     if (last_error != NTE_BAD_KEYSET || !CryptAcquireContext(&crypt_prov, "pvio_schannel", MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+     {
+       ma_schannel_set_win_error(pvio);
+       goto end;
+     }
    }
    /* ... and import the private key */
    if (!CryptImportKey(crypt_prov, priv_key, priv_key_len, 0, 0, (HCRYPTKEY *)&crypt_key))
