@@ -281,10 +281,10 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   ZeroMemory(&Cred, sizeof(SCHANNEL_CRED));
 
+  WORD validTokens = 0;
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
-    WORD validTokens = 0;
     char *token = strtok(mysql->options.ssl_cipher, ":");
     while (token)
     {
@@ -300,8 +300,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       token = strtok(NULL, ":");
     }
   }
-  Cred.palgSupportedAlgs = (ALG_ID *)&AlgId;
-  
+  if (validTokens)
+  {
+    Cred.palgSupportedAlgs = (ALG_ID *)&AlgId;
+    Cred.cSupportedAlgs = validTokens;
+  }
   Cred.dwVersion= SCHANNEL_CRED_VERSION;
   if (mysql->options.extension)
     Cred.dwMinimumCipherStrength = MAX(128, mysql->options.extension->tls_cipher_strength);
@@ -314,7 +317,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     Cred.cCreds = 1;
     Cred.paCred = &sctx->client_cert_ctx;
   }
-  Cred.grbitEnabledProtocols= 0;
+  Cred.grbitEnabledProtocols= SP_PROT_TLS1_0|SP_PROT_TLS1_1;
   if (mysql->options.extension && mysql->options.extension->tls_version)
   {
     if (strstr("TLSv1.0", mysql->options.extension->tls_version))

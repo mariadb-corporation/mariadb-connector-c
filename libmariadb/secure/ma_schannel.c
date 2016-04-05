@@ -296,7 +296,7 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char
    LPBYTE priv_key= NULL;
    HCRYPTPROV  crypt_prov= 0;
    HCRYPTKEY  crypt_key= 0;
-   CERT_KEY_CONTEXT kpi;
+   CERT_KEY_CONTEXT kpi={ 0 };
    my_bool rc= 0;
 
    /* load private key into der binary object */
@@ -332,16 +332,11 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char
      goto end;
    }
 
-   /* Acquire context:
-      If pvio_schannel context doesn't exist, create a new one */
-   if (!CryptAcquireContext(&crypt_prov, "pvio_schannel", MS_ENHANCED_PROV, PROV_RSA_FULL, 0))
+   /* Acquire context */
+   if (!CryptAcquireContext(&crypt_prov, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
    {
-     DWORD last_error = GetLastError();
-     if (last_error != NTE_BAD_KEYSET || !CryptAcquireContext(&crypt_prov, "pvio_schannel", MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
-     {
-       ma_schannel_set_win_error(pvio);
-       goto end;
-     }
+     ma_schannel_set_win_error(pvio);
+     goto end;
    }
    /* ... and import the private key */
    if (!CryptImportKey(crypt_prov, priv_key, priv_key_len, 0, 0, (HCRYPTKEY *)&crypt_key))
@@ -350,7 +345,6 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char
      goto end;
    }
 
-   SecureZeroMemory(&kpi, sizeof(kpi));
    kpi.hCryptProv= crypt_prov;
    kpi.dwKeySpec = AT_KEYEXCHANGE;
    kpi.cbSize= sizeof(kpi);
