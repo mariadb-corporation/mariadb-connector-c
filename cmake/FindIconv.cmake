@@ -5,14 +5,7 @@ if (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
   set(ICONV_FIND_QUIETLY TRUE)
 endif (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
 
-IF(APPLE)
-  find_path(ICONV_INCLUDE_DIR iconv.h PATHS
-            /opt/local/include/
-            /usr/include/
-            NO_CMAKE_SYSTEM_PATH)
-ELSE()
-  find_path(ICONV_INCLUDE_DIR iconv.h)
-ENDIF()
+find_path(ICONV_INCLUDE_DIR iconv.h)
 
 IF(CMAKE_SYSTEM_NAME MATCHES "SunOS")
   # There is some libiconv.so in  /usr/local that must
@@ -20,7 +13,6 @@ IF(CMAKE_SYSTEM_NAME MATCHES "SunOS")
   find_library(ICONV_LIBRARIES NAMES c)
 ELSEIF(APPLE)
   find_library(ICONV_LIBRARIES NAMES iconv libiconv PATHS
-               /opt/local/lib/
                /usr/lib/
                NO_CMAKE_SYSTEM_PATH)
     SET(ICONV_EXTERNAL TRUE)
