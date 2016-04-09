@@ -3421,50 +3421,64 @@ const char * STDCALL mysql_sqlstate(MYSQL *mysql)
   return mysql->net.sqlstate;
 }
 
-int STDCALL mysql_server_init(int argc __attribute__((unused)),
-			      char **argv __attribute__((unused)),
-			      char **groups __attribute__((unused)))
+static int mysql_once_init()
 {
-  int rc= 0;
-
-  if (!mysql_client_init)
+  ma_init();					/* Will init threads */
+  init_client_errs();
+  if (mysql_client_plugin_init())
+    return 1;
+  if (!mysql_port)
   {
-    mysql_client_init=1;
-    ma_init();					/* Will init threads */
-    init_client_errs();
-    if (mysql_client_plugin_init())
-      return 1;
-    if (!mysql_port)
-    {
-      struct servent *serv_ptr;
-      char *env;
+    struct servent *serv_ptr;
+    char *env;
 
-      mysql_port = MARIADB_PORT;
-      if ((serv_ptr = getservbyname("mysql", "tcp")))
-        mysql_port = (uint) ntohs((ushort) serv_ptr->s_port);
-      if ((env = getenv("MYSQL_TCP_PORT")))
-        mysql_port =(uint) atoi(env);
-    }
-    if (!mysql_unix_port)
-    {
-      char *env;
-#ifdef _WIN32
-      mysql_unix_port = (char*) MARIADB_NAMEDPIPE;
-#else
-      mysql_unix_port = (char*) MARIADB_UNIX_ADDR;
-#endif
-      if ((env = getenv("MYSQL_UNIX_PORT")) ||
-          (env = getenv("MARIADB_UNIX_PORT")))
-        mysql_unix_port = env;
-    }
+    mysql_port = MARIADB_PORT;
+    if ((serv_ptr = getservbyname("mysql", "tcp")))
+      mysql_port = (uint)ntohs((ushort)serv_ptr->s_port);
+    if ((env = getenv("MYSQL_TCP_PORT")))
+      mysql_port =(uint)atoi(env);
   }
-#ifdef THREAD
-  else
-    rc= mysql_thread_init();
+  if (!mysql_unix_port)
+  {
+    char *env;
+#ifdef _WIN32
+    mysql_unix_port = (char*)MARIADB_NAMEDPIPE;
+#else
+    mysql_unix_port = (char*)MARIADB_UNIX_ADDR;
 #endif
+    if ((env = getenv("MYSQL_UNIX_PORT")) ||
+      (env = getenv("MARIADB_UNIX_PORT")))
+      mysql_unix_port = env;
+  }
   if (!mysql_ps_subsystem_initialized)
-    mysql_init_ps_subsystem(); 
-  return(rc);
+    mysql_init_ps_subsystem();
+  mysql_client_init = 1;
+  return 0;
+}
+
+#ifdef _WIN32
+BOOL CALLBACK win_init_once(
+  PINIT_ONCE InitOnce,
+  PVOID Parameter,
+  PVOID *lpContext)
+{
+  return !mysql_once_init();
+  return TRUE;
+}
+#endif
+
+int STDCALL mysql_server_init(int argc __attribute__((unused)),
+  char **argv __attribute__((unused)),
+  char **groups __attribute__((unused)))
+{
+#ifdef _WIN32
+  static INIT_ONCE init_once = INIT_ONCE_STATIC_INIT;
+  BOOL ret = InitOnceExecuteOnce(&init_once, win_init_once, NULL, NULL);
+  return ret? 0: 1;
+#else
+  static pthread_once_t init_once = PTHREAD_ONCE_INIT;
+  return pthread_once(&init_once, mysql_once_init);
+#endif
 }
 
 void STDCALL mysql_server_end(void)
