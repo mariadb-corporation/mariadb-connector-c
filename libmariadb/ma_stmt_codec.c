@@ -1018,7 +1018,7 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_LONG_BLOB].max_len  = -1;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_BIT].func  = ps_fetch_bin;
-  mysql_ps_fetch_functions[MYSQL_TYPE_BIT].pack_len  = 8;
+  mysql_ps_fetch_functions[MYSQL_TYPE_BIT].pack_len  = MYSQL_PS_SKIP_RESULT_STR;
   mysql_ps_fetch_functions[MYSQL_TYPE_BIT].max_len  = -1;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_VAR_STRING].func    = ps_fetch_string;

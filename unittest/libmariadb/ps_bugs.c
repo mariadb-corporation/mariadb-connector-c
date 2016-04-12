@@ -4098,7 +4098,57 @@ static int test_conc168(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc167(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+
+  MYSQL_BIND bind[3];
+  char buffer[100];
+  int bit1=0, bit2=0;
+  int rc;
+  char *stmt_str= "SELECT a,b,c FROM conc168";
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc168");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE conc168(a bit, b bit, c varchar(10))");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO conc168 VALUES (1,0, 'test12345')");
+  check_mysql_rc(rc, mysql);
+
+  memset(bind, 0, 3 * sizeof(MYSQL_BIND));
+  bind[0].buffer= &bit1;
+  bind[0].buffer_type= MYSQL_TYPE_BIT;
+  bind[0].buffer_length= sizeof(int);
+  bind[1].buffer= &bit2;
+  bind[1].buffer_type= MYSQL_TYPE_BIT;
+  bind[1].buffer_length= sizeof(int);
+  bind[2].buffer= buffer;
+  bind[2].buffer_type= MYSQL_TYPE_STRING;
+  bind[2].buffer_length= 100;
+
+  rc= mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  diag("bit=%d %d char=%s", bit1, bit2, buffer);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc167", test_conc167, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc168", test_conc168, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc155", test_conc155, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc154", test_conc154, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
