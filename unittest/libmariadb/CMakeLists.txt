@@ -34,7 +34,7 @@ ENDIF()
 SET(API_TESTS ${API_TESTS} "async")
 
 #exclude following tests from ctests, since we need to run them maually with different credentials            
-SET(MANUAL_TESTS "t_aurora")
+SET(MANUAL_TESTS "t_aurora" "t_conc173")
 # Get finger print from server certificate 
 IF(WITH_SSL)
   IF(OPENSSL_FOUND)

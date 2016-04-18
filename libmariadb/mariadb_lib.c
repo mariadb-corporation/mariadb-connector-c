@@ -1802,8 +1802,10 @@ static void mysql_close_memory(MYSQL *mysql)
   free(mysql->user);
   free(mysql->passwd);
   free(mysql->db);
+  free(mysql->unix_socket);
   free(mysql->server_version);
-  mysql->host_info= mysql->host= mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
+  mysql->host_info= mysql->host= mysql->unix_socket= 
+                    mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
 }
 
 void my_set_error(MYSQL *mysql,
@@ -3421,12 +3423,22 @@ const char * STDCALL mysql_sqlstate(MYSQL *mysql)
   return mysql->net.sqlstate;
 }
 
+#ifdef _WIN32
 static int mysql_once_init()
+#else
+static void mysql_once_init()
+#endif
 {
   ma_init();					/* Will init threads */
   init_client_errs();
   if (mysql_client_plugin_init())
+  {
+#ifdef _WIN32
     return 1;
+#else
+    return;
+#endif
+  }
   if (!mysql_port)
   {
     struct servent *serv_ptr;
@@ -3453,7 +3465,9 @@ static int mysql_once_init()
   if (!mysql_ps_subsystem_initialized)
     mysql_init_ps_subsystem();
   mysql_client_init = 1;
+#ifdef _WIN32
   return 0;
+#endif
 }
 
 #ifdef _WIN32

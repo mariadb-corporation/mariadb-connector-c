@@ -52,7 +52,7 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
   check_mysql_rc(rc, mysql);
 
-  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname);
+  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname ? hostname : "localhost");
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
@@ -64,7 +64,7 @@ static int test_conc66(MYSQL *my)
     return FAIL;
   }
   
-  sprintf(query, "DROP user conc66@%s", hostname);
+  sprintf(query, "DROP user conc66@%s", hostname ? hostname : "localhost");
   rc= mysql_query(my, query);
 
   check_mysql_rc(rc, my);
