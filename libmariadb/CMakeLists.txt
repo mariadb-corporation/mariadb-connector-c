@@ -1,13 +1,13 @@
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include 
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include 
                     ${ZLIB_INC}
-                    ${CMAKE_SOURCE_DIR}/libmariadb)
+                    ${PROJECT_SOURCE_DIR}/libmariadb)
 					
 ADD_DEFINITIONS(-D ENABLED_LOCAL_INFILE)
 ADD_DEFINITIONS(-D HAVE_COMPRESS)
 ADD_DEFINITIONS(-D LIBMARIADB)
 ADD_DEFINITIONS(-D THREAD)
 
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/sign.cmake)
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/sign.cmake)
 
 SET(MARIADB_LIB_SYMBOLS
  mariadb_connection
@@ -265,16 +265,16 @@ ma_loaddata.c
 ma_stmt_codec.c
 ma_string.c
 ma_dtoa.c
-${CMAKE_BINARY_DIR}/libmariadb/ma_client_plugin.c
+${PROJECT_BINARY_DIR}/libmariadb/ma_client_plugin.c
 ma_io.c
 ${SSL_SOURCES}
 )
 
 IF(WIN32)
   ADD_DEFINITIONS(-DSIZEOF_CHARP=${CMAKE_SIZEOF_VOID_P})
-  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)
+  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/win-iconv)
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
-                         ${CMAKE_SOURCE_DIR}/win-iconv/win_iconv.c)
+                         ${PROJECT_SOURCE_DIR}/win-iconv/win_iconv.c)
 ELSE()
   IF(ICONV_INCLUDE_DIR)
      INCLUDE_DIRECTORIES(BEFORE ${ICONV_INCLUDE_DIR}) 
@@ -304,7 +304,7 @@ ELSE()
     ../zlib/zutil.c
   )
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
-  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/zlib)
+  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/zlib)
 ENDIF()
 
 IF(WITH_DYNCOL)
@@ -316,7 +316,7 @@ ENDIF()
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
 SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/export.cmake)
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/export.cmake)
 CREATE_EXPORT_FILE(mariadbclient
                    ${CMAKE_CURRENT_BINARY_DIR}
                    "${MARIADB_LIB_SYMBOLS}")
@@ -336,8 +336,8 @@ ENDIF()
 # Xcode doesn't support targets that have only object files,
 # so let's add an empty file to keep Xcode happy
 IF(CMAKE_GENERATOR MATCHES Xcode)
-  FILE(WRITE ${CMAKE_SOURCE_DIR}/libmariadb/empty.c "")
-  SET(EMPTY_FILE ${CMAKE_SOURCE_DIR}/libmariadb/empty.c)
+  FILE(WRITE ${PROJECT_SOURCE_DIR}/libmariadb/empty.c "")
+  SET(EMPTY_FILE ${PROJECT_SOURCE_DIR}/libmariadb/empty.c)
 ENDIF()
 
 IF(WIN32)
@@ -368,9 +368,9 @@ ENDIF()
 
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
   TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
-  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${CMAKE_BINARY_DIR}/libmariadb/mariadbclient.def")
+  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${PROJECT_BINARY_DIR}/libmariadb/mariadbclient.def")
   TARGET_LINK_LIBRARIES (mariadbclient "-Wl,--no-undefined")
-  TARGET_LINK_LIBRARIES (mariadbclient "-Wl,--version-script=${CMAKE_BINARY_DIR}/libmariadb/mariadbclient.def")
+  TARGET_LINK_LIBRARIES (mariadbclient "-Wl,--version-script=${PROJECT_BINARY_DIR}/libmariadb/mariadbclient.def")
 ENDIF()
 
 SET_TARGET_PROPERTIES(mariadbclient PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "${SYSTEM_LIBS}")
@@ -385,7 +385,7 @@ SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
 #
 # Installation
 #
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/symlink.cmake)
+INCLUDE(${PROJECT_SOURCE_DIR}/cmake/symlink.cmake)
 
 
 # There are still several projects which don't make use

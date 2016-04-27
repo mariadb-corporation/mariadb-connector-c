@@ -20,9 +20,9 @@ ENDIF()
 ENABLE_TESTING()
 
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
-                    ${CMAKE_BINARY_DIR}/include
-                    ${CMAKE_SOURCE_DIR}/unittest/mytap)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include
+                    ${PROJECT_BINARY_DIR}/include
+                    ${PROJECT_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
 SET(API_TESTS "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
@@ -39,32 +39,32 @@ SET(MANUAL_TESTS "t_aurora" "t_conc173")
 IF(WITH_SSL)
   IF(OPENSSL_FOUND)
     #create certificates
-    IF(EXISTS "${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
+    IF(EXISTS "${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
       MESSAGE(STATUS "certificates already exist")
     ELSE()
       MESSAGE(STATUS "creating certificates")
       IF(WIN32)
         EXECUTE_PROCESS(COMMAND create_certs.bat 
-                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs
+                        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs
                         OUTPUT_FILE x.1 ERROR_FILE x.2)
       ELSE()
         EXECUTE_PROCESS(COMMAND ./create_certs.sh 
-                        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+                        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs)
       ENDIF()
     ENDIF()
 
     EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs
+                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs
                     OUTPUT_VARIABLE FINGER_PRINT)
     STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT "${FINGER_PRINT}")
     STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
     STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
 
   ENDIF()
-  CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
-                 ${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c)
-  CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
-                 ${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
+  CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
+                 ${PROJECT_SOURCE_DIR}/unittest/libmariadb/ssl.c)
+  CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
+                 ${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
   SET(API_TESTS ${API_TESTS} "ssl")
 ENDIF()
 
