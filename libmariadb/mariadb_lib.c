@@ -1417,19 +1417,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
    
   /* Set character set */
   if (mysql->options.charset_name)
-  {
-    if (!strcmp(mysql->options.charset_name, MADB_AUTODETECT_CHARSET_NAME))
-    {
-      char *csname= madb_get_os_character_set();
-      if (csname)
-      {
-        if (mysql->charset= mysql_find_charset_name(csname))
-          mysql_options(mysql, MYSQL_SET_CHARSET_NAME, csname);
-      }
-    }
-    else 
-      mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
-  }
+    mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
   else if (mysql->server_language)
     mysql->charset= mysql_find_charset_nr(mysql->server_language);
   else
@@ -2629,7 +2617,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_VALUE_STR(&mysql->options, charset_dir, arg1);
     break;
   case MYSQL_SET_CHARSET_NAME:
-    OPT_SET_VALUE_STR(&mysql->options, charset_name, (char *)arg1);
+    OPT_SET_VALUE_STR(&mysql->options, charset_name, arg1);
     break;
   case MYSQL_OPT_RECONNECT:
     mysql->options.reconnect= *(my_bool *)arg1;
@@ -3016,7 +3004,10 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((char **)arg)= NULL;
     break;
   case MYSQL_SET_CHARSET_NAME:
-    *((char **)arg)= mysql->options.charset_name;
+    if (mysql->charset)
+      *((char **)arg)= mysql->charset->csname;
+    else
+      *((char **)arg)= mysql->options.charset_name;
     break;
   case MYSQL_OPT_RECONNECT:
     *((my_bool *)arg)= mysql->options.reconnect;

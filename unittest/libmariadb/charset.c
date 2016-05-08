@@ -726,7 +726,50 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
   return OK;
 }
 
+static int charset_auto(MYSQL *my)
+{
+  const char *csname1, *csname2;
+  char *osname;
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+
+  osname= madb_get_os_character_set();
+
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "auto");
+
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0), 
+         mysql_error(mysql));
+
+  csname1= mysql_character_set_name(mysql);
+  diag("Character set: %s os charset: %s", csname1, osname);
+
+  FAIL_IF(strcmp(osname, csname1), "character set is not os character set");
+
+  if (strcmp(osname, "utf8"))
+  {
+    rc= mysql_set_character_set(mysql, "utf8");
+    check_mysql_rc(rc, mysql);
+
+    csname2= mysql_character_set_name(mysql);
+    diag("Character set: %s", csname2);
+
+    FAIL_IF(!strcmp(csname2, csname1), "Wrong charset: expected utf8");
+
+    rc= mysql_set_character_set(mysql, "auto");
+    check_mysql_rc(rc, mysql);
+
+    csname2= mysql_character_set_name(mysql);
+    diag("Character set: %s", csname2);
+    FAIL_IF(strcmp(csname2, osname), "Wrong charset: expected os charset");
+  }
+  mysql_close(mysql);
+  return OK;
+
+}
+
 struct my_tests_st my_tests[] = {
+  {"charset_auto", charset_auto, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"bug_8378: mysql_real_escape with gbk", bug_8378, TEST_CONNECTION_NEW, 0,  opt_bug8378,  NULL},
   {"test_client_character_set", test_client_character_set, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bug_10214: mysql_real_escape with NO_BACKSLASH_ESCAPES", bug_10214, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

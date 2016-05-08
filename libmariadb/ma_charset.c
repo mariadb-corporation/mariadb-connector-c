@@ -59,6 +59,12 @@
 #include <iconv.h>
 #endif
 
+
+#if defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)
+#include <locale.h>
+#include <langinfo.h>
+#endif
+
 /*
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
@@ -690,9 +696,15 @@ const MARIADB_CHARSET_INFO * mysql_find_charset_nr(unsigned int charsetnr)
 MARIADB_CHARSET_INFO * mysql_find_charset_name(const char *name)
 {
   MARIADB_CHARSET_INFO *c = (MARIADB_CHARSET_INFO *)mariadb_compiled_charsets;
+  char *csname;
+
+  if (!strcasecmp(name, MADB_AUTODETECT_CHARSET_NAME))
+    csname= madb_get_os_character_set();
+  else
+    csname= (char *)name;
 
   do {
-    if (!strcasecmp(c->csname, name)) {
+    if (!strcasecmp(c->csname, csname)) {
       return(c);
     }
     ++c;
@@ -1084,7 +1096,7 @@ char *madb_get_os_character_set()
            GetConsoleCP() : GetACP());
   p= codepage;
 #elif defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)
-  if (setlocale(LC_CTYPE, "") && (p= nl_langinfo(CODESET))); 
+  if (setlocale(LC_CTYPE, "") && (p= nl_langinfo(CODESET)));
 #endif
   if (!p)
     return MADB_DEFAULT_CHARSET_NAME;
