@@ -1096,14 +1096,15 @@ char *madb_get_os_character_set()
            GetConsoleCP() : GetACP());
   p= codepage;
 #elif defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)
-  if (setlocale(LC_CTYPE, "") && (p= nl_langinfo(CODESET)));
+  if (setlocale(LC_CTYPE, ""))
+    p= nl_langinfo(CODESET);
 #endif
   if (!p)
     return MADB_DEFAULT_CHARSET_NAME;
   while (MADB_OS_CHARSET[i].identifier)
   {
     if (MADB_OS_CHARSET[i].supported > MADB_CS_UNSUPPORTED &&
-        strcmp(MADB_OS_CHARSET[i].identifier, p) == 0)
+        strcasecmp(MADB_OS_CHARSET[i].identifier, p) == 0)
       return MADB_OS_CHARSET[i].charset;
     i++;
   }
