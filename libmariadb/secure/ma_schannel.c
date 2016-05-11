@@ -146,7 +146,7 @@ static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, 
 
   if (!(*buffer_len = GetFileSize(hfile, NULL)))
   {
-     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Invalid pem format");
+     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid pem format");
      goto end;
   }
 
@@ -828,13 +828,13 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
     if (flags)
     {
       if ((flags & CERT_STORE_SIGNATURE_FLAG) != 0)
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Certificate signature check failed");
+        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Certificate signature check failed");
       else if ((flags & CERT_STORE_REVOCATION_FLAG) != 0)
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "certificate was revoked");
+        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate was revoked");
       else if ((flags & CERT_STORE_TIME_VALIDITY_FLAG) != 0)
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "certificate has expired");
+        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate has expired");
       else
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown error during certificate validation");
+        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown error during certificate validation");
       return 0;
     }
   }
