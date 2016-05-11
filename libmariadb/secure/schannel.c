@@ -83,7 +83,7 @@ void ma_schannel_set_win_error(MYSQL *mysql);
 
 HCERTSTORE ca_CertStore= NULL,
            crl_CertStore= NULL;
-my_bool ca_Check = 0, crl_Check = 0;
+my_bool ca_Check = 1, crl_Check = 0;
 
 
 static int ssl_thread_init()
@@ -184,7 +184,6 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
       ma_schannel_set_win_error(sctx->mysql);
       goto end;
     }
-    ca_Check= 0;
     CertFreeCertificateContext(ca_ctx);
     ca_ctx = NULL;
   }
@@ -194,11 +193,11 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
   if (!keyfile && certfile)
     keyfile= certfile;
 
-  if (certfile && certfile[0])
+  if (certfile)
     if (!(sctx->client_cert_ctx = ma_schannel_create_cert_context(ctls->pvio, certfile)))
       goto end;
 
-  if (sctx->client_cert_ctx && keyfile[0])
+  if (sctx->client_cert_ctx && keyfile)
     if (!ma_schannel_load_private_key(pvio, sctx->client_cert_ctx, keyfile))
       goto end;
  
@@ -250,6 +249,52 @@ void *ma_tls_init(MYSQL *mysql)
 /* }}} */
 
 
+/* 
+  Maps between openssl suite names and schannel alg_ids.
+  Every suite has 3 algorithms (for exchange, encryption, hash).
+  
+  The input string is a set of suite names (openssl),  separated 
+  by ':'
+  
+  The output is written into the array 'arr' of size 'arr_size'
+  The function returns number of elements written to the 'arr'.
+*/
+
+static size_t set_cipher(char * cipher_str, ALG_ID *arr , size_t arr_size)
+{
+  /* TODO : extend this mapping table */
+  struct 
+  {
+    ALG_ID algs[3]; /* exchange, encryption, hash */
+    const char *openssl_name;
+  }
+  map[] = 
+  {
+    {{CALG_RSA_KEYX,CALG_AES_256,CALG_SHA}, "AES256-SHA"}, 
+    {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA}, "AES128-SHA"},
+    {{CALG_RSA_KEYX,CALG_RC4,CALG_SHA}, "RC4-SHA"},
+    {{CALG_RSA_KEYX,CALG_3DES,CALG_SHA}, "DES-CBC3-SHA"},
+    {{CALG_RSA_KEYX, CALG_AES_128, CALG_SHA_256 }, "AES128-SHA256" },
+  };
+  
+  char *token = strtok(cipher_str, ":");
+  size_t pos = 0;
+  while (token)
+  {
+    size_t i;
+    for(i = 0; i < sizeof(map)/sizeof(map[0]) ; i++)
+    {
+      if(pos + 3 < arr_size && strcmp(map[i].openssl_name, token) == 0)
+      {
+        memcpy(arr + pos, map[i].algs, sizeof(map[i].algs));
+        pos += 3;
+        break;
+      }
+    }
+    token = strtok(NULL, ":");
+  }
+  return pos;
+}
 
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
@@ -262,7 +307,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   SECURITY_STATUS sRet;
   PCCERT_CONTEXT pRemoteCertContext = NULL,
                  pLocalCertContext= NULL;
-  ALG_ID AlgId[MAX_ALG_ID]= {0};
+  ALG_ID AlgId[MAX_ALG_ID];
   
   if (!ctls || !ctls->pvio)
     return 1;;
@@ -285,31 +330,23 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
-    char *token = strtok(mysql->options.ssl_cipher, ":");
-    while (token)
+    Cred.cSupportedAlgs = (DWORD)set_cipher(mysql->options.ssl_cipher, AlgId, MAX_ALG_ID);
+    if (Cred.cSupportedAlgs)
     {
-      struct st_cipher_suite *valid;
-      for (valid = valid_ciphers; valid && valid->aid; valid++)
-      {
-        if (!strcmp(token, valid->cipher))
-        {
-          AlgId[validTokens++] = valid->aid;
-          break;
-        }
-      }
-      token = strtok(NULL, ":");
+      Cred.palgSupportedAlgs = AlgId;
     }
-  }
-  if (validTokens)
-  {
-    Cred.palgSupportedAlgs = (ALG_ID *)&AlgId;
-    Cred.cSupportedAlgs = validTokens;
+    else
+    {
+      ma_schannel_set_sec_error(pvio, SEC_E_ALGORITHM_MISMATCH);
+      goto end;
+    }
   }
   Cred.dwVersion= SCHANNEL_CRED_VERSION;
   if (mysql->options.extension)
-    Cred.dwMinimumCipherStrength = MAX(128, mysql->options.extension->tls_cipher_strength);
-  else
-    Cred.dwMinimumCipherStrength = 128;
+  {
+    Cred.dwMinimumCipherStrength = mysql->options.extension->tls_cipher_strength;
+  }
+
   Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK | SCH_SEND_ROOT_CERT |
     SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
   if (sctx->client_cert_ctx)
@@ -346,7 +383,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     goto end;
   }
   
-  if (!ma_schannel_verify_certs(sctx, 0))
+  if (mysql->options.ssl_ca && !ma_schannel_verify_certs(sctx, 0))
     goto end;
  
   return 0;
