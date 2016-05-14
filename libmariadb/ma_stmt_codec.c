@@ -248,7 +248,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
       *r_param->error= error ? 1 : r_param->is_unsigned ? NUMERIC_TRUNCATION(val, 0, UINT_MAX16) : NUMERIC_TRUNCATION(val, INT_MIN16, INT_MAX16) || error > 0;
       shortstore(r_param->buffer, (short)val);
       r_param->buffer_length= sizeof(short);
-    } 
+    }
     break;
     case MYSQL_TYPE_LONG:
     {
@@ -256,7 +256,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
       *r_param->error=error ? 1 : r_param->is_unsigned ? NUMERIC_TRUNCATION(val, 0, UINT_MAX32) : NUMERIC_TRUNCATION(val, INT_MIN32, INT_MAX32) || error > 0;
       longstore(r_param->buffer, (int32)val);
       r_param->buffer_length= sizeof(uint32);
-    } 
+    }
     break;
     case MYSQL_TYPE_LONGLONG:
     {
@@ -264,7 +264,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
       *r_param->error= error > 0; /* no need to check for truncation */
       longlongstore(r_param->buffer, val);
       r_param->buffer_length= sizeof(longlong);
-    } 
+    }
     break;
     case MYSQL_TYPE_DOUBLE:
     {
@@ -272,7 +272,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
       *r_param->error= error > 0; /* no need to check for truncation */
       float8store(r_param->buffer, val);
       r_param->buffer_length= sizeof(double);
-    } 
+    }
     break;
     case MYSQL_TYPE_FLOAT:
     {
@@ -280,7 +280,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
       *r_param->error= error > 0; /* no need to check for truncation */
       float4store(r_param->buffer, val);
       r_param->buffer_length= sizeof(float);
-    } 
+    }
     break;
     case MYSQL_TYPE_TIME:
     case MYSQL_TYPE_DATE:
@@ -311,7 +311,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
           memcpy(r_param->buffer, start, MIN(copylen, r_param->buffer_length));
       }
       if (copylen < r_param->buffer_length)
-        ((char *)r_param->buffer)[copylen]= '\0';
+        ((char *)r_param->buffer)[copylen]= 0;
       *r_param->error= (copylen > r_param->buffer_length);
 
       *r_param->length= (ulong)len; 
@@ -375,7 +375,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       /* check if field flag is zerofill */
       
       convert_froma_string(r_param, buffer, len);
-    }  
+    }
     break;
   }
 }
@@ -592,9 +592,11 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
         if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
           break;
         ma_bmove_upp(buff + field->length, buff + length, length);
-        memset((char*) buff, 0, field->length - length);
+        memset((char*) buff, '0', field->length - length);
+        length= field->length;
       }
-      convert_froma_string(r_param, buff, strlen(buff));
+
+      convert_froma_string(r_param, buff, length);
     }  
     break;
   } 
@@ -689,10 +691,11 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
        if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
          break;
        ma_bmove_upp(buff + field->length, buff + length, length);
-       memset((char*) buff, 0, field->length - length);
+       memset((char*) buff, '0', field->length - length);
+       length= field->length;
      }
-     convert_froma_string(r_param, buff, strlen(buff));
-    }  
+     convert_froma_string(r_param, buff, length);
+    } 
     break;
   } 
 }
