@@ -151,8 +151,8 @@ static int com_multi_ps1(MYSQL *mysql)
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
-  diag("affected_rows: %d", mysql_stmt_affected_rows(stmt));
-  diag("stmt_id: %d", stmt->stmt_id);
+  diag("affected_rows: %llu", mysql_stmt_affected_rows(stmt));
+  diag("stmt_id: %lu", stmt->stmt_id);
   mysql_stmt_close(stmt);
 
   stmt= mysql_stmt_init(mysql);
