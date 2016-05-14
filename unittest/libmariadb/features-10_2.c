@@ -70,6 +70,70 @@ static int com_multi_1(MYSQL *mysql)
   return OK;
 }
 
+
+#define repeat1 100
+#define repeat2 10
+
+static int com_multi_2(MYSQL *mysql)
+{
+  int rc;
+  enum mariadb_com_multi status;
+
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "create table t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  /* TEST COM_MULTI */
+
+  for (uint i= 0; i < repeat2; i++)
+  {
+    status= MARIADB_COM_MULTI_BEGIN;
+    if (mysql_options(mysql, MARIADB_OPT_COM_MULTI, &status))
+    {
+      diag("COM_MULT not supported");
+      have_com_multi= 0;
+      return SKIP;
+    }
+
+    for (uint j= 0; j < repeat1; j++)
+    {
+      rc= mysql_query(mysql, "insert into t1 values (1)");
+      rc= mysql_query(mysql, "insert into t1 values (2)");
+      rc= mysql_query(mysql, "delete from t1;");
+    }
+
+    status= MARIADB_COM_MULTI_END;
+    rc= mysql_options(mysql, MARIADB_OPT_COM_MULTI, &status);
+
+    for (uint j= 0; j < repeat1; j++)
+    {
+      /* 1 INSERT */
+      check_mysql_rc(rc, mysql);
+      /* 2 INSERT */
+      rc= mysql_next_result(mysql);
+      check_mysql_rc(rc, mysql);
+      /* 3 DELETE */
+      rc= mysql_next_result(mysql);
+      check_mysql_rc(rc, mysql);
+
+      rc= mysql_next_result(mysql);
+    }
+
+    rc= mysql_next_result(mysql);
+    FAIL_UNLESS(rc == -1, "more then 3*repeat1 results");
+  }
+
+  /* TEST a simple query after COM_MULTI */
+  rc= mysql_query(mysql, "drop table t1");
+
+  diag("error: %s", mysql_error(mysql));
+
+  return OK;
+}
+
+
 static int com_multi_ps1(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
@@ -148,6 +212,7 @@ static int com_multi_ps2(MYSQL *mysql)
 
 struct my_tests_st my_tests[] = {
   {"com_multi_1", com_multi_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"com_multi_2", com_multi_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"com_multi_ps1", com_multi_ps1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"com_multi_ps2", com_multi_ps2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
