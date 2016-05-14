@@ -172,8 +172,8 @@ static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
   }
   else
   {
-    net->extension->mbuff=net->extension->mbuff_pos=buff;
-    net->extension->mbuff_end=buff+(net->max_packet=(unsigned long)pkt_length);
+    net->extension->mbuff= buff;
+    net->extension->mbuff_end= buff + (net->max_packet= (unsigned long)pkt_length);
   }
   return(0);
 }
