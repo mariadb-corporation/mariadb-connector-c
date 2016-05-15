@@ -26,6 +26,7 @@
 #define MAX_SSL_ERR_LEN 100
 
 #define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage - (A).cbHeader - (A).cbTrailer
+void ma_schannel_set_win_error(MARIADB_PVIO *pvio);
 
 /* {{{ void ma_schannel_set_sec_error */
 void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
@@ -69,6 +70,12 @@ void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: no credentials");
     break;
   case SEC_E_OK:
+    break;
+  case SEC_E_INTERNAL_ERROR:
+    if (GetLastError())
+      ma_schannel_set_win_error(pvio);
+    else
+      pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "The Local Security Authority cannot be contacted");
     break;
   default:
     __debugbreak();
@@ -511,7 +518,6 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
         OutBuffers.pvBuffer = NULL;
       }
     }
-
     /* check if we need to read more data */
     switch (rc) {
     case SEC_E_INCOMPLETE_MESSAGE:
@@ -548,7 +554,6 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     default:
       if (FAILED(rc))
       {
-        ma_schannel_set_sec_error(pvio, rc);
         goto loopend;
       }
       break;
@@ -563,8 +568,11 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     cbIoBuffer = 0;
   }
 loopend:
-  if (FAILED(rc)) 
+  if (FAILED(rc))
+  {
+    ma_schannel_set_sec_error(pvio, rc);
     DeleteSecurityContext(&sctx->ctxt);
+  }
   LocalFree(IoBuffer);
 
   return rc;
