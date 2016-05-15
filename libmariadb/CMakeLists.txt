@@ -130,6 +130,7 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_stmt_send_long_data
  mysql_stmt_sqlstate
  mysql_stmt_store_result
+ mysql_stmt_warning_count
  mysql_store_result
  mysql_thread_end
  mysql_thread_id

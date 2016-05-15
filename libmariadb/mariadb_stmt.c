@@ -1183,11 +1183,12 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
   stmt->field_count= uint2korr(p);
   p+= 2;
   stmt->param_count= uint2korr(p);
+  p+= 2;
 
   /* filler */
   p++;
-  stmt->upsert_status.warning_count= uint2korr(p);
-
+  /* for backward compatibility we also update mysql->warning_count */
+  stmt->mysql->warning_count= stmt->upsert_status.warning_count= uint2korr(p);
   return(0);
 }
 
@@ -1214,6 +1215,11 @@ my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt)
           stmt->mysql->server_capabilities & CLIENT_LONG_FLAG)))
     return(1); 
   return(0);
+}
+
+int STDCALL mysql_stmt_warning_count(MYSQL_STMT *stmt)
+{
+  return stmt->upsert_status.warning_count;
 }
 
 int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t length)

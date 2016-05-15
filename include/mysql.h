@@ -590,6 +590,7 @@ int STDCALL mysql_next_result_start(int *ret, MYSQL *mysql);
 int STDCALL mysql_next_result_cont(int *ret, MYSQL *mysql, int status);
 int STDCALL mysql_select_db_start(int *ret, MYSQL *mysql, const char *db);
 int STDCALL mysql_select_db_cont(int *ret, MYSQL *mysql, int ready_status);
+int STDCALL mysql_stmt_warning_count(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_next_result_start(int *ret, MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_next_result_cont(int *ret, MYSQL_STMT *stmt, int status);
 

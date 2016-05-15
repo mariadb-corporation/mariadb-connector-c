@@ -4191,7 +4191,32 @@ static int test_conc177(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc179(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int rc;
+  char *stmtstr= "CREATE TABLE t1 (`blurb_id` int NOT NULL DEFAULT 0, `blurb` text default '', PRIMARY KEY (blurb_id)) ENGINE='FEDERATED' DEFAULT CHARSET=latin1 CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/test/t1'";
+
+  rc= mysql_query(mysql, "set sql_mode=''");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_warning_count(mysql) != 3, "expected 3 warnings");
+  FAIL_IF(mysql_stmt_warning_count(stmt) != 3, "expected 3 warnings");
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc179", test_conc179, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc177", test_conc177, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc167", test_conc167, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc168", test_conc168, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
