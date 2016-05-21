@@ -105,6 +105,7 @@ struct st_ma_pvio_methods
   my_bool (*is_blocking)(MARIADB_PVIO *pvio);
   my_bool (*is_alive)(MARIADB_PVIO *pvio);
   my_bool (*has_data)(MARIADB_PVIO *pvio, ssize_t *data_len);
+  int(*shutdown)(MARIADB_PVIO *pvio);
 };
 
 /* Function prototypes */

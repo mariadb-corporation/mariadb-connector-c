@@ -45,6 +45,7 @@ int pvio_npipe_fast_send(MARIADB_PVIO *pvio);
 int pvio_npipe_keepalive(MARIADB_PVIO *pvio);
 my_bool pvio_npipe_get_handle(MARIADB_PVIO *pvio, void *handle);
 my_bool pvio_npipe_is_blocking(MARIADB_PVIO *pvio);
+int pvio_npipe_shutdown(MARIADB_PVIO *pvio);
 
 struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_set_timeout,
@@ -60,7 +61,8 @@ struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_fast_send,
   pvio_npipe_keepalive,
   pvio_npipe_get_handle,
-  pvio_npipe_is_blocking
+  pvio_npipe_is_blocking,
+  pvio_npipe_shutdown
 };
 
 #ifndef HAVE_NPIPE_DYNAMIC
@@ -354,4 +356,13 @@ my_bool pvio_npipe_is_blocking(MARIADB_PVIO *pvio)
   return (flags & PIPE_NOWAIT) ? 0 : 1;
 }
 
+int pvio_npipe_shutdown(MARIADB_PVIO *pvio)
+{
+  HANDLE h;
+  if (pvio_npipe_get_handle(pvio, &h) == 0)
+  {
+    return(CancelIoEx(h, NULL) ? 0 : 1);
+  }
+  return 1;
+}
 #endif

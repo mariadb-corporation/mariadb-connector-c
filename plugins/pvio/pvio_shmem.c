@@ -40,7 +40,7 @@ int pvio_shm_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout
 my_bool pvio_shm_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool pvio_shm_close(MARIADB_PVIO *pvio);
-
+int pvio_shm_shutdown(MARIADB_PVIO *pvio);
 
 struct st_ma_pvio_methods pvio_shm_methods= {
   pvio_shm_set_timeout,
@@ -57,7 +57,9 @@ struct st_ma_pvio_methods pvio_shm_methods= {
   NULL,
   NULL,
   NULL,
-  NULL
+  NULL,
+  NULL,
+  pvio_shm_shutdown
 };
 
 #ifndef HAVE_SHMEM_DYNAMIC
@@ -438,5 +440,11 @@ my_bool pvio_shm_is_blocking(MARIADB_PVIO *pvio)
   return 1;
 }
 
+int pvio_shm_shutdown(MARIADB_PVIO *pvio)
+{
+  PVIO_SHM *pvio_shm= (PVIO_SHM *)pvio->data;
+  if (pvio_shm)
+    return (SetEvent(pvio_shm->event[PVIO_SHM_CONNECTION_CLOSED]) ? 0 : 1);
+}
 #endif
 

@@ -570,6 +570,7 @@ my_socket STDCALL mysql_get_socket(MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 my_bool STDCALL mariadb_reconnect(MYSQL *mysql);
+int STDCALL mariadb_cancel(MYSQL *mysql);
 
 /* Async API */
 int STDCALL mysql_close_start(MYSQL *sock);

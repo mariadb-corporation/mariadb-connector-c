@@ -3804,6 +3804,24 @@ my_bool STDCALL mariadb_get_info(MYSQL *mysql, enum mariadb_value value, void *a
   return mariadb_get_infov(mysql, value, arg);
 }
 
+/* 
+  Immediately aborts connection, making all subsequent read/write operations fail.
+  Does not invalidate memory used for mysql structure, nor closes any communication
+  channels - mysql_close is still needed.
+  Useful to break long query, in situation  sending KILL is not possible.
+*/
+int STDCALL mariadb_cancel(MYSQL *mysql)
+{
+  if (!mysql || !mysql->net.pvio || !mysql->net.pvio->methods || !mysql->net.pvio->methods->shutdown)
+  {
+    return 1;
+  }
+  else
+  {
+    MARIADB_PVIO *pvio = mysql->net.pvio;
+    return pvio->methods->shutdown(pvio);
+  }
+}
 #undef STDCALL
 /* API functions for usage in dynamic plugins */
 struct st_mariadb_api MARIADB_API=
