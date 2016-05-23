@@ -445,6 +445,7 @@ int pvio_shm_shutdown(MARIADB_PVIO *pvio)
   PVIO_SHM *pvio_shm= (PVIO_SHM *)pvio->data;
   if (pvio_shm)
     return (SetEvent(pvio_shm->event[PVIO_SHM_CONNECTION_CLOSED]) ? 0 : 1);
+  return 1;
 }
 #endif
 

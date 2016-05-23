@@ -62,6 +62,8 @@ struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_keepalive,
   pvio_npipe_get_handle,
   pvio_npipe_is_blocking,
+  NULL,
+  NULL,
   pvio_npipe_shutdown
 };
 
