@@ -10,6 +10,7 @@ ADD_DEFINITIONS(-D THREAD)
 INCLUDE(${PROJECT_SOURCE_DIR}/cmake/sign.cmake)
 
 SET(MARIADB_LIB_SYMBOLS
+ mariadb_cancel
  mariadb_connection
  mariadb_convert_string
  ma_pvio_register_callback
