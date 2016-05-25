@@ -24,23 +24,23 @@ ENDMACRO()
 MARK_AS_ADVANCED(PLUGINS)
 
 # CIO
-REGISTER_PLUGIN("SOCKET" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_socket.c" "pvio_socket_plugin" "STATIC" pvio_socket 0)
+REGISTER_PLUGIN("SOCKET" "${PROJECT_SOURCE_DIR}/plugins/pvio/pvio_socket.c" "pvio_socket_plugin" "STATIC" pvio_socket 0)
 IF(WIN32)
-  REGISTER_PLUGIN("NPIPE" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_npipe.c" "pvio_npipe_plugin" "STATIC" pvio_npipe 1)
-  REGISTER_PLUGIN("SHMEM" "${CMAKE_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "DYNAMIC" pvio_shmem 1)
+  REGISTER_PLUGIN("NPIPE" "${PROJECT_SOURCE_DIR}/plugins/pvio/pvio_npipe.c" "pvio_npipe_plugin" "STATIC" pvio_npipe 1)
+  REGISTER_PLUGIN("SHMEM" "${PROJECT_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "DYNAMIC" pvio_shmem 1)
 ENDIF()
 
 # AUTHENTICATION
-REGISTER_PLUGIN("AUTH_NATIVE" "${CMAKE_SOURCE_DIR}/plugins/auth/my_auth.c" "native_password_client_plugin" "STATIC" "" 0)
-REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CMAKE_SOURCE_DIR}/plugins/auth/old_password.c" "old_password_client_plugin" "STATIC" "" 1)
-REGISTER_PLUGIN("AUTH_DIALOG" "${CMAKE_SOURCE_DIR}/plugins/auth/dialog.c" "auth_dialog_plugin" "DYNAMIC" dialog 1)
-REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CMAKE_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "auth_cleartext_plugin" "DYNAMIC" "mysql_clear_password" 1)
+REGISTER_PLUGIN("AUTH_NATIVE" "${PROJECT_SOURCE_DIR}/plugins/auth/my_auth.c" "native_password_client_plugin" "STATIC" "" 0)
+REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${PROJECT_SOURCE_DIR}/plugins/auth/old_password.c" "old_password_client_plugin" "STATIC" "" 1)
+REGISTER_PLUGIN("AUTH_DIALOG" "${PROJECT_SOURCE_DIR}/plugins/auth/dialog.c" "auth_dialog_plugin" "DYNAMIC" dialog 1)
+REGISTER_PLUGIN("AUTH_CLEARTEXT" "${PROJECT_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "auth_cleartext_plugin" "DYNAMIC" "mysql_clear_password" 1)
 IF(WIN32)
-    SET(GSSAPI_SOURCES ${CMAKE_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/sspi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/sspi_errmsg.c)
+    SET(GSSAPI_SOURCES ${PROJECT_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${PROJECT_SOURCE_DIR}/plugins/auth/sspi_client.c ${PROJECT_SOURCE_DIR}/plugins/auth/sspi_errmsg.c)
     REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
 ELSE()
   IF(GSSAPI_FOUND)
-    SET(GSSAPI_SOURCES ${CMAKE_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/gssapi_client.c ${CMAKE_SOURCE_DIR}/plugins/auth/gssapi_errmsg.c)
+    SET(GSSAPI_SOURCES ${PROJECT_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${PROJECT_SOURCE_DIR}/plugins/auth/gssapi_client.c ${PROJECT_SOURCE_DIR}/plugins/auth/gssapi_errmsg.c)
     REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
   ENDIF()
 ENDIF()
@@ -48,18 +48,18 @@ ENDIF()
 #Remote_IO
 IF(CURL_FOUND)
   IF(WIN32)
-    REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
+    REGISTER_PLUGIN("REMOTEIO" "${PROJECT_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
   ELSE()
-    REGISTER_PLUGIN("REMOTEIO" "${CMAKE_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
+    REGISTER_PLUGIN("REMOTEIO" "${PROJECT_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
   ENDIF()
 ENDIF()
 
 #Trace
-REGISTER_PLUGIN("TRACE_EXAMPLE" "${CMAKE_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" "trace_example" 1)
+REGISTER_PLUGIN("TRACE_EXAMPLE" "${PROJECT_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" "trace_example" 1)
 
 #Connection
-REGISTER_PLUGIN("REPLICATION" "${CMAKE_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "DYNAMIC" "replication" 1)
-REGISTER_PLUGIN("AURORA" "${CMAKE_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "aurora"  1)
+REGISTER_PLUGIN("REPLICATION" "${PROJECT_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "DYNAMIC" "replication" 1)
+REGISTER_PLUGIN("AURORA" "${PROJECT_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "aurora"  1)
 
 # Allow registration of additional plugins
 IF(PLUGIN_CONF_FILE)
@@ -91,7 +91,7 @@ ENDIF()
 # since some files contain multiple plugins, remove duplicates from source files 
 LIST(REMOVE_DUPLICATES LIBMARIADB_SOURCES)
 
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
-  ${CMAKE_BINARY_DIR}/libmariadb/ma_client_plugin.c)
+CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
+  ${PROJECT_BINARY_DIR}/libmariadb/ma_client_plugin.c)
 
 MARK_AS_ADVANCED(LIBMARIADB_SOURCES)

@@ -2,8 +2,8 @@ FUNCTION(GET_FILE_VERSION FILE_NAME FILE_VERSION)
 
   # if we build from a git repository, we calculate the file version:
   #  Patch number is numer of commits for given file
-  IF(EXISTS ${CMAKE_SOURCE_DIR}/.git)
-    EXECUTE_PROCESS(COMMAND git --git-dir=${CMAKE_SOURCE_DIR}/.git --work-tree=${CMAKE_SOURCE_DIR} rev-list HEAD --count -- ${FILE_NAME} 
+  IF(EXISTS ${PROJECT_SOURCE_DIR}/.git)
+    EXECUTE_PROCESS(COMMAND git --git-dir=${PROJECT_SOURCE_DIR}/.git --work-tree=${PROJECT_SOURCE_DIR} rev-list HEAD --count -- ${FILE_NAME} 
       OUTPUT_VARIABLE FV)
     STRING(REPLACE "\n" "" FV ${FV})
     SET(${FILE_VERSION} ${FV} PARENT_SCOPE)
@@ -28,9 +28,9 @@ MACRO(SET_VERSION_INFO)
       STRING(REPLACE "FILE_DESCRIPTION:" "" FILE_DESCRIPTION ${PROPERTY})
     ENDIF()
   ENDFOREACH()
-  CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/resource.rc.in
-                 ${CMAKE_BINARY_DIR}/win/${TARGET}.rc)
-  SET(${TARGET}_RC ${CMAKE_BINARY_DIR}/win/${TARGET}.rc)
+  CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/win/resource.rc.in
+                 ${PROJECT_BINARY_DIR}/win/${TARGET}.rc)
+  SET(${TARGET}_RC ${PROJECT_BINARY_DIR}/win/${TARGET}.rc)
 ENDMACRO()
 
 
