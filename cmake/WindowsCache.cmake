@@ -1,3 +1,10 @@
+#
+#  Copyright (C) 2013-2016 MariaDB Corporation AB
+#
+#  Redistribution and use is allowed according to the terms of the New
+#  BSD license.
+#  For details see the COPYING-CMAKE-SCRIPTS file.
+#
 IF(MSVC)
 SET(BFD_H_EXISTS 0 CACHE INTERNAL "")
 SET(HAVE_ACCESS 1 CACHE  INTERNAL "")

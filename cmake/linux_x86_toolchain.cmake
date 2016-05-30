@@ -1,3 +1,11 @@
+#
+#  Copyright (C) 2013-2016 MariaDB Corporation AB
+#
+#  Redistribution and use is allowed according to the terms of the New
+#  BSD license.
+#  For details see the COPYING-CMAKE-SCRIPTS file.
+#
+
 # toolchain file for building a 32bit version on a 64bit host
 
 # Usage:

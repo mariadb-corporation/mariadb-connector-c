@@ -1,3 +1,11 @@
+#
+#  Copyright (C) 2013-2016 MariaDB Corporation AB
+#
+#  Redistribution and use is allowed according to the terms of the New
+#  BSD license.
+#  For details see the COPYING-CMAKE-SCRIPTS file.
+#
+
 # This file is included by CMakeLists.txt and
 # checks for type sizes.
 # You will find the appropiate defines in 

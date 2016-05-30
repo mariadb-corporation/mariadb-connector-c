@@ -1,3 +1,10 @@
+#
+#  Copyright (C) 2013-2016 MariaDB Corporation AB
+#
+#  Redistribution and use is allowed according to the terms of the New
+#  BSD license.
+#  For details see the COPYING-CMAKE-SCRIPTS file.
+#
 MACRO(GET_CONNECTOR_PACKAGE_NAME name)
 # check if we have 64bit
 IF(SIZEOF_VOIDP EQUAL 8)
