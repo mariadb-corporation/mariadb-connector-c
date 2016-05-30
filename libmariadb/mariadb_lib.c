@@ -1846,7 +1846,7 @@ mysql_close(MYSQL *mysql)
 {
   if (mysql)					/* Some simple safety */
   {
-    if (mysql->extension->conn_hdlr)
+    if ((mysql->extension && mysql->extension->conn_hdlr)
     {
       MA_CONNECTION_HANDLER *p= mysql->extension->conn_hdlr;
       p->plugin->close(mysql);
