@@ -86,6 +86,11 @@ my_bool mysql_ps_subsystem_initialized= 0;
   ((((val) > (max_range)) || ((val) < (min_range)) ? 1 : 0))
 
 
+void ma_bmove_upp(register char *dst, register const char *src, register size_t len)
+{
+  while (len-- != 0) *--dst = *--src;
+}
+
 /* {{{ ps_fetch_from_1_to_8_bytes */
 void ps_fetch_from_1_to_8_bytes(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
                 unsigned char **row, unsigned int byte_count)
@@ -373,6 +378,13 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       len= (uint)(endptr - buffer);
 
       /* check if field flag is zerofill */
+      if (field->flags & ZEROFILL_FLAG &&
+          len < field->length && len < r_param->buffer_length)
+      {
+        ma_bmove_upp(buffer + field->length, buffer + len, len);
+        memset((char*) buffer, '0', field->length - len);
+        len= field->length;
+      }
       
       convert_froma_string(r_param, buffer, len);
     }
@@ -498,11 +510,6 @@ void ps_fetch_int64(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
   }
 }
 /* }}} */
-
-void ma_bmove_upp(register char *dst, register const char *src, register size_t len)
-{
-  while (len-- != 0) *--dst = *--src;
-}
 
 static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, float val, int size)
 {
