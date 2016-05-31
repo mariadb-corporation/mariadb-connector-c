@@ -2337,10 +2337,6 @@ static int test_bug4172(MYSQL *mysql)
   char f[100], d[100], e[100];
   ulong f_len, d_len, e_len;
 
-  diag("numeric precision in ps not fixed now");
-  return SKIP;
-
-
   mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   mysql_query(mysql, "CREATE TABLE t1 (f float, d double, e decimal(10,4))");
   mysql_query(mysql, "INSERT INTO t1 VALUES (12345.1234, 123456.123456, "
@@ -4148,7 +4144,84 @@ static int test_conc167(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc177(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int rc;
+  MYSQL_BIND bind[2];
+  char *stmt_str= "SELECT a,b FROM t1";
+  char buf1[128], buf2[128];
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a double zerofill default 8.8,b float zerofill default 8.8)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (DEFAULT, DEFAULT)");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
+  bind[0].buffer= &buf1;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer_length= 128;
+  bind[1].buffer= &buf2;
+  bind[1].buffer_type= MYSQL_TYPE_STRING;
+  bind[1].buffer_length= 128;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  mysql_stmt_close(stmt);
+
+  diag("buf1 %s\nbuf2 %s", buf1, buf2);
+
+  FAIL_IF(strcmp(buf1, "00000000000000000008.8"), "Expected 00000000000000000008.8");
+  FAIL_IF(strcmp(buf2, "0000000008.8"), "Expected 0000000008.8");
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int(8) zerofill default 1, b int(4) zerofill default 1)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (DEFAULT, DEFAULT)");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
+  bind[0].buffer= &buf1;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer_length= 128;
+  bind[1].buffer= &buf2;
+  bind[1].buffer_type= MYSQL_TYPE_STRING;
+  bind[1].buffer_length= 128;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  mysql_stmt_close(stmt);
+
+  diag("buf1 %s\nbuf2 %s", buf1, buf2);
+
+  FAIL_IF(strcmp(buf1, "00000001"), "Expected 00000001");
+  FAIL_IF(strcmp(buf2, "0001"), "Expected 0001");
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc177", test_conc177, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc167", test_conc167, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc168", test_conc168, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc155", test_conc155, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

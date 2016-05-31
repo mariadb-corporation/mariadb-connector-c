@@ -263,9 +263,10 @@ is_prefix.c
 libmariadb.c
 list.c
 llstr.c
-longlong2str.c 
-mf_dirname.c 
-mf_fn_ext.c 
+longlong2str.c
+ma_dtoa.c
+mf_dirname.c
+mf_fn_ext.c
 mf_format.c
 mf_loadpath.c 
 mf_pack.c 

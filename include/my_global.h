@@ -526,7 +526,7 @@ extern double		my_atof(const char*);
 #define HAVE_LONG_LONG 1
 #endif
 
-#if defined(HAVE_LONG_LONG) && !defined(LONGLONG_MIN)
+#if defined(HAVE_LONG_LONG) && !defined(LONGLONG_IN)
 #define LONGLONG_MIN	((long long) 0x8000000000000000LL)
 #define LONGLONG_MAX	((long long) 0x7FFFFFFFFFFFFFFFLL)
 #endif
@@ -645,6 +645,13 @@ typedef unsigned long	ulonglong;	/* ulong or unsigned long long */
 typedef long		longlong;
 #endif
 #define longlong_defined
+#endif
+
+#ifndef HAVE_INT64
+typedef longlong int64;
+#endif
+#ifndef HAVE_UINT64
+typedef ulonglong uint64;
 #endif
 
 #ifndef MIN
