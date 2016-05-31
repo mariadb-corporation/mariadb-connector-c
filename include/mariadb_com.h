@@ -157,6 +157,7 @@ enum enum_server_command
 #define CLIENT_CONNECT_ATTRS     (1UL << 20)
 #define CLIENT_SESSION_TRACKING  (1UL << 23)
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
+#define CLIENT_PROGRESS_OBSOLETE  CLIENT_PROGRESS 
 #define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
 #define CLIENT_REMEMBER_OPTIONS  (1UL << 31)
 
