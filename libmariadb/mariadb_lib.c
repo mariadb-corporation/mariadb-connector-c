@@ -217,7 +217,8 @@ restart:
       len-=2;
 
       if (last_errno== 65535 &&
-          (mysql->server_capabilities & CLIENT_PROGRESS))
+          ((mariadb_connection(mysql) && (mysql->server_capabilities & CLIENT_PROGRESS)) ||
+           (!(mysql->server_capabilities & CLIENT_MYSQL) && mysql->server_capabilities & MARIADB_CLIENT_PROGRESS)))
       {
         if (cli_report_progress(mysql, (uchar *)pos, (uint) (len-1)))
         {

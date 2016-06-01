@@ -1253,7 +1253,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
        on server side. Statment handle will get a new stmt_id */
     char stmt_id[STMT_ID_LENGTH];
 
-    if (mysql_stmt_reset(stmt))
+    if (mysql_stmt_internal_reset(stmt, 1))
       goto fail;
 
     ma_free_root(&stmt->mem_root, MYF(MY_KEEP_PREALLOC));
