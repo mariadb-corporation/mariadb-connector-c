@@ -3473,13 +3473,6 @@ BOOL CALLBACK win_init_once(
 }
 #endif
 
-#if defined(SIGPIPE) && !defined(_WIN32) && defined(WITH_OPENSSL)
-static void ma_sigpipe_handler()
-{
-  return;
-}
-#endif
-
 int STDCALL mysql_server_init(int argc __attribute__((unused)),
   char **argv __attribute__((unused)),
   char **groups __attribute__((unused)))
@@ -3490,17 +3483,6 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
   return ret? 0: 1;
 #else
   static pthread_once_t init_once = PTHREAD_ONCE_INIT;
-#if defined(SIGPIPE) && defined(WITH_OPENSSL)
-  struct sigaction old_handler, new_handler={NULL};
-  if (!sigaction (SIGPIPE, NULL, &old_handler) &&
-    !old_handler.sa_handler)
-  {
-    new_handler.sa_handler= ma_sigpipe_handler;
-    new_handler.sa_flags= 0;
-    if (!sigemptyset(&new_handler.sa_mask))
-      sigaction(SIGPIPE, &new_handler, NULL);
-  }
-#endif
   return pthread_once(&init_once, mysql_once_init);
 #endif
 }

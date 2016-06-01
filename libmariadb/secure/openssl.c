@@ -226,6 +226,28 @@ static int ssl_thread_init()
 }
 
 
+#ifdef _WIN32
+#define disable_sigpipe()
+#else
+#include  <signal.h>
+static void ma_sigpipe_handler()
+{
+} 
+
+static void disable_sigpipe()
+{
+  struct sigaction old_handler, new_handler={NULL};
+  if (!sigaction (SIGPIPE, NULL, &old_handler) &&
+    !old_handler.sa_handler)
+  {
+    new_handler.sa_handler= ma_sigpipe_handler;
+    new_handler.sa_flags= 0;
+    if (!sigemptyset(&new_handler.sa_mask))
+      sigaction(SIGPIPE, &new_handler, NULL);
+  }
+}
+#endif
+
 /*
   Initializes SSL and allocate global
   context SSL_context
@@ -276,6 +298,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   SSL_CTX_sess_set_new_cb(SSL_context, ma_tls_session_cb);
   SSL_CTX_sess_set_remove_cb(SSL_context, ma_tls_remove_session_cb);
 #endif
+  disable_sigpipe();
   rc= 0;
   ma_tls_initialized= TRUE;
 end:
