@@ -139,7 +139,6 @@ char *ma_strdup_root(MA_MEM_ROOT *root,const char *str)
   char *pos;
   if ((pos=ma_alloc_root(root,len)))
     memcpy(pos,str,len);
-  pos[len]= 0;
   return pos;
 }
 
