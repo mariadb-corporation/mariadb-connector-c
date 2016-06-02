@@ -141,7 +141,6 @@ char *strdup_root(MEM_ROOT *root,const char *str)
   char *pos;
   if ((pos=alloc_root(root,len)))
     memcpy(pos,str,len);
-  pos[len]= 0;
   return pos;
 }
 
