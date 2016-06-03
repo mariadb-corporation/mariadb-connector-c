@@ -993,7 +993,7 @@ void mysql_init_ps_subsystem(void)
   
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].func  = ps_fetch_datetime;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].pack_len  = MYSQL_PS_SKIP_RESULT_W_LEN;
-  mysql_ps_fetch_functions[MYSQL_TYPE_TIME].max_len  = 15;
+  mysql_ps_fetch_functions[MYSQL_TYPE_TIME].max_len  = 17;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_DATE].func  = ps_fetch_datetime;
   mysql_ps_fetch_functions[MYSQL_TYPE_DATE].pack_len  = MYSQL_PS_SKIP_RESULT_W_LEN;
