@@ -48,6 +48,7 @@
 #include <ma_string.h>
 #include <mariadb_ctype.h>
 #include "mysql.h"
+#include <math.h> /* ceil() */
 
 #define MYSQL_SILENT
 
@@ -355,7 +356,11 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
 
       dbl= (is_unsigned) ? ulonglong2double((ulonglong)val) : (double)val;
       doublestore(r_param->buffer, dbl);
-      *r_param->error= is_unsigned ? (ulonglong )dbl != (ulonglong)val : (longlong)dbl != (longlong)val;
+
+      *r_param->error = (dbl != ceil(dbl)) ||
+                         (is_unsigned ? (ulonglong )dbl != (ulonglong)val : 
+                                        (longlong)dbl != (longlong)val);
+
       r_param->buffer_length= 8;
       break;
     }
@@ -364,7 +369,9 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       float fval;
       fval= is_unsigned ? (float)(ulonglong)(val) : (float)val;
       float4store(r_param->buffer, fval);
-      *r_param->error= is_unsigned ? (ulonglong)fval != (ulonglong)val : (longlong)fval != val;
+      *r_param->error= (fval != ceilf(fval)) ||
+                        (is_unsigned ? (ulonglong)fval != (ulonglong)val : 
+                                       (longlong)fval != val);
       r_param->buffer_length= 4;
     }
     break;
