@@ -864,7 +864,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       break;
     case MYSQL_TYPE_TIME:
       length= sprintf(dtbuffer, "%s%02u:%02u:%02u", (tm.neg ? "-" : ""), tm.hour, tm.minute, tm.second);
-      if (field->decimals)
+      if (field->decimals && field->decimals <= 6)
       {
         char ms[8];
         sprintf(ms, ".%06u", tm.second_part);
@@ -877,7 +877,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
     case MYSQL_TYPE_DATETIME:
     case MYSQL_TYPE_TIMESTAMP:
       length= sprintf(dtbuffer, "%04u-%02u-%02u %02u:%02u:%02u", tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second);
-      if (field->decimals)
+      if (field->decimals && field->decimals <= 6)
       {
         char ms[8];
         sprintf(ms, ".%06u", tm.second_part);
