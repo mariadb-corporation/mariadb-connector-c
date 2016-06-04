@@ -444,39 +444,8 @@ error:
   return 1;
 }
 
-static int my_verify_callback(int ok, X509_STORE_CTX *ctx)
-{
-  X509 *check_cert;
-  SSL *ssl;
-  MYSQL *mysql;
-
-  ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-  mysql= (MYSQL *)SSL_get_app_data(ssl);
-
-  /* skip verification if no ca_file/path was specified */
-  if (!mysql->options.ssl_ca && !mysql->options.ssl_capath)
-  {
-    ok= 1;
-    return 1;
-  }
-
-  if (!ok)
-  {
-    uint depth;
-    if (!(check_cert= X509_STORE_CTX_get_current_cert(ctx)))
-      return 0;
-    depth= X509_STORE_CTX_get_error_depth(ctx);
-    if (depth == 0)
-      ok= 1;
-  }
-
-  return ok;
-}
-
-
 void *ma_tls_init(MYSQL *mysql)
 {
-  int verify;
   SSL *ssl= NULL;
 #ifdef HAVE_TLS_SESSION_CACHE
   MA_SSL_SESSION *session= ma_tls_get_session(mysql);
@@ -498,12 +467,6 @@ void *ma_tls_init(MYSQL *mysql)
   if (session)
     SSL_set_session(ssl, session->session);
 #endif
-
-  verify= (!mysql->options.ssl_ca && !mysql->options.ssl_capath) ?
-           SSL_VERIFY_NONE : SSL_VERIFY_PEER;
-
-  SSL_CTX_set_verify(SSL_context, verify, my_verify_callback);
-  SSL_CTX_set_verify_depth(SSL_context, 1);
 
   pthread_mutex_unlock(&LOCK_openssl_config);
   return (void *)ssl;
