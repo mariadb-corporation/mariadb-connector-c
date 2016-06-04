@@ -126,7 +126,7 @@ my_context_yield(struct my_context *c)
 int
 my_context_init(struct my_context *c, size_t stack_size)
 {
-#if SIZEOF_CHARP > SIZEOF_INT*2
+#if sizeof(char *) > SIZEOF_INT*2
 #error Error: Unable to store pointer in 2 ints on this architecture
 #endif
   bzero(c, sizeof(*c));

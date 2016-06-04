@@ -633,7 +633,7 @@ static Bigint *Balloc(int k, Stack_alloc *alloc)
     int x, len;
 
     x= 1 << k;
-    len= MY_ALIGN(sizeof(Bigint) + x * sizeof(ULong), SIZEOF_CHARP);
+    len= MY_ALIGN(sizeof(Bigint) + x * sizeof(ULong), sizeof(char *));
 
     if (alloc->free + len <= alloc->end)
     {
@@ -685,7 +685,7 @@ static void Bfree(Bigint *v, Stack_alloc *alloc)
 static char *dtoa_alloc(int i, Stack_alloc *alloc)
 {
   char *rv;
-  int aligned_size= MY_ALIGN(i, SIZEOF_CHARP);
+  int aligned_size= MY_ALIGN(i, sizeof(char *));
   if (alloc->free + aligned_size <= alloc->end)
   {
     rv= alloc->free;
