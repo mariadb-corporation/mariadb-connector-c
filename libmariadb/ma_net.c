@@ -330,9 +330,9 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
 {
   size_t left_length;
   size_t required_length, current_length;
-  required_length= length + 1 + NET_HEADER_SIZE;
+  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE;
 
-  /* We didn't allocate memory in ma_net_init since it was to early to
+  /* We didn't allocate memory in ma_net_init since it was too early to
    * detect if the server supports COM_MULTI command */
   if (!net->extension->mbuff)
   {
@@ -356,6 +356,7 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
     current_length= net->extension->mbuff_pos - net->extension->mbuff;
     if (net_realloc(net, 1, current_length + required_length))
       goto error;
+    net->extension->mbuff_pos = net->extension->mbuff + current_length;
   }
   int3store(net->extension->mbuff_pos, length + 1);
   net->extension->mbuff_pos+= 3;
