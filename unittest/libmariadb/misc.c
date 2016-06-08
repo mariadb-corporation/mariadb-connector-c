@@ -1000,7 +1000,49 @@ static int test_conc117(MYSQL *mysql)
   return OK;
 }
 
+int verify_local_infile_callback(void *data, const char *filename)
+{
+  char *orig_filename= (char *)data;
+  diag("verifying local infile name: %s", filename);
+  return strcmp(filename, orig_filename);
+}
+
+static int test_local_infile_callback(MYSQL *mysql)
+{
+  int rc;
+  int i;
+  FILE *fp;
+  char *orig_file= "data.csv";
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS enclist");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE `enclist` ("
+                         "  `pat_id` int(11) NOT NULL,"
+                         "  `episode_id` int(11) NOT NULL,"
+                         "  `enc_id` double NOT NULL,"
+                         "  PRIMARY KEY (`pat_id`,`episode_id`,`enc_id`)"
+                         ") ENGINE=MyISAM DEFAULT CHARSET=latin1");
+  check_mysql_rc(rc, mysql);
+
+  fp= fopen("data.csv", "w");
+  FAIL_IF(!fp, "Can't open data.csv");
+
+  for (i=0; i < 100; i++)
+    fprintf (fp, "%.08d,%d,%f\r\n", 100 + i, i % 3 + 1, 60000.0 + i/100);
+  fclose(fp);
+
+  mysql_optionsv(mysql, MARIADB_OPT_VERIFY_LOCAL_INFILE_CALLBACK, verify_local_infile_callback, (void *)orig_file);
+
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE 'data.csv' INTO TABLE enclist "
+                         "FIELDS TERMINATED BY '.' LINES TERMINATED BY '\r\n'");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_local_infile_callback", test_local_infile_callback, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

@@ -218,7 +218,7 @@ void STDCALL mysql_set_local_infile_handler(MYSQL *conn,
   conn->options.local_infile_read=  local_infile_read;
   conn->options.local_infile_end=   local_infile_end;
   conn->options.local_infile_error= local_infile_error;
-  conn->options.local_infile_userdata = userdata;
+  conn->options.local_infile_userdata[0] = userdata;
   DBUG_VOID_RETURN;
 }
 /* }}} */
@@ -238,7 +238,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
   if (!conn->options.local_infile_init || !conn->options.local_infile_end ||
       !conn->options.local_infile_read || !conn->options.local_infile_error)
   {
-    conn->options.local_infile_userdata= conn;
+    conn->options.local_infile_userdata[0]= conn;
     mysql_set_local_infile_default(conn);
   }
 
@@ -255,7 +255,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
 
   /* init handler: allocate read buffer and open file */
   if (conn->options.local_infile_init(&info, filename,
-                                      conn->options.local_infile_userdata))
+                                      conn->options.local_infile_userdata[0]))
   {
     char tmp_buf[MYSQL_ERRMSG_SIZE];
     int tmp_errno;

@@ -212,7 +212,8 @@ extern unsigned int mariadb_deinitialize_ssl;
     /* MariaDB Connector/C specific */
     MYSQL_DATABASE_DRIVER=7000,
     MARIADB_OPT_SSL_FP,             /* single finger print for server certificate verification */
-    MARIADB_OPT_SSL_FP_LIST         /* finger print white list for server certificate verification */
+    MARIADB_OPT_SSL_FP_LIST,        /* finger print white list for server certificate verification */
+    MARIADB_OPT_VERIFY_LOCAL_INFILE_CALLBACK
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -259,7 +260,7 @@ struct st_mysql_options {
     int (*local_infile_read)(void *, char *, unsigned int);
     void (*local_infile_end)(void *);
     int (*local_infile_error)(void *, char *, unsigned int);
-    void *local_infile_userdata;
+    void *local_infile_userdata[2];
     struct st_mysql_options_extension *extension;
 };
 

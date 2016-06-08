@@ -71,6 +71,7 @@
 #include <ma_dyncol.h>
 #include <mysql_async.h>
 
+#define DNS_TIMEOUT 30
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
 
 #undef max_allowed_packet
@@ -1552,6 +1553,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 #ifdef HAVE_SYS_UN_H
   struct	sockaddr_un UNIXaddr;
 #endif
+  time_t start_t= time(NULL);
   init_sigpipe_variables
   DBUG_ENTER("mysql_real_connect");
 
@@ -1686,6 +1688,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     char server_port[NI_MAXSERV];
     int gai_rc, bind_gai_rc;
     int rc;
+    useconds_t wait_gai;
 
     unix_socket=0;				/* This is not used */
     if (!port)
@@ -1709,7 +1712,15 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
      * bind_address */
     if (mysql->options.bind_address)
     {
-      bind_gai_rc= getaddrinfo(mysql->options.bind_address, 0, &hints, &bind_res);
+      wait_gai= 1;
+      while ((bind_gai_rc= getaddrinfo(mysql->options.bind_address, 0, &hints, &bind_res)) == EAI_AGAIN)
+      {
+        unsigned int timeout= (mysql->options.connect_timeout) ? mysql->options.connect_timeout : DNS_TIMEOUT;
+        if (time(NULL) - start_t > timeout)
+          break;
+        usleep(wait_gai);
+        wait_gai*= 2;
+      }
       if (bind_gai_rc != 0 || !bind_res)
       {
         my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
@@ -1720,7 +1731,15 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
 
     /* Get the address information for the server using getaddrinfo() */
-    gai_rc= getaddrinfo(host, server_port, &hints, &res);
+    wait_gai= 1;
+    while ((gai_rc= getaddrinfo(host, server_port, &hints, &res)) == EAI_AGAIN)
+    {
+      unsigned int timeout= (mysql->options.connect_timeout) ? mysql->options.connect_timeout : DNS_TIMEOUT;
+      if (time(NULL) - start_t > timeout)
+        break;
+      usleep(wait_gai);
+      wait_gai*= 2;
+    }
     if (gai_rc != 0)
     {
       if (bind_res)
@@ -2407,7 +2426,17 @@ get_info:
   }
   if (field_count == NULL_LENGTH)		/* LOAD DATA LOCAL INFILE */
   {
-    int error=mysql_handle_local_infile(mysql, (char *)pos);
+    int error= 0;
+    /* check if a callback was specified for load local infile */
+    if (mysql->options.extension && mysql->options.extension->verify_local_infile)
+    {
+      if (mysql->options.extension->verify_local_infile(mysql->options.local_infile_userdata[1], (const char *)pos))
+      {
+        my_set_error(mysql, EE_READ, SQLSTATE_UNKNOWN, "filename could not be verified");
+        DBUG_RETURN(-1);
+      }
+    }
+    error=mysql_handle_local_infile(mysql, (char *)pos);
 
     if ((length=net_safe_read(mysql)) == packet_error || error)
       DBUG_RETURN(-1);
@@ -3213,6 +3242,15 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_SECURE_AUTH:
     mysql->options.secure_auth= *(my_bool *)arg1;
+    break;
+  case MARIADB_OPT_VERIFY_LOCAL_INFILE_CALLBACK:
+    {
+      void *arg2= va_arg(ap, void *);
+      CHECK_OPT_EXTENSION_SET(&mysql->options);
+      mysql->options.extension->verify_local_infile= (int (*)(void *, const char *))arg1;
+      if (arg2)
+        mysql->options.local_infile_userdata[1]= arg2;
+    }
     break;
   default:
     va_end(ap);
