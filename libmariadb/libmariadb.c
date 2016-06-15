@@ -1688,7 +1688,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     char server_port[NI_MAXSERV];
     int gai_rc, bind_gai_rc;
     int rc;
-    useconds_t wait_gai;
+#ifdef _WIN32
+    DWORD wait_gai;
+#else
+    unsigned int wait_gai;
+#endif
 
     unix_socket=0;				/* This is not used */
     if (!port)
@@ -1718,7 +1722,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
         unsigned int timeout= (mysql->options.connect_timeout) ? mysql->options.connect_timeout : DNS_TIMEOUT;
         if (time(NULL) - start_t > timeout)
           break;
+#ifndef _WIN32
         usleep(wait_gai);
+#else
+        Sleep(wait_gai);
+#endif
         wait_gai*= 2;
       }
       if (bind_gai_rc != 0 || !bind_res)
@@ -1737,7 +1745,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       unsigned int timeout= (mysql->options.connect_timeout) ? mysql->options.connect_timeout : DNS_TIMEOUT;
       if (time(NULL) - start_t > timeout)
         break;
+#ifndef _WIN32
       usleep(wait_gai);
+#else
+      Sleep(wait_gai);
+#endif
       wait_gai*= 2;
     }
     if (gai_rc != 0)
