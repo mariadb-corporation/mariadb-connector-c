@@ -2,6 +2,7 @@
 */
 
 #include "my_test.h"
+#include <my_pthread.h>
 
 static int basic_connect(MYSQL *mysql)
 {
