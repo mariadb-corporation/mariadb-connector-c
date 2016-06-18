@@ -493,8 +493,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     pvio->methods->blocking(pvio, TRUE, 0);
 
   SSL_clear(ssl);
-  SSL_SESSION_set_timeout(SSL_get_session(ssl),
-                          mysql->options.connect_timeout);
+  /*SSL_SESSION_set_timeout(SSL_get_session(ssl),
+                          mysql->options.connect_timeout); */
   SSL_set_fd(ssl, mysql_get_socket(mysql));
 
   if (SSL_connect(ssl) != 1)

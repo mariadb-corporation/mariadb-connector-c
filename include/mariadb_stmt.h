@@ -56,7 +56,8 @@ enum enum_stmt_attr_type
 {
   STMT_ATTR_UPDATE_MAX_LENGTH,
   STMT_ATTR_CURSOR_TYPE,
-  STMT_ATTR_PREFETCH_ROWS
+  STMT_ATTR_PREFETCH_ROWS,
+  STMT_ATTR_PREBIND_PARAMS=200
 };
 
 enum enum_cursor_type
@@ -172,7 +173,7 @@ typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row)
 
 struct st_mysql_stmt
 {
-  MA_MEM_ROOT                 mem_root;
+  MA_MEM_ROOT              mem_root;
   MYSQL                    *mysql;
   unsigned long            stmt_id;
   unsigned long            flags;/* cursor is set here */

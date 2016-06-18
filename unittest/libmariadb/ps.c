@@ -74,11 +74,11 @@ static int test_conc83(MYSQL *my)
   check_stmt_rc(rc, stmt);
   diag("Ok");
 
-  /* 2. Status is prepared, second prepare should fail */
+  /* 2. Status is prepared, execute should fail */
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(2);
 
-  rc= mysql_stmt_prepare(stmt, query, -1);
+  rc= mysql_stmt_execute(stmt);
   FAIL_IF(!rc, "Error expected"); 
 
   mysql_stmt_close(stmt);

@@ -70,6 +70,8 @@ ENDIF()
 
 ADD_LIBRARY(ma_getopt ma_getopt.c)
 
+ADD_EXECUTABLE(my_test test.c)
+TARGET_LINK_LIBRARIES(my_test mariadbclient)
 FOREACH(API_TEST ${API_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
   TARGET_LINK_LIBRARIES(${API_TEST} mytap ma_getopt mariadbclient)

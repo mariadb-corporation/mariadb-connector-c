@@ -2567,9 +2567,12 @@ int mariadb_flush_multi_command(MYSQL *mysql)
   /* reset multi_buff */
   mysql->net.extension->mbuff_pos= mysql->net.extension->mbuff;
 
+  /* don't read result for mysql_stmt_execute_direct() */
   if (!rc)
     if (mysql->net.extension->mbuff && length > 3 &&
-        (mysql->net.extension->mbuff[3] == COM_STMT_PREPARE || mysql->net.extension->mbuff[3] == COM_STMT_EXECUTE))
+        (mysql->net.extension->mbuff[3] == COM_STMT_PREPARE || 
+         mysql->net.extension->mbuff[3] == COM_STMT_EXECUTE ||
+         mysql->net.extension->mbuff[3] == COM_STMT_CLOSE))
       return rc;
     else
       return mysql->methods->db_read_query_result(mysql);

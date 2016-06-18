@@ -72,7 +72,7 @@ static int com_multi_1(MYSQL *mysql)
 
 
 #define repeat1 100
-#define repeat2 10
+#define repeat2 1
 
 static int com_multi_2(MYSQL *mysql)
 {
@@ -171,11 +171,11 @@ static int com_multi_ps1(MYSQL *mysql)
 static int com_multi_ps2(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
-  MYSQL_BIND bind[3];
+  MYSQL_BIND bind[2];
   int intval= 3, rc;
   int i;
   char *varval= "com_multi_ps2";
-
+  unsigned int param_count= 2;
 
   if (!have_com_multi)
     return SKIP;
@@ -184,28 +184,79 @@ static int com_multi_ps2(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int, b varchar(20))");
 
-  memset(&bind, 0, sizeof(MYSQL_BIND) * 3);
+  memset(&bind, 0, sizeof(MYSQL_BIND) * 2);
   bind[0].buffer_type= MYSQL_TYPE_SHORT;
   bind[0].buffer= &intval;
   bind[1].buffer_type= MYSQL_TYPE_STRING;
   bind[1].buffer= varval;
   bind[1].buffer_length= strlen(varval);
-  bind[2].buffer_type= MAX_NO_FIELD_TYPES;
+
+  stmt= mysql_stmt_init(mysql);
+  mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "INSERT INTO t1 VALUES (?,?)", -1);
+  check_stmt_rc(rc, stmt);
 
   for (i=0; i < 2; i++)
   {
-    stmt= mysql_stmt_init(mysql);
-    rc= mysql_stmt_bind_param(stmt, bind);
-    check_stmt_rc(rc, stmt);
-
-    rc= mariadb_stmt_execute_direct(stmt, "INSERT INTO t1 VALUES (1,'foo')", -1);
+    mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
     FAIL_IF(mysql_stmt_affected_rows(stmt) != 1, "expected affected_rows= 1");
     FAIL_IF(stmt->stmt_id < 1, "expected statement id > 0");
-
-    rc= mysql_stmt_close(stmt);
-    check_mysql_rc(rc, mysql);
   }
+  rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
+static int execute_direct(MYSQL *mysql)
+{
+  long rc= 0, i= 0;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind;
+  unsigned int param_count= 1;
+  MYSQL_RES *res= NULL;
+
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS t1", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE t1 (a int)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+
+  bind.buffer= &i;
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  bind.buffer_length= sizeof(long);
+
+  mysql_stmt_close(stmt);
+  stmt= mysql_stmt_init(mysql);
+  mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
+
+  rc= mysql_stmt_bind_param(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "INSERT INTO t1 VALUES (?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  for (i=1; i < 1000; i++)
+  {
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+  }
+  rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SELECT * FROM t1");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  FAIL_IF(mysql_num_rows(res) != 1000, "Expected 1000 rows");
+
+  mysql_free_result(res);
 
   return OK;
 }
@@ -215,6 +266,7 @@ struct my_tests_st my_tests[] = {
   {"com_multi_2", com_multi_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"com_multi_ps1", com_multi_ps1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"com_multi_ps2", com_multi_ps2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"execute_direct", execute_direct, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

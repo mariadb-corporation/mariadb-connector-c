@@ -876,7 +876,8 @@ static int test_get_options(MYSQL *my)
     mysql_options(mysql, options_char[i], char1);
     char2= NULL;
     mysql_get_optionv(mysql, options_char[i], (void *)&char2);
-    FAIL_IF(strcmp(char1, char2), "mysql_get_optionv (char) failed");
+    if (options_char[i] != MYSQL_SET_CHARSET_NAME) 
+      FAIL_IF(strcmp(char1, char2), "mysql_get_optionv (char) failed");
   }
 
   for (i=0; i < 3; i++)

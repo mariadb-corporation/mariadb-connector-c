@@ -4247,7 +4247,94 @@ static int test_conc179(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc182(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int rc;
+  MYSQL_BIND bind[2];
+  char buf1[22];
+  MYSQL_RES *result;
+  MYSQL_ROW row;
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS t1", -1);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS t1", -1);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1", -1);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SELECT row_count()");
+  result= mysql_store_result(mysql);
+  row= mysql_fetch_row(result);
+  diag("buf: %s", row[0]);
+  mysql_free_result(result);
+
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, "SELECT row_count()", -1);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
+  bind[0].buffer= &buf1;
+  bind[0].buffer_length= bind[1].buffer_length= 20;
+  bind[0].buffer_type= bind[1].buffer_type= MYSQL_TYPE_STRING;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+
+  while(!mysql_stmt_fetch(stmt))
+  diag("b1: %s", buf1);
+  rc= mysql_stmt_close(stmt);
+  return OK;
+}
+
+static int test_conc181(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int rc;
+  MYSQL_BIND bind;
+  char *stmt_str= "SELECT a FROM t1";
+  float f=1;
+  my_bool err= 0;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES(1073741825)");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer= &f;
+  bind.error= &err;
+  bind.buffer_type= MYSQL_TYPE_FLOAT;
+  rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  diag("rc=%d err=%d float=%f, %d", rc, err, f, MYSQL_DATA_TRUNCATED);
+
+  rc= mysql_stmt_close(stmt);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_conc182", test_conc182, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc181", test_conc181, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc179", test_conc179, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc177", test_conc177, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc167", test_conc167, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

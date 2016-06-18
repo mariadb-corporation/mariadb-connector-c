@@ -721,6 +721,8 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     case STMT_ATTR_PREFETCH_ROWS:
       *(unsigned long *)value= stmt->prefetch_rows;
       break;
+    case STMT_ATTR_PREBIND_PARAMS:
+      *(unsigned int *)value= stmt->param_count;
     default:
       return(1);
   }
@@ -747,6 +749,9 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     else
       stmt->prefetch_rows= *(long *)value;
     break;
+  case STMT_ATTR_PREBIND_PARAMS:
+    stmt->param_count= *(unsigned int *)value;
+    break;
   default:
     SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
     return(1);
@@ -764,26 +769,19 @@ my_bool STDCALL mysql_stmt_bind_param(MYSQL_STMT *stmt, MYSQL_BIND *bind)
     return(1);
   }
 
-  /* for mariadb_stmt_execute_direct we need to bind parameters in advance:
-     client has to pass a bind array, where last parameter needs to be set
-     to buffer type MAX_NO_FIELD_TYPES */
+  /* if we want to call mariadb_stmt_execute_direct the number of parameters
+     is unknown, since we didn't prepare the statement at this point.
+     Number of parameters needs to be set manually via mysql_stmt_attr_set()
+     function */
   if (stmt->state < MYSQL_STMT_PREPARED &&
       !(mysql->server_capabilities & CLIENT_MYSQL))
   {
-    if (!stmt->params)
+    if (!stmt->params && stmt->param_count)
     {
-      int param_count;
-      for(param_count= 0; 
-          bind[param_count].buffer_type != MAX_NO_FIELD_TYPES;
-          param_count++);
-      stmt->param_count= param_count;
-      if (stmt->param_count)
+      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
       {
-        if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
-        {
-          SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-          return(1); 
-        }
+        SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+        return(1);
       }
       memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
     }
@@ -1963,17 +1961,53 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   if (mysql_optionsv(mysql, MARIADB_OPT_COM_MULTI, &multi))
     goto fail;
 
+  if (!stmt->mysql)
+  {
+    SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+    return(1);
+  }
+
   if (length == -1)
     length= strlen(stmt_str);
 
-  if (mysql_stmt_prepare(stmt, stmt_str, length))
+  mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);
+
+  /* clear flags */
+  CLEAR_CLIENT_STMT_ERROR(stmt);
+  CLEAR_CLIENT_ERROR(stmt->mysql);
+  stmt->upsert_status.affected_rows= mysql->affected_rows= (unsigned long long) ~0;
+
+  /* check if we have to clear results */
+  if (stmt->state > MYSQL_STMT_INITTED)
+  {
+    /* We need to semi-close the prepared statement:
+       reset stmt and free all buffers and close the statement
+       on server side. Statment handle will get a new stmt_id */
+    char stmt_id[STMT_ID_LENGTH];
+
+    if (mysql_stmt_internal_reset(stmt, 1))
+      goto fail;
+
+    ma_free_root(&stmt->mem_root, MYF(MY_KEEP_PREALLOC));
+    ma_free_root(&((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root, MYF(0));
+    stmt->field_count= 0;
+
+    int4store(stmt_id, stmt->stmt_id);
+    if (mysql->methods->db_command(mysql, COM_STMT_CLOSE, stmt_id, 
+                                         sizeof(stmt_id), 1, stmt))
+      goto fail;
+  }
+  if (mysql->methods->db_command(mysql, COM_STMT_PREPARE, stmt_str, length, 1, stmt))
     goto fail;
 
   stmt->state= MYSQL_STMT_PREPARED;
-
+  /* Since we can't determine stmt_id here, we need to set it to -1, so server will know that the
+   * execute command belongs to previous prepare */
+  stmt->stmt_id= -1;
   if (mysql_stmt_execute(stmt))
     goto fail;
 
+  /* flush multi buffer */
   multi= MARIADB_COM_MULTI_END;
   if (mysql_optionsv(mysql, MARIADB_OPT_COM_MULTI, &multi))
     goto fail;
