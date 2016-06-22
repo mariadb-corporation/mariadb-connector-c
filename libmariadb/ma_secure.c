@@ -381,6 +381,7 @@ int my_ssl_connect(SSL *ssl)
   my_bool blocking;
   MYSQL *mysql;
   long rc;
+  my_bool try_connect= 1;
 
   DBUG_ENTER("my_ssl_connect");
 
@@ -389,21 +390,33 @@ int my_ssl_connect(SSL *ssl)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   CLEAR_CLIENT_ERROR(mysql);
 
-  /* Set socket to blocking if not already set */
+  /* Set socket to non blocking */
   if (!(blocking= vio_is_blocking(mysql->net.vio)))
-    vio_blocking(mysql->net.vio, TRUE, 0);
+    vio_blocking(mysql->net.vio, FALSE, 0);
 
   SSL_clear(ssl);
   SSL_SESSION_set_timeout(SSL_get_session(ssl),
                           mysql->options.connect_timeout);
   SSL_set_fd(ssl, mysql->net.vio->sd);
 
-  if (SSL_connect(ssl) != 1)
+  while (try_connect && (rc= SSL_connect(ssl)) == -1)
+  {
+    switch(SSL_get_error(ssl, rc)) {
+    case SSL_ERROR_WANT_READ:
+      if (vio_wait_or_timeout(mysql->net.vio, TRUE, mysql->options.connect_timeout) < 1)
+        try_connect= 0;
+      break;
+    case SSL_ERROR_WANT_WRITE:
+      if (vio_wait_or_timeout(mysql->net.vio, TRUE, mysql->options.connect_timeout) < 1)
+        try_connect= 0;
+    break;
+    default:
+      try_connect= 0;
+    }
+  }
+  if (rc != 1)
   {
     my_SSL_error(mysql);
-    /* restore blocking mode */
-    if (!blocking)
-      vio_blocking(mysql->net.vio, FALSE, 0);
     DBUG_RETURN(1);
   }
 

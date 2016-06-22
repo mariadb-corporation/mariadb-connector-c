@@ -864,7 +864,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       if (field->decimals)
       {
         char ms[8];
-        sprintf(ms, ".%06u", tm.second_part);
+        sprintf(ms, ".%06lu", tm.second_part);
         if (field->decimals < 6)
           ms[field->decimals + 1]= 0;
         length+= strlen(ms);
@@ -877,7 +877,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       if (field->decimals)
       {
         char ms[8];
-        sprintf(ms, ".%06u", tm.second_part);
+        sprintf(ms, ".%06lu", tm.second_part);
         if (field->decimals < 6)
           ms[field->decimals + 1]= 0;
         length+= strlen(ms);

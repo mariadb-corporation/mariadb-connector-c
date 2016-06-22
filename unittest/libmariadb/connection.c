@@ -632,7 +632,7 @@ int test_connection_timeout(MYSQL *my)
     return FAIL;
   }
   elapsed= time(NULL) - start;
-  diag("elapsed: %u", elapsed);
+  diag("elapsed: %u", (int)elapsed);
   mysql_close(mysql);
   FAIL_IF(elapsed > 2 * timeout, "timeout ignored")
   return OK;
@@ -723,7 +723,12 @@ static int test_wrong_bind_address(MYSQL *my)
 {
   MYSQL *mysql;
   char *bind_address= "912.123.123.1";
-
+  
+/*  if (!getenv("MYSQL_TEST_BINDADDR"))
+  {
+    diag("environment variable MYSQL_TEST_BINDADDR not specified");
+    return SKIP;
+  } */
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_BIND, bind_address);
 
