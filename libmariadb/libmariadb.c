@@ -1731,9 +1731,15 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       }
       if (bind_gai_rc != 0 || !bind_res)
       {
-        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
-                     ER(CR_UNKNOWN_HOST), mysql->options.bind_address, 
+#ifndef _WIN32
+        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN,
+                     ER(CR_UNKNOWN_HOST), mysql->options.bind_address,
                      bind_gai_rc == EAI_SYSTEM ? errno : bind_gai_rc);
+#else
+        my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN,
+                     ER(CR_UNKNOWN_HOST), mysql->options.bind_address,
+                     WSAGetLastError());
+#endif
         goto error;
       }
     }
@@ -1757,9 +1763,15 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     {
       if (bind_res)
         freeaddrinfo(bind_res);
+#ifndef _WIN32
       my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
                    ER(CR_UNKNOWN_HOST), host,
                    gai_rc == EAI_SYSTEM ? errno : gai_rc);
+#else
+      my_set_error(mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
+                   ER(CR_UNKNOWN_HOST), host,
+                   WSAGetLastError());
+#endif
       goto error;
     }
 
