@@ -254,7 +254,7 @@ static void dump_reference(TRACE_INFO *info, my_bool is_error)
 static void dump_command(TRACE_INFO *info, my_bool is_error)
 {
   size_t i;
-  printf("%8d: %s(",  info->thread_id, commands[info->last_command]);
+  printf("%8lu: %s(",  info->thread_id, commands[info->last_command]);
   for (i= 0; info->command && i < strlen(info->command); i++)
     if (info->command[i] == '\n')
       printf("\\n");
@@ -360,11 +360,11 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
           info->refid= uint4korr(p);
           break;
         case COM_QUIT:
-          printf("%8d: COM_QUIT\n", info->thread_id);
+          printf("%8lu: COM_QUIT\n", info->thread_id);
           delete_trace_info(info->thread_id);
           break;
         case COM_PING:
-          printf("%8d: COM_PING\n", info->thread_id);
+          printf("%8lu: COM_PING\n", info->thread_id);
           break;
         case COM_STMT_EXECUTE:
         case COM_STMT_RESET:
@@ -376,7 +376,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
         default:
           if (info->local_infile == 1)
           {
-            printf("%8d: SEND_LOCAL_INFILE(%s) ", info->thread_id, info->filename);
+            printf("%8lu: SEND_LOCAL_INFILE(%s) ", info->thread_id, info->filename);
             if (len)
               printf("sent %d bytes\n", len);
             else
@@ -432,7 +432,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
           }
           break;
         case COM_STMT_PREPARE:
-          printf("%8d: COM_STMT_PREPARE(%s) ", info->thread_id, info->command);
+          printf("%8lu: COM_STMT_PREPARE(%s) ", info->thread_id, info->command);
           if (!*p)
           {
             unsigned long stmt_id= uint4korr(p+1);

@@ -70,7 +70,7 @@ static void ma_tls_set_error(MYSQL *mysql)
                    0, ssl_error_reason);
     return;
   }
-  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
+  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno);
   pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, ssl_error);
   return;
 }

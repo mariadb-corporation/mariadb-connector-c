@@ -1028,15 +1028,14 @@ my_bool pvio_socket_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
 
 int pvio_socket_shutdown(MARIADB_PVIO *pvio)
 {
-  int rc = 0;
   if (pvio && pvio->data)
   {
     my_socket s = ((struct st_pvio_socket *)pvio->data)->socket;
 #ifdef _WIN32
-    rc = shutdown(s, SD_BOTH);
+    shutdown(s, SD_BOTH);
     CancelIoEx((HANDLE)s, NULL);
 #else
-    rc = shutdown(s, SHUT_RDWR);
+    shutdown(s, SHUT_RDWR);
 #endif
   }
   return -1;
