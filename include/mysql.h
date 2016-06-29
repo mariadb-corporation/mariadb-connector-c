@@ -839,10 +839,9 @@ struct st_mariadb_methods {
 
 #define HAVE_MYSQL_REAL_CONNECT
 
-#ifndef MYSQL_SERVER  
+
 #ifdef	__cplusplus
 }
-#endif
 #endif
 
 #endif
