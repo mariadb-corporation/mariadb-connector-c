@@ -55,6 +55,7 @@
 #include <time.h>
 #include <mysql/client_plugin.h>
 
+#define STMT_NUM_OFS(type, a,r) ((type *)(a))[r]
 #define MADB_RESET_ERROR     1
 #define MADB_RESET_LONGDATA  2
 #define MADB_RESET_SERVER    4
@@ -399,34 +400,47 @@ unsigned char *mysql_net_store_length(unsigned char *packet, size_t length)
   return packet + 8;
 }
 
-int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
+static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
+                                  void *buffer, unsigned long row_nr)
+{
+  if (stmt->array_size)
+  {
+    int len= mysql_ps_fetch_functions[type].pack_len;
+    if (len > 0)
+      return buffer + len * row_nr;
+    return ((void **)buffer)[row_nr];
+  }
+  return buffer;
+}
+
+int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long row_nr)
 {
   switch (stmt->params[column].buffer_type) {
   case MYSQL_TYPE_TINY:
-    int1store(*p, *(uchar *)stmt->params[column].buffer);
+    int1store(*p, ((uchar *)stmt->params[column].buffer)[row_nr]);
     (*p) += 1;
     break;
   case MYSQL_TYPE_SHORT:
   case MYSQL_TYPE_YEAR:
-    int2store(*p, *(short *)stmt->params[column].buffer);
+    int2store(*p, ((short *)stmt->params[column].buffer)[row_nr]);
     (*p) += 2;
     break;
   case MYSQL_TYPE_FLOAT:
-    float4store(*p, *(float *)stmt->params[column].buffer);
+    float4store(*p, ((float *)stmt->params[column].buffer)[row_nr]);
     (*p) += 4;
     break;
   case MYSQL_TYPE_DOUBLE:
-    float8store(*p, *(double *)stmt->params[column].buffer);
+    float8store(*p, ((double *)stmt->params[column].buffer)[row_nr]);
     (*p) += 8;
     break;
   case MYSQL_TYPE_LONGLONG:
-    int8store(*p, *(unsigned long long *)stmt->params[column].buffer);
+    int8store(*p, ((ulonglong *)stmt->params[column].buffer)[row_nr]);
     (*p) += 8;
     break;
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_INT24:
-    int4store(*p, *(int32 *)stmt->params[column].buffer);
-    (*p) += 4;
+    int4store(*p, ((int32 *)stmt->params[column].buffer)[row_nr]);
+    (*p)+= 4;
     break;
   case MYSQL_TYPE_TIME:
   {
@@ -440,11 +454,10 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
        8          1       second;
        9-13       4       second_part
        */
-    MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
+    MYSQL_TIME *t= (MYSQL_TIME *)ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
+                                                      stmt->params[column].buffer, row_nr);
     char t_buffer[MAX_TIME_STR_LEN];
     uint len= 0;
-
-    memset(t_buffer, 0, MAX_TIME_STR_LEN);
 
     t_buffer[1]= t->neg ? 1 : 0;
     int4store(t_buffer + 2, t->day);
@@ -478,11 +491,11 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
        7          1       second
        8-11       4       secondpart
        */ 
-    MYSQL_TIME *t= (MYSQL_TIME *)stmt->params[column].buffer;
+    MYSQL_TIME *t= (MYSQL_TIME *)ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
+                                                      stmt->params[column].buffer, row_nr);
     char t_buffer[MAX_DATETIME_STR_LEN];
     uint len;
 
-    memset(t_buffer, 0, MAX_DATETIME_STR_LEN);
     int2store(t_buffer + 1, t->year);
     t_buffer[3]= (char) t->month;
     t_buffer[4]= (char) t->day;
@@ -492,7 +505,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     if (t->second_part)
     {
       int4store(t_buffer + 8, t->second_part);
-      len= 11;
+      len= 12;
     }
     else if (t->hour || t->minute || t->second)
       len= 7;
@@ -514,13 +527,19 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
   case MYSQL_TYPE_STRING:
   case MYSQL_TYPE_DECIMAL:
   case MYSQL_TYPE_NEWDECIMAL:
-  case MYSQL_TYPE_GEOMETRY:
   {
-    ulong len= (ulong)*stmt->params[column].length;
+    ulong len= (ulong)STMT_NUM_OFS(long, stmt->params[column].length, row_nr);
     /* to is after p. The latter hasn't been moved */
-    uchar *to = mysql_net_store_length(*p, len);
+    uchar *to;
+   
+    if ((long)len == -1)
+      len= strlen(ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
+                                       stmt->params[column].buffer, row_nr));
+    to = mysql_net_store_length(*p, len);
+
     if (len)
-      memcpy(to, stmt->params[column].buffer, len);
+      memcpy(to, ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
+                                      stmt->params[column].buffer, row_nr), len);
     (*p) = to + len;
     break;
   }
@@ -528,9 +547,9 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
   default:
     /* unsupported parameter type */
     SET_CLIENT_STMT_ERROR(stmt, CR_UNSUPPORTED_PARAM_TYPE, SQLSTATE_UNKNOWN, 0);
-    return(1);
+    return 1;
   }
-  return(0);
+  return 0;
 }
 
 /* {{{ mysqlnd_stmt_execute_generate_request */
@@ -548,16 +567,30 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
      ------------------------------------------
      if (stmt->send_types_to_server):
      param_count*2    parameter types
+     1st byte: parameter type
+     2nd byte flag:
+              unsigned flag (32768)
+              indicator variable exists (16384) 
      ------------------------------------------
+     Pre 10.2 protocol
      n      data from bind_buffer
+     10.2 protocol
+     if indicator variable exists
+     1st byte: indicator variable
+     2nd-n: data
+     
      */
 
   size_t length= 1024;
   size_t free_bytes= 0;
-  size_t data_size= 0;
-  uint i;
+  size_t null_byte_offset;
+  uint i, j, num_rows= 1;
+  my_bool bulk_supported= 
+      !(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
+      (stmt->mysql->server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS);
 
   uchar *start= NULL, *p;
+
 
   /* preallocate length bytes */
   /* check: gr */
@@ -570,14 +603,14 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   /* flags is 4 bytes, we store just 1 */
   int1store(p, (unsigned char) stmt->flags);
   p++;
-
-  int4store(p, 1); /* and send 1 for iteration count */
+  if (bulk_supported && stmt->array_size)
+    num_rows= stmt->array_size;
+  int4store(p, num_rows);
   p+= 4;
 
   if (stmt->param_count)
   {
-    size_t null_byte_offset,
-           null_count= (stmt->param_count + 7) / 8;
+    size_t null_count= (stmt->param_count + 7) / 8;
 
     free_bytes= length - (p - start);
     if (null_count + 20 > free_bytes)
@@ -589,10 +622,9 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
       p= start + offset;
     }
 
-    null_byte_offset = p - start;
+    null_byte_offset= p - start;
     memset(p, 0, null_count);
     p += null_count;
-
 
     int1store(p, stmt->send_types_to_server); 
     p++;
@@ -608,7 +640,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
       {
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
-        if (!(start= (uchar *)realloc((gptr)start, length)))
+        if (!(start= (uchar *)realloc(start, length)))
           goto mem_error;
         p= start + offset;
       }
@@ -616,22 +648,45 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
       {
         /* this differs from mysqlnd, c api supports unsinged !! */
         uint buffer_type= stmt->params[i].buffer_type | (stmt->params[i].is_unsigned ? 32768 : 0);
+        /* check if parameter requires indicator variable */
+        if (bulk_supported && stmt->params[i].indicator)
+          buffer_type|= 16384;
         int2store(p, buffer_type); 
         p+= 2;
       }
     }
 
     /* calculate data size */
-    for (i = 0; i < stmt->param_count; i++) {
-      if (stmt->params[i].buffer && !stmt->params[i].is_null)
-        stmt->params[i].is_null = &is_not_null;
-      if (!stmt->params[i].length)
-        stmt->params[i].length= &stmt->params[i].length_value;
-      if (!(stmt->params[i].is_null && *stmt->params[i].is_null) && !stmt->params[i].long_data_used)
+    for (j=0; j < num_rows; j++)
+    {
+      for (i=0; i < stmt->param_count; i++)
       {
-        switch (stmt->params[i].buffer_type) {
+        ulong size= 0;
+        my_bool has_data= TRUE;
+        uchar indicator= 0;
+
+        if (bulk_supported && stmt->params[i].indicator)
+        {
+          indicator= stmt->params[i].indicator[j];
+          /* check if we need to send data */
+          if (indicator == STMT_INDICATOR_NULL ||
+              indicator == STMT_INDICATOR_DEFAULT)
+            has_data= FALSE;
+          size= 1;
+        }
+        
+        if (stmt->params[i].long_data_used)
+        {
+          has_data= FALSE;
+          stmt->params[i].long_data_used= 0;
+        }
+        if (has_data)
+        {
+          switch (stmt->params[i].buffer_type) {
           case MYSQL_TYPE_NULL:
-            stmt->params[i].is_null = &is_null;
+            if (bulk_supported)
+              indicator= STMT_INDICATOR_NULL;
+            has_data= FALSE;
             break;
           case MYSQL_TYPE_TINY_BLOB:
           case MYSQL_TYPE_MEDIUM_BLOB:
@@ -647,50 +702,57 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           case MYSQL_TYPE_ENUM:
           case MYSQL_TYPE_BIT:
           case MYSQL_TYPE_SET:
-            data_size+= 5; /* max 8 bytes for size */
-            data_size+= (size_t)*stmt->params[i].length;
+            size+= 5; /* max 8 bytes for size */
+            if (stmt->params[i].length[j] == -1)
+              size+= strlen(ma_get_buffer_offset(stmt, stmt->params[i].buffer_type, stmt->params[i].buffer,j));
+            else
+              size+= (size_t)stmt->params[i].length[j];
             break;
           default:
-            data_size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
+            size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
             break;
+          }
+        }
+        free_bytes= length - (p - start);
+        if (free_bytes < size + 20)
+        {
+          size_t offset= p - start;
+          length= MAX(2 * length, offset + size + 20);
+          if (!(start= (uchar *)realloc(start, length)))
+            goto mem_error;
+          p= start + offset;
+        }
+        if (bulk_supported && (indicator || stmt->params[i].indicator))
+        {
+          int1store(p, indicator);
+          p++;
+        }
+        if (num_rows == 1)
+        {
+          if ((stmt->params[i].is_null && *stmt->params[i].is_null) || 
+               stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||
+               !stmt->params[i].buffer)
+          {
+            (start + null_byte_offset)[i/8] |= (unsigned char) (1 << (i & 7));
+            has_data= FALSE;
+          }
+        }
+        if (has_data)
+        {
+          store_param(stmt, i, &p, j);
         }
       }
     }
 
-    /* store data */
-    free_bytes= length - (p - start);
-    if (free_bytes < data_size + 20)
-    {
-      size_t offset= p - start;
-      length= offset + data_size + 20;
-      if (!(start= (uchar *)realloc((gptr)start, length)))
-        goto mem_error;
-      p= start + offset;
-    }
-    for (i = 0; i < stmt->param_count; i++) 
-    {
-      if (stmt->params[i].long_data_used) {
-        stmt->params[i].long_data_used= 0;
-      }
-      else {
-        if (!stmt->params[i].buffer || *stmt->params[i].is_null || stmt->params[i].buffer_type == MYSQL_TYPE_NULL) {
-          (start + null_byte_offset)[i/8] |= (unsigned char) (1 << (i & 7));
-        } else {
-          store_param(stmt, i, &p);
-        }
-      }
-    }
   }
   stmt->send_types_to_server= 0;
   *request_len = (size_t)(p - start);
-  return(start);
-
-
+  return start;
 mem_error:
   SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
   free(start);
   *request_len= 0;
-  return(NULL);
+  return NULL;
 }
 /* }}} */
 
@@ -723,6 +785,13 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       break;
     case STMT_ATTR_PREBIND_PARAMS:
       *(unsigned int *)value= stmt->param_count;
+      break;
+    case STMT_ATTR_ARRAY_SIZE:
+      *(unsigned int *)value= stmt->array_size;
+      break;
+    case STMT_ATTR_BIND_TYPE:
+      *(enum enum_bind_type *)value= stmt->bind_type;
+      break;
     default:
       return(1);
   }
@@ -752,6 +821,11 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
   case STMT_ATTR_PREBIND_PARAMS:
     stmt->param_count= *(unsigned int *)value;
     break;
+  case STMT_ATTR_ARRAY_SIZE:
+    stmt->array_size= *(unsigned int *)value;
+    break;
+  case STMT_ATTR_BIND_TYPE:
+    stmt->bind_type= *(enum enum_bind_type *)value;
   default:
     SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
     return(1);

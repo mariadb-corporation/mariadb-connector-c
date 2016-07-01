@@ -1715,6 +1715,7 @@ static int test_ps_null_param(MYSQL *mysql)
     stmt= mysql_stmt_init(mysql);
     FAIL_IF(!stmt, mysql_error(mysql));
     rc= mysql_stmt_prepare(stmt, query, strlen(query));
+    diag("statement: %s", query);
     check_stmt_rc(rc, stmt);
     FAIL_IF(mysql_stmt_param_count(stmt) != 1, "param_count != 1");
 
