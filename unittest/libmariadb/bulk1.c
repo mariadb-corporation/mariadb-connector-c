@@ -86,7 +86,7 @@ static int bulk1(MYSQL *mysql)
   {
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
-    diag("Affected rows: %d", mysql_stmt_affected_rows(stmt));
+    diag("Affected rows: %lld", mysql_stmt_affected_rows(stmt));
   }
 
   for (i=0; i < array_size; i++)

@@ -712,7 +712,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
     rc= mariadb_convert_string(in_string[UTF8], &in_len, csinfo[UTF8], buffer, &out_len, csinfo[i], &error);
 
     FAIL_IF(rc==-1, "Conversion failed");
-    diag("rc=%d oct_len: %d", rc, in_oct_len[i]);
+    diag("rc=%lu oct_len: %lu", rc, in_oct_len[i]);
     FAIL_IF(rc != in_oct_len[i], "Incorrect number of written bytes");
 
     if (memcmp(buffer, in_string[i], rc) != 0)

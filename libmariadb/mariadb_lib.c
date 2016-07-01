@@ -112,14 +112,6 @@ my_context_install_suspend_resume_hook(struct mysql_async_context *b,
 uint mysql_port=0;
 my_string mysql_unix_port=0;
 
-static char *mariadb_protocols[]= {"TCP", 
-#ifndef WIN32
-                                   "SOCKET",
-#else
-                                   "PIPE", "MEMORY",
-#endif
-                                    0};
-
 #ifdef _WIN32
 #define CONNECT_TIMEOUT 20
 #else

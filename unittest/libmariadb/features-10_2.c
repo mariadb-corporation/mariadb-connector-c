@@ -61,7 +61,7 @@ static int com_multi_1(MYSQL *mysql)
   rc= mysql_query(mysql, "select 1");
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
-  FAIL_UNLESS(res, "2 simple query no result");
+  FAIL_UNLESS(res != NULL, "2 simple query no result");
   mysql_free_result(res);
 
   /* question: how will result sets look like ? */
@@ -213,7 +213,8 @@ static int com_multi_ps2(MYSQL *mysql)
 
 static int execute_direct(MYSQL *mysql)
 {
-  long rc= 0, i= 0;
+  int rc= 0;
+  long i= 0;
   MYSQL_STMT *stmt;
   MYSQL_BIND bind;
   unsigned int param_count= 1;

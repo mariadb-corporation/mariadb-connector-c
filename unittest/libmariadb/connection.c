@@ -921,7 +921,7 @@ static int test_sess_track_db(MYSQL *mysql)
 
   if (!(mysql->server_capabilities & CLIENT_SESSION_TRACKING))
   {
-    diag("Server doesn't support session tracking (cap=%u)", mysql->server_capabilities);
+    diag("Server doesn't support session tracking (cap=%llu)", mysql->server_capabilities);
     return SKIP;
   }
 
@@ -946,7 +946,7 @@ static int test_sess_track_db(MYSQL *mysql)
   FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
   if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
   do {
-    printf("# SESSION_TRACK_VARIABLES: %*.*s\n", len, len, data);
+    printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
   } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
 
   rc= mysql_query(mysql, "SET NAMES latin1");
@@ -969,7 +969,7 @@ static int test_sess_track_db(MYSQL *mysql)
 
   if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
   do {
-    printf("# SESSION_TRACK_VARIABLES: %*.*s\n", len, len, data);
+    printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
   } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
 
   return OK;

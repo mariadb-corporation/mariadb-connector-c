@@ -453,6 +453,7 @@ static int test_conc50_2(MYSQL *my)
   return OK;
 }
 
+#ifdef TEST_CERT_CACHE
 static int test_conc127(MYSQL *my)
 {
   MYSQL *mysql;
@@ -473,6 +474,7 @@ static int test_conc127(MYSQL *my)
 
   return OK;
 }
+#endif
 
 static int test_conc50_3(MYSQL *my)
 {
@@ -823,7 +825,9 @@ static int test_schannel_cipher(MYSQL *mysql)
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-//  {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#ifdef TEST_CERT_CACHE
+  {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#endif
   {"test_ssl_fp", test_ssl_fp, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp_list", test_ssl_fp_list, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
