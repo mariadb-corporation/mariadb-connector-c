@@ -125,8 +125,46 @@ static int bulk1(MYSQL *mysql)
 
 }
 
+static int bulk2(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  MYSQL_BIND bind;
+  int i;
+  int array_size=1024;
+  uchar indicator[1024];
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk2 VALUES (?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+
+  for (i=0; i < array_size; i++)
+    indicator[i]= STMT_INDICATOR_DEFAULT;
+
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  bind.indicator= indicator;
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
