@@ -610,22 +610,24 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
   if (stmt->param_count)
   {
-    size_t null_count= (stmt->param_count + 7) / 8;
-
-    free_bytes= length - (p - start);
-    if (null_count + 20 > free_bytes)
+    if (!stmt->array_size)
     {
-      size_t offset= p - start;
-      length+= offset + null_count + 20;
-      if (!(start= (uchar *)realloc(start, length)))
-        goto mem_error;
-      p= start + offset;
+      size_t null_count= (stmt->param_count + 7) / 8;
+
+      free_bytes= length - (p - start);
+      if (null_count + 20 > free_bytes)
+      {
+        size_t offset= p - start;
+        length+= offset + null_count + 20;
+        if (!(start= (uchar *)realloc(start, length)))
+          goto mem_error;
+        p= start + offset;
+      }
+
+      null_byte_offset= p - start;
+      memset(p, 0, null_count);
+      p += null_count;
     }
-
-    null_byte_offset= p - start;
-    memset(p, 0, null_count);
-    p += null_count;
-
     int1store(p, stmt->send_types_to_server); 
     p++;
 
@@ -727,7 +729,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           int1store(p, indicator);
           p++;
         }
-        if (num_rows == 1)
+        if (!stmt->array_size)
         {
           if ((stmt->params[i].is_null && *stmt->params[i].is_null) || 
                stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||

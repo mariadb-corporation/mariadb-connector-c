@@ -211,6 +211,8 @@ static int com_multi_ps2(MYSQL *mysql)
   return OK;
 }
 
+
+
 static int execute_direct(MYSQL *mysql)
 {
   int rc= 0;
@@ -262,12 +264,54 @@ static int execute_direct(MYSQL *mysql)
   return OK;
 }
 
+static int execute_direct_example(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[2];
+  int intval= 1;
+  int param_count= 2;
+  char *strval= "execute_direct_example";
+
+  /* Direct execution without parameters */
+  if (mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS execute_direct", -1))
+    goto error;
+  if (mariadb_stmt_execute_direct(stmt, "CREATE TABLE execute_direct (a int, b varchar(20))", -1))
+    goto error;
+
+  memset(&bind, 0, sizeof(MYSQL_BIND) * 2);
+  memset(&bind, 0, sizeof(MYSQL_BIND) * 2);
+  bind[0].buffer_type= MYSQL_TYPE_SHORT;
+  bind[0].buffer= &intval;
+  bind[1].buffer_type= MYSQL_TYPE_STRING;
+  bind[1].buffer= strval;
+  bind[1].buffer_length= strlen(strval);
+
+  /* set number of parameters */
+  if (mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count))
+    goto error;
+
+  /* bind parameters */
+  if (mysql_stmt_bind_param(stmt, bind))
+    goto error;
+
+  if (mariadb_stmt_execute_direct(stmt, "INSERT INTO execute_direct VALUES (?,?)", -1))
+    goto error;
+
+  mysql_stmt_close(stmt);
+  return OK;
+error:
+  printf("Error: %s\n", mysql_stmt_error(stmt));
+  mysql_stmt_close(stmt);
+  return FAIL;
+}
+
 struct my_tests_st my_tests[] = {
   {"com_multi_1", com_multi_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"com_multi_2", com_multi_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"com_multi_ps1", com_multi_ps1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"com_multi_ps2", com_multi_ps2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"execute_direct", execute_direct, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"execute_direct_example", execute_direct_example, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
