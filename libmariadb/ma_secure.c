@@ -28,6 +28,7 @@ unsigned int mariadb_deinitialize_ssl= 1;
 #include <violite.h>
 #include <mysql_async.h>
 #include <my_context.h>
+#include <string.h>
 
 static my_bool my_ssl_initialized= FALSE;
 static SSL_CTX *SSL_context= NULL;
@@ -73,6 +74,7 @@ static void my_SSL_error(MYSQL *mysql)
    Crypto call back functions will be
    set during ssl_initialization
  */
+#if OPENSSL_VERSION_NUMBER < 0x10100000
 #if (OPENSSL_VERSION_NUMBER < 0x10000000) 
 static unsigned long my_cb_threadid(void)
 {
@@ -125,6 +127,7 @@ static int ssl_crypto_init()
   return 0;
 }
 
+#endif
 
 /*
   Initializes SSL and allocate global
@@ -146,19 +149,29 @@ int my_ssl_start(MYSQL *mysql)
   pthread_mutex_lock(&LOCK_ssl_config);
   if (!my_ssl_initialized)
   {
+#if OPENSSL_VERSION_NUMBER < 0x10100000
     if (ssl_crypto_init())
       goto end;
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x1010000L
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
+#else
     SSL_library_init();
-
 #if SSLEAY_VERSION_NUMBER >= 0x00907000L
     OPENSSL_config(NULL);
 #endif
+#endif
+
     /* load errors */
     SSL_load_error_strings();
     /* digests and ciphers */
     OpenSSL_add_all_algorithms();
 
+#if OPENSSL_VERSION_NUMBER >= 0x1010000L
+    if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
+#else
     if (!(SSL_context= SSL_CTX_new(TLSv1_client_method())))
+#endif
     {
       my_SSL_error(mysql);
       rc= 1;
@@ -210,13 +223,14 @@ void my_ssl_end()
     }
     if (mariadb_deinitialize_ssl)
     {
+#if OPENSSL_VERSION_NUMBER < 0x10100000
       ERR_remove_state(0);
+#endif
       EVP_cleanup();
       CRYPTO_cleanup_all_ex_data();
       ERR_free_strings();
       CONF_modules_free();
       CONF_modules_unload(1);
-      sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
     }
     my_ssl_initialized= FALSE;
   }

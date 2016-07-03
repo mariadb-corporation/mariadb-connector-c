@@ -128,7 +128,7 @@ static int test_ssl_cipher(MYSQL *unused)
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
-  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+  FAIL_IF(!cipher, "No cipher in use");
   mysql_close(my);
   return OK;
 }
@@ -667,7 +667,7 @@ static int test_ssl_fp(MYSQL *unused)
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
-  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+  FAIL_IF(!cipher, "No cipher in use");
   mysql_close(my);
   return OK;
 }
@@ -691,7 +691,7 @@ static int test_ssl_fp_list(MYSQL *unused)
                          port, socketname, 0), mysql_error(my));
 
   cipher= (char *)mysql_get_ssl_cipher(my);
-  FAIL_IF(strcmp(cipher, "DHE-RSA-AES256-SHA") != 0, "Cipher != DHE-RSA-AES256-SHA");
+  FAIL_IF(!cipher, "No cipher in use");
   mysql_close(my);
   return OK;
 }
