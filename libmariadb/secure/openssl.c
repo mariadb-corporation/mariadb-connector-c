@@ -94,12 +94,13 @@ static void ma_tls_get_error(char *errmsg, size_t length)
   snprintf(errmsg, length, "SSL errno=%lu", ssl_errno);
 }
 
+#if (OPENSSL_VERSION_NUMBER < 0x10100000)
 /* 
    thread safe callbacks for OpenSSL 
    Crypto call back functions will be
    set during ssl_initialization
  */
-#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
+#if (OPENSSL_VERSION_NUMBER < 0x10000000)
 static unsigned long my_cb_threadid(void)
 {
   /* cast pthread_t to unsigned long */
@@ -110,6 +111,7 @@ static void my_cb_threadid(CRYPTO_THREADID *id)
 {
   CRYPTO_THREADID_set_numeric(id, (unsigned long)pthread_self());
 }
+#endif
 #endif
 
 #ifdef HAVE_TLS_SESSION_CACHE
@@ -192,6 +194,7 @@ static void ma_tls_remove_session_cb(SSL_CTX* ctx, SSL_SESSION* session)
 }
 #endif
 
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
 static void my_cb_locking(int mode, int n, const char *file, int line)
 {
   if (mode & CRYPTO_LOCK)
@@ -199,7 +202,6 @@ static void my_cb_locking(int mode, int n, const char *file, int line)
   else
     pthread_mutex_unlock(&LOCK_crypto[n]);
 }
-
 
 static int ssl_thread_init()
 {
@@ -215,7 +217,7 @@ static int ssl_thread_init()
       pthread_mutex_init(&LOCK_crypto[i], NULL);
   }
 
-#if (OPENSSL_VERSION_NUMBER < 0x10000000) 
+#if (OPENSSL_VERSION_NUMBER < 0x10000000)
   CRYPTO_set_id_callback(my_cb_threadid);
 #else
   CRYPTO_THREADID_set_callback(my_cb_threadid);
@@ -224,7 +226,7 @@ static int ssl_thread_init()
 
   return 0;
 }
-
+#endif
 
 #ifdef _WIN32
 #define disable_sigpipe()
@@ -269,6 +271,9 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   /* lock mutex to prevent multiple initialization */
   pthread_mutex_init(&LOCK_openssl_config,MY_MUTEX_INIT_FAST);
   pthread_mutex_lock(&LOCK_openssl_config);
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000)
+  OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
+#else
   if (ssl_thread_init())
   {
     strncpy(errmsg, "Not enough memory", errmsg_len);
@@ -278,6 +283,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
 
 #if SSLEAY_VERSION_NUMBER >= 0x00907000L
   OPENSSL_config(NULL);
+#endif
 #endif
   /* load errors */
   SSL_load_error_strings();
@@ -340,13 +346,14 @@ void ma_tls_end()
     }
     if (mariadb_deinitialize_ssl)
     {
+#if OPENSSL_VERSION_NUMBER < 0x10100000
       ERR_remove_state(0);
+#endif
       EVP_cleanup();
       CRYPTO_cleanup_all_ex_data();
       ERR_free_strings();
       CONF_modules_free();
       CONF_modules_unload(1);
-      sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
     }
     ma_tls_initialized= FALSE;
     pthread_mutex_unlock(&LOCK_openssl_config);
@@ -676,32 +683,7 @@ my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *ve
     return 1;
 
   ssl = (SSL *)ctls->ssl;
-  switch(ssl->version)
-  {
-#ifdef SSL3_VERSION
-    case SSL3_VERSION:
-      version->iversion= 1;
-      break;
-#endif
-#ifdef TLS1_VERSION
-    case TLS1_VERSION:
-      version->iversion= 2;
-      break;
-#endif
-#ifdef TLS1_1_VERSION
-    case TLS1_1_VERSION:
-      version->iversion= 3;
-      break;
-#endif
-#ifdef TLS1_2_VERSION
-    case TLS1_2_VERSION:
-      version->iversion= 4;
-      break;
-#endif
-    default:
-      version->iversion= 0;
-      break;
-  }
+  version->iversion= SSL_version(ssl);
   version->cversion= ssl_protocol_version[version->iversion];
   return 0;  
 }
