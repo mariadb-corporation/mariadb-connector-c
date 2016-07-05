@@ -405,7 +405,10 @@ static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
 {
   if (stmt->array_size)
   {
-    int len= mysql_ps_fetch_functions[type].pack_len;
+    int len;
+    if (stmt->row_size)
+      return buffer + stmt->row_size * row_nr;
+    len= mysql_ps_fetch_functions[type].pack_len;
     if (len > 0)
       return buffer + len * row_nr;
     return ((void **)buffer)[row_nr];
@@ -415,31 +418,34 @@ static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
 
 int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long row_nr)
 {
+  void *buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
+                                  stmt->params[column].buffer, row_nr);
   switch (stmt->params[column].buffer_type) {
   case MYSQL_TYPE_TINY:
-    int1store(*p, ((uchar *)stmt->params[column].buffer)[row_nr]);
+    int1store(*p, (*(uchar *)buf));
     (*p) += 1;
     break;
   case MYSQL_TYPE_SHORT:
   case MYSQL_TYPE_YEAR:
-    int2store(*p, ((short *)stmt->params[column].buffer)[row_nr]);
+    int2store(*p, (*(short *)buf));
     (*p) += 2;
     break;
   case MYSQL_TYPE_FLOAT:
-    float4store(*p, ((float *)stmt->params[column].buffer)[row_nr]);
+    float4store(*p, (*(float *)buf));
     (*p) += 4;
     break;
   case MYSQL_TYPE_DOUBLE:
-    float8store(*p, ((double *)stmt->params[column].buffer)[row_nr]);
+    float8store(*p, (*(double *)buf));
     (*p) += 8;
     break;
   case MYSQL_TYPE_LONGLONG:
-    int8store(*p, ((ulonglong *)stmt->params[column].buffer)[row_nr]);
+    int8store(*p, (*(ulonglong *)buf));
     (*p) += 8;
     break;
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_INT24:
-    int4store(*p, ((int32 *)stmt->params[column].buffer)[row_nr]);
+    int4store(*p, (*(int32 *)buf));
+    //stmt->params[column].buffer)[row_nr]);
     (*p)+= 4;
     break;
   case MYSQL_TYPE_TIME:
@@ -528,18 +534,23 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   case MYSQL_TYPE_DECIMAL:
   case MYSQL_TYPE_NEWDECIMAL:
   {
-    ulong len= (ulong)STMT_NUM_OFS(long, stmt->params[column].length, row_nr);
+    ulong len;
     /* to is after p. The latter hasn't been moved */
     uchar *to;
-   
-    if ((long)len == -1)
-      len= strlen(ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
-                                       stmt->params[column].buffer, row_nr));
+    void *buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
+                                       stmt->params[column].buffer, row_nr);
+
+    if (stmt->row_size)
+      len= *stmt->params[column].length;
+    else
+      len= (ulong)STMT_NUM_OFS(long, stmt->params[column].length, row_nr);
+
+    if ((long)len == STMT_INDICATOR_NTS)
+      len= strlen((char *)buf);
     to = mysql_net_store_length(*p, len);
 
     if (len)
-      memcpy(to, ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
-                                      stmt->params[column].buffer, row_nr), len);
+      memcpy(to, buf, len);
     (*p) = to + len;
     break;
   }
@@ -669,7 +680,10 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
         if (bulk_supported && stmt->params[i].indicator)
         {
-          indicator= stmt->params[i].indicator[j];
+          if (stmt->row_size)
+            indicator= *(uchar *)(stmt->params[i].indicator + j * stmt->row_size);
+          else
+            indicator= stmt->params[i].indicator[j];
           /* check if we need to send data */
           if (indicator == STMT_INDICATOR_NULL ||
               indicator == STMT_INDICATOR_DEFAULT)
@@ -705,10 +719,13 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           case MYSQL_TYPE_BIT:
           case MYSQL_TYPE_SET:
             size+= 5; /* max 8 bytes for size */
-            if (stmt->params[i].length[j] == -1)
+            if (indicator == STMT_INDICATOR_NTS || (!stmt->row_size && stmt->params[i].length[j] == -1))
               size+= strlen(ma_get_buffer_offset(stmt, stmt->params[i].buffer_type, stmt->params[i].buffer,j));
             else
-              size+= (size_t)stmt->params[i].length[j];
+              if (!stmt->row_size)
+                size+= (size_t)stmt->params[i].length[j];
+              else
+                size+= (size_t)*stmt->params[i].length;
             break;
           default:
             size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
@@ -791,8 +808,8 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     case STMT_ATTR_ARRAY_SIZE:
       *(unsigned int *)value= stmt->array_size;
       break;
-    case STMT_ATTR_BIND_TYPE:
-      *(enum enum_bind_type *)value= stmt->bind_type;
+    case STMT_ATTR_ROW_SIZE:
+      *(size_t *)value= stmt->row_size;
       break;
     default:
       return(1);
@@ -826,8 +843,9 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
   case STMT_ATTR_ARRAY_SIZE:
     stmt->array_size= *(unsigned int *)value;
     break;
-  case STMT_ATTR_BIND_TYPE:
-    stmt->bind_type= *(enum enum_bind_type *)value;
+  case STMT_ATTR_ROW_SIZE:
+    stmt->row_size= *(size_t *)value;
+    break;
   default:
     SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
     return(1);

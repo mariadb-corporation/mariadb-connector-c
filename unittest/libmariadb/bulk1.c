@@ -131,7 +131,7 @@ static int bulk2(MYSQL *mysql)
   int rc;
   MYSQL_BIND bind;
   int i;
-  int array_size=1024;
+  unsigned long array_size=1024;
   uchar indicator[1024];
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
   check_mysql_rc(rc, mysql);
@@ -162,9 +162,58 @@ static int bulk2(MYSQL *mysql)
   return OK;
 }
 
+static int bulk3(MYSQL *mysql)
+{
+  struct st_bulk3 {
+    char char_value[20];
+    uchar indicator;
+    int  int_value;
+  };
+
+  struct st_bulk3 val[]= {{"Row 1", STMT_INDICATOR_NTS, 1},
+                          {"Row 2", STMT_INDICATOR_NTS, 2},
+                          {"Row 3", STMT_INDICATOR_NTS, 3}};
+  int rc;
+  MYSQL_BIND bind[2];
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  size_t row_size= sizeof(struct st_bulk3);
+  int array_size= 3;
+  size_t length= -1;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk3");
+  check_mysql_rc(rc,mysql);
+  rc= mysql_query(mysql, "CREATE TABLE bulk3 (name varchar(20), row int)");
+  check_mysql_rc(rc,mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk3 VALUES (?,?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND)*2);
+  
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+  check_stmt_rc(rc, stmt);
+
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer= &val[0].char_value;
+  bind[0].length= &length;
+  bind[1].buffer_type= MYSQL_TYPE_LONG;
+  bind[1].buffer= &val[0].int_value;
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
