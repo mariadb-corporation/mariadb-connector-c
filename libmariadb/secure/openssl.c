@@ -50,7 +50,9 @@ static SSL_CTX *SSL_context= NULL;
 
 static pthread_mutex_t LOCK_openssl_config;
 static pthread_mutex_t *LOCK_crypto= NULL;
-
+static int ma_bio_read(BIO *h, char *buf, int size);
+static int ma_bio_write(BIO *h, const char *buf, int size);
+static BIO_METHOD ma_BIO_methods;
 
 static void ma_tls_set_error(MYSQL *mysql)
 {
@@ -153,6 +155,26 @@ MA_SSL_SESSION *ma_tls_get_session(MYSQL *mysql)
   return NULL;
 }
 
+
+static int ma_bio_read(BIO *bio, char *buf, int size)
+{
+  MARIADB_PVIO *pvio= (MARIADB_PVIO *)bio->ptr;
+  size_t rc;
+
+  rc= pvio->methods->read(pvio, buf, (size_t)size);
+  BIO_clear_retry_flags(bio);
+  return (int)rc;
+}
+static int ma_bio_write(BIO *bio, const char *buf, int size)
+{
+  MARIADB_PVIO *pvio= (MARIADB_PVIO *)bio->ptr;
+  size_t rc;
+
+  rc= pvio->methods->write(pvio, buf, (size_t)size);
+  BIO_clear_retry_flags(bio);
+  return (int)rc;
+}
+
 static int ma_tls_session_cb(SSL *ssl, SSL_SESSION *session)
 {
   MYSQL *mysql;
@@ -228,7 +250,7 @@ static int ssl_thread_init()
 }
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || !defined(DISABLE_SIGPIPE)
 #define disable_sigpipe()
 #else
 #include  <signal.h>
@@ -305,6 +327,11 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   SSL_CTX_sess_set_remove_cb(SSL_context, ma_tls_remove_session_cb);
 #endif
   disable_sigpipe();
+
+  memcpy(&ma_BIO_methods, BIO_s_socket(), sizeof(BIO_METHOD));
+  ma_BIO_methods.bread= ma_bio_read;
+  ma_BIO_methods.bwrite= ma_bio_write;
+
   rc= 0;
   ma_tls_initialized= TRUE;
 end:
@@ -487,24 +514,42 @@ error:
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   SSL *ssl = (SSL *)ctls->ssl;
-  my_bool blocking;
+  my_bool blocking, try_connect= 1;
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
+  BIO *bio;
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
 
-  /* Set socket to blocking if not already set */
+  /* Set socket to non blocking if not already set */
   if (!(blocking= pvio->methods->is_blocking(pvio)))
-    pvio->methods->blocking(pvio, TRUE, 0);
+    pvio->methods->blocking(pvio, FALSE, 0);
 
   SSL_clear(ssl);
-  /*SSL_SESSION_set_timeout(SSL_get_session(ssl),
-                          mysql->options.connect_timeout); */
-  SSL_set_fd(ssl, mysql_get_socket(mysql));
 
-  if (SSL_connect(ssl) != 1)
+  bio= BIO_new(&ma_BIO_methods);
+  bio->ptr= pvio;
+  SSL_set_bio(ssl, bio, bio);
+  BIO_set_fd(bio, mysql_get_socket(mysql), BIO_NOCLOSE);
+
+  while (try_connect && (rc= SSL_connect(ssl)) == -1)
+  {
+    switch(SSL_get_error(ssl, rc)) {
+    case SSL_ERROR_WANT_READ:
+      if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.connect_timeout) < 1)
+        try_connect= 0;
+      break;
+    case SSL_ERROR_WANT_WRITE:
+      if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.connect_timeout) < 1)
+        try_connect= 0;
+      break;
+    default:
+      try_connect= 0;
+    }
+  }
+  if (rc != 1)
   {
     ma_tls_set_error(mysql);
     /* restore blocking mode */
@@ -683,7 +728,7 @@ my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *ve
     return 1;
 
   ssl = (SSL *)ctls->ssl;
-  version->iversion= SSL_version(ssl);
+  version->iversion= SSL_version(ssl) - TLS1_VERSION;
   version->cversion= ssl_protocol_version[version->iversion];
   return 0;  
 }

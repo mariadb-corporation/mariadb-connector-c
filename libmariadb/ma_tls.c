@@ -51,7 +51,7 @@
 my_bool ma_tls_initialized= FALSE;
 unsigned int mariadb_deinitialize_ssl= 1;
 
-char *ssl_protocol_version[5]= {"unknown", "SSL3", "TLS1.0", "TLS1.1", "TLS1.2"};
+char *ssl_protocol_version[5]= {"TLS1.0", "TLS1.1", "TLS1.2"};
 
 MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 {
