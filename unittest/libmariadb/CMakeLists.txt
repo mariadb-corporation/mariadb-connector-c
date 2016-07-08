@@ -26,7 +26,8 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include
 ADD_DEFINITIONS(-DLIBMARIADB)
 
 SET(API_TESTS "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
-              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "features-10_2" )
+              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "features-10_2"
+              "bulk1" )
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()

@@ -59,7 +59,7 @@ enum enum_stmt_attr_type
   STMT_ATTR_PREFETCH_ROWS,
   STMT_ATTR_PREBIND_PARAMS=200,
   STMT_ATTR_ARRAY_SIZE,
-  STMT_ATTR_BIND_TYPE
+  STMT_ATTR_ROW_SIZE
 };
 
 enum enum_cursor_type
@@ -72,16 +72,11 @@ enum enum_cursor_type
 
 enum enum_indicator_type
 {
+  STMT_INDICATOR_NTS=-1,
   STMT_INDICATOR_NONE=0,
   STMT_INDICATOR_NULL=1,
   STMT_INDICATOR_DEFAULT=2,
-  STMT_INDICATOR_NTS=4
-};
-
-enum enum_bind_type
-{
-  STMT_BIND_ROW=0,
-  STMT_BIND_COLUMN
+  STMT_INDICATOR_IGNORE=3
 };
 
 typedef enum mysql_stmt_state
@@ -115,9 +110,9 @@ typedef struct st_mysql_bind
   union {
     unsigned long  offset;           /* offset position for char/binary fetch */
     struct {
-      uchar *indicator;
+      unsigned char *indicator;
     };
-  };
+  } u;
   unsigned long  length_value;     /* Used if length is 0 */
   unsigned int   flags;            /* special flags, e.g. for dummy bind  */
   unsigned int   pack_length;      /* Internal length for packed data */
@@ -228,7 +223,7 @@ struct st_mysql_stmt
   mysql_stmt_use_or_store_func default_rset_handler;
   struct st_mysqlnd_stmt_methods  *m;
   unsigned int             array_size;
-  enum enum_bind_type      bind_type;
+  size_t row_size;
 };
 
 typedef void (*ps_field_fetch_func)(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row);

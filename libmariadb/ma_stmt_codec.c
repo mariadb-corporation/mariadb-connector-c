@@ -306,7 +306,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     case MYSQL_TYPE_NEWDECIMAL:
     default:
     {
-      char *start= buffer + r_param->offset; /* stmt_fetch_column sets offset */
+      char *start= buffer + r_param->u.offset; /* stmt_fetch_column sets offset */
       char *end= buffer + len;
       size_t copylen= 0;
 

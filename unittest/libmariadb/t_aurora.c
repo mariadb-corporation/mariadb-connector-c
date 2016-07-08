@@ -43,7 +43,7 @@ static int aurora1(MYSQL *my)
 
   res= mysql_store_result(mysql);
 
-  diag("Num_rows: %d", mysql_num_rows(res));
+  diag("Num_rows: %lld", mysql_num_rows(res));
   mysql_free_result(res);
 
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SCHEMA, &my_schema);
@@ -127,7 +127,7 @@ static int test_reconnect(MYSQL *my)
 
   if ((res= mysql_store_result(mysql)))
   {
-    diag("num_rows: %d", mysql_num_rows(res));
+    diag("num_rows: %lld", mysql_num_rows(res));
     mysql_free_result(res);
   }
 
