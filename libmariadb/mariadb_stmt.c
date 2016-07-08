@@ -407,10 +407,10 @@ static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
   {
     int len;
     if (stmt->row_size)
-      return buffer + stmt->row_size * row_nr;
+      return (void *)((char *)buffer + stmt->row_size * row_nr);
     len= mysql_ps_fetch_functions[type].pack_len;
     if (len > 0)
-      return buffer + len * row_nr;
+      return (void *)((char *)buffer + len * row_nr);
     return ((void **)buffer)[row_nr];
   }
   return buffer;
