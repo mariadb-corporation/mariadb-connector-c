@@ -77,6 +77,7 @@ static int com_multi_1(MYSQL *mysql)
 static int com_multi_2(MYSQL *mysql)
 {
   int rc;
+  unsigned int i, j;
   enum mariadb_com_multi status;
 
 
@@ -87,7 +88,7 @@ static int com_multi_2(MYSQL *mysql)
 
   /* TEST COM_MULTI */
 
-  for (uint i= 0; i < repeat2; i++)
+  for (i= 0; i < repeat2; i++)
   {
     status= MARIADB_COM_MULTI_BEGIN;
     if (mysql_options(mysql, MARIADB_OPT_COM_MULTI, &status))
@@ -97,7 +98,7 @@ static int com_multi_2(MYSQL *mysql)
       return SKIP;
     }
 
-    for (uint j= 0; j < repeat1; j++)
+    for (j= 0; j < repeat1; j++)
     {
       rc= mysql_query(mysql, "insert into t1 values (1)");
       rc= mysql_query(mysql, "insert into t1 values (2)");
@@ -107,7 +108,7 @@ static int com_multi_2(MYSQL *mysql)
     status= MARIADB_COM_MULTI_END;
     rc= mysql_options(mysql, MARIADB_OPT_COM_MULTI, &status);
 
-    for (uint j= 0; j < repeat1; j++)
+    for (j= 0; j < repeat1; j++)
     {
       /* 1 INSERT */
       check_mysql_rc(rc, mysql);
