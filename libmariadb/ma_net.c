@@ -470,19 +470,7 @@ ma_real_read(NET *net, size_t *complen)
       if (i == 0)
       {					/* First parts is packet length */
 	ulong helping;
-	if (net->buff[net->where_b + 3] != (uchar) net->pkt_nr)
-	{
-	  if (net->buff[net->where_b] != (uchar) 255)
-	  {
-#ifdef EXTRA_DEBUG
-	    fprintf(stderr,"Packets out of order (Found: %d, expected %d)\n",
-		    (int) net->buff[net->where_b + 3],
-		    (uint) (uchar) net->pkt_nr);
-#endif
-	  }
-	  len= packet_error;
-	  goto end;
-	}
+	net->pkt_nr= net->buff[net->where_b + 3];
 	net->compress_pkt_nr= ++net->pkt_nr;
 #ifdef HAVE_COMPRESS
 	if (net->compress)
