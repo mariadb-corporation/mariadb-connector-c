@@ -1,4 +1,17 @@
-#  Copyright (c) 2010 Michael Bell <michael.bell@web.de>
+#
+#  Copyright (C) 2010  Michael Bell <michael.bell@web.de>
+#                2015-2016 MariaDB Corporation AB
+#
+#  Redistribution and use is allowed according to the terms of the New
+#  BSD license.
+#  For details see the  COPYING-CMAKE-SCRIPTS file.
+#
+#  ICONV_EXTERNAL - Iconv is an external library (not libc)
+#  ICONV_FOUND - system has Iconv
+#  ICONV_INCLUDE_DIR - the Iconv include directory
+#  ICONV_LIBRARIES - Link these to use Iconv
+#  ICONV_SECOND_ARGUMENT_IS_CONST - the second argument for iconv() is const
+#  ICONV_VERSION - Iconv version string
 
 if (ICONV_INCLUDE_DIR AND ICONV_LIBRARIES)
   # Already in cache, be silent

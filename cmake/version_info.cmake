@@ -1,3 +1,10 @@
+#
+#  Copyright (C) 2013-2016 MariaDB Corporation AB
+#
+#  Redistribution and use is allowed according to the terms of the New
+#  BSD license.
+#  For details see the COPYING-CMAKE-SCRIPTS file.
+#
 FUNCTION(GET_FILE_VERSION FILE_NAME FILE_VERSION)
 
   # if we build from a git repository, we calculate the file version:
