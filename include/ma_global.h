@@ -21,6 +21,9 @@
 #ifndef _global_h
 #define _global_h
 
+#define MA_ASSERT_CONCAT_(a, b) a##b
+#define MA_ASSERT_CONCAT(a, b) MA_ASSERT_CONCAT_(a, b)
+#define ma_assert(e) enum { MA_ASSERT_CONCAT(assert_line_, __LINE__) = 1/(!!(e)) }
 
 #ifdef _WIN32
 #include <ma_config_win.h>
