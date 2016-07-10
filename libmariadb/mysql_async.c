@@ -19,6 +19,7 @@
   MySQL non-blocking client library functions.
 */
 
+#include <string.h>
 #include "my_global.h"
 #include "my_sys.h"
 #include "mysql.h"

@@ -322,8 +322,10 @@ my_loaddata.c
 my_stmt_codec.c
 client_plugin.c
 my_auth.c
-ma_secure.c
 )
+IF(WITH_OPENSSL)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ma_secure.c)
+ENDIF()
 
 IF(WIN32)
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)

@@ -8,8 +8,8 @@
 
 # This file is included by CMakeLists.txt and
 # checks for various functions.
-# include/my_config.h.in
 # You will find the appropiate defines in 
+# include/my_config.h.in
 
 INCLUDE(CheckFunctionExists)
 
