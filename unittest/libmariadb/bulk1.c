@@ -125,14 +125,14 @@ static int bulk1(MYSQL *mysql)
 
 }
 
-static int bulk2(MYSQL *mysql)
+static int bulk2_1(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
   MYSQL_BIND bind;
   int i;
-  unsigned long array_size=1024;
-  uchar indicator[1024];
+  unsigned long array_size= TEST_ARRAY_SIZE;
+  uchar indicator[TEST_ARRAY_SIZE];
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
   check_mysql_rc(rc, mysql);
 
@@ -144,7 +144,126 @@ static int bulk2(MYSQL *mysql)
 
   memset(&bind, 0, sizeof(MYSQL_BIND));
 
-  for (i=0; i < array_size; i++)
+  for (i=0; i < TEST_ARRAY_SIZE; i++)
+    indicator[i]= STMT_INDICATOR_DEFAULT;
+
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  bind.indicator= indicator;
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  return OK;
+}
+
+static int bulk2_2(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  MYSQL_BIND bind;
+  int i;
+  unsigned long array_size= TEST_ARRAY_SIZE;
+  uchar indicator[TEST_ARRAY_SIZE];
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk2 (a) VALUES (?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+
+  for (i=0; i < TEST_ARRAY_SIZE; i++)
+    indicator[i]= STMT_INDICATOR_DEFAULT;
+
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  bind.indicator= indicator;
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  return OK;
+}
+
+static int bulk2_3(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  MYSQL_BIND bind;
+  int i;
+  unsigned long array_size= TEST_ARRAY_SIZE;
+  uchar indicator[TEST_ARRAY_SIZE];
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "DROP VIEW IF EXISTS v1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE view v1 as select * from bulk2");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO v1 VALUES (?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+
+  for (i=0; i < TEST_ARRAY_SIZE; i++)
+    indicator[i]= STMT_INDICATOR_DEFAULT;
+
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  bind.indicator= indicator;
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  return OK;
+}
+
+static int bulk2_4(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  MYSQL_BIND bind;
+  int i;
+  unsigned long array_size= TEST_ARRAY_SIZE;
+  uchar indicator[TEST_ARRAY_SIZE];
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "DROP VIEW IF EXISTS v1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE view v1 as select * from bulk2");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO v1 (a) VALUES (?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+
+  for (i=0; i < TEST_ARRAY_SIZE; i++)
     indicator[i]= STMT_INDICATOR_DEFAULT;
 
   bind.buffer_type= MYSQL_TYPE_LONG;
@@ -212,7 +331,10 @@ static int bulk3(MYSQL *mysql)
 
 struct my_tests_st my_tests[] = {
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
-  {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk2_1", bulk2_1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk2_2", bulk2_2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk2_3", bulk2_3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk2_4", bulk2_4, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
