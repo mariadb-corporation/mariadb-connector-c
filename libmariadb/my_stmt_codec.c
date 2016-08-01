@@ -918,25 +918,25 @@ static
 void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
              unsigned char **row)
 {
-  ulong field_length= *r_param->length= net_field_length(row);
-  size_t copylen= 0;
-  unsigned char *current_pos= (*row)+ r_param->offset,
-                *end= (*row) + field_length;
+  ulong field_length= net_field_length(row);
+  size_t copylen;
 
-  if (current_pos < end)
-  {
-    copylen= end - current_pos;
-    if (r_param->buffer_length)
-      memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
-  }
-  /* make sure strings are zero terminated (CONC-155) */
+  /* Bug conc-155: For text columns we need to store terminating zero character */
+  if (!(field->flags & BINARY_FLAG) && r_param->buffer_type == MYSQL_TYPE_STRING)
+    field_length++;
+
+  copylen= MIN(field_length, r_param->buffer_length);
+  memcpy(r_param->buffer, *row, copylen);
+  *r_param->error= copylen < field_length;
+
+  /* don't count trailing zero if we fetch into string */
   if (r_param->buffer_type == MYSQL_TYPE_STRING &&
-      r_param->buffer_length &&
-      copylen < r_param->buffer_length)
-    ((char *)r_param->buffer)[copylen]= 0;
-  *r_param->error= copylen > r_param->buffer_length;
+      !*r_param->error)
+    field_length--;
 
-  (*row)+= field_length;
+  *r_param->length= field_length;
+
+  (*row) += field_length;
 }
 /* }}} */
 
