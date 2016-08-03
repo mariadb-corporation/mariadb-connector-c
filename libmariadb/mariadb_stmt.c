@@ -1246,9 +1246,9 @@ MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
   /* set default */
   stmt->prefetch_rows= 1;
 
-  ma_init_ma_alloc_root(&stmt->mem_root, 2048, 0);
-  ma_init_ma_alloc_root(&stmt->result.alloc, 4096, 0);
-  ma_init_ma_alloc_root(&((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root, 2048, 0);
+  ma_init_alloc_root(&stmt->mem_root, 2048, 2048);
+  ma_init_alloc_root(&stmt->result.alloc, 4096, 4096);
+  ma_init_alloc_root(&((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root, 2048, 2048);
 
   return(stmt);
 }

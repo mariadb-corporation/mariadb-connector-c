@@ -443,7 +443,7 @@ static void free_old_query(MYSQL *mysql)
 {
   if (mysql->fields)
     ma_free_root(&mysql->field_alloc,MYF(0));
-  ma_init_ma_alloc_root(&mysql->field_alloc,8192,0);	/* Assume rowlength < 8192 */
+  ma_init_alloc_root(&mysql->field_alloc,8192,0);	/* Assume rowlength < 8192 */
   mysql->fields=0;
   mysql->field_count=0;				/* For API */
   mysql->info= 0;
@@ -808,7 +808,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     return(0);
   }
-  ma_init_ma_alloc_root(&result->alloc,8192,0);	/* Assume rowlength < 8192 */
+  ma_init_alloc_root(&result->alloc,8192,0);	/* Assume rowlength < 8192 */
   result->alloc.min_malloc=sizeof(MYSQL_ROWS);
   prev_ptr= &result->data;
   result->rows=0;

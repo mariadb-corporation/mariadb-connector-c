@@ -4240,8 +4240,8 @@ static int test_conc179(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
-  FAIL_IF(mysql_warning_count(mysql) != 3, "expected 3 warnings");
-  FAIL_IF(mysql_stmt_warning_count(stmt) != 3, "expected 3 warnings");
+  FAIL_IF(mysql_warning_count(mysql) < 2, "expected 2 or more warnings");
+  FAIL_IF(mysql_stmt_warning_count(stmt) < 2, "expected 2 or more warnings");
 
   mysql_stmt_close(stmt);
 

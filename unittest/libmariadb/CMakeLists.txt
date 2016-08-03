@@ -25,8 +25,7 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include
                     ${PROJECT_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
-SET(API_TESTS "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
-              "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "features-10_2"
+SET(API_TESTS "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "features-10_2"
               "bulk1" )
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")

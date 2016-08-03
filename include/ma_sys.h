@@ -542,8 +542,8 @@ extern void ma_free_lock(unsigned char *ptr,myf flags);
 #define ma_free_lock(A,B) ma_free((A),(B))
 #endif
 #define ma_alloc_root_inited(A) ((A)->min_malloc != 0)
-void ma_init_ma_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size);
-gptr ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size);
+void ma_init_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size);
+void *ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size);
 void ma_free_root(MA_MEM_ROOT *root, myf MyFLAGS);
 char *ma_strdup_root(MA_MEM_ROOT *root,const char *str);
 char *ma_memdup_root(MA_MEM_ROOT *root,const char *str, size_t len);
