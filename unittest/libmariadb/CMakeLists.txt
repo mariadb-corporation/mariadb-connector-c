@@ -21,7 +21,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
                     ${CMAKE_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
-SET(API_TESTS "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
+SET(API_TESTS "performance" "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
               "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "dyncol") 
 
 # Get finger print from server certificate 
