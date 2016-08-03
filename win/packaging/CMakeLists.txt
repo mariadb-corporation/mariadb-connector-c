@@ -54,6 +54,7 @@ IF(WITH_SIGNCODE)
       DEPENDS ${MSI_PACKAGE}
       COMMAND /tools/sign.bat ${MSI_PACKAGE})
   ELSE()
+    SET(SIGN_OPTIONS "/a /fd sha256 /tr http://sha256timestamp.ws.symantec.com/sha256/timestamp /td sha256 ")
     ADD_CUSTOM_TARGET(SIGNMSI
       DEPENDS ${MSI_PACKAGE}
       COMMAND signtool sign ${SIGN_OPTIONS} ${MSI_PACKAGE})
