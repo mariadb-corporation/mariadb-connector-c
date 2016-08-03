@@ -11,7 +11,6 @@ SET(EXPORT_SYMBOLS
  load_defaults
  mariadb_connection
  mariadb_convert_string
- mariadb_deinitialize_ssl
  mariadb_dyncol_check
  mariadb_dyncol_column_cmp_named
  mariadb_dyncol_column_count
@@ -220,6 +219,10 @@ SET(EXPORT_SYMBOLS
  mysql_thread_safe
  mysql_use_result
  mysql_warning_count)
+
+IF(WITH_OPENSSL)
+  SET(EXPORT_SYMBOLS ${EXPORT_SYMBOLS} mariadb_deinitialize_ssl)
+ENDIF()
 
 IF(WIN32)
   SET(EXPORT_CONTENT "EXPORTS\n")
