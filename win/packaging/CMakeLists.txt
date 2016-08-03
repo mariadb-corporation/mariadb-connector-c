@@ -54,10 +54,9 @@ IF(WITH_SIGNCODE)
       DEPENDS ${MSI_PACKAGE}
       COMMAND /tools/sign.bat ${MSI_PACKAGE})
   ELSE()
-    SET(SIGN_OPTIONS "/a /fd sha256 /tr http://sha256timestamp.ws.symantec.com/sha256/timestamp /td sha256 ")
     ADD_CUSTOM_TARGET(SIGNMSI
       DEPENDS ${MSI_PACKAGE}
-      COMMAND signtool sign ${SIGN_OPTIONS} ${MSI_PACKAGE})
+      COMMAND signtool sign /a /t http://timestamp.verisign.com/scripts/timstamp.dll -sha1 12c5633aeb5c2aab2b968346b9c2e769e24f48a0 ${MSI_PACKAGE})
   ENDIF()
   ADD_DEPENDENCIES(SIGNMSI ${MSI_PACKAGE})
   SET_TARGET_PROPERTIES(SIGNMSI PROPERTIES EXCLUDE_FROM_ALL OFF)
