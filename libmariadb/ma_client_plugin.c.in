@@ -283,7 +283,7 @@ int mysql_client_plugin_init()
   memset(&mysql, 0, sizeof(mysql)); /* dummy mysql for set_mysql_extended_error */
 
   pthread_mutex_init(&LOCK_load_client_plugin, MY_MUTEX_INIT_SLOW);
-  ma_init_ma_alloc_root(&mem_root, 128, 128);
+  ma_init_alloc_root(&mem_root, 128, 128);
 
   memset(&plugin_list, 0, sizeof(plugin_list));
 

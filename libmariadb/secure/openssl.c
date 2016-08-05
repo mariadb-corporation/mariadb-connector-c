@@ -49,10 +49,12 @@ static SSL_CTX *SSL_context= NULL;
 #define MAX_SSL_ERR_LEN 100
 
 static pthread_mutex_t LOCK_openssl_config;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static pthread_mutex_t *LOCK_crypto= NULL;
 static int ma_bio_read(BIO *h, char *buf, int size);
 static int ma_bio_write(BIO *h, const char *buf, int size);
 static BIO_METHOD ma_BIO_methods;
+#endif
 
 static void ma_tls_set_error(MYSQL *mysql)
 {
@@ -96,13 +98,13 @@ static void ma_tls_get_error(char *errmsg, size_t length)
   snprintf(errmsg, length, "SSL errno=%lu", ssl_errno);
 }
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100000)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 /* 
    thread safe callbacks for OpenSSL 
    Crypto call back functions will be
    set during ssl_initialization
  */
-#if (OPENSSL_VERSION_NUMBER < 0x10000000)
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
 static unsigned long my_cb_threadid(void)
 {
   /* cast pthread_t to unsigned long */
@@ -156,6 +158,7 @@ MA_SSL_SESSION *ma_tls_get_session(MYSQL *mysql)
 }
 
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static int ma_bio_read(BIO *bio, char *buf, int size)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)bio->ptr;
@@ -174,6 +177,7 @@ static int ma_bio_write(BIO *bio, const char *buf, int size)
   BIO_clear_retry_flags(bio);
   return (int)rc;
 }
+#endif
 
 static int ma_tls_session_cb(SSL *ssl, SSL_SESSION *session)
 {
@@ -216,7 +220,7 @@ static void ma_tls_remove_session_cb(SSL_CTX* ctx, SSL_SESSION* session)
 }
 #endif
 
-#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 static void my_cb_locking(int mode, int n, const char *file, int line)
 {
   if (mode & CRYPTO_LOCK)
@@ -239,7 +243,7 @@ static int ssl_thread_init()
       pthread_mutex_init(&LOCK_crypto[i], NULL);
   }
 
-#if (OPENSSL_VERSION_NUMBER < 0x10000000)
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
   CRYPTO_set_id_callback(my_cb_threadid);
 #else
   CRYPTO_THREADID_set_callback(my_cb_threadid);
@@ -293,7 +297,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   /* lock mutex to prevent multiple initialization */
   pthread_mutex_init(&LOCK_openssl_config,MY_MUTEX_INIT_FAST);
   pthread_mutex_lock(&LOCK_openssl_config);
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
 #else
   if (ssl_thread_init())
@@ -311,7 +315,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   SSL_load_error_strings();
   /* digests and ciphers */
   OpenSSL_add_all_algorithms();
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
 #else
   if (!(SSL_context= SSL_CTX_new(SSLv23_client_method())))
@@ -327,11 +331,11 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   SSL_CTX_sess_set_remove_cb(SSL_context, ma_tls_remove_session_cb);
 #endif
   disable_sigpipe();
-
-  memcpy(&ma_BIO_methods, BIO_s_socket(), sizeof(BIO_METHOD));
-  ma_BIO_methods.bread= ma_bio_read;
-  ma_BIO_methods.bwrite= ma_bio_write;
-
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  memcpy(&ma_BIO_method, BIO_s_socket(), sizeof(BIO_METHOD));
+  ma_BIO_method.bread= ma_bio_read;
+  ma_BIO_method.bwrite= ma_bio_write;
+#endif
   rc= 0;
   ma_tls_initialized= TRUE;
 end:
@@ -355,16 +359,18 @@ void ma_tls_end()
 {
   if (ma_tls_initialized)
   {
-    int i;
     pthread_mutex_lock(&LOCK_openssl_config);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     CRYPTO_set_locking_callback(NULL);
     CRYPTO_set_id_callback(NULL);
-
-    for (i=0; i < CRYPTO_num_locks(); i++)
-      pthread_mutex_destroy(&LOCK_crypto[i]);
-
+    {
+      int i;
+      for (i=0; i < CRYPTO_num_locks(); i++)
+        pthread_mutex_destroy(&LOCK_crypto[i]);
+    }
     ma_free((gptr)LOCK_crypto);
     LOCK_crypto= NULL;
+#endif
 
     if (SSL_context)
     {
@@ -373,7 +379,7 @@ void ma_tls_end()
     }
     if (mariadb_deinitialize_ssl)
     {
-#if OPENSSL_VERSION_NUMBER < 0x10100000
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
       ERR_remove_state(0);
 #endif
       EVP_cleanup();
@@ -518,7 +524,10 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  BIO_METHOD *bio_method= NULL;
   BIO *bio;
+#endif
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
@@ -529,10 +538,14 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   SSL_clear(ssl);
 
-  bio= BIO_new(&ma_BIO_methods);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  bio= BIO_new(&ma_BIO_method);
   bio->ptr= pvio;
   SSL_set_bio(ssl, bio, bio);
   BIO_set_fd(bio, mysql_get_socket(mysql), BIO_NOCLOSE);
+#else
+  SSL_set_fd(ssl, mysql_get_socket(mysql));
+#endif
 
   while (try_connect && (rc= SSL_connect(ssl)) == -1)
   {
@@ -600,6 +613,9 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
   for (i=0; i < 4; i++)
     if ((rc= SSL_shutdown(ssl)))
       break;
+
+  /* Since we transferred ownership of BIO to ssl, BIO will
+     automatically freed - no need for an explicit BIO_free_all */
 
   SSL_free(ssl);
   ctls->ssl= NULL;
