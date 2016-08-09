@@ -51,9 +51,11 @@ static SSL_CTX *SSL_context= NULL;
 static pthread_mutex_t LOCK_openssl_config;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 static pthread_mutex_t *LOCK_crypto= NULL;
+#endif
+#if OPENSSL_USE_BIOMETHOD
 static int ma_bio_read(BIO *h, char *buf, int size);
 static int ma_bio_write(BIO *h, const char *buf, int size);
-static BIO_METHOD ma_BIO_methods;
+static BIO_METHOD ma_BIO_method;
 #endif
 
 static void ma_tls_set_error(MYSQL *mysql)
@@ -158,7 +160,7 @@ MA_SSL_SESSION *ma_tls_get_session(MYSQL *mysql)
 }
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_USE_BIOMETHOD
 static int ma_bio_read(BIO *bio, char *buf, int size)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)bio->ptr;
@@ -331,7 +333,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   SSL_CTX_sess_set_remove_cb(SSL_context, ma_tls_remove_session_cb);
 #endif
   disable_sigpipe();
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_USE_BIOMETHOD
   memcpy(&ma_BIO_method, BIO_s_socket(), sizeof(BIO_METHOD));
   ma_BIO_method.bread= ma_bio_read;
   ma_BIO_method.bwrite= ma_bio_write;
@@ -524,7 +526,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_USE_BIOMETHOD
   BIO_METHOD *bio_method= NULL;
   BIO *bio;
 #endif
@@ -538,7 +540,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   SSL_clear(ssl);
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_USE_BIOMETHOD
   bio= BIO_new(&ma_BIO_method);
   bio->ptr= pvio;
   SSL_set_bio(ssl, bio, bio);
