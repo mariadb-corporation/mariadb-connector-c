@@ -23,20 +23,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "ma_common.h"
 
-void show_time(struct timeval t1)
-{
-  struct timeval t2;
-  double elapsed;
-  gettimeofday(&t2, NULL);
-  elapsed = ((t2.tv_sec - t1.tv_sec)* 1000.0 + (t2.tv_usec - t1.tv_usec) / 1000.0) / 1000;
-  diag("elapsed: %5.2f", elapsed);
-}
-
 static int perf1(MYSQL *mysql)
 {
   int rc;
   MYSQL_STMT *stmt;
-  struct timeval t1;
   char *stmtstr= "SELECT s.emp_no, s.salary, e.emp_no, e.first_name, e.last_name, e.gender FROM salaries s, employees e WHERE s.emp_no = e.emp_no";
 
   rc= mysql_select_db(mysql, "employees");
@@ -49,27 +39,19 @@ static int perf1(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
 
   diag("prepare");
-  gettimeofday(&t1, NULL);
   rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
   check_stmt_rc(rc, stmt);
-  show_time(t1);
 
   diag("execute");
-  gettimeofday(&t1, NULL);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
-  show_time(t1);
 
   diag("store");
-  gettimeofday(&t1, NULL);
   rc= mysql_stmt_store_result(stmt);
   check_stmt_rc(rc, stmt);
-  show_time(t1);
 
   diag("fetch");
-  gettimeofday(&t1, NULL);
   while (!mysql_stmt_fetch(stmt));
-  show_time(t1);
 
   mysql_stmt_close(stmt);
   return OK;
