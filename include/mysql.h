@@ -152,10 +152,12 @@ extern unsigned int mariadb_deinitialize_ssl;
   typedef MYSQL_ROWS *MYSQL_ROW_OFFSET;	/* offset to current row */
 
   typedef struct st_mysql_data {
+    MYSQL_ROWS *data;
+    void *embedded_info;
+    MA_MEM_ROOT alloc;
     unsigned long long rows;
     unsigned int fields;
-    MYSQL_ROWS *data;
-    MA_MEM_ROOT alloc;
+    void *extension;
   } MYSQL_DATA;
 
   enum mariadb_com_multi {
