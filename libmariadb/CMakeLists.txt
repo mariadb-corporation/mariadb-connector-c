@@ -421,7 +421,7 @@ IF(WIN32)
    # On Windows, install PDB
    GET_TARGET_PROPERTY(location libmariadb LOCATION)
    STRING(REPLACE ".dll" ".pdb" pdb_location ${location})
-   IF (NOT "${CMAKE_CFG_INTDIR}" STREQUAL "")
+   IF (NOT "${CMAKE_CFG_INTDIR}" STREQUAL ".")
      STRING(REPLACE "${CMAKE_CFG_INTDIR}" "\${CMAKE_INSTALL_CONFIG_NAME}"
       pdb_location ${pdb_location})
    ENDIF()
