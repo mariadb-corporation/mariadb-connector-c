@@ -1188,9 +1188,9 @@ int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind, unsigned
   {
     unsigned char *save_ptr;
     if (bind[0].length)
-      *bind[0].length= stmt->bind[column].length_value;
-    else
       *bind[0].length= *stmt->bind[column].length;
+    else
+      bind[0].length= &stmt->bind[column].length_value;
     if (bind[0].is_null)
       *bind[0].is_null= 0;
     else
