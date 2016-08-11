@@ -1922,7 +1922,7 @@ get_info:
   pos=(uchar*) mysql->net.read_pos;
   if ((field_count= net_field_length(&pos)) == 0)
   {
-    size_t item_len;
+    size_t item_len = 0;
     mysql->affected_rows= net_field_length_ll(&pos);
     mysql->insert_id=	  net_field_length_ll(&pos);
     mysql->server_status=uint2korr(pos); 
