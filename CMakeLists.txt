@@ -135,11 +135,13 @@ IF(NOT MARIADB_UNIX_ADDR)
 ENDIF()
 
 INCLUDE("${PROJECT_SOURCE_DIR}/cmake/install.cmake")
+IF(NOT PLUGINDIR)
+  SET(PLUGINDIR "${PREFIX_INSTALL_DIR}/${PLUGIN_INSTALL_DIR}")
+ENDIF()
 
 # todo: we don't character sets in share - all is compiled in
 SET(SHAREDIR "share")
 SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
-# SET(MARIADB_PLUGINDIR "${CMAKE_INSTALL_PREFIX}/lib/plugin")
 
 INCLUDE(${PROJECT_SOURCE_DIR}/cmake/SearchLibrary.cmake)
 
