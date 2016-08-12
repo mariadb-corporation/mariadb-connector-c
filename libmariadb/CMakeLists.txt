@@ -364,7 +364,7 @@ IF(FOR_SERVER)
   IF(WIN32)
     SET_TARGET_PROPERTIES(libmariadb PROPERTIES OUTPUT_NAME libmysql)
   ELSE()
-    SET_TARGET_PROPERTIES(libmariadb PROPERTIES OUTPUT_NAME mysqlclient)
+    SET_TARGET_PROPERTIES(libmariadb PROPERTIES OUTPUT_NAME libmysqlclient)
   ENDIF()
 ENDIF()
 
@@ -389,10 +389,11 @@ SET_TARGET_PROPERTIES(libmariadb PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "$
 
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES PREFIX "")
 
+IF(NOT FOR_SERVER)
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION 
    ${CPACK_PACKAGE_VERSION_MAJOR}
    SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
-
+ENDIF()
 #
 # Installation
 #
@@ -402,7 +403,7 @@ INCLUDE(${PROJECT_SOURCE_DIR}/cmake/symlink.cmake)
 # There are still several projects which don't make use
 # of the config program. To make sure these programs can
 # use mariadb client library we provide libmysql symlinks
-IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
+IF(NOT WIN32 AND WITH_MYSQLCOMPAT AND NOT FOR_SERVER)
   SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
   create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
   create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})

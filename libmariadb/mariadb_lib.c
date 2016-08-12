@@ -112,19 +112,7 @@ my_context_install_suspend_resume_hook(struct mysql_async_context *b,
 uint mysql_port=0;
 my_string mysql_unix_port=0;
 
-static char *mariadb_protocols[]= {"TCP", 
-#ifndef WIN32
-                                   "SOCKET",
-#else
-                                   "PIPE", "MEMORY",
-#endif
-                                    0};
-
-#ifdef _WIN32
-#define CONNECT_TIMEOUT 20
-#else
 #define CONNECT_TIMEOUT 0
-#endif
 
 struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 
@@ -3418,6 +3406,16 @@ const char * STDCALL mysql_sqlstate(MYSQL *mysql)
   return mysql->net.sqlstate;
 }
 
+#ifndef _WIN32
+#include <signal.h>
+static void ignore_sigpipe()
+{
+  signal(SIGPIPE, SIG_IGN);
+}
+#else
+#define ignore_sigpipe()
+#endif
+
 #ifdef _WIN32
 static int mysql_once_init()
 #else
@@ -3459,6 +3457,7 @@ static void mysql_once_init()
   }
   if (!mysql_ps_subsystem_initialized)
     mysql_init_ps_subsystem();
+  ignore_sigpipe();
   mysql_client_init = 1;
 #ifdef _WIN32
   return 0;
