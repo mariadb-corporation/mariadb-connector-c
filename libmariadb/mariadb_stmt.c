@@ -318,10 +318,10 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
     if (*null_ptr & bit_offset)
     {
       *stmt->bind[i].is_null= 1;
-      stmt->bind[i].row_ptr= NULL;
+      stmt->bind[i].u.row_ptr= NULL;
     } else
     { 
-      stmt->bind[i].row_ptr= row;
+      stmt->bind[i].u.row_ptr= row;
       if (stmt->bind[i].flags & MADB_BIND_DUMMY)
       {
         unsigned long length;
@@ -1178,7 +1178,7 @@ int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind, unsigned
     return(1);
   }
 
-  if (!stmt->bind[column].row_ptr)
+  if (!stmt->bind[column].u.row_ptr)
   {
     /* we set row_ptr only for columns which contain data, so this must be a NULL column */
     if (bind[0].is_null)
@@ -1198,10 +1198,10 @@ int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind, unsigned
     if (!bind[0].error)
       bind[0].error= &bind[0].error_value;
     *bind[0].error= 0;
-    bind[0].u.offset= offset;
-    save_ptr= stmt->bind[column].row_ptr;
-    mysql_ps_fetch_functions[stmt->fields[column].type].func(&bind[0], &stmt->fields[column], &stmt->bind[column].row_ptr);
-    stmt->bind[column].row_ptr= save_ptr;
+    bind[0].offset= offset;
+    save_ptr= stmt->bind[column].u.row_ptr;
+    mysql_ps_fetch_functions[stmt->fields[column].type].func(&bind[0], &stmt->fields[column], &stmt->bind[column].u.row_ptr);
+    stmt->bind[column].u.row_ptr= save_ptr;
   }
   return(0);
 }

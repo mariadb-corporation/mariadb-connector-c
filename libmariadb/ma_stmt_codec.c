@@ -306,7 +306,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     case MYSQL_TYPE_NEWDECIMAL:
     default:
     {
-      char *start= buffer + r_param->u.offset; /* stmt_fetch_column sets offset */
+      char *start= buffer + r_param->offset; /* stmt_fetch_column sets offset */
       char *end= buffer + len;
       size_t copylen= 0;
 
@@ -940,7 +940,7 @@ void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
   else
   {
     ulong field_length= *r_param->length= net_field_length(row);
-    uchar *current_pos= (*row) + r_param->u.offset,
+    uchar *current_pos= (*row) + r_param->offset,
           *end= (*row) + field_length;
     size_t copylen= 0;
 
