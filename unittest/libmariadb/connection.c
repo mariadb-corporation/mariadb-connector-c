@@ -921,7 +921,7 @@ static int test_sess_track_db(MYSQL *mysql)
 
   if (!(mysql->server_capabilities & CLIENT_SESSION_TRACKING))
   {
-    diag("Server doesn't support session tracking (cap=%llu)", mysql->server_capabilities);
+    diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
     return SKIP;
   }
 

@@ -54,6 +54,7 @@
 #include <signal.h>
 #include <time.h>
 #include <mysql/client_plugin.h>
+#include <ma_common.h>
 
 #define STMT_NUM_OFS(type, a,r) ((type *)(a))[r]
 #define MADB_RESET_ERROR     1
@@ -598,7 +599,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   uint i, j, num_rows= 1;
   my_bool bulk_supported= stmt->array_size > 0 &&
       (!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
-      (stmt->mysql->server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS));
+      (stmt->mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
 
   uchar *start= NULL, *p;
 

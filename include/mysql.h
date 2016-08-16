@@ -44,8 +44,6 @@ typedef char my_bool;
 #define STDCALL __stdcall
 #endif
 
-
-
 #ifndef my_socket_defined
 #define my_socket_defined
 #if defined(_WIN64)
@@ -335,8 +333,8 @@ struct st_mysql_options {
     unsigned long thread_id;		/* Id for connection in server */
     unsigned long packet_length;
     unsigned int port;
-    unsigned long long client_flag;
-    unsigned long long server_capabilities; /* changed from long to longlong in 10.2 protocol */
+    unsigned long client_flag;
+    unsigned long server_capabilities;
     unsigned int protocol_version;
     unsigned int field_count;
     unsigned int server_status;

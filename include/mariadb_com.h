@@ -171,7 +171,8 @@ enum enum_server_command
         !(mysql->server_capabilities & CLIENT_MYSQL)
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
-                                       MARIADB_CLIENT_COM_MULTI)
+                                       MARIADB_CLIENT_COM_MULTI |\
+                                       MARIADB_CLIENT_STMT_BULK_OPERATIONS)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_MYSQL |\
                                  CLIENT_FOUND_ROWS |\
