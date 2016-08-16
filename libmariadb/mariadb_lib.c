@@ -1479,6 +1479,8 @@ error:
   end_server(mysql);
   /* only free the allocated memory, user needs to call mysql_close */
   mysql_close_memory(mysql);
+  if (!(client_flag & CLIENT_REMEMBER_OPTIONS))
+    mysql_close_options(mysql);
   return(0);
 }
 
