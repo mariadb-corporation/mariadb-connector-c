@@ -33,6 +33,7 @@
 #include <mariadb_async.h>
 #include <ma_common.h>
 #include <string.h>
+#include <time.h>
 #ifndef _WIN32
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
@@ -57,6 +58,8 @@
 #ifndef SOCKET_ERROR
 #define SOCKET_ERROR -1
 #endif
+
+#define DNS_TIMEOUT 30
 
 
 /* Function prototypes */
@@ -735,6 +738,7 @@ pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
 my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 {
   struct st_pvio_socket *csock= NULL;
+  MYSQL *mysql;
 
   if (!pvio || !cinfo)
     return 1;
@@ -746,7 +750,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   }
   pvio->data= (void *)csock;
   csock->socket= -1;
-  pvio->mysql= cinfo->mysql;
+  mysql= pvio->mysql= cinfo->mysql;
   pvio->type= cinfo->type;
 
   if (cinfo->type == PVIO_TYPE_UNIXSOCKET)
@@ -783,6 +787,12 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     char server_port[NI_MAXSERV];
     int gai_rc;
     int rc= 0;
+    time_t start_t= time(NULL);
+#ifdef _WIN32
+    DWORD wait_gai;
+#else
+    unsigned int wait_gai;
+#endif
 
     memset(&server_port, 0, NI_MAXSERV);
     snprintf(server_port, NI_MAXSERV, "%d", cinfo->port);
@@ -797,9 +807,22 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
      * bind_address */
     if (cinfo->mysql->options.bind_address)
     {
-      gai_rc= getaddrinfo(cinfo->mysql->options.bind_address, 0,
-                          &hints, &bind_res);
-      if (gai_rc != 0)
+      wait_gai= 1;
+      while ((gai_rc= getaddrinfo(cinfo->mysql->options.bind_address, 0,
+                          &hints, &bind_res)) == EAI_AGAIN)
+      {
+        unsigned int timeout= mysql->options.connect_timeout ?
+                              mysql->options.connect_timeout : DNS_TIMEOUT;
+        if (time(NULL) - start_t > timeout)
+          break;
+#ifndef _WIN32
+        usleep(wait_gai);
+#else
+        Sleep(wait_gai);
+#endif
+        wait_gai*= 2;
+      }
+      if (gai_rc != 0 || !bind_res)
       {
         PVIO_SET_ERROR(cinfo->mysql, CR_BIND_ADDR_FAILED, SQLSTATE_UNKNOWN, 
                      CER(CR_BIND_ADDR_FAILED), cinfo->mysql->options.bind_address, gai_rc);
@@ -807,8 +830,22 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       }
     }
     /* Get the address information for the server using getaddrinfo() */
-    gai_rc= getaddrinfo(cinfo->host, server_port, &hints, &res);
-    if (gai_rc != 0)
+    wait_gai= 1;
+    while ((gai_rc= getaddrinfo(cinfo->host, server_port,
+                                &hints, &res) == EAI_AGAIN))
+    {
+      unsigned int timeout= mysql->options.connect_timeout ?
+                            mysql->options.connect_timeout : DNS_TIMEOUT;
+      if (time(NULL) - start_t > timeout)
+        break;
+#ifndef _WIN32
+      usleep(wait_gai);
+#else
+      Sleep(wait_gai);
+#endif
+      wait_gai*= 2;
+    }
+    if (gai_rc != 0 || !res)
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_UNKNOWN_HOST, SQLSTATE_UNKNOWN, 
                    ER(CR_UNKNOWN_HOST), cinfo->host, gai_rc);
