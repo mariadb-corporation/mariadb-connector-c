@@ -579,8 +579,8 @@ unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 my_bool STDCALL mariadb_reconnect(MYSQL *mysql);
 int STDCALL mariadb_cancel(MYSQL *mysql);
 void STDCALL mysql_debug(const char *debug);
-ulong STDCALL mysql_net_read_packet(MYSQL *mysql);
-ulong STDCALL mysql_net_field_length(unsigned char **packet);
+unsigned long STDCALL mysql_net_read_packet(MYSQL *mysql);
+unsigned long STDCALL mysql_net_field_length(unsigned char **packet);
 my_bool STDCALL mysql_embedded();
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 
