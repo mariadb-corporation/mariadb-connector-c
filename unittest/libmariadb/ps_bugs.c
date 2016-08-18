@@ -61,7 +61,7 @@ static int test_conc67(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREFETCH_ROWS, &prefetch_rows);
   check_stmt_rc(rc, stmt);
-  
+
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
   check_stmt_rc(rc, stmt);
 
@@ -77,7 +77,7 @@ static int test_conc67(MYSQL *mysql)
 
   res= mysql_stmt_result_metadata(stmt);
   mysql_free_result(res);
- 
+
   memset(bind, 0, 2 * sizeof(MYSQL_BIND));
 
   i= 0;
@@ -261,7 +261,7 @@ static int test_bug1180(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
- 
+
   rowcount= 0;
   while (mysql_stmt_fetch(stmt) != MYSQL_NO_DATA)
     rowcount++;
@@ -527,9 +527,9 @@ static int test_bug12744(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   //check_mysql_rc(rc, mysql);
- 
+
   sleep(2);
-  rc= mysql_ping(mysql); 
+  rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_close(stmt);
@@ -1290,7 +1290,7 @@ static int test_bug23383(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, insert_query, strlen(insert_query));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);  
+  check_stmt_rc(rc, stmt);
   row_count= mysql_stmt_affected_rows(stmt);
   FAIL_UNLESS(row_count == 2, "row_count != 2");
 
@@ -1302,7 +1302,7 @@ static int test_bug23383(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, update_query, strlen(update_query));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);  
+  check_stmt_rc(rc, stmt);
   row_count= mysql_stmt_affected_rows(stmt);
   FAIL_UNLESS(row_count == 0, "rowcount != 0");
 
@@ -1898,22 +1898,22 @@ static int test_ps_query_cache(MYSQL *mysql)
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
 //    test_ps_query_cache_result(1, "hh", 2, 2, "hh", 2, 1, "ii", 2);
-  r_metadata= mysql_stmt_result_metadata(stmt);                   
-  FAIL_UNLESS(r_metadata != NULL, "");                            
-  rc= mysql_stmt_fetch(stmt);                                     
-  check_stmt_rc(rc,stmt);                                         
-  FAIL_UNLESS((r_int_data == 1) && (r_str_length == 2) &&       
+  r_metadata= mysql_stmt_result_metadata(stmt);
+  FAIL_UNLESS(r_metadata != NULL, "");
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc,stmt);
+  FAIL_UNLESS((r_int_data == 1) && (r_str_length == 2) &&
              (strcmp(r_str_data, "hh") == 0), "test_ps_query_cache_result failure"); \
-  rc= mysql_stmt_fetch(stmt);                                     
-  check_stmt_rc(rc,stmt);                                         
-  FAIL_UNLESS((r_int_data == 2) && (r_str_length == 2) &&       
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc,stmt);
+  FAIL_UNLESS((r_int_data == 2) && (r_str_length == 2) &&
              (strcmp(r_str_data, "hh") == 0), "test_ps_query_cache_result failure"); \
-  rc= mysql_stmt_fetch(stmt);                                     
-  check_stmt_rc(rc,stmt);                                         
-  FAIL_UNLESS((r_int_data == 1) && (r_str_length == 2) &&       
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc,stmt);
+  FAIL_UNLESS((r_int_data == 1) && (r_str_length == 2) &&
              (strcmp(r_str_data, "ii") == 0), "test_ps_query_cache_result failure"); \
-  rc= mysql_stmt_fetch(stmt);                                     
-  FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");        
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
   mysql_free_result(r_metadata);
 
 
@@ -2181,8 +2181,8 @@ static int test_bug4026(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
   check_stmt_rc(rc, stmt);
   /* Bind input buffers */
-  memset(my_bind, '\0', sizeof(my_bind));  
-  memset(&time_in, '\0', sizeof(time_in));  
+  memset(my_bind, '\0', sizeof(my_bind));
+  memset(&time_in, '\0', sizeof(time_in));
   memset(&time_out, '\0', sizeof(time_out));
   memset(&datetime_in, '\0', sizeof(datetime_in));
   memset(&datetime_out, '\0', sizeof(datetime_out));
@@ -2244,7 +2244,7 @@ static int test_bug4030(MYSQL *mysql)
   stmt_text= "SELECT '23:59:59.123456', '2003-12-31', "
              "'2003-12-31 23:59:59.123456'";
   rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
-  check_stmt_rc(rc, stmt);  
+  check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   /* Bind output buffers */
@@ -2472,14 +2472,14 @@ static int test_bug4236(MYSQL *mysql)
   stmt1= mysql_stmt_init(mysql1);
   stmt_text= "SELECT 2";
   rc= mysql_stmt_prepare(stmt1, stmt_text, strlen(stmt_text));
-  check_stmt_rc(rc, stmt); 
+  check_stmt_rc(rc, stmt);
 
   stmt->stmt_id= stmt1->stmt_id;
   rc= mysql_stmt_execute(stmt);
   FAIL_IF(!rc, "Error expected");
- 
+
   mysql_stmt_close(stmt1);
-  mysql_close(mysql1); 
+  mysql_close(mysql1);
 
   /* Restore original statement id to be able to reprepare it */
   stmt->stmt_id= backup.stmt_id;
@@ -2512,7 +2512,7 @@ static int test_bug5126(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   stmt_text= "SELECT a, b FROM t1";
   rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
-  check_stmt_rc(rc, stmt);  
+  check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   /* Bind output buffers */
@@ -2718,7 +2718,7 @@ static int test_bug5315(MYSQL *mysql)
 
   rc= mysql_stmt_execute(stmt);
   FAIL_UNLESS(rc != 0, "Error expected");
-  
+
   rc= mysql_stmt_close(stmt);
   check_stmt_rc(rc, stmt);
 
@@ -2737,7 +2737,7 @@ static int test_bug5399(MYSQL *mysql)
     Ascii 97 is 'a', which gets mapped to Ascii 65 'A' unless internal
     statement id hash in the server uses binary collation.
   */
-#define NUM_OF_USED_STMT 97 
+#define NUM_OF_USED_STMT 97
   MYSQL_STMT *stmt_list[NUM_OF_USED_STMT];
   MYSQL_STMT **stmt;
   MYSQL_BIND my_bind[1];
@@ -3340,7 +3340,7 @@ static int test_decimal_bug(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "select c1 from test_decimal_bug where c1=?", 
+  rc= mysql_stmt_prepare(stmt, "select c1 from test_decimal_bug where c1=?",
                          strlen("select c1 from test_decimal_bug where c1=?"));
   check_stmt_rc(rc, stmt);
 
@@ -3456,13 +3456,13 @@ static int test_explain_bug(MYSQL *mysql)
   if (verify_prepare_field(result, 0, "Field", "COLUMN_NAME",
                        mysql_get_server_version(mysql) <= 50000 ?
                        MYSQL_TYPE_STRING : MYSQL_TYPE_VAR_STRING,
-                       0, 0, 
+                       0, 0,
                        mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",
                        64, 0))
     goto error;
 
   if (verify_prepare_field(result, 1, "Type", "COLUMN_TYPE", MYSQL_TYPE_BLOB,
-                       0, 0, 
+                       0, 0,
                        mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",
                        0, 0))
     goto error;
@@ -3470,7 +3470,7 @@ static int test_explain_bug(MYSQL *mysql)
   if (verify_prepare_field(result, 2, "Null", "IS_NULLABLE",
                        mysql_get_server_version(mysql) <= 50000 ?
                        MYSQL_TYPE_STRING : MYSQL_TYPE_VAR_STRING,
-                       0, 0, 
+                       0, 0,
                        mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",
                        3, 0))
     goto error;
@@ -3478,7 +3478,7 @@ static int test_explain_bug(MYSQL *mysql)
   if (verify_prepare_field(result, 3, "Key", "COLUMN_KEY",
                        mysql_get_server_version(mysql) <= 50000 ?
                        MYSQL_TYPE_STRING : MYSQL_TYPE_VAR_STRING,
-                       0, 0, 
+                       0, 0,
                        mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",
                        3, 0))
     goto error;
@@ -3487,7 +3487,7 @@ static int test_explain_bug(MYSQL *mysql)
   {
     /*  The patch for bug#23037 changes column type of DEAULT to blob */
     if (verify_prepare_field(result, 4, "Default", "COLUMN_DEFAULT",
-                         MYSQL_TYPE_BLOB, 0, 0, 
+                         MYSQL_TYPE_BLOB, 0, 0,
                          mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",
                          0, 0))
       goto error;
@@ -3499,7 +3499,7 @@ static int test_explain_bug(MYSQL *mysql)
                          MYSQL_TYPE_BLOB :
                          mysql_get_server_version(mysql) <= 50000 ?
                          MYSQL_TYPE_STRING : MYSQL_TYPE_VAR_STRING,
-                         0, 0, 
+                         0, 0,
                          mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",
                          mysql_get_server_version(mysql) >= 50027 ? 0 :64, 0))
       goto error;
@@ -3508,7 +3508,7 @@ static int test_explain_bug(MYSQL *mysql)
   if (verify_prepare_field(result, 5, "Extra", "EXTRA",
                        mysql_get_server_version(mysql) <= 50000 ?
                        MYSQL_TYPE_STRING : MYSQL_TYPE_VAR_STRING,
-                       0, 0, 
+                       0, 0,
                        mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",
                        27, 0))
     goto error;
@@ -3568,7 +3568,7 @@ static int test_explain_bug(MYSQL *mysql)
     goto error;
   }
 
-  if (verify_prepare_field(result, 7, "ref", "", MYSQL_TYPE_VAR_STRING, "", "", "", 
+  if (verify_prepare_field(result, 7, "ref", "", MYSQL_TYPE_VAR_STRING, "", "", "",
                            NAME_CHAR_LEN*16, 0))
     goto error;
 
@@ -3750,10 +3750,10 @@ static int test_bug53311(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bug53311");
-  check_mysql_rc(rc, mysql); 
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE bug53311 (a int)");
-  check_mysql_rc(rc, mysql); 
+  check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, query, strlen(query));
@@ -3764,7 +3764,7 @@ static int test_bug53311(MYSQL *mysql)
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
   }
-  
+
   /* kill connection */
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
   sleep(1);
@@ -4334,7 +4334,82 @@ static int test_conc194(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc198(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt1, *stmt2;
+  MYSQL_BIND my_bind[1];
+  int32 a;
+  int rc;
+  const char *stmt_text= "SELECT id FROM t1";
+  int num_rows= 0;
+  ulong type;
+  ulong prefetch_rows= 3;
+
+
+  mysql_query(mysql, "drop table if exists t1");
+  mysql_query(mysql, "create table t1 (id integer not null primary key)");
+  rc= mysql_query(mysql, "insert into t1 (id) values "
+                         " (1), (2), (3), (4), (5), (6), (7), (8), (9)");
+  check_mysql_rc(rc, mysql);
+
+  stmt1= mysql_stmt_init(mysql);
+  stmt2= mysql_stmt_init(mysql);
+  /* Not implemented in 5.0 */
+  type= (ulong) CURSOR_TYPE_SCROLLABLE;
+  rc= mysql_stmt_attr_set(stmt1, STMT_ATTR_CURSOR_TYPE, (void*) &type);
+  FAIL_UNLESS(rc, "Error expected");
+  rc= mysql_stmt_attr_set(stmt2, STMT_ATTR_CURSOR_TYPE, (void*) &type);
+  FAIL_UNLESS(rc, "Error expected");
+
+  type= (ulong) CURSOR_TYPE_READ_ONLY;
+  rc= mysql_stmt_attr_set(stmt1, STMT_ATTR_CURSOR_TYPE, (void*) &type);
+  check_stmt_rc(rc, stmt1);
+  rc= mysql_stmt_attr_set(stmt2, STMT_ATTR_CURSOR_TYPE, (void*) &type);
+  check_stmt_rc(rc, stmt2);
+  rc= mysql_stmt_attr_set(stmt1, STMT_ATTR_PREFETCH_ROWS,
+                          (void*) &prefetch_rows);
+  check_stmt_rc(rc, stmt1);
+  rc= mysql_stmt_attr_set(stmt2, STMT_ATTR_PREFETCH_ROWS,
+                          (void*) &prefetch_rows);
+  check_stmt_rc(rc, stmt2);
+  stmt_text= "select * from t1";
+  rc= mysql_stmt_prepare(stmt1, stmt_text, strlen(stmt_text));
+  check_stmt_rc(rc, stmt1);
+  rc= mysql_stmt_prepare(stmt2, stmt_text, strlen(stmt_text));
+  check_stmt_rc(rc, stmt2);
+
+  rc= mysql_stmt_execute(stmt1);
+  check_stmt_rc(rc, stmt1);
+  rc= mysql_stmt_execute(stmt2);
+  check_stmt_rc(rc, stmt2);
+
+  memset(my_bind, '\0', sizeof(my_bind));
+  my_bind[0].buffer_type= MYSQL_TYPE_LONG;
+  my_bind[0].buffer= (void*) &a;
+  my_bind[0].buffer_length= sizeof(a);
+  mysql_stmt_bind_result(stmt1, my_bind);
+  mysql_stmt_bind_result(stmt2, my_bind);
+
+  while ((rc= mysql_stmt_fetch(stmt1)) == 0)
+    ++num_rows;
+  FAIL_UNLESS(num_rows == 9, "num_rows != 9");
+
+  num_rows= 0;
+  while ((rc= mysql_stmt_fetch(stmt2)) == 0)
+    ++num_rows;
+  FAIL_UNLESS(num_rows == 9, "num_rows != 9");
+
+  rc= mysql_stmt_close(stmt1);
+  rc= mysql_stmt_close(stmt2);
+  FAIL_UNLESS(rc == 0, "");
+
+  rc= mysql_query(mysql, "drop table t1");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc198", test_conc198, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc194", test_conc194, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc177", test_conc177, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc167", test_conc167, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
@@ -4354,12 +4429,12 @@ struct my_tests_st my_tests[] = {
   {"test_bug15510", test_bug15510, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug15518", test_bug15518, TEST_CONNECTION_NEW | TEST_CONNECTION_DONT_CLOSE, CLIENT_MULTI_STATEMENTS, NULL , NULL},
   {"test_bug15613", test_bug15613, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
-  {"test_bug16144", test_bug16144, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
+  {"test_bug16144", test_bug16144, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1664", test_bug1664, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug1946", test_bug1946, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug2247", test_bug2247, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug2248", test_bug2248, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
-  {"test_bug20152", test_bug20152, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
+  {"test_bug20152", test_bug20152, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug23383", test_bug23383, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug27592", test_bug27592, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug28934", test_bug28934, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
@@ -4373,8 +4448,8 @@ struct my_tests_st my_tests[] = {
   {"test_bug4172", test_bug4172, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug4231", test_bug4231, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug4236", test_bug4236, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
-  {"test_bug5126", test_bug5126, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
-  {"test_bug5194", test_bug5194, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
+  {"test_bug5126", test_bug5126, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
+  {"test_bug5194", test_bug5194, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug5315", test_bug5315, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug5399", test_bug5399, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug6046", test_bug6046, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
@@ -4389,13 +4464,13 @@ struct my_tests_st my_tests[] = {
   {"test_ps_null_param", test_ps_null_param, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_ps_query_cache", test_ps_query_cache, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_ushort_bug", test_ushort_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
-  {"test_field_misc", test_field_misc, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
-  {"test_mem_overun", test_mem_overun, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
+  {"test_field_misc", test_field_misc, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
+  {"test_mem_overun", test_mem_overun, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_decimal_bug", test_decimal_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_explain_bug", test_explain_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_sshort_bug", test_sshort_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_stiny_bug", test_stiny_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
-  {"test_bug53311", test_bug53311, TEST_CONNECTION_NEW, 0, NULL , NULL},  
+  {"test_bug53311", test_bug53311, TEST_CONNECTION_NEW, 0, NULL , NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
