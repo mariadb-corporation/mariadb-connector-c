@@ -392,9 +392,9 @@ typedef struct st_mysql_time
   my_bool       neg;
   enum enum_mysql_timestamp_type time_type;
 } MYSQL_TIME;
+#define AUTO_SEC_PART_DIGITS 39
 #endif
 
-#define AUTO_SEC_PART_DIGITS 31
 #define SEC_PART_DIGITS 6
 #define MARIADB_INVALID_SOCKET -1
 
@@ -578,11 +578,10 @@ unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 my_bool STDCALL mariadb_reconnect(MYSQL *mysql);
 int STDCALL mariadb_cancel(MYSQL *mysql);
-void STDCALL mysql_debug(const char *debug __attribute__((unused)));
+void STDCALL mysql_debug(const char *debug);
 ulong STDCALL mysql_net_read_packet(MYSQL *mysql);
-ulong STDCALL mysql_net_field_length(uchar **packet);
+ulong STDCALL mysql_net_field_length(unsigned char **packet);
 my_bool STDCALL mysql_embedded();
-void STDCALL mysql_debug(const char *debug __attribute__((unused)));
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 
 /* Async API */
