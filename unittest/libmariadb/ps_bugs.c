@@ -4338,7 +4338,6 @@ static int test_conc198(MYSQL *mysql)
   MYSQL_BIND my_bind[1];
   int32 a;
   int rc;
-  const char *stmt_text;
   int num_rows= 0;
   ulong type;
   ulong prefetch_rows= 3;
@@ -4370,7 +4369,6 @@ static int test_conc198(MYSQL *mysql)
   rc= mysql_stmt_attr_set(stmt2, STMT_ATTR_PREFETCH_ROWS,
                           (void*) &prefetch_rows);
   check_stmt_rc(rc, stmt2);
-  stmt_text= "select * from t1";
   rc= mysql_stmt_prepare(stmt1, "SELECT * FROM t1 ORDER by id ASC" , -1);
   check_stmt_rc(rc, stmt1);
   rc= mysql_stmt_prepare(stmt2, "SELECT * FROM t1 ORDER by id DESC", -1);
@@ -4389,20 +4387,12 @@ static int test_conc198(MYSQL *mysql)
   mysql_stmt_bind_result(stmt2, my_bind);
 
   while ((rc= mysql_stmt_fetch(stmt1)) == 0)
-  {
-    diag("a=%d", a);
     ++num_rows;
-  }
   FAIL_UNLESS(num_rows == 9, "num_rows != 9");
-
-  diag("---------------");
 
   num_rows= 0;
   while ((rc= mysql_stmt_fetch(stmt2)) == 0)
-  {
-    diag("a=%d", a);
     ++num_rows;
-  }
   FAIL_UNLESS(num_rows == 9, "num_rows != 9");
 
   rc= mysql_stmt_close(stmt1);

@@ -267,9 +267,9 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
   /* do we have some prefetched rows available ? */
   if (stmt->result_cursor)
     return(stmt_buffered_fetch(stmt, row));
-  if (stmt->mysql->server_status & SERVER_STATUS_LAST_ROW_SENT)
-    stmt->mysql->server_status&=  ~SERVER_STATUS_LAST_ROW_SENT;
-  if (!(stmt->upsert_status.server_status & SERVER_STATUS_LAST_ROW_SENT))
+  if (stmt->upsert_status.server_status & SERVER_STATUS_LAST_ROW_SENT)
+    stmt->upsert_status.server_status&=  ~SERVER_STATUS_LAST_ROW_SENT;
+  else
   {
     int4store(buf, stmt->stmt_id);
     int4store(buf + STMT_ID_LENGTH, stmt->prefetch_rows);
@@ -1089,7 +1089,7 @@ static my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove)
 
 my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
 {
-  if (stmt && stmt->mysql && stmt->mysql->net.vio)
+  if (stmt && stmt->mysql && stmt->mysql->net.pvio)
     mysql_stmt_internal_reset(stmt, 1);
 
   net_stmt_close(stmt, 1);
@@ -1791,7 +1791,7 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
     {
       /* reset statement on server side */
       if (stmt->mysql && stmt->mysql->status == MYSQL_STATUS_READY &&
-          stmt->mysql->net.vio)
+          stmt->mysql->net.pvio)
       {
         unsigned char cmd_buf[STMT_ID_LENGTH];
         int4store(cmd_buf, stmt->stmt_id);

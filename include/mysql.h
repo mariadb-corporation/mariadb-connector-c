@@ -371,6 +371,13 @@ typedef struct st_mysql_res {
   my_bool       is_ps;
 } MYSQL_RES;
 
+typedef struct
+{
+  unsigned long *p_max_allowed_packet;
+  unsigned long *p_net_buffer_length;
+  void *extension;
+} MYSQL_PARAMETERS;
+
 #ifndef _mysql_time_h_
 enum enum_mysql_timestamp_type
 {
@@ -571,6 +578,12 @@ unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 my_bool STDCALL mariadb_reconnect(MYSQL *mysql);
 int STDCALL mariadb_cancel(MYSQL *mysql);
+void STDCALL mysql_debug(const char *debug __attribute__((unused)));
+ulong STDCALL mysql_net_read_packet(MYSQL *mysql);
+ulong STDCALL mysql_net_field_length(uchar **packet);
+my_bool STDCALL mysql_embedded();
+void STDCALL mysql_debug(const char *debug __attribute__((unused)));
+MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 
 /* Async API */
 int STDCALL mysql_close_start(MYSQL *sock);

@@ -28,7 +28,9 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_close
  mysql_commit
  mysql_data_seek
+ mysql_debug
  mysql_dump_debug_info
+ mysql_embedded
  mysql_eof
  mysql_errno
  mysql_error
@@ -50,6 +52,7 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_get_host_info
  mysql_get_option
  mysql_get_optionv
+ mysql_get_parameters
  mysql_get_proto_info
  mysql_get_server_info
  mysql_get_server_name
@@ -70,6 +73,8 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_load_plugin
  mysql_load_plugin_v
  mysql_more_results
+ mysql_net_field_length
+ mysql_net_read_packet
  mysql_next_result
  mysql_num_fields
  mysql_num_rows
