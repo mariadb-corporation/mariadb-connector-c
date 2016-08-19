@@ -353,7 +353,7 @@ MK_ASYNC_START_BODY(
     parms.db= db;
     parms.port= port;
     parms.unix_socket= unix_socket;
-    parms.client_flags= client_flags;
+    parms.client_flags= client_flags | CLIENT_REMEMBER_OPTIONS;
   },
   NULL,
   r_ptr,
@@ -387,34 +387,34 @@ MK_ASYNC_INTERNAL_BODY(
 int STDCALL
 mysql_real_query_start(int *ret, MYSQL *mysql, const char *stmt_str, size_t length)
 {
-  int res;                                                                    
-  struct mysql_async_context *b;                                              
-  struct mysql_real_query_params parms;                                               
-                                                                              
-  b= mysql->options.extension->async_context;  
+  int res;
+  struct mysql_async_context *b;
+  struct mysql_real_query_params parms;
+
+  b= mysql->options.extension->async_context;
   {
     WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.stmt_str= stmt_str;
     parms.length= length;
   }
-                                                                              
-  b->active= 1;                                                               
+
+  b->active= 1;
   res= my_context_spawn(&b->async_context, mysql_real_query_start_internal, &parms);
-  b->active= b->suspended= 0;                                                 
-  if (res > 0)                                                                
-  {                                                                           
-    /* Suspended. */                                                          
-    b->suspended= 1;                                                          
-    return b->events_to_wait_for;                                             
-  }                                                                           
-  if (res < 0)                                                                
-  {                                                                           
-    set_mariadb_error((mysql), CR_OUT_OF_MEMORY, unknown_sqlstate);         
-    *ret= 1;                                                            
-  }                                                                           
-  else                                                                        
-    *ret= b->ret_result.r_int;                                              
+  b->active= b->suspended= 0;
+  if (res > 0)
+  {
+    /* Suspended. */
+    b->suspended= 1;
+    return b->events_to_wait_for;
+  }
+  if (res < 0)
+  {
+    set_mariadb_error((mysql), CR_OUT_OF_MEMORY, unknown_sqlstate);
+    *ret= 1;
+  }
+  else
+    *ret= b->ret_result.r_int;
   return 0;
 
 }
