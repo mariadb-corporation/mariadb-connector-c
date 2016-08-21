@@ -501,7 +501,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
     MYSQL_TIME *t= (MYSQL_TIME *)ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
                                                       stmt->params[column].buffer, row_nr);
     char t_buffer[MAX_DATETIME_STR_LEN];
-    uint len;
+    uint len= 0;
 
     int2store(t_buffer + 1, t->year);
     t_buffer[3]= (char) t->month;
@@ -512,7 +512,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
     if (t->second_part)
     {
       int4store(t_buffer + 8, t->second_part);
-      len= 12;
+      len= 11;
     }
     else if (t->hour || t->minute || t->second)
       len= 7;

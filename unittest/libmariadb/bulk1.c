@@ -159,6 +159,8 @@ static int bulk2(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
+  mysql_stmt_close(stmt);
+
   return OK;
 }
 

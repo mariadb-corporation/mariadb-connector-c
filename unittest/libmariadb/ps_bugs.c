@@ -3028,7 +3028,7 @@ static int test_bug8330(MYSQL *mysql)
   int i, rc;
   const char *query= "select a,b from t1 where a=?";
   MYSQL_BIND my_bind[2];
-  long lval[2];
+  long lval[2]= {1,2};
 
   stmt_text= "drop table if exists t1";
   /* in case some previos test failed */
@@ -3354,6 +3354,7 @@ static int test_decimal_bug(MYSQL *mysql)
   */
   memset(my_bind, '\0', sizeof(my_bind));
 
+  memset(data, 0, sizeof(data));
   my_bind[0].buffer_type= MYSQL_TYPE_NEWDECIMAL;
   my_bind[0].buffer= (void *)data;
   my_bind[0].buffer_length= 25;

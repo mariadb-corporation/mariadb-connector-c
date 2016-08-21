@@ -184,7 +184,6 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
 {
   MYSQL_STMT   *stmt= 0;
   uint         rc, i, count= row_count;
-  ulong        length[4]= {0,0,0,0};
   MYSQL_BIND   my_bind[4];
   my_bool      is_null[4]= {0,0,0,0};
   MYSQL_TIME   tm[4];
@@ -203,7 +202,6 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
     its members.
   */
   memset(my_bind, '\0', sizeof(my_bind));
-  memset(tm,  0, sizeof(tm));
 
   my_bind[0].buffer_type= MYSQL_TYPE_TIMESTAMP;
   my_bind[1].buffer_type= MYSQL_TYPE_TIME;
@@ -214,9 +212,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
   {
     my_bind[i].buffer= (void *) &tm[i];
     my_bind[i].is_null= &is_null[i];
-    my_bind[i].length= &length[i];
-    my_bind[i].buffer_length= 30;
-    length[i]= 20;
+    my_bind[i].buffer_length= sizeof(MYSQL_TIME);
   }
 
   second_part= 0;
@@ -236,6 +232,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
   {
     for (i= 0; i < (int) array_elements(my_bind); i++)
     {
+      memset(&tm[i],  0, sizeof(MYSQL_TIME));
       tm[i].neg= 0;
       tm[i].second_part= second_part+count;
       if (my_bind[i].buffer_type != MYSQL_TYPE_TIME)
@@ -3414,7 +3411,6 @@ static int test_double_compare(MYSQL *mysql)
   my_bind[1].buffer= (void *)&real_data;
   my_bind[1].buffer_length= sizeof(real_data);
   my_bind[1].length= &length[1];
-  length[1]= 10;
 
   /* double */
   my_bind[2].buffer_type= MYSQL_TYPE_DOUBLE;
@@ -3422,6 +3418,7 @@ static int test_double_compare(MYSQL *mysql)
 
   tiny_data= 1;
   strcpy(real_data, "10.2");
+  length[1]= strlen(real_data);
   double_data= 34.5;
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
