@@ -4868,7 +4868,53 @@ int test_notrunc(MYSQL *mysql)
   return OK;
 }
 
+static int test_bit2tiny(MYSQL *mysql)
+{
+  MYSQL_BIND bind[2];
+  char       data[11];
+  unsigned   long length[2];
+  my_bool    is_null[2], error[2];
+  char       *query = "SELECT val FROM justbit";
+  MYSQL_STMT *stmt;
+  int rc;
+
+  mysql_query(mysql, "DROP TABLE IF EXISTS justbit");
+  mysql_query(mysql, "CREATE TABLE justbit(val bit(1) not null)");
+  mysql_query(mysql, "INSERT INTO justbit values (1)");
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, '\0', sizeof(bind));
+
+  bind[0].buffer_type=  MYSQL_TYPE_TINY;
+  bind[0].buffer=       &data[0];
+  bind[0].buffer_length= 1;
+  bind[0].is_null=      &is_null[0];
+  bind[0].length=       &length[0];
+  bind[0].error=        &error[0];
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_fetch(stmt);
+
+  FAIL_IF(data[0] != 1, "Value should be 1");
+
+  mysql_stmt_free_result(stmt);
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_bit2tiny", test_bit2tiny, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc97", test_conc97, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc83", test_conc83, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc60", test_conc60, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
