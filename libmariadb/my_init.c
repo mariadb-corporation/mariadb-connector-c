@@ -161,9 +161,6 @@ Voluntary context switches %ld, Involuntary context switches %ld\n",
 #endif
   }
 #ifdef THREAD
-  pthread_mutex_destroy(&THR_LOCK_malloc);
-  pthread_mutex_destroy(&THR_LOCK_open);
-  pthread_mutex_destroy(&THR_LOCK_net);
   DBUG_END();				/* Must be done before my_thread_end */
   my_thread_end();
   my_thread_global_end();

@@ -102,6 +102,10 @@ void my_thread_global_end(void)
 #ifdef HAVE_OPENSSL
   pthread_mutex_destroy(&LOCK_ssl_config);
 #endif
+  pthread_mutex_destroy(&THR_LOCK_malloc);
+  pthread_mutex_destroy(&THR_LOCK_open);
+  pthread_mutex_destroy(&THR_LOCK_lock);
+  pthread_mutex_destroy(&THR_LOCK_net);
 }
 
 static long thread_id=0;
