@@ -55,6 +55,8 @@ enum enum_pvio_operation {
   PVIO_WRITE=1
 };
 
+#define SHM_DEFAULT_NAME "MYSQL"
+
 struct st_pvio_callback;
 
 typedef struct st_pvio_callback {

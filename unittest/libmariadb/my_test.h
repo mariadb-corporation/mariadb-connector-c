@@ -122,6 +122,9 @@ static char *password = 0;
 static unsigned int port = 0;
 static char *socketname = 0;
 static char *username = 0;
+#ifdef _WIN32
+static int protocol= 0;
+#endif
 /*
 static struct my_option test_options[] =
 {
@@ -312,18 +315,23 @@ static void usage()
   printf("-d database\n");
   printf("-S socketname\n");
   printf("-P port number\n");
+  printf("-w protocol mode (windows only: 1= named pipe, 2= shared memory)");
   printf("?  displays this help and exits\n");
-}
 
 void get_options(int argc, char **argv)
 {
   int c= 0;
 
-  while ((c=getopt(argc,argv, "h:u:p:d:P:S:?")) >= 0)
+  while ((c=getopt(argc,argv, "h:u:p:d:w:P:S:?")) >= 0)
   {
     switch(c) {
     case 'h':
       hostname= optarg;
+      break;
+    case 'w':
+#ifdef _WIN32
+      protocol= atoi(optarg);
+#endif      
       break;
     case 'u':
       username= optarg;
@@ -388,7 +396,12 @@ MYSQL *test_connect(struct my_tests_st *test) {
     diag("%s", "mysql_init failed - exiting");
     return(NULL);
   }
-
+#ifdef _WIN32
+  switch (protocol) {
+    case 1: /* named pipe */
+    case 2: /* shared memory */
+  }
+#endif
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &truncation_report);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
 
@@ -414,6 +427,7 @@ MYSQL *test_connect(struct my_tests_st *test) {
     mysql_close(mysql);
     return(NULL);
   }
+  printf("Connection: %s\n", mysql->host_info);
   return(mysql);
 }
 

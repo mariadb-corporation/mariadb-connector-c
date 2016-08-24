@@ -1221,8 +1221,15 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   else
 #endif
 #else
+  if (mysql->options.protocol == MYSQL_PROTOCOL_MEMORY ||
+      mysql->options.shared_memory_base_name)
+  {
+    cinfo.host= mysql->options.shared_memory_base_name;
+    cinfo.type= PVIO_TYPE_SHAREDMEM;
+    sprintf(host_info=buff,ER(CR_SHARED_MEMORY_CONNECTION), cinfo.host ? cinfo.host : SHM_DEFAULT_NAME);
+  }
    /* named pipe */
-  if (mysql->options.protocol == MYSQL_PROTOCOL_PIPE ||
+  else if (mysql->options.protocol == MYSQL_PROTOCOL_PIPE ||
 	  (host && strcmp(host,LOCAL_HOST_NAMEDPIPE) == 0))
   {
     cinfo.type= PVIO_TYPE_NAMEDPIPE;
@@ -2621,6 +2628,11 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MYSQL_OPT_PROTOCOL:
     mysql->options.protocol= *((uint *)arg1);
     break;
+#ifdef _WIN32
+  case MYSQL_SHARED_MEMORY_BASE_NAME:
+    OPT_SET_VALUE_STR(&mysql->options, shared_memory_base_name, arg1);
+    break;
+#endif
   case MYSQL_OPT_READ_TIMEOUT:
     mysql->options.read_timeout= *(uint *)arg1;
     break;

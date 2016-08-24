@@ -139,9 +139,11 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
 /* {{{ my_bool ma_pvio_is_alive */
 my_bool ma_pvio_is_alive(MARIADB_PVIO *pvio)
 {
+  if (!pvio)
+    return FALSE;
   if (pvio->methods->is_alive)
     return pvio->methods->is_alive(pvio);
-  return FALSE;
+  return TRUE;
 }
 /* }}} */
 

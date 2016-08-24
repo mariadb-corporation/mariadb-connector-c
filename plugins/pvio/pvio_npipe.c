@@ -46,6 +46,7 @@ int pvio_npipe_keepalive(MARIADB_PVIO *pvio);
 my_bool pvio_npipe_get_handle(MARIADB_PVIO *pvio, void *handle);
 my_bool pvio_npipe_is_blocking(MARIADB_PVIO *pvio);
 int pvio_npipe_shutdown(MARIADB_PVIO *pvio);
+my_bool pvio_npipe_is_alive(MARIADB_PVIO *pvio);
 
 struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_set_timeout,
@@ -62,7 +63,7 @@ struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_keepalive,
   pvio_npipe_get_handle,
   pvio_npipe_is_blocking,
-  NULL,
+  pvio_npipe_is_alive,
   NULL,
   pvio_npipe_shutdown
 };
@@ -366,5 +367,17 @@ int pvio_npipe_shutdown(MARIADB_PVIO *pvio)
     return(CancelIoEx(h, NULL) ? 0 : 1);
   }
   return 1;
+}
+
+my_bool pvio_npipe_is_alive(MARIADB_PVIO *pvio)
+{
+  HANDLE handle;
+  if (!pvio || !pvio->data)
+    return FALSE;
+    handle= ((struct st_pvio_npipe *)pvio->data)->pipe;
+  /* Copy data fron named pipe without removing it */
+  if (PeekNamedPipe(handle, NULL, 0, NULL, NULL, NULL))
+    return TRUE;
+  return test(GetLastError() != ERROR_BROKEN_PIPE);
 }
 #endif
