@@ -325,12 +325,15 @@ ma_net_write_buff(NET *net,const char *packet, size_t len)
   return 0;
 }
 
+unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
+
 int net_add_multi_command(NET *net, uchar command, const uchar *packet,
                           size_t length)
 {
   size_t left_length;
   size_t required_length, current_length;
-  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE;
+  /* 9 - maximum possible length of data stored in net length format */
+  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE + 9;
 
   /* We didn't allocate memory in ma_net_init since it was too early to
    * detect if the server supports COM_MULTI command */
@@ -358,8 +361,8 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
       goto error;
     net->extension->mbuff_pos = net->extension->mbuff + current_length;
   }
-  int3store(net->extension->mbuff_pos, length + 1);
-  net->extension->mbuff_pos+= 3;
+  net->extension->mbuff_pos= mysql_net_store_length(net->extension->mbuff_pos,
+                                                    length + 1);
   *net->extension->mbuff_pos= command;
   net->extension->mbuff_pos++;
   memcpy(net->extension->mbuff_pos, packet, length);

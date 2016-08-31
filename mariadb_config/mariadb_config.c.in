@@ -13,7 +13,7 @@ static char *mariadb_progname;
 #define CFLAGS  INCLUDE " @CMAKE_C_FLAGS@"
 #define VERSION "@MARIADB_CLIENT_VERSION@"
 #define PLUGIN_DIR "@PREFIX_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@/@PLUGIN_INSTALL_DIR@"
-#define SOCKET  "@MARIADBL_UNIX_ADDR@"
+#define SOCKET  "@MARIADB_UNIX_ADDR@"
 #define PORT "@MARIADB_PORT@"
 
 static struct option long_options[]=
