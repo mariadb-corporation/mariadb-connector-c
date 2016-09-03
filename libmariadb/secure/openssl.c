@@ -502,6 +502,11 @@ void *ma_tls_init(MYSQL *mysql)
   if (!(ssl= SSL_new(SSL_context)))
     goto error;
 
+  if (mysql->options.host) {
+    if (!SSL_set_tlsext_host_name(ssl, mysql->options.host))
+      goto error;
+  }
+
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
 

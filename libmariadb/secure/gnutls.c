@@ -197,6 +197,8 @@ void *ma_tls_init(MYSQL *mysql)
   int ssl_error= 0;
   const char *err;
 
+  char *host;
+
   pthread_mutex_lock(&LOCK_gnutls_config);
 
   if ((ssl_error= ma_tls_set_certs(mysql)) < 0)
@@ -204,6 +206,13 @@ void *ma_tls_init(MYSQL *mysql)
 
   if ((ssl_error = gnutls_init(&ssl, GNUTLS_CLIENT & GNUTLS_NONBLOCK)) < 0)
     goto error;
+
+  if (mysql->options.host) {
+    host = mysql->options.host;
+    if ((ssl_error = gnutls_server_name_set(ssl, GNUTLS_NAME_DNS, host, strlen(host))) != 0)
+      goto error;
+  }
+
   gnutls_session_set_ptr(ssl, (void *)mysql);
 
   ssl_error= gnutls_priority_set_direct(ssl, "NORMAL", &err);
