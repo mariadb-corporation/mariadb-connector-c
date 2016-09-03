@@ -54,8 +54,8 @@ my_bool _hash_init(HASH *hash,uint default_array_elements, uint key_offset,
 		  void (*free_element)(void*), uint flags CALLER_INFO_PROTO);
 void hash_free(HASH *tree);
 uchar *hash_element(HASH *hash,uint idx);
-gptr hash_search(HASH *info,const uchar *key,uint length);
-gptr hash_next(HASH *info,const uchar *key,uint length);
+void * hash_search(HASH *info,const uchar *key,uint length);
+void * hash_next(HASH *info,const uchar *key,uint length);
 my_bool hash_insert(HASH *info,const uchar *data);
 my_bool hash_delete(HASH *hash,uchar *record);
 my_bool hash_update(HASH *hash,uchar *record,uchar *old_key,uint old_key_length);

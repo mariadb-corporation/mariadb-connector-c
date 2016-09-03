@@ -37,7 +37,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 /* set connection options */
 struct my_option_st opt_bug8378[] = {
-  {MYSQL_SET_CHARSET_NAME, "gbk"},
+  {MYSQL_SET_CHARSET_NAME, (char *) "gbk"},
   {0, NULL}
 };
 
@@ -120,7 +120,7 @@ int test_escaping(MYSQL *mysql)
 {
   int i= 0, rc, len;
   char out[20];
-  char *escape_chars[] = {"'", "\x0", "\n", "\r", "\\", "\0", NULL};
+  const char *escape_chars[] = {"'", "\x0", "\n", "\r", "\\", "\0", NULL};
 
   /* reset sql_mode, mysql_change_user call doesn't reset it */
   rc= mysql_query(mysql, "SET sql_mode=''");
@@ -659,9 +659,9 @@ static int test_bug_54100(MYSQL *mysql)
 
 /* We need this internal function for the test */
 
-static int test_utf16_utf32_noboms(MYSQL *mysql)
+static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
 {
-  char          *csname[]= {"utf16", "utf16le", "utf32", "utf8"};
+  const char *csname[]= {"utf16", "utf16le", "utf32", "utf8"};
   MARIADB_CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
 
   const int     UTF8= sizeof(csname)/sizeof(char*) - 1;
@@ -676,7 +676,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
   int    i, error;
   size_t rc, in_len, out_len;
 
-  for (i= 0; i < sizeof(csname)/sizeof(char*); ++i)
+  for (i= 0; i < (int)(sizeof(csname)/sizeof(char*)); ++i)
   {
     csinfo[i]= mariadb_get_charset_by_name(csname[i]);
 
@@ -693,9 +693,9 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
     out_len= sizeof(buffer);
 
     diag("Converting %s->%s", csname[i], csname[UTF8]);
-    rc= mariadb_convert_string(in_string[i], &in_len, csinfo[i], buffer, &out_len, csinfo[UTF8], &error);
+    rc= mariadb_convert_string((char *)in_string[i], &in_len, csinfo[i], buffer, &out_len, csinfo[UTF8], &error);
 
-    FAIL_IF(rc == -1, "Conversion failed");
+    FAIL_IF(rc == (size_t)-1, "Conversion failed");
     FAIL_IF(rc != in_oct_len[UTF8], "Incorrect number of written bytes");
 
     if (memcmp(buffer, in_string[UTF8], rc) != 0)
@@ -709,9 +709,9 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
     out_len= sizeof(buffer);
 
     diag("Converting %s->%s", csname[UTF8], csname[i]);
-    rc= mariadb_convert_string(in_string[UTF8], &in_len, csinfo[UTF8], buffer, &out_len, csinfo[i], &error);
+    rc= mariadb_convert_string((char *)in_string[UTF8], &in_len, csinfo[UTF8], buffer, &out_len, csinfo[i], &error);
 
-    FAIL_IF(rc==-1, "Conversion failed");
+    FAIL_IF(rc == (size_t)-1, "Conversion failed");
     diag("rc=%lu oct_len: %lu", rc, in_oct_len[i]);
     FAIL_IF(rc != in_oct_len[i], "Incorrect number of written bytes");
 
@@ -726,10 +726,10 @@ static int test_utf16_utf32_noboms(MYSQL *mysql)
   return OK;
 }
 
-static int charset_auto(MYSQL *my)
+static int charset_auto(MYSQL *my __attribute__((unused)))
 {
   const char *csname1, *csname2;
-  char *osname;
+  const char *osname;
   MYSQL *mysql= mysql_init(NULL);
   int rc;
 

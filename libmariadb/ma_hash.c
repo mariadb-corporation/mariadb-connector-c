@@ -95,9 +95,9 @@ static inline char*
 hash_key(HASH *hash,const uchar *record,uint *length,my_bool first)
 {
   if (hash->get_key)
-    return (*hash->get_key)(record,(uint *)length,first);
+    return (char *)(*hash->get_key)(record,(uint *)length,first);
   *length=hash->key_length;
-  return (uchar*) record+hash->key_offset;
+  return (char*) record+hash->key_offset;
 }
 
 	/* Calculate pos according to keys */
@@ -202,7 +202,7 @@ unsigned int rec_hashnr(HASH *hash,const uchar *record)
 	/* Search after a record based on a key */
 	/* Sets info->current_ptr to found record */
 
-gptr hash_search(HASH *hash,const uchar *key,uint length)
+void* hash_search(HASH *hash,const uchar *key,uint length)
 {
   HASH_LINK *pos;
   uint flag,idx;
@@ -237,7 +237,7 @@ gptr hash_search(HASH *hash,const uchar *key,uint length)
 	/* Get next record with identical key */
 	/* Can only be called if previous calls was hash_search */
 
-gptr hash_next(HASH *hash,const uchar *key,uint length)
+void *hash_next(HASH *hash,const uchar *key,uint length)
 {
   HASH_LINK *pos;
   uint idx;

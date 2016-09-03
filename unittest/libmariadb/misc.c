@@ -164,7 +164,7 @@ static int bug31418_impl()
   return OK;
 }
 
-static int test_bug31418(MYSQL *mysql)
+static int test_bug31418(MYSQL *unused __attribute__((unused)))
 {
  int i;
   /* Run test case for BUG#31418 for three different connections. */
@@ -312,7 +312,7 @@ static int test_wl4166_1(MYSQL *mysql)
   ulong      length[7];
   my_bool    is_null[7];
   MYSQL_BIND my_bind[7];
-  static char *query;
+  const char *query;
   int rc;
   int i;
 
@@ -955,7 +955,7 @@ static int test_conc_114(MYSQL *mysql)
 }
 
 /* run with valgrind */
-static int test_conc117(MYSQL *mysql)
+static int test_conc117(MYSQL *unused __attribute__((unused)))
 {
   my_bool reconnect= 1;
   MYSQL *my= mysql_init(NULL);
@@ -973,7 +973,7 @@ static int test_conc117(MYSQL *mysql)
   return OK;
 }
 
-static int test_read_timeout(MYSQL *mysql)
+static int test_read_timeout(MYSQL *unused __attribute__((unused)))
 {
   int timeout= 5, rc;
   MYSQL *my= mysql_init(NULL);
@@ -1122,7 +1122,7 @@ static int test_zerofill(MYSQL *mysql)
   rc= mysql_query(mysql, "SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
 
-  if (res= mysql_store_result(mysql))
+  if ((res= mysql_store_result(mysql)))
   {
     row= mysql_fetch_row(res);
     diag("zerofill: %s", row[0]);

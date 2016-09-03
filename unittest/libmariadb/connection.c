@@ -599,7 +599,7 @@ int test_conc21(MYSQL *mysql)
   MYSQL_RES *res= NULL;
   MYSQL_ROW row;
   char tmp[256];
-  int check_server_version= 0;
+  unsigned int check_server_version= 0;
   int major=0, minor= 0, patch=0;
 
   rc= mysql_query(mysql, "SELECT @@version");
@@ -621,7 +621,7 @@ int test_conc21(MYSQL *mysql)
   return OK;
 }
 
-int test_conc26(MYSQL *my)
+int test_conc26(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
@@ -642,7 +642,7 @@ int test_conc26(MYSQL *my)
   return OK;
 }
 
-int test_connection_timeout(MYSQL *my)
+int test_connection_timeout(MYSQL *unused __attribute__((unused)))
 {
   unsigned int timeout= 5;
   time_t start, elapsed;
@@ -661,7 +661,7 @@ int test_connection_timeout(MYSQL *my)
   return OK;
 }
 
-int test_connection_timeout2(MYSQL *my)
+int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
 {
   unsigned int timeout= 5;
   time_t start, elapsed;
@@ -681,7 +681,7 @@ int test_connection_timeout2(MYSQL *my)
   return OK;
 }
 
-int test_connection_timeout3(MYSQL *my)
+int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
 {
   unsigned int timeout= 5;
   unsigned int read_write_timeout= 10;
@@ -756,9 +756,9 @@ static int test_conc118(MYSQL *mysql)
   return OK;
 }
 
-static int test_wrong_bind_address(MYSQL *my)
+static int test_wrong_bind_address(MYSQL *unused __attribute__((unused)))
 {
-  char *bind_addr= "100.188.111.112";
+  const char *bind_addr= "100.188.111.112";
   MYSQL *mysql;
 
   if (!hostname || !strcmp(hostname, "localhost"))
@@ -827,7 +827,7 @@ static int test_bind_address(MYSQL *my)
   return OK;
 }
 
-static int test_get_options(MYSQL *my)
+static int test_get_options(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   int options_int[]= {MYSQL_OPT_CONNECT_TIMEOUT, MYSQL_OPT_LOCAL_INFILE,
@@ -843,18 +843,19 @@ static int test_get_options(MYSQL *my)
                        MYSQL_OPT_SSL_CIPHER, MYSQL_OPT_BIND, MARIADB_OPT_SSL_FP, MARIADB_OPT_SSL_FP_LIST,
                        MARIADB_OPT_TLS_PASSPHRASE, 0};
 
-  char *init_command[3]= {"SET @a:=1", "SET @b:=2", "SET @c:=3"};
+  const char *init_command[3]= {"SET @a:=1", "SET @b:=2", "SET @c:=3"};
   int elements= 0;
   char **command;
 
 
   int intval[2]= {1, 0};
   my_bool boolval[2]= {1, 0};
-  char *char1= "test", *char2;
+  const char *char1= "test";
+  char *char2;
   int i;
   MYSQL *userdata;
-  char *attr_key[] = {"foo1", "foo2", "foo3"};
-  char *attr_val[] = {"bar1", "bar2", "bar3"};
+  const char *attr_key[] = {"foo1", "foo2", "foo3"};
+  const char *attr_val[] = {"bar1", "bar2", "bar3"};
   char **key, **val;
 
   for (i=0; options_int[i]; i++)
@@ -906,7 +907,7 @@ static int test_get_options(MYSQL *my)
   free(val);
 
   mysql_optionsv(mysql, MARIADB_OPT_USERDATA, "my_app", (void *)mysql);
-  mysql_get_optionv(mysql, MARIADB_OPT_USERDATA, "my_app", &userdata);
+  mysql_get_optionv(mysql, MARIADB_OPT_USERDATA, (char *)"my_app", &userdata);
 
   FAIL_IF(mysql != userdata, "wrong userdata");
   mysql_close(mysql);
@@ -943,6 +944,7 @@ static int test_sess_track_db(MYSQL *mysql)
 
   rc= mysql_query(mysql, "SET NAMES utf8");
   check_mysql_rc(rc, mysql);
+  diag("charset: %s", mysql->charset->csname);
   FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
   if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
   do {

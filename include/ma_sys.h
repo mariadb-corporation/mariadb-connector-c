@@ -368,12 +368,12 @@ typedef struct st_ma_mem_root {
 
 	/* Prototypes for mysys and my_func functions */
 
-extern gptr _mymalloc(size_t uSize,const char *sFile,
+extern void * _mymalloc(size_t uSize,const char *sFile,
 		      uint uLine, myf MyFlag);
-extern gptr _myrealloc(gptr pPtr,size_t uSize,const char *sFile,
+extern void * _myrealloc(void * pPtr,size_t uSize,const char *sFile,
 		       uint uLine, myf MyFlag);
 extern void *ma_multi_malloc(myf MyFlags, ...);
-extern void _myfree(gptr pPtr,const char *sFile,uint uLine, myf MyFlag);
+extern void _myfree(void * pPtr,const char *sFile,uint uLine, myf MyFlag);
 extern int _sanity(const char *sFile,unsigned int uLine);
 #ifndef TERMINATE
 extern void TERMINATE(FILE *file);
@@ -507,11 +507,11 @@ File create_temp_file(char *to, const char *dir, const char *pfx,
 extern my_bool ma_init_dynamic_array(DYNAMIC_ARRAY *array,uint element_size,
 	  uint init_alloc,uint alloc_increment CALLER_INFO_PROTO);
 #define ma_init_dynamic_array_ci(A,B,C,D) ma_init_dynamic_array(A,B,C,D ORIG_CALLER_INFO)
-extern my_bool ma_insert_dynamic(DYNAMIC_ARRAY *array,gptr element);
+extern my_bool ma_insert_dynamic(DYNAMIC_ARRAY *array,void * element);
 extern unsigned char *ma_alloc_dynamic(DYNAMIC_ARRAY *array);
 extern unsigned char *ma_pop_dynamic(DYNAMIC_ARRAY*);
-extern my_bool ma_set_dynamic(DYNAMIC_ARRAY *array,gptr element,uint array_index);
-extern void ma_get_dynamic(DYNAMIC_ARRAY *array,gptr element,uint array_index);
+extern my_bool ma_set_dynamic(DYNAMIC_ARRAY *array,void * element,uint array_index);
+extern void ma_get_dynamic(DYNAMIC_ARRAY *array,void * element,uint array_index);
 extern void ma_delete_dynamic(DYNAMIC_ARRAY *array);
 extern void ma_delete_dynamic_element(DYNAMIC_ARRAY *array, uint array_index);
 extern void ma_freeze_size(DYNAMIC_ARRAY *array);

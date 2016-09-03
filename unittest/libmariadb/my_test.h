@@ -113,10 +113,10 @@ struct my_tests_st
   int   connection;
   ulong connect_flags;
   struct my_option_st *options;
-  char *skipmsg;
+  const char *skipmsg;
 };
 
-static char *schema = 0;
+static const char *schema = 0;
 static char *hostname = 0;
 static char *password = 0;
 static unsigned int port = 0;
@@ -159,11 +159,13 @@ static struct my_option test_options[] =
 int do_verify_prepare_field(MYSQL_RES *result,
                             unsigned int no, const char *name,
                             const char *org_name,
-                            enum enum_field_types type,
+                            enum enum_field_types type __attribute__((unused)),
                             const char *table,
                             const char *org_table, const char *db,
-                            unsigned long length, const char *def,
-                            const char *file, int line)
+                            unsigned long length __attribute__((unused)), 
+                            const char *def __attribute__((unused)),
+                            const char *file __attribute__((unused)),
+                            int line __attribute__((unused)))
 {
   MYSQL_FIELD *field;
 /*  MARIADB_CHARSET_INFO *cs; */
@@ -353,7 +355,7 @@ void get_options(int argc, char **argv)
 }
 
 
-int check_variable(MYSQL *mysql, char *variable, char *value)
+int check_variable(MYSQL *mysql, const char *variable, const char *value)
 {
   char query[MAX_TEST_QUERY_LENGTH];
   MYSQL_RES *result;

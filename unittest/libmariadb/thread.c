@@ -4,7 +4,7 @@
 #include "my_test.h"
 #include <ma_pthread.h>
 
-static int basic_connect(MYSQL *mysql)
+static int basic_connect(MYSQL *unused __attribute__((unused)))
 {
   MYSQL_ROW row;
   MYSQL_RES *res;

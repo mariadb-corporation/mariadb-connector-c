@@ -31,7 +31,7 @@ static struct option long_options[]=
   {NULL, 0, 0, 0}
 };
 
-static char *values[]=
+static const char *values[]=
 {
   CFLAGS,
   NULL,

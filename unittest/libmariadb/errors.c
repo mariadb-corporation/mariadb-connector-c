@@ -44,7 +44,7 @@ static int test_ps_client_warnings(MYSQL *mysql)
 {
   int        rc;
   MYSQL_STMT *stmt;
-  char       *query= "DROP TABLE IF EXISTS test_non_exists";
+  const char *query= "DROP TABLE IF EXISTS test_non_exists";
 
   rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
   check_mysql_rc(rc, mysql); 
@@ -109,7 +109,7 @@ static int test_ps_client_errors(MYSQL *mysql)
 {
   int rc;
   MYSQL_STMT *stmt;
-  char *query= "DROP TABLE test_non_exists";
+  const char *query= "DROP TABLE test_non_exists";
 
   rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
   check_mysql_rc(rc, mysql);

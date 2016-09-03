@@ -47,14 +47,14 @@ static int test_conc97(MYSQL *mysql)
   return OK;
 }
 
-static int test_conc83(MYSQL *my)
+static int test_conc83(MYSQL *unused __attribute__((unused)))
 {
   MYSQL_STMT *stmt;
   int rc;
   MYSQL *mysql= mysql_init(NULL);
   my_bool reconnect= 1;
 
-  char *query= "SELECT 1,2,3 FROM DUAL";
+  const char *query= "SELECT 1,2,3 FROM DUAL";
 
   stmt= mysql_stmt_init(mysql);
 
@@ -91,7 +91,7 @@ static int test_conc60(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  char *query= "SELECT * FROM agendas";
+  const char *query= "SELECT * FROM agendas";
   my_bool x= 1;
 
   stmt= mysql_stmt_init(mysql);
@@ -3558,7 +3558,7 @@ static int test_multi_stmt(MYSQL *mysql)
   MYSQL_BIND  my_bind[2];
   ulong       length[2];
   my_bool     is_null[2];
-  static      char *query;
+  const char *query;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_multi_table");
   check_mysql_rc(rc, mysql);
@@ -3847,7 +3847,7 @@ static int test_order_param(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  static char *query;
+  const char *query;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -4677,7 +4677,7 @@ static int test_long_data1(MYSQL *mysql)
   int        rc;
   MYSQL_BIND bind[1];
   char query[MAX_TEST_QUERY_LENGTH];
-  char *data= "12345";
+  const char *data= "12345";
 
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
@@ -4715,7 +4715,7 @@ int test_blob_9000(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int rc;
   char buffer[9200];
-  char *query= "INSERT INTO tb9000 VALUES (?)";
+  const char *query= "INSERT INTO tb9000 VALUES (?)";
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS tb9000");
   check_mysql_rc(rc, mysql);
@@ -4743,7 +4743,7 @@ int test_fracseconds(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  char *str= "SELECT NOW(6)";
+  const char *str= "SELECT NOW(6)";
   char buffer[60], buffer1[60];
   MYSQL_BIND bind[2];
 
@@ -4818,7 +4818,7 @@ int test_notrunc(MYSQL *mysql)
   my_bool error= 0;
   unsigned long len= 1;
 
-  char *query= "SELECT '1234567890', 'foo' FROM DUAL";
+  const char *query= "SELECT '1234567890', 'foo' FROM DUAL";
 
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &trunc);
 
@@ -4863,7 +4863,7 @@ static int test_bit2tiny(MYSQL *mysql)
   char       data[11];
   unsigned   long length[2];
   my_bool    is_null[2], error[2];
-  char       *query = "SELECT val FROM justbit";
+  const char *query = "SELECT val FROM justbit";
   MYSQL_STMT *stmt;
   int rc;
 

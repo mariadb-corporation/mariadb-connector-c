@@ -79,6 +79,23 @@ MYSQL_FIELD * unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields, my_
 static my_bool is_not_null= 0;
 static my_bool is_null= 1;
 
+void stmt_set_error(MYSQL_STMT *stmt,
+                  unsigned int error_nr,
+                  const char *sqlstate,
+                  const char *format,
+                  ...)
+{
+  va_list ap;
+
+  stmt->last_errno= error_nr;
+  ma_strmake(stmt->sqlstate, sqlstate, SQLSTATE_LENGTH);
+  va_start(ap, format);
+  vsnprintf(stmt->last_error, MYSQL_ERRMSG_SIZE,
+            format ? format : ER(error_nr), ap);
+  va_end(ap);
+  return;
+}
+
 my_bool mthd_supported_buffer_type(enum enum_field_types type)
 {
   switch (type) {
@@ -116,7 +133,8 @@ my_bool mthd_supported_buffer_type(enum enum_field_types type)
 
 static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags);
 static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close);
-static int stmt_unbuffered_eof(MYSQL_STMT *stmt, uchar **row)
+static int stmt_unbuffered_eof(MYSQL_STMT *stmt __attribute__((unused)),
+                               uchar **row __attribute__((unused)))
 {
   return MYSQL_NO_DATA;
 }
@@ -603,6 +621,13 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
   uchar *start= NULL, *p;
 
+  if (!bulk_supported && stmt->array_size > 0)
+  {
+    stmt_set_error(stmt, CR_FUNCTION_NOT_SUPPORTED, SQLSTATE_UNKNOWN,
+                   CER(CR_FUNCTION_NOT_SUPPORTED), "Bulk operation");
+    return NULL;
+  }
+
 
   /* preallocate length bytes */
   /* check: gr */
@@ -677,12 +702,12 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
       {
         ulong size= 0;
         my_bool has_data= TRUE;
-        uchar indicator= 0;
+        char indicator= 0;
 
         if (bulk_supported && stmt->params[i].u.indicator)
         {
           if (stmt->row_size)
-            indicator= *(uchar *)(stmt->params[i].u.indicator + j * stmt->row_size);
+            indicator= *(char *)(stmt->params[i].u.indicator + j * stmt->row_size);
           else
             indicator= stmt->params[i].u.indicator[j];
           /* check if we need to send data */
@@ -720,8 +745,11 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           case MYSQL_TYPE_BIT:
           case MYSQL_TYPE_SET:
             size+= 5; /* max 8 bytes for size */
-            if (indicator == STMT_INDICATOR_NTS || (!stmt->row_size && stmt->params[i].length[j] == -1))
-              size+= strlen(ma_get_buffer_offset(stmt, stmt->params[i].buffer_type, stmt->params[i].buffer,j));
+            if (indicator == STMT_INDICATOR_NTS || 
+              (!stmt->row_size && stmt->params[i].length[j] == (unsigned long)-1))
+                size+= strlen(ma_get_buffer_offset(stmt, 
+                                                   stmt->params[i].buffer_type,
+                                                   stmt->params[i].buffer,j));
             else
               if (!stmt->row_size)
                 size+= (size_t)stmt->params[i].length[j];
@@ -1327,7 +1355,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
     return(1);
   }
 
-  if (length == -1)
+  if (length == (size_t) -1)
     length= strlen(query);
 
   mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);
@@ -1718,6 +1746,9 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   }
   request= (char *)mysql_stmt_execute_generate_request(stmt, &request_len);
 
+  if (!request)
+    return 1;
+
   ret= stmt->mysql->methods->db_command(mysql, COM_STMT_EXECUTE, request,
                                              request_len, 1, stmt);
 
@@ -1967,7 +1998,7 @@ unsigned long long STDCALL mysql_stmt_num_rows(MYSQL_STMT *stmt)
   return stmt->result.rows;
 }
 
-MYSQL_RES* STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt)
+MYSQL_RES* STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt __attribute__((unused)))
 {
   /* server doesn't deliver any information yet,
      so we just return NULL
@@ -2061,7 +2092,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
     return(1);
   }
 
-  if (length == -1)
+  if (length == (size_t) -1)
     length= strlen(stmt_str);
 
   mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);

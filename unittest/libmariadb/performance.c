@@ -27,7 +27,7 @@ static int perf1(MYSQL *mysql)
 {
   int rc;
   MYSQL_STMT *stmt;
-  char *stmtstr= "SELECT s.emp_no, s.salary, e.emp_no, e.first_name, e.last_name, e.gender FROM salaries s, employees e WHERE s.emp_no = e.emp_no";
+  const char *stmtstr= "SELECT s.emp_no, s.salary, e.emp_no, e.first_name, e.last_name, e.gender FROM salaries s, employees e WHERE s.emp_no = e.emp_no";
 
   rc= mysql_select_db(mysql, "employees");
   if (rc)

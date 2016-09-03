@@ -123,7 +123,7 @@ static int test_ssl(MYSQL *mysql)
     res= mysql_store_result(mysql);
     row= mysql_fetch_row(res);
     diag("user: %s", row[0]);
-    if (p= strchr(row[0], '@'))
+    if ((p= strchr(row[0], '@')))
       strcpy(sslhost, p+1);
     mysql_free_result(res);
   }
@@ -131,7 +131,7 @@ static int test_ssl(MYSQL *mysql)
   return OK;
 }
 
-static int test_ssl_cipher(MYSQL *unused)
+static int test_ssl_cipher(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *my;
   MYSQL_RES *res;
@@ -162,7 +162,7 @@ static int test_ssl_cipher(MYSQL *unused)
   return OK;
 }
 
-static int test_conc95(MYSQL *my)
+static int test_conc95(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
 
@@ -190,7 +190,7 @@ static int test_conc95(MYSQL *my)
   return OK;
 }
 
-static int test_multi_ssl_connections(MYSQL *unused)
+static int test_multi_ssl_connections(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql[50], *my;
   int i, rc;
@@ -255,7 +255,7 @@ static int test_multi_ssl_connections(MYSQL *unused)
 }
 
 #ifndef WIN32
-static void ssl_thread(void *dummy)
+static void ssl_thread(void *unused __attribute__((unused)))
 #else
 DWORD WINAPI ssl_thread(void *dummy)
 #endif
@@ -343,7 +343,7 @@ static int test_ssl_threads(MYSQL *mysql)
   return OK;
 }
 
-static int test_phpbug51647(MYSQL *my)
+static int test_phpbug51647(MYSQL *unused __attribute__((unused)))
 {
   MYSQL* mysql;
 
@@ -365,7 +365,7 @@ static int test_phpbug51647(MYSQL *my)
   return OK;
 }
 
-static int test_password_protected(MYSQL *my)
+static int test_password_protected(MYSQL *unused __attribute__((unused)))
 {
   MYSQL* mysql;
 
@@ -390,7 +390,7 @@ static int test_password_protected(MYSQL *my)
 }
 
 
-static int test_conc50(MYSQL *my)
+static int test_conc50(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
 
@@ -411,7 +411,7 @@ static int test_conc50(MYSQL *my)
   return OK;
 }
 
-static int test_conc50_1(MYSQL *my)
+static int test_conc50_1(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
 
@@ -433,7 +433,7 @@ static int test_conc50_1(MYSQL *my)
   return OK;
 }
 
-static int test_conc50_2(MYSQL *my)
+static int test_conc50_2(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
 
@@ -453,9 +453,12 @@ static int test_conc50_2(MYSQL *my)
   return OK;
 }
 
-static int test_conc127(MYSQL *my)
+static int test_conc127(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
+
+  diag("test disabled - for testing disable other tests or run this test as first test");
+  return SKIP;
 
   if (check_skip_ssl())
     return SKIP;
@@ -474,7 +477,7 @@ static int test_conc127(MYSQL *my)
   return OK;
 }
 
-static int test_conc50_3(MYSQL *my)
+static int test_conc50_3(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
 
@@ -507,7 +510,7 @@ static int test_conc50_3(MYSQL *my)
   return OK;
 }
 
-static int test_conc50_4(MYSQL *my)
+static int test_conc50_4(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
 
@@ -527,7 +530,7 @@ static int test_conc50_4(MYSQL *my)
   return OK;
 }
 
-static int verify_ssl_server_cert(MYSQL *my)
+static int verify_ssl_server_cert(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
   uint verify= 1;
@@ -550,7 +553,7 @@ static int verify_ssl_server_cert(MYSQL *my)
   return OK;
 }
 
-static int test_bug62743(MYSQL *my)
+static int test_bug62743(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
 
@@ -638,7 +641,7 @@ DWORD WINAPI thread_conc102(void)
   check_mysql_rc(rc, mysql);
   pthread_mutex_unlock(&LOCK_test);
   check_mysql_rc(rc, mysql);
-  if (res= mysql_store_result(mysql))
+  if ((res= mysql_store_result(mysql)))
     mysql_free_result(res);
 end:
   mysql_close(mysql);
@@ -702,7 +705,7 @@ static int test_conc_102(MYSQL *mysql)
 
 const char *ssl_cert_finger_print= "@SSL_CERT_FINGER_PRINT@";
 
-static int test_ssl_fp(MYSQL *unused)
+static int test_ssl_fp(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *my;
   MYSQL_RES *res;
@@ -741,7 +744,7 @@ static int test_ssl_fp(MYSQL *unused)
   return OK;
 }
 
-static int test_ssl_fp_list(MYSQL *unused)
+static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *my;
   
@@ -763,7 +766,7 @@ static int test_ssl_fp_list(MYSQL *unused)
   return OK;
 }
 
-static int test_ssl_version(MYSQL *mysql)
+static int test_ssl_version(MYSQL *unused __attribute__((unused)))
 {
   unsigned int iversion;
   const char *version, *library;
@@ -794,7 +797,7 @@ static int test_ssl_version(MYSQL *mysql)
 }
 
 #ifdef HAVE_SCHANNEL
-static int test_schannel_cipher(MYSQL *mysql)
+static int test_schannel_cipher(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *my;
   unsigned int cipher_strength= 256;
@@ -823,7 +826,7 @@ static int test_schannel_cipher(MYSQL *mysql)
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-//  {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp", test_ssl_fp, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp_list", test_ssl_fp_list, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},

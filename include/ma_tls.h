@@ -127,7 +127,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ssl);
    Returns:
      actual size of finger print
 */
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsigned int fp_len);
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int fp_len);
 
 /* ma_tls_get_protocol_version 
    returns protocol version in use

@@ -97,23 +97,20 @@ static int is_not_initialized(MYSQL *mysql, const char *name)
   return 1;
 }
 
-static int get_plugin_nr(int type)
+static int get_plugin_nr(uint type)
 {
   uint i= 0;
   for(; valid_plugins[i][1]; i++)
-    if (valid_plugins[i][0]== type)
+    if (valid_plugins[i][0] == type)
       return i;
   return -1;
 }
 
-static my_bool check_plugin_version(struct st_mysql_client_plugin *plugin, unsigned int version, char *errmsg)
+static const char *check_plugin_version(struct st_mysql_client_plugin *plugin, unsigned int version)
 {
   if (plugin->interface_version < version ||
       (plugin->interface_version >> 8) > (version >> 8))
-  {
-    errmsg= "Incompatible client plugin interface";
-    return 1;
-  }
+    return "Incompatible client plugin interface";
   return 0;
 }
 
@@ -165,7 +162,7 @@ static struct st_mysql_client_plugin *
 add_plugin(MYSQL *mysql, struct st_mysql_client_plugin *plugin, void *dlhandle,
            int argc, va_list args)
 {
-  char *errmsg;
+  const char *errmsg;
   struct st_client_plugin_int plugin_int, *p;
   char errbuf[1024];
   int plugin_nr;
@@ -180,11 +177,8 @@ add_plugin(MYSQL *mysql, struct st_mysql_client_plugin *plugin, void *dlhandle,
     errmsg= "Unknown client plugin type";
     goto err1;
   }
-  if (check_plugin_version(plugin, valid_plugins[plugin_nr][1], errbuf))
-  {
-    errmsg= errbuf;
+  if ((errmsg= check_plugin_version(plugin, valid_plugins[plugin_nr][1])))
     goto err1;
-  }
 
   /* Call the plugin initialization function, if any */
   if (plugin->init && plugin->init(errbuf, sizeof(errbuf), argc, args))
@@ -250,7 +244,7 @@ static void load_env_plugins(MYSQL *mysql)
   free_env= plugs= strdup(s);
 
   do {
-    if (s= strchr(plugs, ';'))
+    if ((s= strchr(plugs, ';')))
       *s= '\0';
     mysql_load_plugin(mysql, plugs, -1, 0);
     plugs= s + 1;

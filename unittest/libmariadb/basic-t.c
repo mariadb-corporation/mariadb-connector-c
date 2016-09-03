@@ -72,7 +72,7 @@ static int test_conc75(MYSQL *my)
 }
 
 
-static int test_conc74(MYSQL *my)
+static int test_conc74(MYSQL *unused __attribute__((unused)))
 {
   int rc;
   MYSQL *mysql;
@@ -247,7 +247,7 @@ static int test_conc68(MYSQL *my)
 }
 
 
-static int basic_connect(MYSQL *mysql)
+static int basic_connect(MYSQL *unused __attribute__((unused)))
 {
   MYSQL_ROW row;
   MYSQL_RES *res;
@@ -371,7 +371,7 @@ static int test_bug12001(MYSQL *mysql)
 
 /* connection options */
 struct my_option_st opt_utf8[] = {
-  {MYSQL_SET_CHARSET_NAME, "utf8"},
+  {MYSQL_SET_CHARSET_NAME, (char *)"utf8"},
   {0, NULL}
 };
 
@@ -655,7 +655,7 @@ static int bug_conc1(MYSQL *mysql)
   return OK;
 }
 
-static int test_options_initcmd(MYSQL *my)
+static int test_options_initcmd(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   MYSQL_RES *res;
@@ -678,7 +678,7 @@ static int test_options_initcmd(MYSQL *my)
   return OK;
 }
 
-static int test_extended_init_values(MYSQL *my)
+static int test_extended_init_values(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
 
@@ -692,7 +692,7 @@ static int test_extended_init_values(MYSQL *my)
   return OK;
 }
 
-static int test_reconnect_maxpackage(MYSQL *my)
+static int test_reconnect_maxpackage(MYSQL *unused __attribute__((unused)))
 {
   int rc;
   ulong max_packet= 0;
@@ -752,7 +752,7 @@ static int test_reconnect_maxpackage(MYSQL *my)
   return OK;
 }
 
-static int test_compressed(MYSQL *my)
+static int test_compressed(MYSQL *unused __attribute__((unused)))
 {
   int rc;
   MYSQL *mysql= mysql_init(NULL);

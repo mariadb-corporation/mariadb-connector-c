@@ -58,7 +58,7 @@ static void ma_tls_set_error(MYSQL *mysql, int ssl_errno)
                    ssl_error_reason);
     return;
   }
-  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno, mysql->charset);
+  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%d", ssl_errno);
   pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                  ssl_error);
 }
@@ -78,7 +78,7 @@ static void ma_tls_get_error(char *errmsg, size_t length, int ssl_errno)
     strncpy(errmsg, ssl_error_reason, length);
     return;
   }
-  snprintf(errmsg, length, "SSL errno=%lu", ssl_errno);
+  snprintf(errmsg, length, "SSL errno=%d", ssl_errno);
 }
 
 /*
@@ -304,7 +304,7 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
   return 0;
 }
 
-int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
+int ma_tls_verify_server_cert(MARIADB_TLS *ctls __attribute__((unused)))
 {
   /* server verification is already handled before */
   return 0;
@@ -388,7 +388,7 @@ static int my_verify_callback(gnutls_session_t ssl)
   return 0;
 }
 
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
 {
   MYSQL *mysql;
   size_t fp_len= len;

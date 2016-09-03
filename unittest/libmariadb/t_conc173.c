@@ -27,7 +27,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "my_test.h"
 
-static int test_conc_173(MYSQL *my)
+static int test_conc_173(MYSQL *unused __attribute__((unused)))
 {
   MYSQL mysql;
   int arg;

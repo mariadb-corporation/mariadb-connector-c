@@ -39,7 +39,7 @@ static int cmp_double(double *a, double *b)
 static int test_conc67(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
-  char *query= "SELECT a,b FROM conc67 WHERE a=?";
+  const char *query= "SELECT a,b FROM conc67 WHERE a=?";
   int rc, i;
   MYSQL_BIND bind[2];
   char val[20];
@@ -545,8 +545,8 @@ static int test_bug1500(MYSQL *mysql)
   MYSQL_BIND my_bind[3];
   int        rc= 0;
   int32 int_data[3]= {2, 3, 4};
-  char *data;
-  char *query;
+  const char *data;
+  const char *query;
 
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bg1500");
@@ -3749,7 +3749,7 @@ static int test_bug53311(MYSQL *mysql)
   int rc;
   MYSQL_STMT *stmt;
   int i;
-  char *query= "INSERT INTO bug53311 VALUES (1)";
+  const char *query= "INSERT INTO bug53311 VALUES (1)";
 
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
@@ -3837,7 +3837,7 @@ end:
 
 static int test_conc_5(MYSQL *mysql)
 {
-  char *query= "SELECT a FROM t1";
+  const char *query= "SELECT a FROM t1";
   MYSQL_RES *res;
   MYSQL_STMT *stmt;
   MYSQL_FIELD *fields;
@@ -3874,7 +3874,7 @@ static int test_conc_5(MYSQL *mysql)
 static int test_conc141(MYSQL *mysql)
 {
   int rc;
-  char *query= "CALL p_conc141";
+  const char *query= "CALL p_conc141";
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc141");
@@ -4108,7 +4108,7 @@ static int test_conc167(MYSQL *mysql)
   char buffer[100];
   int bit1=0, bit2=0;
   int rc;
-  char *stmt_str= "SELECT a,b,c FROM conc168";
+  const char *stmt_str= "SELECT a,b,c FROM conc168";
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc168");
   check_mysql_rc(rc, mysql);
@@ -4154,7 +4154,7 @@ static int test_conc177(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int rc;
   MYSQL_BIND bind[2];
-  char *stmt_str= "SELECT a,b FROM t1";
+  const char *stmt_str= "SELECT a,b FROM t1";
   char buf1[128], buf2[128];
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
@@ -4229,7 +4229,7 @@ static int test_conc179(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  char *stmtstr= "CREATE TABLE t1 (`blurb_id` int NOT NULL DEFAULT 0, `blurb` text default '', PRIMARY KEY (blurb_id)) ENGINE='FEDERATED' DEFAULT CHARSET=latin1 CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/test/t1'";
+  const char *stmtstr= "CREATE TABLE t1 (`blurb_id` int NOT NULL DEFAULT 0, `blurb` text default '', PRIMARY KEY (blurb_id)) ENGINE='FEDERATED' DEFAULT CHARSET=latin1 CONNECTION='mysql://root@127.0.0.1:$SLAVE_MYPORT/test/t1'";
 
   rc= mysql_query(mysql, "set sql_mode=''");
   check_mysql_rc(rc, mysql);
@@ -4301,7 +4301,7 @@ static int test_conc181(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int rc;
   MYSQL_BIND bind;
-  char *stmt_str= "SELECT a FROM t1";
+  const char *stmt_str= "SELECT a FROM t1";
   float f=1;
   my_bool err= 0;
 

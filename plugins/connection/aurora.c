@@ -36,7 +36,8 @@
 #endif
 
 /* function prototypes */
-int aurora_init(char *errormsg, size_t errormsg_size,
+int aurora_init(char *errormsg __attribute__((unused)),
+    size_t errormsg_size __attribute__((unused)),
     int unused  __attribute__((unused)), 
     va_list unused1 __attribute__((unused)));
 
@@ -82,7 +83,7 @@ struct st_mariadb_api *mariadb_api= NULL;
 
 typedef struct st_aurora_instance {
   char *host;
-  int  port;
+  unsigned int  port;
   time_t blacklisted;
   int type;
 } AURORA_INSTANCE;
@@ -132,7 +133,8 @@ my_bool aurora_switch_connection(MYSQL *mysql, AURORA *aurora, int type)
  *
  *     plugin initialization function
  */
-int aurora_init(char *errormsg, size_t errormsg_size,
+int aurora_init(char *errormsg __attribute__((unused)),
+    size_t errormsg_size __attribute__((unused)),
     int unused  __attribute__((unused)), 
     va_list unused1 __attribute__((unused)))
 {
@@ -247,7 +249,7 @@ int aurora_get_instance_type(MYSQL *mysql)
   int rc= -1;
   MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
 
-  char *query= "select variable_value from information_schema.global_variables where variable_name='INNODB_READ_ONLY' AND variable_value='OFF'";
+  const char *query= "select variable_value from information_schema.global_variables where variable_name='INNODB_READ_ONLY' AND variable_value='OFF'";
 
   if (!mysql)
     return -1;
@@ -519,7 +521,7 @@ my_bool aurora_find_primary(AURORA *aurora)
 
 /* {{{ MYSQL *aurora_connect */
 MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd,
-    const char *db, unsigned int port, const char *unix_socket, unsigned long client_flag)
+    const char *db, unsigned int port, const char *unix_socket __attribute__((unused)), unsigned long client_flag)
 {
   AURORA *aurora= NULL;
   MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
@@ -595,7 +597,7 @@ my_bool aurora_reconnect(MYSQL *mysql)
 {
   AURORA *aurora;
   MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
-  int i;
+  unsigned int i;
 
   /* We can't determine if a new primary was promotoed, or if
    * line just dropped - we will close both primary and replica
@@ -716,7 +718,7 @@ my_bool is_replica_stmt(MYSQL *mysql, const char *buffer)
 
 /* {{{ int aurora_command */
 int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
-    size_t length, my_bool skipp_check, void *opt_arg)
+    size_t length __attribute__((unused)), my_bool skipp_check __attribute__((unused)), void *opt_arg __attribute__((unused)))
 {
   MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
   AURORA *aurora= (AURORA *)save_hdlr->data;
