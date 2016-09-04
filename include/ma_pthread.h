@@ -21,6 +21,8 @@
 #ifndef _my_pthread_h
 #define _my_pthread_h
 
+#undef SAFE_MUTEX
+
 #include <errno.h>
 #ifndef ETIME
 #define ETIME ETIMEDOUT				/* For FreeBSD */
