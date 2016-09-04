@@ -46,7 +46,7 @@ ENDIF()
 SET(VALID_INSTALL_LAYOUTS "DEFAULT" "RPM")
 LIST(FIND VALID_INSTALL_LAYOUTS "${INSTALL_LAYOUT}" layout_no)
 IF(layout_no EQUAL -1)
-  MESSAGE(FATAL_ERROR "Invalid installation layout. Please specify one of the following layouts: ${VALID_INSTALL_LAYOUTS}")
+  MESSAGE(FATAL_ERROR "Invalid installation layout ${INSTALL_LAYOUT}. Please specify one of the following layouts: ${VALID_INSTALL_LAYOUTS}")
 ENDIF()
 
 

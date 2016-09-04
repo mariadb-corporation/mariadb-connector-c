@@ -1,15 +1,6 @@
 # CMakeLists.txt
 
-
 # This is the LGPL libmariadb project.
-PROJECT(mariadb-connector-c C)
-
-SET(PACKAGE_STATUS_SUFFIX "alpha")
-
-SET(CPACK_PACKAGE_VERSION_MAJOR 3)
-SET(CPACK_PACKAGE_VERSION_MINOR 1)
-SET(CPACK_PACKAGE_VERSION_PATCH 0)
-SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8 FATAL_ERROR)
 
@@ -25,48 +16,83 @@ IF(COMMAND CMAKE_POLICY)
   ENDFOREACH()
 ENDIF()
 
+IF (NOT DEFINED CMAKE_PROJECT_NAME)
+  # Standalone project
+  PROJECT(mariadb-connector-c C)
+ELSE()
+  # do not inherit include directories from the parent project
+  SET_PROPERTY(DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
+  FOREACH(V WITH_MYSQLCOMPAT WITH_MSI WITH_SIGNCODE WITH_RTC WITH_UNITTEST
+      WITH_DYNCOL WITH_EXTERNAL_ZLIB WITH_CURL WITH_SQLITE WITH_SSL
+      INSTALL_LAYOUT WITH_TEST_SRCPKG)
+    SET(${V} ${${OPT}${V}})
+  ENDFOREACH()
+ENDIF()
 
-SET(MARIADB_CONNECTOR_C_COPYRIGHT "2013-2016 MariaDB Corporation Ab")
+SET(PACKAGE_STATUS_SUFFIX "alpha")
+
+SET(CC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+SET(CC_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
+SET(CPACK_PACKAGE_VERSION_MAJOR 3)
+SET(CPACK_PACKAGE_VERSION_MINOR 1)
+SET(CPACK_PACKAGE_VERSION_PATCH 0)
+SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+
+MACRO(ADD_OPTION _name _text _default)
+  IF(NOT DEFINED ${_name})
+    SET(${_name} ${_default})
+  ENDIF()
+  OPTION(${OPT}${_name} "${_text}" "${${_name}}")
+ENDMACRO()
 
 ### Options ###
 IF(NOT WIN32)
-  OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
+  ADD_OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" ON)
 ELSE()
-  OPTION(WITH_MSI "Build MSI installation package" OFF)
-  OPTION(WITH_SIGNCODE "digitally sign files" OFF)
-  OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
+  ADD_OPTION(WITH_MSI "Build MSI installation package" OFF)
+  ADD_OPTION(WITH_SIGNCODE "digitally sign files" OFF)
+  ADD_OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
 
-OPTION(WITH_UNITTEST "build test suite" ON)
-OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
-OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
+ADD_OPTION(WITH_UNITTEST "build test suite" ON)
+ADD_OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
+ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
+ADD_OPTION(WITH_CURL "Enables use of curl" ON)
+ADD_OPTION(WITH_SQLITE "Experimental" OFF)
+MARK_AS_ADVANCED(${OPT}WITH_SQLITE)
 ###############
+
+INCLUDE(${CC_SOURCE_DIR}/cmake/misc.cmake)
+
+IF (WITH_CURL)
+  INCLUDE(FindCURL)
+  IF(CURL_FOUND)
+    ADD_DEFINITIONS(-DHAVE_CURL=1)
+  ENDIF()
+ENDIF()
+
 IF(WITH_SIGNCODE)
-  IF(WIN32)
+  IF(WIN32 AND NOT SIGN_OPTIONS)
     SET(SIGN_OPTIONS /a /t http://timestamp.verisign.com/scripts/timstamp.dll)
   ENDIF()
   MARK_AS_ADVANCED(SIGN_OPTIONS)
 ENDIF()
 
+SET(MARIADB_CONNECTOR_C_COPYRIGHT "2013-2016 MariaDB Corporation Ab")
+
 IF(WITH_RTC)
   SET(RTC_OPTIONS "/RTC1 /RTCc")
 ENDIF()
 
-IF(NOT FOR_SERVER)
-INCLUDE(FindCURL)
-IF(CURL_FOUND)
-  ADD_DEFINITIONS(-DHAVE_CURL=1)
-ENDIF()
-ENDIF(NOT FOR_SERVER)
-
 IF(NOT WIN32)
-  INCLUDE(${PROJECT_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
   IF(GSSAPI_FOUND)
     INCLUDE_DIRECTORIES(${GSSAPI_INCS})
   ENDIF()
 ENDIF()
 
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/plugins.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/plugins.cmake)
 
 IF(AUTH_GSSAPI_PLUGIN_TYPE MATCHES "STATIC")
   SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${GSSAPI_LIBS})
@@ -74,13 +100,13 @@ ENDIF()
 
 
 IF(WIN32)
-  FILE(REMOVE ${PROJECT_BINARY_DIR}/win/packaging/plugin.conf)
-  INCLUDE(${PROJECT_SOURCE_DIR}/cmake/version_info.cmake)
+  FILE(REMOVE ${CC_BINARY_DIR}/win/packaging/plugin.conf)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/version_info.cmake)
 ENDIF()
 
 IF(MSVC)
   # Speedup system tests
-  INCLUDE(${PROJECT_SOURCE_DIR}/cmake/WindowsCache.cmake)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/WindowsCache.cmake)
   IF (MSVC)
     SET(CONFIG_TYPES "DEBUG" "RELEASE" "RELWITHDEBINFO")
     FOREACH(BUILD_TYPE ${CONFIG_TYPES})
@@ -134,7 +160,7 @@ IF(NOT MARIADB_UNIX_ADDR)
   SET(MARIADB_UNIX_ADDR "/tmp/mysql.sock")
 ENDIF()
 
-INCLUDE("${PROJECT_SOURCE_DIR}/cmake/install.cmake")
+INCLUDE("${CC_SOURCE_DIR}/cmake/install.cmake")
 IF(NOT PLUGINDIR)
   SET(PLUGINDIR "${PREFIX_INSTALL_DIR}/${PLUGIN_INSTALL_DIR}")
 ENDIF()
@@ -143,7 +169,7 @@ ENDIF()
 SET(SHAREDIR "share")
 SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
 
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/SearchLibrary.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/SearchLibrary.cmake)
 
 IF(WITH_EXTERNAL_ZLIB)
   FIND_PACKAGE(ZLIB)
@@ -165,7 +191,7 @@ IF(UNIX)
     ${LIBSOCKET} ${LIBDL} ${LIBM} ${LIBPTHREAD})
   SET(SYSTEM_LIBS ${LIBNSL} ${LIBBIND} ${LIBICONV}
     ${LIBSOCKET} ${LIBDL} ${LIBM} ${LIBPTHREAD})
-  MESSAGE(STATUS "SYSTEM_LIBS ${SYSTEM_LIBS}")
+  MESSAGE1(SYSTEM_LIBS "SYSTEM_LIBS ${SYSTEM_LIBS}")
   #remove possible dups from required libraries
   LIST(LENGTH CMAKE_REQUIRED_LIBRARIES rllength)
   IF(${rllength} GREATER 0)
@@ -194,11 +220,11 @@ ELSEIF()
 ENDIF()
 
 # check for various include files
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
 # check for various functions
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/CheckFunctions.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 # check for various types
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/CheckTypes.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
 IF(NOT WITH_SSL AND NOT WITH_SSL STREQUAL "OFF")
   IF(WIN32)
@@ -213,29 +239,29 @@ IF(NOT WITH_SSL STREQUAL "OFF")
     FIND_PACKAGE(OpenSSL)
     IF(OPENSSL_FOUND)
       ADD_DEFINITIONS(-DHAVE_OPENSSL -DHAVE_TLS)
-      SET(SSL_SOURCES "${PROJECT_SOURCE_DIR}/libmariadb/secure/openssl.c")
+      SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/openssl.c")
       SET(SSL_LIBRARIES ${OPENSSL_LIBRARIES} ${OPENSSL_CRYPTO_LIBRARIES})
       INCLUDE_DIRECTORIES(BEFORE ${OPENSSL_INCLUDE_DIR})
-      MESSAGE(STATUS "OpenSSL version: ${OPENSSL_VERSION}")
+      MESSAGE1(OPENSSL_VERSION "OpenSSL version: ${OPENSSL_VERSION}")
     ELSE()
-      MESSAGE(WARNING "OpenSSL not found")
+      MESSAGE1(OPENSSL_VERSION "OpenSSL not found")
     ENDIF()
   ENDIF()
   IF(WITH_SSL STREQUAL "GNUTLS")
     FIND_PACKAGE(GnuTLS)
     IF(GNUTLS_FOUND)
       ADD_DEFINITIONS(-DHAVE_GNUTLS -DHAVE_TLS)
-      SET(SSL_SOURCES "${PROJECT_SOURCE_DIR}/libmariadb/secure/gnutls.c")
+      SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/gnutls.c")
       SET(SSL_LIBRARIES ${GNUTLS_LIBRARY})
     ELSE()
-      MESSAGE(FATAL "GnuTLS not found")
+      MESSAGE(FATAL_ERROR "GnuTLS not found")
     ENDIF()
   ENDIF()
   IF(WIN32)
     IF(WITH_SSL STREQUAL "SCHANNEL")
       ADD_DEFINITIONS(-DHAVE_SCHANNEL -DHAVE_TLS)
-      SET(SSL_SOURCES "${PROJECT_SOURCE_DIR}/libmariadb/secure/schannel.c" "${PROJECT_SOURCE_DIR}/libmariadb/secure/ma_schannel.c")
-      INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/plugins/pvio/")
+      SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/schannel.c" "${CC_SOURCE_DIR}/libmariadb/secure/ma_schannel.c")
+      INCLUDE_DIRECTORIES("${CC_SOURCE_DIR}/plugins/pvio/")
     ENDIF()
   ENDIF()
 
@@ -243,15 +269,17 @@ IF(NOT WITH_SSL STREQUAL "OFF")
 ENDIF()
 
 IF(NOT WIN32)
-  INCLUDE(${PROJECT_SOURCE_DIR}/cmake/FindIconv.cmake)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/FindIconv.cmake)
 ENDIF()
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/ma_config.h.in
-               ${CMAKE_CURRENT_BINARY_DIR}/include/ma_config.h)
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mariadb_version.h.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/mariadb_version.h)
+CONFIGURE_FILE(${CC_SOURCE_DIR}/include/ma_config.h.in
+               ${CC_BINARY_DIR}/include/ma_config.h)
+CONFIGURE_FILE(${CC_SOURCE_DIR}/include/ma_config.h.in
+               ${CC_BINARY_DIR}/include/config.h)
+CONFIGURE_FILE(${CC_SOURCE_DIR}/include/mariadb_version.h.in
+               ${CC_BINARY_DIR}/include/mariadb_version.h)
 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
+INCLUDE_DIRECTORIES(${CC_BINARY_DIR}/include)
 
 IF(WIN32)
   SET(SYSTEM_LIBS ws2_32 advapi32 kernel32)
@@ -277,7 +305,7 @@ IF(NOT REMOTEIO_PLUGIN_TYPE MATCHES "OFF")
 ENDIF()
 IF(NOT WIN32)
   IF(NOT AUTH_GSSAPI_PLUGIN_TYPE MATCHES "OFF")
-    INCLUDE(${PROJECT_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
+    INCLUDE(${CC_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
     IF(GSSAPI_FOUND)
       INCLUDE_DIRECTORIES(${GSSAPI_INCS})
       IF(AUTH_GSSAPI_PLUGIN_TYPE MATCHES "STATIC")
@@ -293,7 +321,7 @@ IF(NOT WIN32)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
 
-IF(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unittest)
+IF(IS_DIRECTORY ${CC_SOURCE_DIR}/unittest)
   IF(WITH_UNITTEST STREQUAL "ON")
     ADD_SUBDIRECTORY(unittest/mytap)
     ADD_SUBDIRECTORY(unittest/libmariadb)
@@ -302,7 +330,8 @@ ENDIF()
 
 IF(CLIENT_DOCS)
   INSTALL(DIRECTORY ${CLIENT_DOCS}
-          DESTINATION ${DOCS_INSTALL_DIR_${INSTALL_LAYOUT}})
+          DESTINATION ${DOCS_INSTALL_DIR_${INSTALL_LAYOUT}}
+          COMPONENT SharedLibraries)
 ENDIF()
 
 
@@ -314,8 +343,8 @@ SET(CPACK_PACKAGE_VENDOR "MariaDB Corporation Ab")
 SET(CPACK_PACKAGE_DESCRIPTION "MariaDB Connector/C. A library for connecting to MariaDB and MySQL servers")
 SET(CPACK_PACKAGE_NAME "mariadb_connector_c")
 STRING(TOLOWER ${CMAKE_SYSTEM_NAME} system_name)
-SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING.LIB")
-SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CC_SOURCE_DIR}/COPYING.LIB")
+SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CC_SOURCE_DIR}/README")
 INCLUDE(cmake/ConnectorName.cmake)
 IF(NOT PACKAGE_STATUS_SUFFIX)
   SET(CPACK_SOURCE_PACKAGE_FILE_NAME "mariadb-connector-c-${CPACK_PACKAGE_VERSION}-src")
@@ -330,7 +359,7 @@ IF(GIT_BUILD_SRCPKG)
   EXECUTE_PROCESS(COMMAND git show-branch OUTPUT_VARIABLE git_branch)
   STRING(REGEX MATCH "\\[([^]]+)\\]" git_branch ${git_branch})
   STRING(REGEX REPLACE "\\[|\\]" "" GIT_BRANCH ${git_branch})
-  MESSAGE(STATUS "${GIT_BRANCH}")
+  MESSAGE1(GIT_BRANCH "${GIT_BRANCH}")
   IF(WIN32)
     EXECUTE_PROCESS(COMMAND git archive ${GIT_BRANCH} --format=zip --prefix=${CPACK_SOURCE_PACKAGE_FILE_NAME}/ --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.zip)
   ELSE()
@@ -368,7 +397,7 @@ include/my_config\\\\.h$
 )
 
 IF(WITH_TEST_SRCPKG)
-  SET(PACKAGE_FILE ${PROJECT_SOURCE_DIR}/package.name)
+  SET(PACKAGE_FILE ${CC_SOURCE_DIR}/package.name)
   FILE(REMOVE ${PACKAGE_FILE})
   FILE(WRITE ${PACKAGE_FILE} ${CPACK_SOURCE_PACKAGE_FILE_NAME})
 ENDIF()
@@ -382,21 +411,20 @@ ELSE()
 ENDIF()
 INCLUDE(CPack)
 
-MESSAGE(STATUS "MariaDB Connector/c configuration:")
-MESSAGE(STATUS "CPack generation: ${CPACK_GENERATOR}")
-IF(CLIENT_DOCS)
-  MESSAGE(STATUS "Documentation included from ${CLIENT_DOCS}")
-ENDIF()
-MESSAGE(STATUS "SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}")
-MESSAGE(STATUS "Experimental Sqlite support: ${WITH_SQLITE}")
 IF(WITH_EXTERNAL_ZLIB)
-  MESSAGE(STATUS "Zlib support: ${WITH_EXTERNAL_ZLIB}")
+  SET(zlib_status: ${WITH_EXTERNAL_ZLIB})
 ELSE()
-  MESSAGE(STATUS "Zlib support: yes (using bundled zlib)")
+  SET(zlib_status: "yes (using bundled zlib")
 ENDIF()
-MESSAGE(STATUS "Installation layout: ${INSTALL_LAYOUT}")
-MESSAGE(STATUS "Include files will be installed in ${PREFIX_INSTALL_DIR}/${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}")
-MESSAGE(STATUS "Libraries will be installed in ${PREFIX_INSTALL_DIR}/${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}")
-MESSAGE(STATUS "Binaries will be installed in ${PREFIX_INSTALL_DIR}/${BIN_INSTALL_DIR}")
 
-MESSAGE(STATUS "Required: ${CMAKE_REQUIRED_LIBRARIES}")
+MESSAGE1(STATUS "MariaDB Connector/c configuration:
+-- CPack generation: ${CPACK_GENERATOR}
+-- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
+-- Experimental Sqlite support: ${WITH_SQLITE}
+-- Zlib support: ${zlib_status}
+-- Installation layout: ${INSTALL_LAYOUT}
+-- Include files will be installed in ${PREFIX_INSTALL_DIR}/${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}
+-- Libraries will be installed in ${PREFIX_INSTALL_DIR}/${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}
+-- Binaries will be installed in ${PREFIX_INSTALL_DIR}/${BIN_INSTALL_DIR}
+-- Documentation included from ${CLIENT_DOCS}
+-- Required: ${CMAKE_REQUIRED_LIBRARIES}")

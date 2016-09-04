@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
 
 IF(WIN32)
   SET_VERSION_INFO("TARGET:mariadb_client_plugin_info"
@@ -12,5 +12,6 @@ ADD_EXECUTABLE(mariadb_client_plugin_info ${mariadb_client_plugin_info_RC} ma_pl
 TARGET_LINK_LIBRARIES(mariadb_client_plugin_info mariadbclient)
 
 INSTALL(TARGETS mariadb_client_plugin_info
-        DESTINATION "bin")
+        DESTINATION "bin"
+        COMPONENT SharedLibraries)
 SIGN_TARGET(mariadb_client_plugin_info)

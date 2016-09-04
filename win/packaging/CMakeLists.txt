@@ -1,7 +1,7 @@
-SET(CLIENT_LIB_DIR ${PROJECT_BINARY_DIR}/libmariadb/${CMAKE_BUILD_TYPE})
-SET(CLIENT_BIN_DIR ${PROJECT_BINARY_DIR}/client/${CMAKE_BUILD_TYPE})
-SET(CLIENT_DBG_DIR ${PROJECT_BINARY_DIR}/libmariadb/Debug)
-SET(CLIENT_INC_DIR ${PROJECT_SOURCE_DIR}/include)
+SET(CLIENT_LIB_DIR ${CC_BINARY_DIR}/libmariadb/${CMAKE_BUILD_TYPE})
+SET(CLIENT_BIN_DIR ${CC_BINARY_DIR}/client/${CMAKE_BUILD_TYPE})
+SET(CLIENT_DBG_DIR ${CC_BINARY_DIR}/libmariadb/Debug)
+SET(CLIENT_INC_DIR ${CC_SOURCE_DIR}/include)
 
 SET(PRODUCT_NAME "MariaDB Connector C")
 SET(PRODUCT_INSTALL_DIR "MariaDB")
@@ -41,14 +41,14 @@ ENDFOREACH()
 
 SET(ALL_INCLUDES ${MARIADB_CLIENT_INCLUDES} ${MARIADB_ADDITIONAL_INCLUDES})
 FOREACH(src ${ALL_INCLUDES})
-  STRING(REPLACE "${PROJECT_SOURCE_DIR}/include/" "" src ${src})
+  STRING(REPLACE "${CC_SOURCE_DIR}/include/" "" src ${src})
   STRING(REPLACE "-" "_" src_id ${src})
   STRING(REPLACE "mysql/" "" src_id ${src_id})
   STRING(REPLACE "mysql/" "" src_name ${src})
   IF(${src} MATCHES "mysql/")
-    SET(MARIADB_INCLUDEMYSQL_FILES "${MARIADB_INCLUDEMYSQL_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${PROJECT_SOURCE_DIR}/include/${src}\"/>\n")
+    SET(MARIADB_INCLUDEMYSQL_FILES "${MARIADB_INCLUDEMYSQL_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CC_SOURCE_DIR}/include/${src}\"/>\n")
   ELSE()
-    SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${PROJECT_SOURCE_DIR}/include/${src}\"/>\n")
+    SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CC_SOURCE_DIR}/include/${src}\"/>\n")
   ENDIF()
 ENDFOREACH()
 
@@ -92,5 +92,5 @@ SET_TARGET_PROPERTIES(${WIXOBJ} PROPERTIES EXCLUDE_FROM_ALL OFF)
 ADD_DEPENDENCIES(${MSI_PACKAGE} WIXOBJ)
 ADD_DEPENDENCIES(WIXOBJ libmariadb mariadbclient ${DYNAMIC_TARGETS}) 
 
-CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
-  ${PROJECT_BINARY_DIR}/win/packaging/mariadb-connector-c.xml)
+CONFIGURE_FILE(${CC_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
+  ${CC_BINARY_DIR}/win/packaging/mariadb-connector-c.xml)

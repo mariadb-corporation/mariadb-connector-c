@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
 
 # Figure out additional libraries for use with
 
@@ -41,4 +41,5 @@ TARGET_LINK_LIBRARIES(mariadb_config)
 # Installation
 #
 INSTALL(TARGETS mariadb_config
-        DESTINATION "bin")
+        DESTINATION "bin"
+        COMPONENT Development)
