@@ -29,6 +29,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <memory.h>
 #include <string.h>
 #include <ma_errmsg.h>
+#include <stdlib.h>
 
 #ifndef WIN32
 #include <pthread.h>
