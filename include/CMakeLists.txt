@@ -3,7 +3,7 @@ SET(MARIADB_CLIENT_INCLUDES ${CC_SOURCE_DIR}/include/mariadb_com.h
                             ${CC_SOURCE_DIR}/include/mariadb_stmt.h
                             ${CC_SOURCE_DIR}/include/ma_pvio.h
                             ${CC_SOURCE_DIR}/include/ma_tls.h
-                            ${CC_SOURCE_DIR}/include/mariadb_version.h
+                            ${CC_BINARY_DIR}/include/mariadb_version.h
                             ${CC_SOURCE_DIR}/include/ma_list.h
                             ${CC_SOURCE_DIR}/include/ma_errmsg.h
                             ${CC_SOURCE_DIR}/include/mariadb_dyncol.h
