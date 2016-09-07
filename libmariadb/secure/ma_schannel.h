@@ -30,8 +30,6 @@
 #include <ma_errmsg.h>
 
 
-typedef void VOID;
-
 #include <wincrypt.h>
 #include <wintrust.h>
 

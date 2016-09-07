@@ -595,7 +595,7 @@ my_bool aurora_reconnect(MYSQL *mysql)
 {
   AURORA *aurora;
   MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
-  int i;
+  unsigned int i;
 
   /* We can't determine if a new primary was promotoed, or if
    * line just dropped - we will close both primary and replica

@@ -66,27 +66,6 @@ ulong net_buffer_length= 8192;	/* Default length. Enlarged if necessary */
 #endif
 #endif
 
-typedef my_bool thr_alarm_t;
-typedef my_bool ALARM;
-#define thr_alarm_init(A) (*(A))=0
-#define thr_alarm_in_use(A) (*(A))
-#define thr_end_alarm(A)
-#define thr_alarm(A,B,C) local_thr_alarm((A),(B),(C))
-static inline int local_thr_alarm(my_bool *A,int B __attribute__((unused)),ALARM *C __attribute__((unused)))
-{
-  *A=1;
-  return 0;
-}
-#define thr_got_alarm(A) 0
-#define RETRY_COUNT 1
-
-#ifdef MYSQL_SERVER
-extern ulong bytes_sent, bytes_received; 
-extern pthread_mutex_t LOCK_bytes_sent , LOCK_bytes_received;
-#else
-#undef statistic_add
-#define statistic_add(A,B,C)
-#endif
 
 /*
 ** Give error if a too big packet is found
@@ -425,7 +404,6 @@ ma_net_real_write(NET *net,const char *packet,size_t  len)
       return(1);
     }
     pos+=length;
-    statistic_add(bytes_sent,length,&LOCK_bytes_sent);
   }
 #ifdef HAVE_COMPRESS
   if (net->compress)
@@ -465,7 +443,6 @@ ma_real_read(NET *net, size_t *complen)
 	}
 	remain -= (ulong) length;
 	pos+= (ulong) length;
-	statistic_add(bytes_received,(ulong) length,&LOCK_bytes_received);
       }
       if (i == 0)
       {					/* First parts is packet length */

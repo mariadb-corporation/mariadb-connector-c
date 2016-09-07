@@ -52,6 +52,7 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
 #else
+#include <ws2tcpip.h>
 #define O_NONBLOCK 1
 #endif
 
