@@ -37,6 +37,7 @@ extern "C" {
 #if !defined (_global_h) && !defined (MY_GLOBAL_INCLUDED) /* If not standard header */
 #include <sys/types.h>
 typedef char my_bool;
+typedef unsigned long long my_ulonglong;
 
 #if !defined(_WIN32)
 #define STDCALL
@@ -467,7 +468,7 @@ void my_set_error(MYSQL *mysql, unsigned int error_nr,
 /* Functions to get information from the MYSQL and MYSQL_RES structures */
 /* Should definitely be used if one uses shared libraries */
 
-unsigned long long STDCALL mysql_num_rows(MYSQL_RES *res);
+my_ulonglong STDCALL mysql_num_rows(MYSQL_RES *res);
 unsigned int STDCALL mysql_num_fields(MYSQL_RES *res);
 my_bool STDCALL mysql_eof(MYSQL_RES *res);
 MYSQL_FIELD *STDCALL mysql_fetch_field_direct(MYSQL_RES *res,
@@ -479,11 +480,11 @@ unsigned int STDCALL mysql_field_tell(MYSQL_RES *res);
 unsigned int STDCALL mysql_field_count(MYSQL *mysql);
 my_bool STDCALL mysql_more_results(MYSQL *mysql);
 int STDCALL mysql_next_result(MYSQL *mysql);
-unsigned long long STDCALL mysql_affected_rows(MYSQL *mysql);
+my_ulonglong STDCALL mysql_affected_rows(MYSQL *mysql);
 my_bool STDCALL mysql_autocommit(MYSQL *mysql, my_bool mode);
 my_bool STDCALL mysql_commit(MYSQL *mysql);
 my_bool STDCALL mysql_rollback(MYSQL *mysql);
-unsigned long long STDCALL mysql_insert_id(MYSQL *mysql);
+my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql);
 unsigned int STDCALL mysql_errno(MYSQL *mysql);
 char * STDCALL mysql_error(MYSQL *mysql);
 char * STDCALL mysql_info(MYSQL *mysql);

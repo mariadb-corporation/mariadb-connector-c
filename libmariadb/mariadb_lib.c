@@ -3213,7 +3213,7 @@ mysql_options4(MYSQL *mysql,enum mysql_option option, const void *arg1, const vo
 ****************************************************************************/
 
 /* MYSQL_RES */
-unsigned long long STDCALL mysql_num_rows(MYSQL_RES *res)
+my_ulonglong STDCALL mysql_num_rows(MYSQL_RES *res)
 {
   return res->row_count;
 }
@@ -3256,7 +3256,7 @@ unsigned int STDCALL mysql_field_count(MYSQL *mysql)
   return mysql->field_count;
 }
 
-unsigned long long STDCALL mysql_affected_rows(MYSQL *mysql)
+my_ulonglong STDCALL mysql_affected_rows(MYSQL *mysql)
 {
   return (mysql)->affected_rows;
 }
@@ -3277,7 +3277,7 @@ my_bool STDCALL mysql_rollback(MYSQL *mysql)
   return((my_bool)mysql_real_query(mysql, "ROLLBACK", sizeof("ROLLBACK")));
 }
 
-unsigned long long STDCALL mysql_insert_id(MYSQL *mysql)
+my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql)
 {
   return (mysql)->insert_id;
 }
