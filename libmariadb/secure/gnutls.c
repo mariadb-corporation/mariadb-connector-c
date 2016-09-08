@@ -235,12 +235,14 @@ void ma_tls_end()
 static int ma_gnutls_set_ciphers(gnutls_session_t ssl, char *cipher_str)
 {
   const char *err;
-  char *token= strtok(cipher_str, ":");
+  char *token;
 #define PRIO_SIZE 1024  
   char prio[PRIO_SIZE];
 
-  if (!token)
+  if (!cipher_str)
     return gnutls_priority_set_direct(ssl, "NORMAL", &err);
+
+  token= strtok(cipher_str, ":");
 
   strcpy(prio, "NONE:+VERS-TLS-ALL:+SIGN-ALL:+COMP-NULL");
 
@@ -386,6 +388,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   {
     ma_tls_set_error(mysql, ret);
     /* restore blocking mode */
+    gnutls_deinit((gnutls_session_t )ctls->ssl);
+    ctls->ssl= NULL;
     if (!blocking)
       pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
@@ -407,10 +411,12 @@ size_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 
 my_bool ma_tls_close(MARIADB_TLS *ctls)
 {
-  gnutls_bye((gnutls_session_t )ctls->ssl, GNUTLS_SHUT_WR);
-  gnutls_deinit((gnutls_session_t )ctls->ssl);
-  ctls->ssl= NULL;
-
+  if (ctls->ssl)
+  {
+    gnutls_bye((gnutls_session_t )ctls->ssl, GNUTLS_SHUT_WR);
+    gnutls_deinit((gnutls_session_t )ctls->ssl);
+    ctls->ssl= NULL;
+  }
   return 0;
 }
 
