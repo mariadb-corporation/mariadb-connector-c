@@ -822,10 +822,66 @@ static int test_schannel_cipher(MYSQL *unused __attribute__((unused)))
 }
 
 #endif
-  
+
+#ifdef HAVE_GNUTLS
+
+static int test_cipher_mapping(MYSQL *unused __attribute__((unused)))
+{
+  unsigned int i=0;
+  const char *ciphers[]= { "DHE-RSA-AES256-GCM-SHA384", "DHE-RSA-AES256-SHA256", "DHE-RSA-AES256-SHA",
+                           "DHE-RSA-CAMELLIA256-SHA", "AES256-GCM-SHA384", "AES256-SHA256",
+                           "AES256-SHA", "CAMELLIA256-SHA", "DHE-RSA-AES128-GCM-SHA256",
+                           "DHE-RSA-AES128-SHA256", "DHE-RSA-AES128-SHA", "DHE-RSA-CAMELLIA128-SHA",
+                           "AES128-GCM-SHA256", "AES128-SHA256", "AES128-SHA", "CAMELLIA128-SHA",
+                           "EDH-RSA-DES-CBC3-SHA", "DES-CBC3-SHA", "DHE-RSA-AES256-SHA",
+                           "DHE-RSA-CAMELLIA256-SHA", "AES256-SHA", "CAMELLIA256-SHA",
+                           NULL };
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  while (ciphers[i] != NULL)
+  {
+    MYSQL *mysql= mysql_init(NULL);
+    MYSQL_ROW row;
+    MYSQL_RES *res;
+    char c[100];
+    int rc;
+    mysql_options(mysql, MYSQL_OPT_SSL_CIPHER, ciphers[i]);
+    diag("%s", ciphers[i]);
+    FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+    if (strcmp(ciphers[i], mysql_get_ssl_cipher(mysql)) != 0)
+    {
+      diag("expected: %s instead of %s", ciphers[i], mysql_get_ssl_cipher(mysql));
+      mysql_close(mysql);
+      return FAIL;
+    }
+    rc= mysql_query(mysql, "SHOW STATUS LIKE 'ssl_cipher'");
+    check_mysql_rc(rc, mysql);
+    res= mysql_store_result(mysql);
+    row= mysql_fetch_row(res);
+    strcpy(c, row[1]);
+    mysql_free_result(res);
+    mysql_close(mysql);
+    if (strcmp(ciphers[i], c) != 0)
+    {
+      diag("expected: %s instead of %s", ciphers[i], c);
+      return FAIL;
+    }
+
+    i++;
+  }
+  return OK;
+}
+
+#endif  
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#ifdef HAVE_GNUTLS
+  {"test_cipher_mapping", test_cipher_mapping, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+#endif
   {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp", test_ssl_fp, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp_list", test_ssl_fp_list, TEST_CONNECTION_NEW, 0,  NULL,  NULL},

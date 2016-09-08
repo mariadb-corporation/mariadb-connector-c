@@ -39,6 +39,91 @@ extern unsigned int mariadb_deinitialize_ssl;
 
 static int my_verify_callback(gnutls_session_t ssl);
 
+struct st_cipher_map {
+  const char *openssl_name;
+  const char *priority;
+  gnutls_kx_algorithm_t kx;
+  gnutls_cipher_algorithm_t cipher;
+  gnutls_mac_algorithm_t mac;
+};
+
+const struct st_cipher_map gtls_ciphers[]=
+{
+  {"DHE-RSA-AES256-GCM-SHA384", ":+AEAD:+DHE-RSA:+AES-256-GCM",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_GCM, GNUTLS_MAC_AEAD},
+  {"DHE-RSA-AES256-SHA256", ":+SHA256:+DHE-RSA:+AES-256-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA256},
+  {"DHE-RSA-AES256-SHA", ":+SHA1:+DHE-RSA:+AES-256-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
+  {"DHE-RSA-CAMELLIA256-SHA", ":+SHA1:+DHE-RSA:+CAMELLIA-256-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
+  {"AES256-GCM-SHA384", ":+AEAD:+RSA:+AES-256-GCM",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_GCM, GNUTLS_MAC_AEAD},
+  {"AES256-SHA256", ":+SHA256:+RSA:+AES-256-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA256},
+  {"AES256-SHA", ":+SHA1:+RSA:+AES-256-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
+  {"CAMELLIA256-SHA", ":+SHA1:+RSA:+CAMELLIA-256-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
+  {"DHE-RSA-AES128-GCM-SHA256", ":+AEAD:+DHE-RSA:+AES-128-GCM",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_128_GCM, GNUTLS_MAC_AEAD},
+  {"DHE-RSA-AES128-SHA256", ":+SHA256:+DHE-RSA:+AES-128-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA256},
+  {"DHE-RSA-AES128-SHA", ":+SHA1:+DHE-RSA:+AES-128-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA1},
+  {"DHE-RSA-CAMELLIA128-SHA", ":+SHA1:+DHE-RSA:+CAMELLIA-128-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_CAMELLIA_128_CBC, GNUTLS_MAC_SHA1},
+  {"AES128-GCM-SHA256", ":+AEAD:+RSA:+AES-128-GCM",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_128_GCM, GNUTLS_MAC_AEAD},
+  {"AES128-SHA256", ":+SHA256:+RSA:+AES-128-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA256},
+  {"AES128-SHA", ":+SHA1:+RSA:+AES-128-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA1},
+  {"CAMELLIA128-SHA", ":+SHA1:+RSA:+CAMELLIA-128-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_CAMELLIA_128_CBC, GNUTLS_MAC_SHA1},
+  {"EDH-RSA-DES-CBC3-SHA", ":+SHA1:+DHE-RSA:+3DES-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_3DES_CBC, GNUTLS_MAC_SHA1},
+  {"DES-CBC3-SHA", ":+SHA1:+RSA:+3DES-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_3DES_CBC, GNUTLS_MAC_SHA1},
+  {"DHE-RSA-AES256-SHA", ":+SHA1:+DHE-RSA:+AES-256-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
+  {"DHE-RSA-CAMELLIA256-SHA", ":+SHA1:+DHE-RSA:+CAMELLIA-256-CBC",
+   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
+  {"AES256-SHA", ":+SHA1:+RSA:+AES-256-CBC",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
+  {"CAMELLIA256-SHA", ":+SHA1:+RSA:+CAMELLIA-256-CBC:",
+   GNUTLS_KX_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
+  {NULL, NULL, 0, 0, 0}
+};
+
+static const char *openssl_cipher_name(gnutls_kx_algorithm_t kx,
+                                       gnutls_cipher_algorithm_t cipher,
+                                       gnutls_mac_algorithm_t mac)
+{
+  unsigned int i=0;
+  while (gtls_ciphers[i].openssl_name)
+  {
+    if (gtls_ciphers[i].kx == kx &&
+        gtls_ciphers[i].cipher == cipher &&
+        gtls_ciphers[i].mac == mac)
+      return gtls_ciphers[i].openssl_name;
+    i++;
+  }
+  return NULL;
+}
+
+static const char *get_priority(const char *cipher_name)
+{
+  unsigned int i= 0;
+  while (gtls_ciphers[i].openssl_name)
+  {
+    if (strcmp(gtls_ciphers[i].openssl_name, cipher_name) == 0)
+      return gtls_ciphers[i].priority;
+    i++;
+  }
+  return NULL;
+}
+
 #define MAX_SSL_ERR_LEN 100
 
 static void ma_tls_set_error(MYSQL *mysql, int ssl_errno)
@@ -147,11 +232,40 @@ void ma_tls_end()
   return;
 }
 
+static int ma_gnutls_set_ciphers(gnutls_session_t ssl, char *cipher_str)
+{
+  const char *err;
+  char *token= strtok(cipher_str, ":");
+#define PRIO_SIZE 1024  
+  char prio[PRIO_SIZE];
+
+  if (!token)
+    return gnutls_priority_set_direct(ssl, "NORMAL", &err);
+
+  strcpy(prio, "NONE:+VERS-TLS-ALL:+SIGN-ALL:+COMP-NULL");
+
+  while (token)
+  {
+    const char *p= get_priority(token);
+    /* if cipher was not found, we pass the original token to
+        the priority string, this will allow to specify gnutls
+        specific settings via cipher */
+    if (!p)
+    {
+      strncat(prio, ":", PRIO_SIZE - strlen(prio) - 1);
+      strncat(prio, token, PRIO_SIZE - strlen(prio) - 1);
+    }
+    else 
+      strncat(prio, p, PRIO_SIZE - strlen(prio) - 1);
+    token = strtok(NULL, ":");
+  }
+  return gnutls_priority_set_direct(ssl, prio , &err);
+}
+
 static int ma_tls_set_certs(MYSQL *mysql)
 {
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
-  char *cipher= NULL;
   int  ssl_error= 0;
 
   if (mysql->options.ssl_ca)
@@ -177,17 +291,14 @@ static int ma_tls_set_certs(MYSQL *mysql)
   if (certfile || keyfile)
   {
     if ((ssl_error= gnutls_certificate_set_x509_key_file2(GNUTLS_xcred,
-                                                         certfile, keyfile,
-                                                         GNUTLS_X509_FMT_PEM,
-                                                         OPT_HAS_EXT_VAL(mysql, tls_pw) ? mysql->options.extension->tls_pw : NULL,
-                                                         0)) < 0)
+                      certfile, keyfile, GNUTLS_X509_FMT_PEM,
+                      OPT_HAS_EXT_VAL(mysql, tls_pw) ? mysql->options.extension->tls_pw : NULL,
+                      0)) < 0)
       goto error;
   }
   return 1;
 
 error:
-  if (cipher)
-    free(cipher);
   return ssl_error;
 }
 
@@ -195,7 +306,6 @@ void *ma_tls_init(MYSQL *mysql)
 {
   gnutls_session_t ssl= NULL;
   int ssl_error= 0;
-  const char *err;
 
   pthread_mutex_lock(&LOCK_gnutls_config);
 
@@ -205,8 +315,8 @@ void *ma_tls_init(MYSQL *mysql)
   if ((ssl_error = gnutls_init(&ssl, GNUTLS_CLIENT & GNUTLS_NONBLOCK)) < 0)
     goto error;
   gnutls_session_set_ptr(ssl, (void *)mysql);
-
-  ssl_error= gnutls_priority_set_direct(ssl, "NORMAL", &err);
+ 
+  ssl_error= ma_gnutls_set_ciphers(ssl, mysql->options.ssl_cipher);
   if (ssl_error < 0)
     goto error;
 
@@ -312,9 +422,17 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls __attribute__((unused)))
 
 const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 {
+  gnutls_kx_algorithm_t kx;
+  gnutls_cipher_algorithm_t cipher;
+  gnutls_mac_algorithm_t mac;
+
   if (!ctls || !ctls->ssl)
     return NULL;
-  return gnutls_cipher_get_name (gnutls_cipher_get((gnutls_session_t )ctls->ssl));
+
+  mac= gnutls_mac_get((gnutls_session_t)ctls->ssl);
+  cipher= gnutls_cipher_get((gnutls_session_t)ctls->ssl);
+  kx= gnutls_kx_get((gnutls_session_t)ctls->ssl);
+  return openssl_cipher_name(kx, cipher, mac);
 }
 
 static int my_verify_callback(gnutls_session_t ssl)
