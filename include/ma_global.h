@@ -337,6 +337,9 @@ typedef int	File;		/* File descriptor */
 typedef int	my_socket;	/* File descriptor for sockets */
 #define my_socket_defined
 #endif
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET -1
+#endif
 /* Type for fuctions that handles signals */
 #define sig_handler RETSIGTYPE
 typedef void	(*sig_return)(void);/* Returns type from signal */
