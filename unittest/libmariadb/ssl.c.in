@@ -180,7 +180,7 @@ static int test_conc95(MYSQL *unused __attribute__((unused)))
                 NULL);
 
   if (!mysql_real_connect(mysql, hostname, "ssluser1", sslpw, schema,
-           port, socketname, 0))
+                          port, socketname, 0))
   {
     diag("could not establish x509 connection. Error: %s", mysql_error(mysql));
     mysql_close(mysql);

@@ -737,7 +737,7 @@ static int charset_auto(MYSQL *my __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "auto");
 
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username,
+  FAIL_IF(!my_test_connect(mysql, hostname, username,
                              password, schema, port, socketname, 0), 
          mysql_error(mysql));
 

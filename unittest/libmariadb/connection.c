@@ -57,7 +57,7 @@ static int test_conc66(MYSQL *my)
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
   check_mysql_rc(rc, my);
-  if (!mysql_real_connect(mysql, hostname, NULL,
+  if (!my_test_connect(mysql, hostname, NULL,
                              NULL, schema, port, socketname, 0))
   {
     diag("Error: %s", mysql_error(mysql));
@@ -441,13 +441,13 @@ static int test_bug31669(MYSQL *mysql)
 }
 
 /**
-     Bug# 33831 mysql_real_connect() should fail if
+     Bug# 33831 my_test_connect() should fail if
      given an already connected MYSQL handle.
 */
 
 static int test_bug33831(MYSQL *mysql)
 {
-  FAIL_IF(mysql_real_connect(mysql, hostname, username,
+  FAIL_IF(my_test_connect(mysql, hostname, username,
                              password, schema, port, socketname, 0), 
          "Error expected");
   
@@ -476,7 +476,7 @@ static int test_opt_reconnect(MYSQL *mysql)
   mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_UNLESS(reconnect == 1, "reconnect != 1");
 
-  if (!(mysql_real_connect(mysql, hostname, username,
+  if (!(my_test_connect(mysql, hostname, username,
                            password, schema, port,
                            socketname, 0)))
   {
@@ -496,7 +496,7 @@ static int test_opt_reconnect(MYSQL *mysql)
   mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_UNLESS(reconnect == 0, "reconnect != 0");
 
-  if (!(mysql_real_connect(mysql, hostname, username,
+  if (!(my_test_connect(mysql, hostname, username,
                            password, schema, port,
                            socketname, 0)))
   {
@@ -527,7 +527,7 @@ static int test_compress(MYSQL *mysql)
 
 
 
-  if (!(mysql_real_connect(mysql, hostname, username,
+  if (!(my_test_connect(mysql, hostname, username,
                            password, schema, port,
                            socketname, 0)))
   {
@@ -565,7 +565,7 @@ static int test_reconnect(MYSQL *mysql)
   mysql_get_option(mysql1, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_UNLESS(reconnect == 1, "reconnect != 1");
 
-  if (!(mysql_real_connect(mysql1, hostname, username,
+  if (!(my_test_connect(mysql1, hostname, username,
                            password, schema, port,
                            socketname, 0)))
   {
@@ -626,7 +626,7 @@ int test_conc26(MYSQL *unused __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
 
-  FAIL_IF(mysql_real_connect(mysql, hostname, "notexistinguser", "password", schema, port, NULL, CLIENT_REMEMBER_OPTIONS), 
+  FAIL_IF(my_test_connect(mysql, hostname, "notexistinguser", "password", schema, port, NULL, CLIENT_REMEMBER_OPTIONS), 
           "Error expected");
 
   FAIL_IF(!mysql->options.charset_name || strcmp(mysql->options.charset_name, "utf8") != 0, 
@@ -634,7 +634,7 @@ int test_conc26(MYSQL *unused __attribute__((unused)))
   mysql_close(mysql);
 
   mysql= mysql_init(NULL);
-  FAIL_IF(mysql_real_connect(mysql, hostname, "notexistinguser", "password", schema, port, NULL, 0), 
+  FAIL_IF(my_test_connect(mysql, hostname, "notexistinguser", "password", schema, port, NULL, 0), 
           "Error expected");
   FAIL_IF(mysql->options.charset_name, "Error: options not freed");
   mysql_close(mysql);
@@ -649,7 +649,7 @@ int test_connection_timeout(MYSQL *unused __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
   start= time(NULL);
-  if (mysql_real_connect(mysql, "192.168.1.101", "notexistinguser", "password", schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (my_test_connect(mysql, "192.168.1.101", "notexistinguser", "password", schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Error expected - maybe you have to change hostname");
     return FAIL;
@@ -669,7 +669,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
   mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
   start= time(NULL);
-  if (mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
   {
     diag("timeout error expected");
     return FAIL;
@@ -693,7 +693,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
   mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
   start= time(NULL);
-  if (mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
   {
     diag("timeout error expected");
     elapsed= time(NULL) - start;
@@ -710,7 +710,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, (unsigned int *)&read_write_timeout);
   mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
 
-  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
@@ -770,7 +770,7 @@ static int test_wrong_bind_address(MYSQL *unused __attribute__((unused)))
   mysql=  mysql_init(NULL);
 
   mysql_options(mysql, MYSQL_OPT_BIND, bind_addr);
-  if (mysql_real_connect(mysql, hostname, username,
+  if (my_test_connect(mysql, hostname, username,
                              password, schema, port, socketname, 0))
   {
     diag("Error expected");
@@ -815,7 +815,7 @@ static int test_bind_address(MYSQL *my)
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_BIND, bind_addr);
 
-  if (!mysql_real_connect(mysql, bind_addr, username,
+  if (!my_test_connect(mysql, bind_addr, username,
                              password, schema, port, socketname, 0))
   {
     diag("Error: %s\n", mysql_error(mysql));
@@ -942,14 +942,15 @@ static int test_sess_track_db(MYSQL *mysql)
           "session_track_get_first failed");
   FAIL_IF(strncmp(data, "testc", len), "Expected new schema 'testc'");
 
+  diag("charset: %s", mysql->charset->csname);
   rc= mysql_query(mysql, "SET NAMES utf8");
   check_mysql_rc(rc, mysql);
-  diag("charset: %s", mysql->charset->csname);
-  FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
   if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
   do {
     printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
   } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
+  diag("charset: %s", mysql->charset->csname);
+  FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
 
   rc= mysql_query(mysql, "SET NAMES latin1");
   check_mysql_rc(rc, mysql);

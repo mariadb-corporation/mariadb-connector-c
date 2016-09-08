@@ -14,7 +14,7 @@ static int basic_connect(MYSQL *unused __attribute__((unused)))
   MYSQL *my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
-  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(my, "SELECT @@version");
@@ -123,7 +123,7 @@ DWORD WINAPI thread_conc27(void)
   MYSQL_RES *res;
   mysql_thread_init();
   mysql= mysql_init(NULL);
-  if(!mysql_real_connect(mysql, hostname, username, password, schema,
+  if(!my_test_connect(mysql, hostname, username, password, schema,
           port, socketname, 0))
   {
     diag(">Error: %s", mysql_error(mysql));

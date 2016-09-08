@@ -40,7 +40,7 @@ static int test_conc75(MYSQL *my)
   mysql= mysql_init(NULL);
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-  mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS);
+  my_test_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS a");
   check_mysql_rc(rc, mysql);
@@ -80,7 +80,7 @@ static int test_conc74(MYSQL *unused __attribute__((unused)))
   mysql= mysql_init(NULL);
 
 
-  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, 0| CLIENT_MULTI_RESULTS | CLIENT_REMEMBER_OPTIONS))
   {
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -119,7 +119,7 @@ static int test_conc71(MYSQL *my)
   mysql_options(mysql, MYSQL_INIT_COMMAND, "/*!40101 SET SQL_MODE='' */");
   mysql_options(mysql, MYSQL_INIT_COMMAND, "/*!40101 set @@session.wait_timeout=28800 */");
 
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
 
   diag("kill server");
@@ -149,7 +149,7 @@ static int test_conc70(MYSQL *my)
   mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
 
   mysql_options(mysql, MYSQL_OPT_COMPRESS, (void *)1);
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
@@ -207,7 +207,7 @@ static int test_conc68(MYSQL *my)
 
   mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
 
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
@@ -257,7 +257,7 @@ static int basic_connect(MYSQL *unused __attribute__((unused)))
   MYSQL *my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
-  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(my, "SELECT @@version");
@@ -647,7 +647,7 @@ static int test_status(MYSQL *mysql)
 
 static int bug_conc1(MYSQL *mysql)
 {
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  my_test_connect(mysql, hostname, username, password, schema,
                      port, socketname, 0);
   diag("errno: %d", mysql_errno(mysql));
   FAIL_IF(mysql_errno(mysql) != CR_ALREADY_CONNECTED,
@@ -663,7 +663,7 @@ static int test_options_initcmd(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_INIT_COMMAND, "DROP TABLE IF EXISTS t1; CREATE TABLE t1 (a int)");
   mysql_options(mysql, MYSQL_INIT_COMMAND, "INSERT INTO t1 VALUES (1),(2),(3)");
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                               port, socketname, 
                               CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
 
@@ -708,7 +708,7 @@ static int test_reconnect_maxpackage(MYSQL *unused __attribute__((unused)))
   SKIP_CONNECTION_HANDLER;
   mysql= mysql_init(NULL);
 
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                               port, socketname, 
                               CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -760,7 +760,7 @@ static int test_compressed(MYSQL *unused __attribute__((unused)))
   my_bool reconnect= 1;
 
   mysql_options(mysql, MYSQL_OPT_COMPRESS, (void *)1);
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                               port, socketname, 
                               CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
