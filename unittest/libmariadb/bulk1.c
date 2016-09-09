@@ -26,7 +26,7 @@ char *rand_str(size_t length) {
     char *dest= (char *)malloc(length+1);
     char *p= dest;
     while (length-- > 0) {
-        size_t index = (double) rand() / RAND_MAX * (sizeof charset - 1);
+        size_t index =  (size_t)((double)rand() / RAND_MAX * (sizeof charset - 1));
         *dest++ = charset[index];
     }
     *dest = '\0';

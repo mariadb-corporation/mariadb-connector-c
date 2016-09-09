@@ -238,7 +238,7 @@ int pvio_shm_fast_send(MARIADB_PVIO *pvio)
 
 my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 {
-  char *base_memory_name;
+  const char *base_memory_name;
   char *prefixes[]= {"", "Global\\", NULL};
   char *shm_name, *shm_suffix, *shm_prefix;
   uchar i= 0;
@@ -453,16 +453,16 @@ my_bool pvio_shm_is_alive(MARIADB_PVIO *pvio)
   if (!pvio || !pvio->data)
     return FALSE;
   pvio_shm= (PVIO_SHM *)pvio->data;
-  return WaitForSingleObject(pvio_shm->event[PVIO_SHM_CONNECTION_CLOSED], 0);
+  return WaitForSingleObject(pvio_shm->event[PVIO_SHM_CONNECTION_CLOSED], 0)!=WAIT_OBJECT_0;
 }
 
 my_bool pvio_shm_get_handle(MARIADB_PVIO *pvio, void *handle)
 {
-  PVIO_SHM *pvio_shm;
+
   *(HANDLE **)handle= 0;
   if (!pvio || !pvio->data)
     return FALSE;
-  *(HANDLE **)handle= (HANDLE **)((PVIO_SHM*)pvio->data)->event;
+  *(HANDLE **)handle= ((PVIO_SHM*)pvio->data)->event;
   return TRUE;
 }
 #endif
