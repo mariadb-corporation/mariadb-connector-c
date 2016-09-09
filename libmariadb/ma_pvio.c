@@ -70,7 +70,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
    *   pvio_namedpipe
    *   pvio_sharedmed
    */
-  char *pvio_plugins[] = {"pvio_socket", "pvio_npipe", "pvio_shmem"};
+  const char *pvio_plugins[] = {"pvio_socket", "pvio_npipe", "pvio_shmem"};
   int type;
   MARIADB_PVIO_PLUGIN *pvio_plugin;
   MARIADB_PVIO *pvio= NULL;
@@ -139,9 +139,11 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
 /* {{{ my_bool ma_pvio_is_alive */
 my_bool ma_pvio_is_alive(MARIADB_PVIO *pvio)
 {
+  if (!pvio)
+    return FALSE;
   if (pvio->methods->is_alive)
     return pvio->methods->is_alive(pvio);
-  return FALSE;
+  return TRUE;
 }
 /* }}} */
 
@@ -311,8 +313,7 @@ static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_
 
   for (;;)
   {
-    if (pvio->methods->async_write)
-      res= pvio->methods->async_write(pvio, buffer, length);
+    res= pvio->methods->async_write(pvio, buffer, length);
     if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_WRITE;
@@ -521,8 +522,8 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
     return 1;
 
   if (pvio->mysql->options.extension &&
-      (pvio->mysql->options.extension->tls_fp && pvio->mysql->options.extension->tls_fp[0]) ||
-      (pvio->mysql->options.extension->tls_fp_list && pvio->mysql->options.extension->tls_fp_list[0]))
+      ((pvio->mysql->options.extension->tls_fp && pvio->mysql->options.extension->tls_fp[0]) ||
+      (pvio->mysql->options.extension->tls_fp_list && pvio->mysql->options.extension->tls_fp_list[0])))
   {
 
     if (ma_pvio_tls_check_fp(pvio->ctls, 

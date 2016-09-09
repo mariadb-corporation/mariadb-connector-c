@@ -187,7 +187,7 @@ static int test_fetch_seek(MYSQL *mysql)
   int        rc;
   int32      c1;
   char       c2[11], c3[20];
-  char       *query = "SELECT * FROM t1";
+  const char *query = "SELECT * FROM t1";
 
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
@@ -268,19 +268,19 @@ static int test_fetch_seek(MYSQL *mysql)
 static int test_fetch_offset(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
-  MYSQL_BIND my_bind[1];
-  char       data[11];
-  ulong      length;
+  MYSQL_BIND my_bind[2];
+  char       data[11], chunk[5];
+  ulong      length[2];
   int        rc;
-  my_bool    is_null;
-  char       *query = "SELECT * FROM t1";
+  my_bool    is_null[2];
+  const char *query = "SELECT * FROM t1";
 
 
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "create table t1(a char(10))");
+  rc= mysql_query(mysql, "create table t1(a char(10), b mediumblob)");
   check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "insert into t1 values('abcdefghij'), (null)");
+  rc= mysql_query(mysql, "insert into t1 values('abcdefghij', 'klmnopqrstzy'), (null, null)");
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
@@ -293,8 +293,14 @@ static int test_fetch_offset(MYSQL *mysql)
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
   my_bind[0].buffer= (void *)data;
   my_bind[0].buffer_length= 11;
-  my_bind[0].is_null= &is_null;
-  my_bind[0].length= &length;
+  my_bind[0].is_null= &is_null[0];
+  my_bind[0].length= &length[0];
+
+  my_bind[1].buffer_type= MYSQL_TYPE_MEDIUM_BLOB;
+  my_bind[1].buffer= NULL;
+  my_bind[1].buffer_length= 0;
+  my_bind[1].is_null= &is_null[1];
+  my_bind[1].length= &length[1];
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc,stmt);
@@ -312,32 +318,60 @@ static int test_fetch_offset(MYSQL *mysql)
   check_stmt_rc(rc,stmt);
 
   rc= mysql_stmt_fetch(stmt);
-  check_stmt_rc(rc,stmt);
+  FAIL_UNLESS(rc == MYSQL_DATA_TRUNCATED, "rc != MYSQL_DATA_TRUNCATED");
 
   data[0]= '\0';
-  rc= mysql_stmt_fetch_column(stmt, my_bind, 0, 0);
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[0], 0, 0);
   check_stmt_rc(rc,stmt);
 
 
-  FAIL_IF(!(strncmp(data, "abcd", 4) == 0 && length == 10), "Wrong value");
+  FAIL_IF(!(strncmp(data, "abcdefghij", 11) == 0 && length[0] == 10), "Wrong value");
+  FAIL_IF(my_bind[0].error_value, "No truncation, but error is set");
 
-  rc= mysql_stmt_fetch_column(stmt, my_bind, 0, 5);
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[0], 0, 5);
   check_stmt_rc(rc,stmt);
-  FAIL_IF(!(strncmp(data, "fg", 2) == 0 && length == 10), "Wrong value");
+  FAIL_IF(!(strncmp(data, "fghij", 6) == 0 && length[0] == 10), "Wrong value");
+  FAIL_IF(my_bind[0].error_value, "No truncation, but error is set");
 
-  rc= mysql_stmt_fetch_column(stmt, my_bind, 0, 9);
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[0], 0, 9);
   check_stmt_rc(rc,stmt);
-  FAIL_IF(!(strncmp(data, "j", 1) == 0 && length == 10), "Wrong value");
+  FAIL_IF(!(strncmp(data, "j", 2) == 0 && length[0] == 10), "Wrong value");
+  FAIL_IF(my_bind[0].error_value, "No truncation, but error is set");
+
+  /* Now blob field */
+  my_bind[1].buffer= chunk;
+  my_bind[1].buffer_length= sizeof(chunk);
+
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[1], 1, 0);
+  check_stmt_rc(rc,stmt);
+
+  FAIL_IF(!(strncmp(chunk, "klmno", 5) == 0 && length[1] == 12), "Wrong value");
+  FAIL_IF(my_bind[1].error_value == '\0', "Truncation, but error is not set");
+
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[1], 1, 5);
+  check_stmt_rc(rc,stmt);
+  FAIL_IF(!(strncmp(chunk, "pqrst", 5) == 0 && length[1] == 12), "Wrong value");
+  FAIL_IF(my_bind[1].error_value == '\0', "Truncation, but error is not set");
+
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[1], 1, 10);
+  check_stmt_rc(rc,stmt);
+  FAIL_IF(!(strncmp(chunk, "zy", 2) == 0 && length[1] == 12), "Wrong value");
+  FAIL_IF(my_bind[1].error_value, "No truncation, but error is set");
 
   rc= mysql_stmt_fetch(stmt);
   check_stmt_rc(rc,stmt);
 
-  is_null= 0;
+  memset(is_null, 0, sizeof(is_null));
 
-  rc= mysql_stmt_fetch_column(stmt, my_bind, 0, 0);
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[0], 0, 0);
   check_stmt_rc(rc,stmt);
 
-  FAIL_IF(is_null != 1, "Null flag not set");
+  FAIL_IF(is_null[0] != 1, "Null flag not set");
+
+  rc= mysql_stmt_fetch_column(stmt, &my_bind[1], 1, 0);
+  check_stmt_rc(rc,stmt);
+
+  FAIL_IF(is_null[1] != 1, "Null flag not set");
 
   rc= mysql_stmt_fetch(stmt);
   FAIL_IF(rc != MYSQL_NO_DATA, "Expected MYSQL_NO_DATA");
@@ -362,7 +396,7 @@ static int test_fetch_column(MYSQL *mysql)
   char       c2[20], bc2[20];
   ulong      l1, l2, bl1, bl2;
   int        rc, c1, bc1;
-  char       *query= "SELECT * FROM t1 ORDER BY c2 DESC";
+  const char *query= "SELECT * FROM t1 ORDER BY c2 DESC";
 
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
@@ -482,7 +516,7 @@ static int test_fetch_nobuffs(MYSQL *mysql)
   MYSQL_BIND my_bind[4];
   char       str[4][50];
   int        rc;
-  char       *query = "SELECT DATABASE(), CURRENT_USER(), \
+  const char  *query = "SELECT DATABASE(), CURRENT_USER(), \
                        CURRENT_DATE(), CURRENT_TIME()";
 
   stmt = mysql_stmt_init(mysql);
@@ -619,7 +653,7 @@ static int test_fetch_date(MYSQL *mysql)
   MYSQL_BIND my_bind[8];
   my_bool    is_null[8];
   ulong      length[8];
-  char	     *query= "SELECT * FROM test_bind_result";
+  const char *query= "SELECT * FROM test_bind_result";
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_result");
   check_mysql_rc(rc, mysql);

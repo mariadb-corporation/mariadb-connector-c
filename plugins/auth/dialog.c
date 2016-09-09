@@ -79,7 +79,7 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   RETURNS
     Input buffer
 */
-static char *auth_dialog_native_prompt(MYSQL *mysql,
+static char *auth_dialog_native_prompt(MYSQL *mysql __attribute__((unused)),
                                        int type,
                                        const char *prompt,
                                        char *buffer,
@@ -103,7 +103,7 @@ static char *auth_dialog_native_prompt(MYSQL *mysql,
   }
   else
   {
-    get_tty_password("", buffer, buffer_len - 1);
+    get_tty_password((char *)"", buffer, buffer_len - 1);
   }
   return buffer;
 }
@@ -138,7 +138,7 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   my_bool first_loop= TRUE;
 
   do {
-    if ((packet_length= vio->read_packet(vio, &packet)) < 0)
+    if ((packet_length= vio->read_packet(vio, &packet)) == (size_t)-1)
       /* read error */
       return CR_ERROR;
 
@@ -170,7 +170,7 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       response= mysql->passwd;
     }
     if (!response ||
-        vio->write_packet(vio, response, (int)strlen(response) + 1))
+        vio->write_packet(vio, (uchar *)response, (int)strlen(response) + 1))
       return CR_ERROR;
 
     first_loop= FALSE;

@@ -9,7 +9,7 @@ typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 extern void read_user_name(char *name);
-extern uchar *ma_send_connect_attr(MYSQL *mysql, uchar *buffer);
+extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
 
 typedef struct {
   int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
@@ -141,7 +141,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
     end= ma_strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
 
-  end= ma_send_connect_attr(mysql, end);
+  end= ma_send_connect_attr(mysql, (unsigned char *)end);
 
   res= ma_simple_command(mysql, COM_CHANGE_USER,
                       buff, (ulong)(end-buff), 1, NULL);
@@ -218,8 +218,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     memset(buff + 9, 0, 32-9);
     if (!(mysql->server_capabilities & CLIENT_MYSQL))
     {
-      mysql->client_flag |= MARIADB_CLIENT_SUPPORTED_FLAGS;
-      int4store(buff + 28, mysql->client_flag >> 32);
+      mysql->extension->mariadb_client_flag = MARIADB_CLIENT_SUPPORTED_FLAGS >> 32;
+      int4store(buff + 28, mysql->extension->mariadb_client_flag);
     }
     end= buff+32;
   }
@@ -249,7 +249,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       Send mysql->client_flag, max_packet_size - unencrypted otherwise
       the server does not know we want to do SSL
     */
-    if (ma_net_write(net, (char*)buff, (size_t) (end-buff)) || ma_net_flush(net))
+    if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
     {
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                           ER(CR_SERVER_LOST_EXTENDED),
@@ -298,10 +298,10 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
     end= ma_strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
 
-  end= ma_send_connect_attr(mysql, end);
+  end= ma_send_connect_attr(mysql, (unsigned char *)end);
 
   /* Write authentication package */
-  if (ma_net_write(net, buff, (size_t) (end-buff)) || ma_net_flush(net))
+  if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                         ER(CR_SERVER_LOST_EXTENDED),
@@ -405,7 +405,7 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
     if (mpvio->mysql->thd)
       res= 1; /* no chit-chat in embedded */
     else
-      res= ma_net_write(net, (char *)pkt, pkt_len) || ma_net_flush(net);
+      res= ma_net_write(net, (unsigned char *)pkt, pkt_len) || ma_net_flush(net);
     if (res)
       my_set_error(mpvio->mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                                  ER(CR_SERVER_LOST_EXTENDED),

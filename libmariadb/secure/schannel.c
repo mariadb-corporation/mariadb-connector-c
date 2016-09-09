@@ -305,10 +305,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   my_bool rc= 1;
   SC_CTX *sctx;
   SECURITY_STATUS sRet;
-  PCCERT_CONTEXT pRemoteCertContext = NULL,
+  PCCERT_CONTEXT pRemoteCertContext= NULL,
                  pLocalCertContext= NULL;
   ALG_ID AlgId[MAX_ALG_ID];
-  
+  WORD validTokens = 0;
+
   if (!ctls || !ctls->pvio)
     return 1;;
   
@@ -326,7 +327,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   ZeroMemory(&Cred, sizeof(SCHANNEL_CRED));
 
-  WORD validTokens = 0;
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
@@ -536,7 +536,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   return NULL;
 }
 
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
 {
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;

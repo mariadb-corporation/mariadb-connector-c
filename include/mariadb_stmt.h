@@ -99,7 +99,10 @@ typedef struct st_mysql_bind
   void           *buffer;          /* buffer to get/put data */
   /* set this if you want to track data truncations happened during fetch */
   my_bool        *error;
-  unsigned char  *row_ptr;         /* for the current data position */
+  union {
+    unsigned char *row_ptr;        /* for the current data position */
+    char *indicator;               /* indicator variable */
+  } u;
   void (*store_param_func)(NET *net, struct st_mysql_bind *param);
   void (*fetch_result)(struct st_mysql_bind *, MYSQL_FIELD *,
                        unsigned char **row);
@@ -107,12 +110,7 @@ typedef struct st_mysql_bind
           unsigned char **row);
   /* output buffer length, must be set when fetching str/binary */
   unsigned long  buffer_length;
-  union {
-    unsigned long  offset;           /* offset position for char/binary fetch */
-    struct {
-      unsigned char *indicator;
-    };
-  } u;
+  unsigned long  offset;           /* offset position for char/binary fetch */
   unsigned long  length_value;     /* Used if length is 0 */
   unsigned int   flags;            /* special flags, e.g. for dummy bind  */
   unsigned int   pack_length;      /* Internal length for packed data */

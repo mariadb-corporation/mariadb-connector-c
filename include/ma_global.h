@@ -21,7 +21,6 @@
 #ifndef _global_h
 #define _global_h
 
-
 #ifdef _WIN32
 #include <ma_config_win.h>
 #else
@@ -710,6 +709,7 @@ typedef char		*my_string; /* String of characters */
 typedef unsigned long	size_s; /* Size of strings (In string-funcs) */
 typedef int		myf;	/* Type of MyFlags in my_funcs */
 typedef char		my_bool; /* Small bool */
+typedef unsigned long long my_ulonglong;
 #if !defined(bool) && !defined(bool_defined) && (!defined(HAVE_BOOL) || !defined(__cplusplus))
 typedef char		bool;	/* Ordinary boolean values 0 1 */
 #endif

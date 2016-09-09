@@ -28,7 +28,9 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_close
  mysql_commit
  mysql_data_seek
+ mysql_debug
  mysql_dump_debug_info
+ mysql_embedded
  mysql_eof
  mysql_errno
  mysql_error
@@ -50,6 +52,7 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_get_host_info
  mysql_get_option
  mysql_get_optionv
+ mysql_get_parameters
  mysql_get_proto_info
  mysql_get_server_info
  mysql_get_server_name
@@ -70,6 +73,8 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_load_plugin
  mysql_load_plugin_v
  mysql_more_results
+ mysql_net_field_length
+ mysql_net_read_packet
  mysql_next_result
  mysql_num_fields
  mysql_num_rows
@@ -348,17 +353,21 @@ IF(WIN32)
                    "SOURCE_FILE:libmariadb/libmariadb.c"
                    "ORIGINAL_FILE_NAME:libmariadb.dll"
                    "FILE_DESCRIPTION:Dynamic lib for client/server communication")
-  SET_VERSION_INFO("TARGET:mariadbclient"
-                   "FILE_TYPE:VFT_STATIC_LIB"
-                   "SOURCE_FILE:libmariadb/libmariadb.c"
-                   "ORIGINAL_FILE_NAME:mariadbclient.lib"
-                   "FILE_DESCRIPTION:Static lib for client/server communication")
 ENDIF()
 
 ADD_LIBRARY(mariadbclient STATIC ${mariadbclient_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE} mariadbclient.def)
 TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
 ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE} mariadbclient.def)
 TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
+IF(FOR_SERVER)
+  SET_TARGET_PROPERTIES(mariadbclient PROPERTIES OUTPUT_NAME mysqlclient)
+  IF(WIN32)
+    SET_TARGET_PROPERTIES(libmariadb PROPERTIES OUTPUT_NAME libmysql)
+  ELSE()
+    SET_TARGET_PROPERTIES(libmariadb PROPERTIES OUTPUT_NAME libmysqlclient)
+  ENDIF()
+ENDIF()
+
 IF(UNIX)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
 ENDIF()
@@ -371,18 +380,12 @@ ENDIF()
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
   TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
   TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${PROJECT_BINARY_DIR}/libmariadb/mariadbclient.def")
-  TARGET_LINK_LIBRARIES (mariadbclient "-Wl,--no-undefined")
-  TARGET_LINK_LIBRARIES (mariadbclient "-Wl,--version-script=${PROJECT_BINARY_DIR}/libmariadb/mariadbclient.def")
 ENDIF()
 
 SET_TARGET_PROPERTIES(mariadbclient PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "${SYSTEM_LIBS}")
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "${SYSTEM_LIBS}")
 
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES PREFIX "")
-
-SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION 
-   ${CPACK_PACKAGE_VERSION_MAJOR}
-   SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
 
 #
 # Installation
@@ -393,8 +396,25 @@ INCLUDE(${PROJECT_SOURCE_DIR}/cmake/symlink.cmake)
 # There are still several projects which don't make use
 # of the config program. To make sure these programs can
 # use mariadb client library we provide libmysql symlinks
-IF(NOT WIN32 AND WITH_MYSQLCOMPAT)
-  SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
+SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
+
+IF(NOT FOR_SERVER)
+  SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION 
+   ${CPACK_PACKAGE_VERSION_MAJOR}
+   SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
+ELSE()
+  SET(SHARED_LIB_MAJOR_VERSION 18 CACHE STRING "")
+  SET(OS_SHARED_LIB_VERSION "${SHARED_LIB_MAJOR_VERSION}.0.0" CACHE STRING "")
+  IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
+   SET_TARGET_PROPERTIES(libmariadb PROPERTIES 
+     VERSION ${SHARED_LIB_MAJOR_VERSION}
+     SOVERSION ${OS_SHARED_LIB_VERSION})
+  ENDIF()
+  create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
+  create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
+ENDIF()
+
+IF(NOT WIN32 AND WITH_MYSQLCOMPAT AND NOT FOR_SERVER)  
   create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
   create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
   create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
@@ -404,8 +424,17 @@ ENDIF()
 
 INSTALL(TARGETS
           libmariadb mariadbclient 
-          RUNTIME DESTINATION "${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}"
-          LIBRARY DESTINATION "${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}"
-          ARCHIVE DESTINATION "${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}")
+          RUNTIME DESTINATION "${INSTALL_PATH}"
+          LIBRARY DESTINATION "${INSTALL_PATH}"
+          ARCHIVE DESTINATION "${INSTALL_PATH}")
 
-
+IF(WIN32)
+   # On Windows, install PDB
+   GET_TARGET_PROPERTY(location libmariadb LOCATION)
+   STRING(REPLACE ".dll" ".pdb" pdb_location ${location})
+   IF (NOT "${CMAKE_CFG_INTDIR}" STREQUAL ".")
+     STRING(REPLACE "${CMAKE_CFG_INTDIR}" "\${CMAKE_INSTALL_CONFIG_NAME}"
+      pdb_location ${pdb_location})
+   ENDIF()
+   INSTALL(FILES ${pdb_location} DESTINATION "${INSTALL_PATH}")
+ENDIF()

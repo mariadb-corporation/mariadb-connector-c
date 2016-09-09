@@ -37,14 +37,13 @@ extern "C" {
 #if !defined (_global_h) && !defined (MY_GLOBAL_INCLUDED) /* If not standard header */
 #include <sys/types.h>
 typedef char my_bool;
+typedef unsigned long long my_ulonglong;
 
 #if !defined(_WIN32)
 #define STDCALL
 #else
 #define STDCALL __stdcall
 #endif
-
-
 
 #ifndef my_socket_defined
 #define my_socket_defined
@@ -152,10 +151,12 @@ extern unsigned int mariadb_deinitialize_ssl;
   typedef MYSQL_ROWS *MYSQL_ROW_OFFSET;	/* offset to current row */
 
   typedef struct st_mysql_data {
+    MYSQL_ROWS *data;
+    void *embedded_info;
+    MA_MEM_ROOT alloc;
     unsigned long long rows;
     unsigned int fields;
-    MYSQL_ROWS *data;
-    MA_MEM_ROOT alloc;
+    void *extension;
   } MYSQL_DATA;
 
   enum mariadb_com_multi {
@@ -333,8 +334,8 @@ struct st_mysql_options {
     unsigned long thread_id;		/* Id for connection in server */
     unsigned long packet_length;
     unsigned int port;
-    unsigned long long client_flag;
-    unsigned long long server_capabilities; /* changed from long to longlong in 10.2 protocol */
+    unsigned long client_flag;
+    unsigned long server_capabilities;
     unsigned int protocol_version;
     unsigned int field_count;
     unsigned int server_status;
@@ -371,6 +372,13 @@ typedef struct st_mysql_res {
   my_bool       is_ps;
 } MYSQL_RES;
 
+typedef struct
+{
+  unsigned long *p_max_allowed_packet;
+  unsigned long *p_net_buffer_length;
+  void *extension;
+} MYSQL_PARAMETERS;
+
 #ifndef _mysql_time_h_
 enum enum_mysql_timestamp_type
 {
@@ -385,9 +393,9 @@ typedef struct st_mysql_time
   my_bool       neg;
   enum enum_mysql_timestamp_type time_type;
 } MYSQL_TIME;
+#define AUTO_SEC_PART_DIGITS 39
 #endif
 
-#define AUTO_SEC_PART_DIGITS 31
 #define SEC_PART_DIGITS 6
 #define MARIADB_INVALID_SOCKET -1
 
@@ -460,7 +468,7 @@ void my_set_error(MYSQL *mysql, unsigned int error_nr,
 /* Functions to get information from the MYSQL and MYSQL_RES structures */
 /* Should definitely be used if one uses shared libraries */
 
-unsigned long long STDCALL mysql_num_rows(MYSQL_RES *res);
+my_ulonglong STDCALL mysql_num_rows(MYSQL_RES *res);
 unsigned int STDCALL mysql_num_fields(MYSQL_RES *res);
 my_bool STDCALL mysql_eof(MYSQL_RES *res);
 MYSQL_FIELD *STDCALL mysql_fetch_field_direct(MYSQL_RES *res,
@@ -472,11 +480,11 @@ unsigned int STDCALL mysql_field_tell(MYSQL_RES *res);
 unsigned int STDCALL mysql_field_count(MYSQL *mysql);
 my_bool STDCALL mysql_more_results(MYSQL *mysql);
 int STDCALL mysql_next_result(MYSQL *mysql);
-unsigned long long STDCALL mysql_affected_rows(MYSQL *mysql);
+my_ulonglong STDCALL mysql_affected_rows(MYSQL *mysql);
 my_bool STDCALL mysql_autocommit(MYSQL *mysql, my_bool mode);
 my_bool STDCALL mysql_commit(MYSQL *mysql);
 my_bool STDCALL mysql_rollback(MYSQL *mysql);
-unsigned long long STDCALL mysql_insert_id(MYSQL *mysql);
+my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql);
 unsigned int STDCALL mysql_errno(MYSQL *mysql);
 char * STDCALL mysql_error(MYSQL *mysql);
 char * STDCALL mysql_info(MYSQL *mysql);
@@ -571,6 +579,11 @@ unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);
 my_bool STDCALL mariadb_reconnect(MYSQL *mysql);
 int STDCALL mariadb_cancel(MYSQL *mysql);
+void STDCALL mysql_debug(const char *debug);
+unsigned long STDCALL mysql_net_read_packet(MYSQL *mysql);
+unsigned long STDCALL mysql_net_field_length(unsigned char **packet);
+my_bool STDCALL mysql_embedded();
+MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 
 /* Async API */
 int STDCALL mysql_close_start(MYSQL *sock);

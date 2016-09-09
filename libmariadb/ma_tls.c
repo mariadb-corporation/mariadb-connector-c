@@ -51,7 +51,7 @@
 my_bool ma_tls_initialized= FALSE;
 unsigned int mariadb_deinitialize_ssl= 1;
 
-char *ssl_protocol_version[5]= {"TLS1.0", "TLS1.1", "TLS1.2"};
+const char *ssl_protocol_version[5]= {"TLS1.0", "TLS1.1", "TLS1.2"};
 
 MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 {
@@ -119,10 +119,13 @@ my_bool ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_versio
   return ma_tls_get_protocol_version(ctls, version);
 }
 
-static my_bool ma_pvio_tls_compare_fp(char *fp1, unsigned int fp1_len,
-                                   char *fp2, unsigned int fp2_len)
+static my_bool ma_pvio_tls_compare_fp(const char *fp1, unsigned int fp1_len,
+                                   const char *fp2, unsigned int fp2_len)
 {
   char hexstr[64];
+
+  if (fp1_len != fp2_len)
+    return 1;
 
   fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
 #ifdef WIN32
@@ -137,14 +140,14 @@ static my_bool ma_pvio_tls_compare_fp(char *fp1, unsigned int fp1_len,
 my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list)
 {
   unsigned int cert_fp_len= 64;
-  unsigned char cert_fp[64];
+  char cert_fp[64];
   my_bool rc=1;
   MYSQL *mysql= ctls->pvio->mysql;
 
   if ((cert_fp_len= ma_tls_get_finger_print(ctls, cert_fp, cert_fp_len)) < 1)
     goto end;
   if (fp)
-    rc= ma_pvio_tls_compare_fp(cert_fp, cert_fp_len, (char *)fp, (unsigned int)strlen(fp));
+    rc= ma_pvio_tls_compare_fp(cert_fp, cert_fp_len, fp, (unsigned int)strlen(fp));
   else if (fp_list)
   {
     MA_FILE *fp;

@@ -113,15 +113,25 @@ struct my_tests_st
   int   connection;
   ulong connect_flags;
   struct my_option_st *options;
-  char *skipmsg;
+  const char *skipmsg;
 };
 
-static char *schema = 0;
+MYSQL *my_test_connect(MYSQL *mysql,
+                       const char *host,
+                       const char *user,
+                       const char *passwd,
+                       const char *db,
+                       unsigned int port,
+                       const char *unix_socket,
+                       unsigned long clientflag);
+
+static const char *schema = 0;
 static char *hostname = 0;
 static char *password = 0;
 static unsigned int port = 0;
 static char *socketname = 0;
 static char *username = 0;
+static int force_tls= 0;
 /*
 static struct my_option test_options[] =
 {
@@ -159,11 +169,13 @@ static struct my_option test_options[] =
 int do_verify_prepare_field(MYSQL_RES *result,
                             unsigned int no, const char *name,
                             const char *org_name,
-                            enum enum_field_types type,
+                            enum enum_field_types type __attribute__((unused)),
                             const char *table,
                             const char *org_table, const char *db,
-                            unsigned long length, const char *def,
-                            const char *file, int line)
+                            unsigned long length __attribute__((unused)), 
+                            const char *def __attribute__((unused)),
+                            const char *file __attribute__((unused)),
+                            int line __attribute__((unused)))
 {
   MYSQL_FIELD *field;
 /*  MARIADB_CHARSET_INFO *cs; */
@@ -311,6 +323,7 @@ static void usage()
   printf("-p password\n");
   printf("-d database\n");
   printf("-S socketname\n");
+  printf("-t force use of TLS\n");
   printf("-P port number\n");
   printf("?  displays this help and exits\n");
 }
@@ -319,7 +332,7 @@ void get_options(int argc, char **argv)
 {
   int c= 0;
 
-  while ((c=getopt(argc,argv, "h:u:p:d:P:S:?")) >= 0)
+  while ((c=getopt(argc,argv, "h:u:p:d:w:P:S:t:?")) >= 0)
   {
     switch(c) {
     case 'h':
@@ -340,6 +353,9 @@ void get_options(int argc, char **argv)
     case 'S':
       socketname= optarg;
       break;
+    case 't':
+      force_tls= 1;
+      break;
     case '?':
       usage();
       exit(0);
@@ -353,7 +369,7 @@ void get_options(int argc, char **argv)
 }
 
 
-int check_variable(MYSQL *mysql, char *variable, char *value)
+int check_variable(MYSQL *mysql, const char *variable, const char *value)
 {
   char query[MAX_TEST_QUERY_LENGTH];
   MYSQL_RES *result;
@@ -379,7 +395,8 @@ int check_variable(MYSQL *mysql, char *variable, char *value)
  * returns a new connection. This function will be called, if the test doesn't
  * use default_connection.
  */
-MYSQL *test_connect(struct my_tests_st *test) {
+MYSQL *test_connect(struct my_tests_st *test)
+{
   MYSQL *mysql;
   int i= 0;
   int timeout= 10;
@@ -388,7 +405,6 @@ MYSQL *test_connect(struct my_tests_st *test) {
     diag("%s", "mysql_init failed - exiting");
     return(NULL);
   }
-
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &truncation_report);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
 
@@ -406,7 +422,7 @@ MYSQL *test_connect(struct my_tests_st *test) {
       i++;
     }
   }
-  if (!(mysql_real_connect(mysql, hostname, username, password,
+  if (!(my_test_connect(mysql, hostname, username, password,
                            schema, port, socketname, (test) ? test->connect_flags:0)))
   {
     diag("Couldn't establish connection to server %s. Error (%d): %s", 
@@ -448,9 +464,32 @@ void get_envvars() {
     schema= "testc";
   if (!port && (envvar= getenv("MYSQL_TEST_PORT")))
     port= atoi(envvar);
+  if (!force_tls && (envvar= getenv("MYSQL_TEST_TLS")))
+    force_tls= atoi(envvar);
   if (!socketname && (envvar= getenv("MYSQL_TEST_SOCKET")))
     socketname= envvar;
 }
+
+MYSQL *my_test_connect(MYSQL *mysql,
+                       const char *host,
+                       const char *user,
+                       const char *passwd,
+                       const char *db,
+                       unsigned int port,
+                       const char *unix_socket,
+                       unsigned long clientflag)
+{
+  if (force_tls)
+    mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
+  mysql= mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag);
+  if (mysql && force_tls && !mysql_get_ssl_cipher(mysql))
+  {
+    diag("Error: TLS connection not established");
+    return NULL;
+  }
+  return mysql;
+}
+
 
 void run_tests(struct my_tests_st *test) {
   int i, rc, total=0;

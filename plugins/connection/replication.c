@@ -79,7 +79,7 @@ typedef struct st_conn_repl {
   my_bool round_robin;
   char *url;
   char *host[2];
-  int port[2];
+  unsigned int port[2];
   unsigned int current_type;
 } REPL_DATA;
 
@@ -298,7 +298,9 @@ static my_bool is_slave_stmt(MYSQL *mysql, const char *buffer)
 
 
 int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
-                     size_t length, my_bool skipp_check, void *opt_arg)
+                     size_t length, 
+                     my_bool skipp_check __attribute__((unused)), 
+                     void *opt_arg __attribute__((unused)))
 {
   REPL_DATA *data= (REPL_DATA *)mysql->extension->conn_hdlr->data; 
 

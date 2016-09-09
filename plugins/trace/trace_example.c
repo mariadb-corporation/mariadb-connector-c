@@ -63,7 +63,7 @@ struct st_mysql_client_plugin _mysql_client_plugin_declaration_ =
   NULL
 };
 
-static char *commands[]= {
+static const char *commands[]= {
   "COM_SLEEP",
   "COM_QUIT",
   "COM_INIT_DB",
@@ -279,7 +279,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
   {
     char *p= (char *)buffer;
     p+= 4; /* packet length */
-    if (*p != 0xFF) /* protocol version 0xFF indicates error */
+    if ((uchar)*p != 0xFF) /* protocol version 0xFF indicates error */
     {
       p+= strlen(p + 1) + 2;
       thread_id= uint4korr(p);
@@ -329,7 +329,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
       else
       {
         p++;
-        if (*p == 0xFF)
+        if ((uchar)*p == 0xFF)
           printf("%8lu: CONNECT_ERROR(%d)\n", info->thread_id, uint4korr(p+1));
         else
           printf("%8lu: CONNECT_SUCCESS(host=%s,user=%s,db=%s)\n", info->thread_id, 
@@ -395,7 +395,7 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
         len= uint3korr(p);
         p+= 4;
 
-        is_error= ((unsigned int)len == -1);
+        is_error= (len == -1);
 
         switch(info->last_command) {
         case COM_STMT_EXECUTE:

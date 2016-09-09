@@ -34,7 +34,7 @@ MARK_AS_ADVANCED(PLUGINS)
 REGISTER_PLUGIN("SOCKET" "${PROJECT_SOURCE_DIR}/plugins/pvio/pvio_socket.c" "pvio_socket_plugin" "STATIC" pvio_socket 0)
 IF(WIN32)
   REGISTER_PLUGIN("NPIPE" "${PROJECT_SOURCE_DIR}/plugins/pvio/pvio_npipe.c" "pvio_npipe_plugin" "STATIC" pvio_npipe 1)
-  REGISTER_PLUGIN("SHMEM" "${PROJECT_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "DYNAMIC" pvio_shmem 1)
+  REGISTER_PLUGIN("SHMEM" "${PROJECT_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "STATIC" pvio_shmem 1)
 ENDIF()
 
 # AUTHENTICATION

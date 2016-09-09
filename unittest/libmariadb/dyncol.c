@@ -24,11 +24,21 @@ static int create_dyncol_named(MYSQL *mysql)
   DYNAMIC_COLUMN_VALUE *vals;
   uint i, column_count= 6;
   int rc;
-  char *strval[]= {"Val1", "Val2", "Val3", "Val4", "Val5", "Val6"};
-  MYSQL_LEX_STRING keys1[]= {{"key1", 4}, {"key2", 4}, {"key3", 4}, {"key4", 4}, {"key5", 4}, {"key6", 4}},
-                   keys2[]= {{"key1", 4}, {"key1", 4}, {"key3", 4}, {"key4", 4}, {"key5", 4}, {"key6", 4}},
-                   keys3[]= {{"\x70\x61\x72\x61\x00\x30", 6}, {"\x70\x61\x72\x61\x00\x31", 6}, {"\x70\x61\x72\x61\x00\x32", 6},
-                             {"\x70\x61\x72\x61\x00\x33", 6}, {"\x70\x61\x72\x61\x00\x34", 6}, {"\x70\x61\x72\x61\x00\x35", 6}};
+  const char *strval[]= {"Val1", "Val2", "Val3", "Val4", "Val5", "Val6"};
+  MYSQL_LEX_STRING keys1[]= {{(char *)"key1", 4}, {(char *)"key2", 4},
+                             {(char *)"key3", 4}, {(char *)"key4", 4},
+                             {(char *)"key5", 4}, {(char *)"key6", 4}},
+
+                   keys2[]= {{(char *)"key1", 4}, {(char *)"key1", 4},
+                             {(char *)"key3", 4}, {(char *)"key4", 4},
+                             {(char *)"key5", 4}, {(char *)"key6", 4}},
+
+                   keys3[]= {{(char *)"\x70\x61\x72\x61\x00\x30", 6}, 
+                             {(char *)"\x70\x61\x72\x61\x00\x31", 6},
+                             {(char *)"\x70\x61\x72\x61\x00\x32", 6},
+                             {(char *)"\x70\x61\x72\x61\x00\x33", 6},
+                             {(char *)"\x70\x61\x72\x61\x00\x34", 6},
+                             {(char *)"\x70\x61\x72\x61\x00\x35", 6}};
   MYSQL_LEX_STRING *my_keys;
   uint my_count;
 
@@ -37,7 +47,7 @@ static int create_dyncol_named(MYSQL *mysql)
   for (i=0; i < column_count; i++)
   {
     vals[i].type= DYN_COL_STRING;
-    vals[i].x.string.value.str= strval[i];
+    vals[i].x.string.value.str= (char *)strval[i];
     vals[i].x.string.value.length= strlen(strval[i]);
     vals[i].x.string.charset= (MARIADB_CHARSET_INFO *)mysql->charset;
     diag("%s", keys3[i].str);
@@ -87,7 +97,7 @@ static int create_dyncol_named(MYSQL *mysql)
   FAIL_IF(rc < 0, "update failed");
   mariadb_dyncol_free(&dyncol);
 
-  keys3[0].str= "test";
+  keys3[0].str= (char *)"test";
   for (i=0; i < column_count; i++)
     diag("%s", my_keys[i].str);
 
@@ -96,7 +106,7 @@ static int create_dyncol_named(MYSQL *mysql)
   return OK; 
 }
 
-static int mdev_4994(MYSQL *mysql)
+static int mdev_4994(MYSQL *unused __attribute__((unused)))
 {
   DYNAMIC_COLUMN dyncol;
   uint key= 1;
@@ -121,22 +131,22 @@ static int create_dyncol_num(MYSQL *mysql)
   MYSQL_LEX_STRING *my_keys;
   DYNAMIC_COLUMN_VALUE *my_vals;
   int rc;
-  char *strval[]= {"Val1", "Val2", "Val3", "Val4", "Val5"};
+  const char *strval[]= {"Val1", "Val2", "Val3", "Val4", "Val5"};
 
   uint keys1[5]= {1,2,3,4,5},
        keys2[5]= {1,2,2,4,5};
-  MYSQL_LEX_STRING key1= {"1",1};
+  MYSQL_LEX_STRING key1= {(char *)"1",1};
 
   for (i=0; i < column_count; i++)
   {
     vals[i].type= DYN_COL_STRING;
-    vals[i].x.string.value.str= strval[i];
+    vals[i].x.string.value.str= (char *)strval[i];
     vals[i].x.string.value.length= strlen(strval[i]);
     vals[i].x.string.charset= (MARIADB_CHARSET_INFO *)mysql->charset;
   }
   FAIL_IF(mariadb_dyncol_create_many_num(&dyncol, column_count, keys1, vals, 1) <0, "Error (keys1)");
 
-  vals[0].x.string.value.str= strval[1];
+  vals[0].x.string.value.str= (char *)strval[1];
   rc= mariadb_dyncol_update_many_named(&dyncol,1, &key1, vals);
   diag("update: %d", rc);
 
@@ -163,10 +173,10 @@ static int mdev_x1(MYSQL *mysql)
   int rc;
   uint i;
   uint num_keys[5]= {1,2,3,4,5};
-  char *strval[]= {"Val1", "Val2", "Val3", "Val4", "Val5"};
+  const char *strval[]= {"Val1", "Val2", "Val3", "Val4", "Val5"};
   DYNAMIC_COLUMN_VALUE vals[5];
   DYNAMIC_COLUMN dynstr;
-  MYSQL_LEX_STRING my_key= {"1", 2};
+  MYSQL_LEX_STRING my_key= {(char *)"1", 2};
   uint unpack_columns;
   MYSQL_LEX_STRING *unpack_keys;
   DYNAMIC_COLUMN_VALUE *unpack_vals;
@@ -174,7 +184,7 @@ static int mdev_x1(MYSQL *mysql)
   for (i=0; i < 5; i++)
   {
     vals[i].type= DYN_COL_STRING;
-    vals[i].x.string.value.str= strval[i];
+    vals[i].x.string.value.str= (char *)strval[i];
     vals[i].x.string.value.length= strlen(strval[i]);
     vals[i].x.string.charset= (MARIADB_CHARSET_INFO *)mysql->charset;
   }
@@ -233,7 +243,7 @@ static int mdev_x1(MYSQL *mysql)
   return OK;
 }
 
-static int dyncol_column_count(MYSQL *mysql)
+static int dyncol_column_count(MYSQL *unused __attribute__((unused)))
 {
   DYNAMIC_COLUMN dyncol;
   uint column_count= 5;

@@ -84,6 +84,8 @@ struct st_mariadb_session_state
 struct st_mariadb_extension {
   MA_CONNECTION_HANDLER *conn_hdlr;
   struct st_mariadb_session_state session_state[SESSION_TRACK_TYPES];
+  unsigned long mariadb_client_flag; /* MariaDB specific client flags */
+  unsigned long mariadb_server_capabilities; /* MariaDB specific server capabilities */
 };
 
 #define OPT_HAS_EXT_VAL(a,key) \

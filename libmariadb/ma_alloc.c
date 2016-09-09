@@ -21,12 +21,14 @@
 #include <ma_sys.h>
 #include <ma_string.h>
 
-void ma_init_ma_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size)
+void ma_init_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size)
 {
-  mem_root->free=mem_root->used=0;
+  mem_root->free= mem_root->used= mem_root->pre_alloc= 0;
   mem_root->min_malloc=32;
-  mem_root->block_size=block_size-MALLOC_OVERHEAD-sizeof(MA_USED_MEM)-8;
+  mem_root->block_size= (block_size-MALLOC_OVERHEAD-sizeof(MA_USED_MEM)+8);
   mem_root->error_handler=0;
+  mem_root->block_num= 4;
+  mem_root->first_block_usage= 0;
 #if !(defined(HAVE_purify) && defined(EXTRA_DEBUG))
   if (pre_alloc_size)
   {
@@ -41,7 +43,7 @@ void ma_init_ma_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_
 #endif
 }
 
-gptr ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size)
+void * ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size)
 {
 #if defined(HAVE_purify) && defined(EXTRA_DEBUG)
   reg1 MA_USED_MEM *next;
@@ -51,55 +53,65 @@ gptr ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size)
   {
     if (mem_root->error_handler)
       (*mem_root->error_handler)();
-    return((gptr) 0);				/* purecov: inspected */
+    return((void *) 0);				/* purecov: inspected */
   }
   next->next=mem_root->used;
   mem_root->used=next;
-  return (gptr) (((char*) next)+ALIGN_SIZE(sizeof(MA_USED_MEM)));
+  return (void *) (((char*) next)+ALIGN_SIZE(sizeof(MA_USED_MEM)));
 #else
-  size_t get_size,max_left;
-  gptr point;
-  reg1 MA_USED_MEM *next;
+  size_t get_size;
+  void * point;
+  reg1 MA_USED_MEM *next= 0;
   reg2 MA_USED_MEM **prev;
 
   Size= ALIGN_SIZE(Size);
-  prev= &mem_root->free;
-  max_left=0;
-  for (next= *prev ; next && next->left < Size ; next= next->next)
+
+  if ((*(prev= &mem_root->free)))
   {
-    if (next->left > max_left)
-      max_left=next->left;
-    prev= &next->next;
+    if ((*prev)->left < Size &&
+        mem_root->first_block_usage++ >= 16 &&
+        (*prev)->left < 4096)
+    {
+      next= *prev;
+      *prev= next->next;
+      next->next= mem_root->used;
+      mem_root->used= next;
+      mem_root->first_block_usage= 0;
+    }
+    for (next= *prev; next && next->left < Size; next= next->next)
+      prev= &next->next;
   }
+
   if (! next)
   {						/* Time to alloc new block */
-    get_size= Size+ALIGN_SIZE(sizeof(MA_USED_MEM));
-    if (max_left*4 < mem_root->block_size && get_size < mem_root->block_size)
-      get_size=mem_root->block_size;		/* Normal alloc */
+    get_size= MAX(Size+ALIGN_SIZE(sizeof(MA_USED_MEM)),
+              (mem_root->block_size & ~1) * (mem_root->block_num >> 2));
 
-    if (!(next = (MA_USED_MEM*) calloc(1, get_size)))
+    if (!(next = (MA_USED_MEM*) malloc(get_size)))
     {
       if (mem_root->error_handler)
 	(*mem_root->error_handler)();
-      return((gptr) 0);				/* purecov: inspected */
+      return((void *) 0);				/* purecov: inspected */
     }
+    mem_root->block_num++;
     next->next= *prev;
     next->size= get_size;
     next->left= get_size-ALIGN_SIZE(sizeof(MA_USED_MEM));
     *prev=next;
   }
-  point= (gptr) ((char*) next+ (next->size-next->left));
+  point= (void *) ((char*) next+ (next->size-next->left));
   if ((next->left-= Size) < mem_root->min_malloc)
   {						/* Full block */
     *prev=next->next;				/* Remove block from list */
     next->next=mem_root->used;
     mem_root->used=next;
+    mem_root->first_block_usage= 0;
   }
   return(point);
 #endif
 }
 
-	/* deallocate everything used by ma_alloc_root */
+	/* deallocate everything used by alloc_root */
 
 void ma_free_root(MA_MEM_ROOT *root, myf MyFlags)
 {
@@ -129,7 +141,6 @@ void ma_free_root(MA_MEM_ROOT *root, myf MyFlags)
     root->free->left=root->pre_alloc->size-ALIGN_SIZE(sizeof(MA_USED_MEM));
     root->free->next=0;
   }
-  return;
 }
 
 
@@ -146,7 +157,7 @@ char *ma_strdup_root(MA_MEM_ROOT *root,const char *str)
 char *ma_memdup_root(MA_MEM_ROOT *root, const char *str, size_t len)
 {
   char *pos;
-  if ((pos=ma_alloc_root(root,len)))
+  if ((pos= ma_alloc_root(root,len)))
     memcpy(pos,str,len);
   return pos;
 }
