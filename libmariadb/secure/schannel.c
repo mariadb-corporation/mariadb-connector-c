@@ -26,9 +26,6 @@
 
 extern my_bool ma_tls_initialized;
 
-static pthread_mutex_t LOCK_schannel_config;
-static pthread_mutex_t *LOCK_crypto= NULL;
-
 struct st_cipher_suite {
   DWORD aid;
   CHAR *cipher;
@@ -81,17 +78,6 @@ const struct st_cipher_suite valid_ciphers[] =
 void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
 void ma_schannel_set_win_error(MYSQL *mysql);
 
-HCERTSTORE ca_CertStore= NULL,
-           crl_CertStore= NULL;
-my_bool ca_Check = 1, crl_Check = 0;
-
-
-static int ssl_thread_init()
-{
-  return 0;
-}
-
-
 /*
   Initializes SSL and allocate global
   context SSL_context
@@ -105,23 +91,8 @@ static int ssl_thread_init()
 */
 int ma_tls_start(char *errmsg, size_t errmsg_len)
 {
-  if (!ma_tls_initialized)
-  {
-    pthread_mutex_init(&LOCK_schannel_config,MY_MUTEX_INIT_FAST);
-    pthread_mutex_lock(&LOCK_schannel_config);
-    if (!ca_CertStore)
-    {
-      if (!(ca_CertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, 0, 0, 0, NULL)) ||
-          !(crl_CertStore = CertOpenStore(CERT_STORE_PROV_MEMORY, 0, 0, 0, NULL)))
-      {
-        snprintf(errmsg, errmsg_len, "Can't open in-memory certstore. Error=%d", GetLastError());
-        return 1;
-      }
-      
-    }
-    ma_tls_initialized = TRUE;
-    pthread_mutex_unlock(&LOCK_schannel_config);
-  }
+
+  ma_tls_initialized = TRUE;
   return 0;
 }
 
@@ -139,23 +110,6 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
 */
 void ma_tls_end()
 {
-  if (ma_tls_initialized)
-  {
-    pthread_mutex_lock(&LOCK_schannel_config);
-    if (ca_CertStore)
-    {
-      CertCloseStore(ca_CertStore, 0);
-      ca_CertStore = 0;
-    }
-    if (crl_CertStore)
-    {
-      CertCloseStore(crl_CertStore, 0);
-      crl_CertStore = 0;
-    }
-    ma_tls_initialized= FALSE;
-    pthread_mutex_unlock(&LOCK_schannel_config);
-    pthread_mutex_destroy(&LOCK_schannel_config);
-  }
   return;
 }
 
@@ -164,69 +118,30 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
 {
   MYSQL *mysql= ctls->pvio->mysql;
   char *certfile= mysql->options.ssl_cert,
-       *keyfile= mysql->options.ssl_key,
-       *cafile= mysql->options.ssl_ca;
-  PCERT_CONTEXT ca_ctx= NULL;
-  PCRL_CONTEXT crl_ctx = NULL;
-       
+       *keyfile= mysql->options.ssl_key;
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
 
-  if (cafile)
-  {
-    if (!(ca_ctx = ma_schannel_create_cert_context(pvio, cafile)))
-      goto end;
-
-    /* Add ca to in-memory certificate store */
-    if (CertAddCertificateContextToStore(ca_CertStore, ca_ctx, CERT_STORE_ADD_NEWER, NULL) != TRUE &&
-        GetLastError() != CRYPT_E_EXISTS)
-    {
-      ma_schannel_set_win_error(sctx->mysql);
-      goto end;
-    }
-    CertFreeCertificateContext(ca_ctx);
-    ca_ctx = NULL;
-  }
+  sctx->client_cert_ctx= NULL;
 
   if (!certfile && keyfile)
     certfile= keyfile;
   if (!keyfile && certfile)
     keyfile= certfile;
 
-  if (certfile)
-    if (!(sctx->client_cert_ctx = ma_schannel_create_cert_context(ctls->pvio, certfile)))
-      goto end;
+  if (!certfile)
+    return 0;
 
-  if (sctx->client_cert_ctx && keyfile)
-    if (!ma_schannel_load_private_key(pvio, sctx->client_cert_ctx, keyfile))
-      goto end;
- 
-  if (mysql->options.extension && mysql->options.extension->ssl_crl)
+  if (!(sctx->client_cert_ctx = ma_schannel_create_cert_context(ctls->pvio, certfile)))
+    return 1;
+
+  if (!ma_schannel_load_private_key(pvio, sctx->client_cert_ctx, keyfile))
   {
-    if (!(crl_ctx= (CRL_CONTEXT *)ma_schannel_create_crl_context(pvio, mysql->options.extension->ssl_crl)))
-      goto end;
-    /* Add ca to in-memory certificate store */
-    if (CertAddCRLContextToStore(crl_CertStore, crl_ctx, CERT_STORE_ADD_NEWER, NULL) != TRUE &&
-        GetLastError() != CRYPT_E_EXISTS)
-    {
-      ma_schannel_set_win_error(sctx->mysql);
-      goto end;
-    }
-    crl_Check = 1;
-    CertFreeCertificateContext(ca_ctx);
-    ca_ctx = NULL;
+    CertFreeCertificateContext(sctx->client_cert_ctx);
+    sctx->client_cert_ctx= NULL;
+    return 1;
   }
   return 0;
-  
-end:
-  if (ca_ctx)
-    CertFreeCertificateContext(ca_ctx);
-  if (sctx->client_cert_ctx)
-    CertFreeCertificateContext(sctx->client_cert_ctx);
-  if (crl_ctx)
-    CertFreeCRLContext(crl_ctx);
-  sctx->client_cert_ctx= NULL;
-  return 1;
 }
 /* }}} */
 
@@ -234,16 +149,11 @@ end:
 void *ma_tls_init(MYSQL *mysql)
 {
   SC_CTX *sctx= NULL;
-
-  pthread_mutex_lock(&LOCK_schannel_config);
-
   if ((sctx= (SC_CTX *)LocalAlloc(0, sizeof(SC_CTX))))
   {
     ZeroMemory(sctx, sizeof(SC_CTX));
     sctx->mysql= mysql;
   }
-
-  pthread_mutex_unlock(&LOCK_schannel_config);
   return sctx;
 }
 /* }}} */
@@ -305,8 +215,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   my_bool rc= 1;
   SC_CTX *sctx;
   SECURITY_STATUS sRet;
-  PCCERT_CONTEXT pRemoteCertContext= NULL,
-                 pLocalCertContext= NULL;
   ALG_ID AlgId[MAX_ALG_ID];
   WORD validTokens = 0;
 
@@ -376,21 +284,14 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
 
-  sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext);
-  if (sRet != SEC_E_OK)
-  {
-    ma_schannel_set_sec_error(pvio, sRet);
-    goto end;
-  }
   
-  if (mysql->options.ssl_ca && !ma_schannel_verify_certs(sctx, 0))
+  if (!ma_schannel_verify_certs(sctx))
     goto end;
  
   return 0;
 
 end:
-  if (pRemoteCertContext)
-    CertFreeCertificateContext(pRemoteCertContext);
+
   if (rc && sctx->IoBufferSize)
     LocalFree(sctx->IoBuffer);
   sctx->IoBufferSize= 0;

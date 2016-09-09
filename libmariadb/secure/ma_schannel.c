@@ -78,7 +78,6 @@ void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
       pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "The Local Security Authority cannot be contacted");
     break;
   default:
-    __debugbreak();
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error (0x%x)", ErrorNo);
   }
 }
@@ -796,41 +795,41 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
 }
 /* }}} */
 
-my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
+my_bool ma_schannel_verify_certs(SC_CTX *sctx)
 {
   SECURITY_STATUS sRet;
-  DWORD flags;
-  MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
-  PCCERT_CONTEXT pServerCert= NULL;
-  PCCERT_CONTEXT ca_CTX = NULL;
-  PCCRL_CONTEXT crl_CTX = NULL;
-  my_bool is_Ok = 0;
+  MYSQL *mysql=sctx->mysql;
 
+  MARIADB_PVIO *pvio= mysql->net.pvio;
+  const char *ca_file= mysql->options.ssl_ca;
+  const char *crl_file= mysql->options.extension ? mysql->options.extension->ssl_crl : NULL;
+  PCCERT_CONTEXT pServerCert= NULL;
+  CRL_CONTEXT *crl_ctx= NULL;
+  CERT_CONTEXT *ca_ctx= NULL;
+  int ret= 0;
+
+  if (!ca_file && !crl_file)
+    return 1;
+
+  if (ca_file && !(ca_ctx = ma_schannel_create_cert_context(pvio, ca_file)))
+    goto end;
+
+  if (crl_file && !(crl_ctx= (CRL_CONTEXT *)ma_schannel_create_crl_context(pvio, mysql->options.extension->ssl_crl)))
+    goto end;
+  
   if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
   {
     ma_schannel_set_sec_error(pvio, sRet);
-    return 0;
+    goto end;
   }
 
-  if (ca_Check)
+  if (ca_ctx)
   {
-    flags = CERT_STORE_SIGNATURE_FLAG |
-      CERT_STORE_TIME_VALIDITY_FLAG;
-
-    while ((ca_CTX = CertFindCertificateInStore(ca_CertStore, PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
-      0, CERT_FIND_ANY, 0, ca_CTX)) && !is_Ok)
-    {
-      if (sRet = CertVerifySubjectCertificateContext(pServerCert, ca_CTX, &flags))
-        is_Ok = 1;
-    }
-
-    if (ca_CTX)
-      CertFreeCertificateContext(ca_CTX);
-
-    if (!is_Ok)
+    DWORD flags = CERT_STORE_SIGNATURE_FLAG | CERT_STORE_TIME_VALIDITY_FLAG;
+    if (!CertVerifySubjectCertificateContext(pServerCert, ca_ctx, &flags))
     {
       ma_schannel_set_win_error(pvio);
-      return 0;
+      goto end;
     }
 
     if (flags)
@@ -843,30 +842,36 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx, DWORD dwCertFlags)
         pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate has expired");
       else
         pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown error during certificate validation");
-      return 0;
+      goto end;
     }
   }
 
-  /* Check if none of the certificates in the certificate chain have been revoked. */
-  if (crl_Check)
+
+  /* Check  certificates in the certificate chain have been revoked. */
+  if (crl_ctx)
   {
-    while ((crl_CTX = CertEnumCRLsInStore(crl_CertStore, crl_CTX)))
+    if (!CertVerifyCRLRevocation(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, pServerCert->pCertInfo, 1, &crl_ctx->pCrlInfo))
     {
-      PCRL_INFO Info[1];
-
-      Info[0] = crl_CTX->pCrlInfo;
-      if (!(CertVerifyCRLRevocation(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-        pServerCert->pCertInfo,
-        1, Info)))
-      {
-        CertFreeCRLContext(crl_CTX);
-        pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CRL Revocation failed");
-        return 0;
-      }
+      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: CRL Revocation test failed");
+      goto end;
     }
-    CertFreeCRLContext(crl_CTX);
   }
-  return 1;
+  ret= 1;
+
+end:
+  if (crl_ctx)
+  {
+    CertFreeCRLContext(crl_ctx);
+  }
+  if (ca_ctx)
+  {
+    CertFreeCertificateContext(ca_ctx);
+  }
+  if (pServerCert)
+  {
+    CertFreeCertificateContext(pServerCert);
+  }
+  return ret;
 }
 
 
