@@ -354,11 +354,11 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
   int rc= 1;
   char *szName= NULL;
   char *pszServerName= pvio->mysql->host;
+  PCCERT_CONTEXT pServerCert= NULL;
 
   /* check server name */
   if (pszServerName && (sctx->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
   {
-    PCCERT_CONTEXT pServerCert;
     DWORD NameSize= 0;
     char *p1, *p2;
     SECURITY_STATUS sRet;
@@ -366,7 +366,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
     if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
     {
       ma_schannel_set_sec_error(pvio, sRet);
-      return 1;
+      goto end;
     }
 
     if (!(NameSize= CertNameToStr(pServerCert->dwCertEncodingType,
@@ -374,8 +374,8 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
       CERT_X500_NAME_STR | CERT_NAME_STR_NO_PLUS_FLAG,
       NULL, 0)))
     {
-      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Can't retrieve name of server certificate");
-      return 1;
+      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error:  Can't retrieve name of server certificate");
+      goto end;
     }
 
     if (!(szName= (char *)LocalAlloc(0, NameSize + 1)))
@@ -389,7 +389,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
       CERT_X500_NAME_STR | CERT_NAME_STR_NO_PLUS_FLAG,
       szName, NameSize))
     {
-      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Can't retrieve name of server certificate");
+      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Can't retrieve name of server certificate");
       goto end;
     }
     if ((p1 = strstr(szName, "CN=")))
@@ -403,12 +403,14 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
         goto end;
       }
       pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                     "Name of server certificate didn't match");
+                     "SSL connection error: Name of server certificate didn't match");
     }
   }
 end:
   if (szName)
     LocalFree(szName);
+  if (pServerCert)
+    CertFreeCertificateContext(pServerCert);
   return rc;
 }
 
@@ -444,5 +446,6 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
   if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
     return 0;
   CertGetCertificateContextProperty(pRemoteCertContext, CERT_HASH_PROP_ID, fp, (DWORD *)&len);
+  CertFreeCertificateContext(pRemoteCertContext);
   return len;
 }
