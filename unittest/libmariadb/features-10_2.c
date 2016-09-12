@@ -175,7 +175,7 @@ static int com_multi_ps2(MYSQL *mysql)
   MYSQL_BIND bind[2];
   int intval= 3, rc;
   int i;
-  char *varval= "com_multi_ps2";
+  const char *varval= "com_multi_ps2";
   unsigned int param_count= 2;
 
   if (!have_com_multi)
@@ -189,7 +189,7 @@ static int com_multi_ps2(MYSQL *mysql)
   bind[0].buffer_type= MYSQL_TYPE_SHORT;
   bind[0].buffer= &intval;
   bind[1].buffer_type= MYSQL_TYPE_STRING;
-  bind[1].buffer= varval;
+  bind[1].buffer= (char *)varval;
   bind[1].buffer_length= strlen(varval);
 
   stmt= mysql_stmt_init(mysql);
@@ -271,7 +271,7 @@ static int execute_direct_example(MYSQL *mysql)
   MYSQL_BIND bind[2];
   int intval= 1;
   int param_count= 2;
-  char *strval= "execute_direct_example";
+  const char *strval= "execute_direct_example";
 
   /* Direct execution without parameters */
   if (mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS execute_direct", -1))
@@ -283,7 +283,7 @@ static int execute_direct_example(MYSQL *mysql)
   bind[0].buffer_type= MYSQL_TYPE_SHORT;
   bind[0].buffer= &intval;
   bind[1].buffer_type= MYSQL_TYPE_STRING;
-  bind[1].buffer= strval;
+  bind[1].buffer= (char *)strval;
   bind[1].buffer_length= strlen(strval);
 
   /* set number of parameters */

@@ -136,10 +136,10 @@ struct st_pvio_socket {
 
 static my_bool pvio_socket_initialized= FALSE;
 
-static int pvio_socket_init(char *errmsg,
-                           size_t errmsg_length, 
-                           int unused, 
-                           va_list va)
+static int pvio_socket_init(char *errmsg __attribute__((unused)),
+                           size_t errmsg_length __attribute__((unused)), 
+                           int unused __attribute__((unused)), 
+                           va_list va __attribute__((unused)))
 {
   pvio_socket_initialized= TRUE;
   return 0;
@@ -390,13 +390,13 @@ ssize_t ma_send(int socket, const uchar *buffer, size_t length, int flags)
 size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
+  struct st_pvio_socket *csock= NULL;
 #ifndef _WIN32
   int write_flags= MSG_DONTWAIT;
 #ifdef MSG_NOSIGNAL
   write_flags|= MSG_NOSIGNAL;
 #endif
 #endif
-  struct st_pvio_socket *csock= NULL;
 
   if (!pvio || !pvio->data)
     return -1;
@@ -439,13 +439,13 @@ size_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t l
 size_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r= -1;
+  struct st_pvio_socket *csock= NULL;
 #ifndef _WIN32
   int send_flags= MSG_DONTWAIT;
 #ifdef MSG_NOSIGNAL
   send_flags|= MSG_NOSIGNAL;
 #endif
 #endif
-  struct st_pvio_socket *csock= NULL;
   if (!pvio || !pvio->data)
     return -1;
 

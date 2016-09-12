@@ -1004,6 +1004,8 @@ dynamic_column_value_len(DYNAMIC_COLUMN_VALUE *value,
       return 3;
   case DYN_COL_DYNCOL:
     return value->x.string.value.length;
+  default:
+    break;  
   }
   DBUG_ASSERT(0);
   return 0;
@@ -1592,6 +1594,8 @@ data_store(DYNAMIC_COLUMN *str, DYNAMIC_COLUMN_VALUE *value,
     return dynamic_column_dyncol_store(str, &value->x.string.value);
   case DYN_COL_NULL:
     break;                                      /* Impossible */
+  default:
+    break;
   }
   DBUG_ASSERT(0);
   return ER_DYNCOL_OK;                          /* Impossible */

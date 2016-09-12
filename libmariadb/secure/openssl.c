@@ -127,14 +127,14 @@ typedef struct st_ma_tls_session {
 } MA_SSL_SESSION;
 
 MA_SSL_SESSION *ma_tls_sessions= NULL;
-unsigned int ma_tls_session_cache_size= 128;
+int ma_tls_session_cache_size= 128;
 
 static char *ma_md4_hash(const char *host, const char *user, unsigned int port, char *md4)
 {
   char buffer[195]; /* MAX_USERNAME_LEN + MAX_HOST_NAME_LEN + 2 + 5 */
   snprintf(buffer, 194, "%s@%s:%d", user ? user : "", host, port);
   buffer[194]= 0;
-  MD4(buffer, strlen(buffer), md4);
+  MD4((unsigned char *)buffer, strlen(buffer), (unsigned char *)md4);
   return md4;
 }
 
@@ -209,7 +209,8 @@ static int ma_tls_session_cb(SSL *ssl, SSL_SESSION *session)
   return 0;
 }
 
-static void ma_tls_remove_session_cb(SSL_CTX* ctx, SSL_SESSION* session)
+static void ma_tls_remove_session_cb(SSL_CTX* ctx __attribute__((unused)), 
+                                     SSL_SESSION* session)
 {
   int i;
   for (i=0; i < ma_tls_session_cache_size; i++)
@@ -223,7 +224,9 @@ static void ma_tls_remove_session_cb(SSL_CTX* ctx, SSL_SESSION* session)
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-static void my_cb_locking(int mode, int n, const char *file, int line)
+static void my_cb_locking(int mode, int n, 
+                          const char *file __attribute__((unused)),
+                          int line __attribute__((unused)))
 {
   if (mode & CRYPTO_LOCK)
     pthread_mutex_lock(&LOCK_crypto[n]);
@@ -397,7 +400,9 @@ void ma_tls_end()
   return;
 }
 
-int ma_tls_get_password(char *buf, int size, int rwflag, void *userdata)
+int ma_tls_get_password(char *buf, int size,
+                        int rwflag __attribute__((unused)),
+                        void *userdata)
 {
   memset(buf, 0, size);
   if (userdata)
@@ -696,7 +701,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   return SSL_get_cipher_name(ctls->ssl);
 }
 
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
 {
   EVP_MD *digest= (EVP_MD *)EVP_sha1();
   X509 *cert;
@@ -724,7 +729,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, unsigned char *fp, unsig
     return 0;
   }
   fp_len= len;
-  if (!X509_digest(cert, digest, fp, &fp_len))
+  if (!X509_digest(cert, digest, (unsigned char *)fp, &fp_len))
   {
     ma_free(fp);
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,

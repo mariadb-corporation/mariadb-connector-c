@@ -135,7 +135,7 @@ int test_sp_params(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int a[] = {10,20,30};
   MYSQL_BIND bind[3];
-  char *stmtstr= "CALL P1(?,?,?)";
+  const char *stmtstr= "CALL P1(?,?,?)";
   char res[3][20];
 
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
@@ -219,7 +219,7 @@ int test_sp_reset(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int a[] = {10,20,30};
   MYSQL_BIND bind[3];
-  char *stmtstr= "CALL P1(?,?,?)";
+  const char *stmtstr= "CALL P1(?,?,?)";
 
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
@@ -274,7 +274,7 @@ int test_sp_reset1(MYSQL *mysql)
   MYSQL_BIND bind[1];
 
   char tmp[20];
-  char *stmtstr= "CALL P1(?)";
+  const char *stmtstr= "CALL P1(?)";
 
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
@@ -332,7 +332,7 @@ int test_sp_reset2(MYSQL *mysql)
   MYSQL_STMT *stmt;
   MYSQL_BIND bind[4];
   long l[4];
-  char *stmtstr= "CALL P1()";
+  const char *stmtstr= "CALL P1()";
 
   memset(l, 0, sizeof(l));
 
@@ -425,7 +425,7 @@ int test_query(MYSQL *mysql)
   MYSQL_BIND bind[1];
 
   char tmp[20];
-  char *stmtstr= "CALL P1(?)";
+  const char *stmtstr= "CALL P1(?)";
 
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);

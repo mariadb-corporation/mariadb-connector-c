@@ -55,9 +55,9 @@ my_bool ma_init_dynamic_array(DYNAMIC_ARRAY *array, uint element_size,
 }
 
 
-my_bool ma_insert_dynamic(DYNAMIC_ARRAY *array, gptr element)
+my_bool ma_insert_dynamic(DYNAMIC_ARRAY *array, void *element)
 {
-  gptr buffer;
+  void *buffer;
   if (array->elements == array->max_element)
   {						/* Call only when nessesary */
     if (!(buffer=ma_alloc_dynamic(array)))
@@ -87,7 +87,7 @@ unsigned char *ma_alloc_dynamic(DYNAMIC_ARRAY *array)
     array->buffer=new_ptr;
     array->max_element+=array->alloc_increment;
   }
-  return array->buffer+(array->elements++ * array->size_of_element);
+  return (unsigned char *)array->buffer+(array->elements++ * array->size_of_element);
 }
 
 
@@ -96,12 +96,12 @@ unsigned char *ma_alloc_dynamic(DYNAMIC_ARRAY *array)
 unsigned char *ma_pop_dynamic(DYNAMIC_ARRAY *array)
 {
   if (array->elements)
-    return array->buffer+(--array->elements * array->size_of_element);
+    return (unsigned char *)array->buffer+(--array->elements * array->size_of_element);
   return 0;
 }
 
 
-my_bool ma_set_dynamic(DYNAMIC_ARRAY *array, gptr element, uint idx)
+my_bool ma_set_dynamic(DYNAMIC_ARRAY *array, void * element, uint idx)
 {
   if (idx >= array->elements)
   {
@@ -127,7 +127,7 @@ my_bool ma_set_dynamic(DYNAMIC_ARRAY *array, gptr element, uint idx)
 }
 
 
-void ma_get_dynamic(DYNAMIC_ARRAY *array, gptr element, uint idx)
+void ma_get_dynamic(DYNAMIC_ARRAY *array, void * element, uint idx)
 {
   if (idx >= array->elements)
   {

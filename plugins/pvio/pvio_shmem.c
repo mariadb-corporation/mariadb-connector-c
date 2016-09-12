@@ -29,7 +29,6 @@
 #include <string.h>
 #include <ma_string.h>
 
-#define SHM_DEFAULT_NAME "MYSQL"
 #define PVIO_SHM_BUFFER_SIZE 16000 + 4
 
 my_bool pvio_shm_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
@@ -41,6 +40,8 @@ my_bool pvio_shm_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value)
 my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool pvio_shm_close(MARIADB_PVIO *pvio);
 int pvio_shm_shutdown(MARIADB_PVIO *pvio);
+my_bool pvio_shm_is_alive(MARIADB_PVIO *pvio);
+my_bool pvio_shm_get_handle(MARIADB_PVIO *pvio, void *handle);
 
 struct st_ma_pvio_methods pvio_shm_methods= {
   pvio_shm_set_timeout,
@@ -55,9 +56,9 @@ struct st_ma_pvio_methods pvio_shm_methods= {
   pvio_shm_close,
   NULL,
   NULL,
+  pvio_shm_get_handle,
   NULL,
-  NULL,
-  NULL,
+  pvio_shm_is_alive,
   NULL,
   pvio_shm_shutdown
 };
@@ -262,9 +263,7 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
    */
  
 
-  base_memory_name= (cinfo->mysql->options.shared_memory_base_name) ?
-                     cinfo->mysql->options.shared_memory_base_name : SHM_DEFAULT_NAME;
-  
+  base_memory_name= (cinfo->host) ? cinfo->host : SHM_DEFAULT_NAME;
 
   if (!(shm_name= (char *)LocalAlloc(LMEM_ZEROINIT, strlen(base_memory_name) + 40)))
   {
@@ -446,6 +445,25 @@ int pvio_shm_shutdown(MARIADB_PVIO *pvio)
   if (pvio_shm)
     return (SetEvent(pvio_shm->event[PVIO_SHM_CONNECTION_CLOSED]) ? 0 : 1);
   return 1;
+}
+
+my_bool pvio_shm_is_alive(MARIADB_PVIO *pvio)
+{
+  PVIO_SHM *pvio_shm;
+  if (!pvio || !pvio->data)
+    return FALSE;
+  pvio_shm= (PVIO_SHM *)pvio->data;
+  return WaitForSingleObject(pvio_shm->event[PVIO_SHM_CONNECTION_CLOSED], 0);
+}
+
+my_bool pvio_shm_get_handle(MARIADB_PVIO *pvio, void *handle)
+{
+  PVIO_SHM *pvio_shm;
+  *(HANDLE **)handle= 0;
+  if (!pvio || !pvio->data)
+    return FALSE;
+  *(HANDLE **)handle= (HANDLE **)((PVIO_SHM*)pvio->data)->event;
+  return TRUE;
 }
 #endif
 

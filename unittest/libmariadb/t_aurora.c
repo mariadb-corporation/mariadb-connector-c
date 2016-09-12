@@ -4,7 +4,7 @@
 #include "my_test.h"
 #include "ma_pvio.h"
 
-static int aurora1(MYSQL *my)
+static int aurora1(MYSQL *unused __attribute__((unused)))
 {
   int rc;
   my_bool read_only= 1;
@@ -54,7 +54,7 @@ static int aurora1(MYSQL *my)
   return OK;
 }
 
-static int test_wrong_user(MYSQL *my)
+static int test_wrong_user(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
 
@@ -68,7 +68,7 @@ static int test_wrong_user(MYSQL *my)
   return OK;
 }
 
-static int test_reconnect(MYSQL *my)
+static int test_reconnect(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   MYSQL_RES *res;

@@ -164,7 +164,7 @@ static int bug31418_impl()
   return OK;
 }
 
-static int test_bug31418(MYSQL *mysql)
+static int test_bug31418(MYSQL *unused __attribute__((unused)))
 {
  int i;
   /* Run test case for BUG#31418 for three different connections. */
@@ -312,7 +312,7 @@ static int test_wl4166_1(MYSQL *mysql)
   ulong      length[7];
   my_bool    is_null[7];
   MYSQL_BIND my_bind[7];
-  static char *query;
+  const char *query;
   int rc;
   int i;
 
@@ -910,7 +910,7 @@ static int test_connect_attrs(MYSQL *my)
   mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo1", "bar1");
   mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo2", "bar2");
 
-  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
 
   if (!(mysql->server_capabilities & CLIENT_CONNECT_ATTRS))
@@ -955,11 +955,11 @@ static int test_conc_114(MYSQL *mysql)
 }
 
 /* run with valgrind */
-static int test_conc117(MYSQL *mysql)
+static int test_conc117(MYSQL *unused __attribute__((unused)))
 {
   my_bool reconnect= 1;
   MYSQL *my= mysql_init(NULL);
-  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
   
   mysql_kill(my, mysql_thread_id(my));
@@ -973,12 +973,12 @@ static int test_conc117(MYSQL *mysql)
   return OK;
 }
 
-static int test_read_timeout(MYSQL *mysql)
+static int test_read_timeout(MYSQL *unused __attribute__((unused)))
 {
   int timeout= 5, rc;
   MYSQL *my= mysql_init(NULL);
   mysql_options(my, MYSQL_OPT_READ_TIMEOUT, &timeout);
-  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+  FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
   
   rc= mysql_query(my, "SELECT SLEEP(50)");
@@ -1034,7 +1034,7 @@ static int test_remote2(MYSQL *my)
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "http://localhost/test.cnf");
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "test");
-  mysql_real_connect(mysql, hostname, username, password, schema,
+  my_test_connect(mysql, hostname, username, password, schema,
                          0, socketname, 0), mysql_error(my);
   diag("port: %d", mysql->port);
   mysql_close(mysql);
@@ -1122,7 +1122,7 @@ static int test_zerofill(MYSQL *mysql)
   rc= mysql_query(mysql, "SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
 
-  if (res= mysql_store_result(mysql))
+  if ((res= mysql_store_result(mysql)))
   {
     row= mysql_fetch_row(res);
     diag("zerofill: %s", row[0]);

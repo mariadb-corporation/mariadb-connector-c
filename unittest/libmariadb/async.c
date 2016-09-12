@@ -132,7 +132,7 @@ wait_for_mysql(MYSQL *mysql, int status)
 #endif
 }
 
-static int async1(MYSQL *my)
+static int async1(MYSQL *unused __attribute__((unused)))
 {
   int err= 0, rc;
   MYSQL mysql, *ret;
@@ -211,7 +211,7 @@ static int async1(MYSQL *my)
   return OK;
 }
 
-static int test_conc131(MYSQL *my)
+static int test_conc131(MYSQL *unused __attribute__((unused)))
 {
   int rc;
   /* this test needs to run under valgrind */
@@ -227,7 +227,7 @@ static int test_conc131(MYSQL *my)
   return OK;
 }
 
-static int test_conc129(MYSQL *my)
+static int test_conc129(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
   

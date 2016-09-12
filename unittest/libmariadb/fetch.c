@@ -187,7 +187,7 @@ static int test_fetch_seek(MYSQL *mysql)
   int        rc;
   int32      c1;
   char       c2[11], c3[20];
-  char       *query = "SELECT * FROM t1";
+  const char *query = "SELECT * FROM t1";
 
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
@@ -273,7 +273,7 @@ static int test_fetch_offset(MYSQL *mysql)
   ulong      length[2];
   int        rc;
   my_bool    is_null[2];
-  char       *query = "SELECT * FROM t1";
+  const char *query = "SELECT * FROM t1";
 
 
   rc= mysql_query(mysql, "drop table if exists t1");
@@ -396,7 +396,7 @@ static int test_fetch_column(MYSQL *mysql)
   char       c2[20], bc2[20];
   ulong      l1, l2, bl1, bl2;
   int        rc, c1, bc1;
-  char       *query= "SELECT * FROM t1 ORDER BY c2 DESC";
+  const char *query= "SELECT * FROM t1 ORDER BY c2 DESC";
 
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
@@ -516,7 +516,7 @@ static int test_fetch_nobuffs(MYSQL *mysql)
   MYSQL_BIND my_bind[4];
   char       str[4][50];
   int        rc;
-  char       *query = "SELECT DATABASE(), CURRENT_USER(), \
+  const char  *query = "SELECT DATABASE(), CURRENT_USER(), \
                        CURRENT_DATE(), CURRENT_TIME()";
 
   stmt = mysql_stmt_init(mysql);
@@ -653,7 +653,7 @@ static int test_fetch_date(MYSQL *mysql)
   MYSQL_BIND my_bind[8];
   my_bool    is_null[8];
   ulong      length[8];
-  char	     *query= "SELECT * FROM test_bind_result";
+  const char *query= "SELECT * FROM test_bind_result";
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_result");
   check_mysql_rc(rc, mysql);

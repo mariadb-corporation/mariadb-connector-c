@@ -57,7 +57,7 @@ void ma_init(void)
 
 
 
-void ma_end(int infoflag)
+void ma_end(int infoflag __attribute__((unused)))
 {
 #ifdef _WIN32
   WSACleanup( );

@@ -20,7 +20,7 @@
 #define TEST_ARRAY_SIZE 1024
 
 char *rand_str(size_t length) {
-    char charset[] = "0123456789"
+    const char charset[] = "0123456789"
                      "abcdefghijklmnopqrstuvwxyz"
                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     char *dest= (char *)malloc(length+1);
@@ -36,17 +36,17 @@ char *rand_str(size_t length) {
 static int bulk1(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
-  char *stmt_str= "INSERT INTO bulk1 VALUES (?,?)";
-  unsigned long array_size= TEST_ARRAY_SIZE;
+  const char *stmt_str= "INSERT INTO bulk1 VALUES (?,?)";
+  unsigned int array_size= TEST_ARRAY_SIZE;
   int rc;
-  int i;
+  unsigned int i;
   char **buffer;
   unsigned long *lengths;
   unsigned int *vals;
   MYSQL_BIND bind[2];
   MYSQL_RES *res;
   MYSQL_ROW row;
-  int intval;
+  unsigned int intval;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk1");
   check_mysql_rc(rc, mysql);
@@ -60,7 +60,7 @@ static int bulk1(MYSQL *mysql)
   /* allocate memory */
   buffer= calloc(TEST_ARRAY_SIZE, sizeof(char *));
   lengths= (unsigned long *)calloc(sizeof(long), TEST_ARRAY_SIZE);
-  vals= (int *)calloc(sizeof(int), TEST_ARRAY_SIZE);
+  vals= (unsigned int *)calloc(sizeof(int), TEST_ARRAY_SIZE);
 
   for (i=0; i < TEST_ARRAY_SIZE; i++)
   {
@@ -74,7 +74,7 @@ static int bulk1(MYSQL *mysql)
   bind[0].buffer= (int *)&vals[0];
   bind[1].buffer_type= MYSQL_TYPE_STRING;
   bind[1].buffer= (void *)buffer;
-  bind[1].length= (long *)lengths;
+  bind[1].length= (unsigned long *)lengths;
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
@@ -130,9 +130,9 @@ static int bulk2(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
   MYSQL_BIND bind;
-  int i;
-  unsigned long array_size=1024;
-  uchar indicator[1024];
+  unsigned int i;
+  unsigned int array_size=1024;
+  char indicator[1024];
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
   check_mysql_rc(rc, mysql);
 
@@ -158,6 +158,8 @@ static int bulk2(MYSQL *mysql)
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
 
   return OK;
 }

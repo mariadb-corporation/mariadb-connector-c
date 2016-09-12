@@ -696,7 +696,7 @@ const MARIADB_CHARSET_INFO * mysql_find_charset_nr(unsigned int charsetnr)
 MARIADB_CHARSET_INFO * mysql_find_charset_name(const char *name)
 {
   MARIADB_CHARSET_INFO *c = (MARIADB_CHARSET_INFO *)mariadb_compiled_charsets;
-  char *csname;
+  const char *csname;
 
   if (!strcasecmp(name, MADB_AUTODETECT_CHARSET_NAME))
     csname= madb_get_os_character_set();
@@ -844,10 +844,10 @@ size_t mysql_cset_escape_slashes(const MARIADB_CHARSET_INFO * cset, char *newstr
 
 /* {{{ MADB_OS_CHARSET */
 struct st_madb_os_charset {
-  char *identifier;
-  char *description;
-  char *charset;
-  char *iconv_cs;
+  const char *identifier;
+  const char *description;
+  const char *charset;
+  const char *iconv_cs;
   unsigned char supported;
 };
 
@@ -1086,7 +1086,7 @@ struct st_madb_os_charset MADB_OS_CHARSET[]=
 /* }}} */
 
 /* {{{ madb_get_os_character_set */
-char *madb_get_os_character_set()
+const char *madb_get_os_character_set()
 {
   unsigned int i= 0;
   char *p= NULL;
@@ -1195,7 +1195,7 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIAD
     *errorcode= errno;
     goto error;
   }
-  if ((rc= iconv(conv, (char **)&from, from_len, &to, to_len)) == -1)
+  if ((rc= iconv(conv, (char **)&from, from_len, &to, to_len)) == (size_t)-1)
   {
     *errorcode= errno;
     goto error;

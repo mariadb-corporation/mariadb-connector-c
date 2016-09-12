@@ -47,20 +47,20 @@ static int test_conc97(MYSQL *mysql)
   return OK;
 }
 
-static int test_conc83(MYSQL *my)
+static int test_conc83(MYSQL *unused __attribute__((unused)))
 {
   MYSQL_STMT *stmt;
   int rc;
   MYSQL *mysql= mysql_init(NULL);
   my_bool reconnect= 1;
 
-  char *query= "SELECT 1,2,3 FROM DUAL";
+  const char *query= "SELECT 1,2,3 FROM DUAL";
 
   stmt= mysql_stmt_init(mysql);
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-  FAIL_IF(!(mysql_real_connect(mysql, hostname, username, password,
-                           schema, port, socketname, 0)), "mysql_real_connect failed");
+  FAIL_IF(!(my_test_connect(mysql, hostname, username, password,
+                           schema, port, socketname, 0)), "my_test_connect failed");
 
   /* 1. Status is inited, so prepare should work */
 
@@ -91,7 +91,7 @@ static int test_conc60(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  char *query= "SELECT * FROM agendas";
+  const char *query= "SELECT * FROM agendas";
   my_bool x= 1;
 
   stmt= mysql_stmt_init(mysql);
@@ -184,7 +184,6 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
 {
   MYSQL_STMT   *stmt= 0;
   uint         rc, i, count= row_count;
-  ulong        length[4]= {0,0,0,0};
   MYSQL_BIND   my_bind[4];
   my_bool      is_null[4]= {0,0,0,0};
   MYSQL_TIME   tm[4];
@@ -203,7 +202,6 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
     its members.
   */
   memset(my_bind, '\0', sizeof(my_bind));
-  memset(tm,  0, sizeof(tm));
 
   my_bind[0].buffer_type= MYSQL_TYPE_TIMESTAMP;
   my_bind[1].buffer_type= MYSQL_TYPE_TIME;
@@ -214,9 +212,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
   {
     my_bind[i].buffer= (void *) &tm[i];
     my_bind[i].is_null= &is_null[i];
-    my_bind[i].length= &length[i];
-    my_bind[i].buffer_length= 30;
-    length[i]= 20;
+    my_bind[i].buffer_length= sizeof(MYSQL_TIME);
   }
 
   second_part= 0;
@@ -236,6 +232,7 @@ static int test_bind_date_conv(MYSQL *mysql, uint row_count)
   {
     for (i= 0; i < (int) array_elements(my_bind); i++)
     {
+      memset(&tm[i],  0, sizeof(MYSQL_TIME));
       tm[i].neg= 0;
       tm[i].second_part= second_part+count;
       if (my_bind[i].buffer_type != MYSQL_TYPE_TIME)
@@ -828,8 +825,8 @@ static int test_prepare_alter(MYSQL *mysql)
  
   mysql_new= mysql_init(NULL);
   FAIL_IF(!mysql_new, "mysql_init failed");
-  FAIL_IF(!(mysql_real_connect(mysql_new, hostname, username, password,
-                           schema, port, socketname, 0)), "mysql_real_connect failed");
+  FAIL_IF(!(my_test_connect(mysql_new, hostname, username, password,
+                           schema, port, socketname, 0)), "my_test_connect failed");
   rc= mysql_query(mysql_new, "ALTER TABLE test_prep_alter change id id_new varchar(20)");
   diag("Error: %d %s", mysql_errno(mysql_new), mysql_error(mysql_new));
   check_mysql_rc(rc, mysql_new);
@@ -3414,7 +3411,6 @@ static int test_double_compare(MYSQL *mysql)
   my_bind[1].buffer= (void *)&real_data;
   my_bind[1].buffer_length= sizeof(real_data);
   my_bind[1].length= &length[1];
-  length[1]= 10;
 
   /* double */
   my_bind[2].buffer_type= MYSQL_TYPE_DOUBLE;
@@ -3422,6 +3418,7 @@ static int test_double_compare(MYSQL *mysql)
 
   tiny_data= 1;
   strcpy(real_data, "10.2");
+  length[1]= strlen(real_data);
   double_data= 34.5;
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
@@ -3561,7 +3558,7 @@ static int test_multi_stmt(MYSQL *mysql)
   MYSQL_BIND  my_bind[2];
   ulong       length[2];
   my_bool     is_null[2];
-  static      char *query;
+  const char *query;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_multi_table");
   check_mysql_rc(rc, mysql);
@@ -3850,7 +3847,7 @@ static int test_order_param(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  static char *query;
+  const char *query;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -4680,7 +4677,7 @@ static int test_long_data1(MYSQL *mysql)
   int        rc;
   MYSQL_BIND bind[1];
   char query[MAX_TEST_QUERY_LENGTH];
-  char *data= "12345";
+  const char *data= "12345";
 
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
@@ -4718,7 +4715,7 @@ int test_blob_9000(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int rc;
   char buffer[9200];
-  char *query= "INSERT INTO tb9000 VALUES (?)";
+  const char *query= "INSERT INTO tb9000 VALUES (?)";
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS tb9000");
   check_mysql_rc(rc, mysql);
@@ -4746,7 +4743,7 @@ int test_fracseconds(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  char *str= "SELECT NOW(6)";
+  const char *str= "SELECT NOW(6)";
   char buffer[60], buffer1[60];
   MYSQL_BIND bind[2];
 
@@ -4821,7 +4818,7 @@ int test_notrunc(MYSQL *mysql)
   my_bool error= 0;
   unsigned long len= 1;
 
-  char *query= "SELECT '1234567890', 'foo' FROM DUAL";
+  const char *query= "SELECT '1234567890', 'foo' FROM DUAL";
 
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &trunc);
 
@@ -4860,7 +4857,53 @@ int test_notrunc(MYSQL *mysql)
   return OK;
 }
 
+static int test_bit2tiny(MYSQL *mysql)
+{
+  MYSQL_BIND bind[2];
+  char       data[11];
+  unsigned   long length[2];
+  my_bool    is_null[2], error[2];
+  const char *query = "SELECT val FROM justbit";
+  MYSQL_STMT *stmt;
+  int rc;
+
+  mysql_query(mysql, "DROP TABLE IF EXISTS justbit");
+  mysql_query(mysql, "CREATE TABLE justbit(val bit(1) not null)");
+  mysql_query(mysql, "INSERT INTO justbit values (1)");
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, '\0', sizeof(bind));
+
+  bind[0].buffer_type=  MYSQL_TYPE_TINY;
+  bind[0].buffer=       &data[0];
+  bind[0].buffer_length= 1;
+  bind[0].is_null=      &is_null[0];
+  bind[0].length=       &length[0];
+  bind[0].error=        &error[0];
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_fetch(stmt);
+
+  FAIL_IF(data[0] != 1, "Value should be 1");
+
+  mysql_stmt_free_result(stmt);
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_bit2tiny", test_bit2tiny, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc97", test_conc97, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc83", test_conc83, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc60", test_conc60, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

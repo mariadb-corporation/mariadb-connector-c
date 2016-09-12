@@ -207,7 +207,7 @@ ma_net_write(NET *net, const uchar *packet, size_t len)
     int3store(buff,max_len);
     buff[3]= (uchar)net->pkt_nr++;
     if (ma_net_write_buff(net,(char*) buff,NET_HEADER_SIZE) ||
-        ma_net_write_buff(net, packet, max_len))
+        ma_net_write_buff(net, (char *)packet, max_len))
       return 1;
     packet+= max_len;
     len-= max_len;
@@ -216,7 +216,7 @@ ma_net_write(NET *net, const uchar *packet, size_t len)
   int3store(buff, len);
   buff[3]= (uchar)net->pkt_nr++;
   if (ma_net_write_buff(net,(char*) buff,NET_HEADER_SIZE) ||
-      ma_net_write_buff(net, packet, len))
+      ma_net_write_buff(net, (char *)packet, len))
     return 1;
   return 0;
 }
@@ -304,19 +304,22 @@ ma_net_write_buff(NET *net,const char *packet, size_t len)
   return 0;
 }
 
+unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
+
 int net_add_multi_command(NET *net, uchar command, const uchar *packet,
                           size_t length)
 {
   size_t left_length;
   size_t required_length, current_length;
-  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE;
+  /* 9 - maximum possible length of data stored in net length format */
+  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE + 9;
 
   /* We didn't allocate memory in ma_net_init since it was too early to
    * detect if the server supports COM_MULTI command */
   if (!net->extension->mbuff)
   {
     size_t alloc_size= (required_length + IO_SIZE - 1) & ~(IO_SIZE - 1);
-    if (!(net->extension->mbuff= (char *)malloc(alloc_size)))
+    if (!(net->extension->mbuff= (unsigned char *)malloc(alloc_size)))
     {
       net->last_errno=ER_OUT_OF_RESOURCES;
       net->error=2;
@@ -337,8 +340,8 @@ int net_add_multi_command(NET *net, uchar command, const uchar *packet,
       goto error;
     net->extension->mbuff_pos = net->extension->mbuff + current_length;
   }
-  int3store(net->extension->mbuff_pos, length + 1);
-  net->extension->mbuff_pos+= 3;
+  net->extension->mbuff_pos= mysql_net_store_length(net->extension->mbuff_pos,
+                                                    length + 1);
   *net->extension->mbuff_pos= command;
   net->extension->mbuff_pos++;
   memcpy(net->extension->mbuff_pos, packet, length);
@@ -396,7 +399,7 @@ ma_net_real_write(NET *net,const char *packet,size_t  len)
   pos=(char*) packet; end=pos+len;
   while (pos != end)
   {
-    if ((ssize_t) (length=ma_pvio_write(net->pvio,pos,(size_t) (end-pos))) <= 0)
+    if ((ssize_t) (length=ma_pvio_write(net->pvio,(uchar *)pos,(size_t) (end-pos))) <= 0)
     {
       net->error=2;				/* Close socket */
       net->last_errno= ER_NET_ERROR_ON_WRITE;
@@ -435,7 +438,7 @@ ma_real_read(NET *net, size_t *complen)
       while (remain > 0)
       {
 	/* First read is done with non blocking mode */
-        if ((ssize_t) (length=ma_pvio_cache_read(net->pvio,(char*) pos,remain)) <= 0L)
+        if ((ssize_t) (length=ma_pvio_cache_read(net->pvio, pos,remain)) <= 0L)
         {
 	  len= packet_error;
 	  net->error=2;				/* Close socket */

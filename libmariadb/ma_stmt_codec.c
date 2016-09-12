@@ -402,7 +402,9 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
 
 /* {{{ ps_fetch_null */
 static
-void ps_fetch_null(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row)
+void ps_fetch_null(MYSQL_BIND *r_param __attribute__((unused)),
+                   const MYSQL_FIELD * field __attribute__((unused)),
+                   unsigned char **row __attribute__((unused)))
 {
   /* do nothing */
 }
@@ -509,7 +511,7 @@ void ps_fetch_int64(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
     default:
     {
       longlong sval= (longlong)sint8korr(*row);
-      longlong lval= field->flags & UNSIGNED_FLAG ? (ulonglong) sval : (longlong)sval;
+      longlong lval= field->flags & UNSIGNED_FLAG ? (longlong)(ulonglong) sval : (longlong)sval;
       convert_from_long(r_param, field, lval, field->flags & UNSIGNED_FLAG);
       (*row) += 8;
     }
@@ -518,7 +520,7 @@ void ps_fetch_int64(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
 }
 /* }}} */
 
-static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, float val, int size)
+static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, float val, int size __attribute__((unused)))
 {
   double check_trunc_val= (val > 0) ? floor(val) : -floor(-val);
   char *buf= (char *)r_param->buffer;
@@ -616,7 +618,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
   } 
 }
 
-static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, double val, int size)
+static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, double val, int size __attribute__((unused)))
 {
   double check_trunc_val= (val > 0) ? floor(val) : -floor(-val);
   char *buf= (char *)r_param->buffer;
@@ -902,8 +904,9 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
 
 /* {{{ ps_fetch_string */
 static
-void ps_fetch_string(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
-             unsigned char **row)
+void ps_fetch_string(MYSQL_BIND *r_param,
+                     const MYSQL_FIELD *field __attribute__((unused)),
+                     unsigned char **row)
 {
   /* C-API differs from PHP. While PHP just converts string to string,
      C-API needs to convert the string to the defined type with in 
@@ -918,50 +921,32 @@ void ps_fetch_string(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
 
 /* {{{ ps_fetch_bin */
 static
-void ps_fetch_bin(MYSQL_BIND *r_param, const MYSQL_FIELD *field,
+void ps_fetch_bin(MYSQL_BIND *r_param, 
+             const MYSQL_FIELD *field __attribute__((unused)),
              unsigned char **row)
 {
-  /* If r_praram->buffer_type is not a binary type or binary_flag isn't set,
-     we do conversion from string */
-  if (!(field->flags & BINARY_FLAG) || 
-         (r_param->buffer_type != MYSQL_TYPE_NEWDECIMAL &&
-          r_param->buffer_type != MYSQL_TYPE_DECIMAL &&
-          r_param->buffer_type != MYSQL_TYPE_GEOMETRY &&
-          r_param->buffer_type != MYSQL_TYPE_ENUM &&
-          r_param->buffer_type != MYSQL_TYPE_SET &&
-          r_param->buffer_type != MYSQL_TYPE_TINY_BLOB &&
-          r_param->buffer_type != MYSQL_TYPE_MEDIUM_BLOB &&
-          r_param->buffer_type != MYSQL_TYPE_LONG_BLOB &&
-          r_param->buffer_type != MYSQL_TYPE_BLOB))
-  {
-    ps_fetch_string(r_param, field, row);
-    return;
-  }
-  else
-  {
-    ulong field_length= *r_param->length= net_field_length(row);
-    uchar *current_pos= (*row) + r_param->offset,
-          *end= (*row) + field_length;
-    size_t copylen= 0;
+  ulong field_length= *r_param->length= net_field_length(row);
+  uchar *current_pos= (*row) + r_param->offset,
+        *end= (*row) + field_length;
+  size_t copylen= 0;
 
-    if (current_pos < end)
+  if (current_pos < end)
+  {
+    copylen= end - current_pos;
+    if (r_param->buffer_length)
     {
-      copylen= end - current_pos;
-      if (r_param->buffer_length)
-      {
-        memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
-        if (copylen < r_param->buffer_length &&
-            r_param->buffer_type == MYSQL_TYPE_STRING)
-          ((char *)r_param->buffer)[copylen]= 0;
-      }
+      memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
+      if (copylen < r_param->buffer_length &&
+          r_param->buffer_type == MYSQL_TYPE_STRING)
+        ((char *)r_param->buffer)[copylen]= 0;
     }
-    *r_param->error= copylen > r_param->buffer_length;
-    /* don't count trailing zero if we fetch into string */
-    if (r_param->buffer_type == MYSQL_TYPE_STRING &&
-      !*r_param->error)
-      field_length--;
-    (*row)+= field_length;
   }
+  *r_param->error= copylen > r_param->buffer_length;
+  /* don't count trailing zero if we fetch into string */
+  if (r_param->buffer_type == MYSQL_TYPE_STRING &&
+    !*r_param->error)
+    field_length--;
+  (*row)+= field_length;
 }
 /* }}} */
 

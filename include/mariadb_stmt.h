@@ -101,7 +101,7 @@ typedef struct st_mysql_bind
   my_bool        *error;
   union {
     unsigned char *row_ptr;        /* for the current data position */
-    unsigned char *indicator;      /* indicator variable */
+    char *indicator;               /* indicator variable */
   } u;
   void (*store_param_func)(NET *net, struct st_mysql_bind *param);
   void (*fetch_result)(struct st_mysql_bind *, MYSQL_FIELD *,
