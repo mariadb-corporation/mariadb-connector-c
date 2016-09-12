@@ -1223,8 +1223,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   else
 #endif
 #else
-  if (mysql->options.protocol == MYSQL_PROTOCOL_MEMORY ||
-      mysql->options.shared_memory_base_name)
+  if (mysql->options.protocol == MYSQL_PROTOCOL_MEMORY)
   {
     cinfo.host= mysql->options.shared_memory_base_name;
     cinfo.type= PVIO_TYPE_SHAREDMEM;
