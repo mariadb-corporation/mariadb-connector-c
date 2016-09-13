@@ -59,13 +59,13 @@ IF(WITH_SSL)
     STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT "${FINGER_PRINT}")
     STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
     STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
+    CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
+                   ${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
 
   ENDIF()
+  SET(API_TESTS ${API_TESTS} "ssl")
   CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
                  ${PROJECT_SOURCE_DIR}/unittest/libmariadb/ssl.c)
-  CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
-                 ${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
-  SET(API_TESTS ${API_TESTS} "ssl")
 ENDIF()
 
 ADD_LIBRARY(ma_getopt ma_getopt.c)

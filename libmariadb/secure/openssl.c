@@ -30,7 +30,12 @@
 #include <openssl/conf.h>
 #include <openssl/md4.h>
 
-#define HAVE_TLS_SESSION_CACHE 1
+#ifdef HAVE_TLS_SESSION_CACHE
+#undef HAVE_TLS_SESSION_CACHE
+#endif
+#if OPENSSL_USE_BIOMETHOD
+#undef OPENSSL_USE_BIOMETHOD
+#endif
 #ifndef HAVE_OPENSSL_DEFAULT
 #include <memory.h>
 #define ma_malloc(A,B) malloc((A))
@@ -329,6 +334,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
     ma_tls_get_error(errmsg, errmsg_len);
     goto end;
   }
+  SSL_CTX_set_options(SSL_context, SSL_OP_ALL);
 #ifdef HAVE_TLS_SESSION_CACHE
   SSL_CTX_set_session_cache_mode(SSL_context, SSL_SESS_CACHE_CLIENT);
   ma_tls_sessions= (MA_SSL_SESSION *)calloc(1, sizeof(struct st_ma_tls_session) * ma_tls_session_cache_size);
@@ -411,15 +417,18 @@ int ma_tls_get_password(char *buf, int size,
 }
 
 
-static int ma_tls_set_certs(MYSQL *mysql)
+static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
 {
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
+  char *pw= (mysql->options.extension) ?
+            mysql->options.extension->tls_pw : NULL;
+
   
   /* add cipher */
   if ((mysql->options.ssl_cipher && 
         mysql->options.ssl_cipher[0] != 0) &&
-      SSL_CTX_set_cipher_list(SSL_context, mysql->options.ssl_cipher) == 0)
+      SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
     goto error;
 
   /* ca_file and ca_path */
@@ -439,35 +448,37 @@ static int ma_tls_set_certs(MYSQL *mysql)
     keyfile= certfile;
 
   /* set cert */
-  if (certfile  && certfile[0] != 0)  
-    if (SSL_CTX_use_certificate_file(SSL_context, certfile, SSL_FILETYPE_PEM) != 1)
-      goto error; 
-
-  /* If the private key file is encrypted, we need to register a callback function
-   * for providing password. */
-  if (OPT_HAS_EXT_VAL(mysql, tls_pw))
+  if (certfile  && certfile[0] != 0)
   {
-    SSL_CTX_set_default_passwd_cb_userdata(SSL_context, (void *)mysql->options.extension->tls_pw);
-    SSL_CTX_set_default_passwd_cb(SSL_context, ma_tls_get_password);
+    if (SSL_CTX_use_certificate_chain_file(SSL_context, certfile) != 1 ||
+        SSL_use_certificate_file(ssl, certfile, SSL_FILETYPE_PEM) != 1)
+      goto error; 
   }
-
   if (keyfile && keyfile[0])
   {
-    if (SSL_CTX_use_PrivateKey_file(SSL_context, keyfile, SSL_FILETYPE_PEM) != 1)
+    FILE *fp;
+    if ((fp= fopen(keyfile, "rb")))
     {
-      unsigned long err= ERR_peek_error();
-      if (!(ERR_GET_LIB(err) == ERR_LIB_X509 &&
-	  ERR_GET_REASON(err) == X509_R_CERT_ALREADY_IN_HASH_TABLE))
-        goto error;
+      EVP_PKEY *key= EVP_PKEY_new();
+      PEM_read_PrivateKey(fp, &key, NULL, pw);
+      fclose(fp);
+      if (SSL_use_PrivateKey(ssl, key) != 1)
+      {
+        unsigned long err= ERR_peek_error();
+        EVP_PKEY_free(key);
+        if (!(ERR_GET_LIB(err) == ERR_LIB_X509 &&
+	            ERR_GET_REASON(err) == X509_R_CERT_ALREADY_IN_HASH_TABLE))
+          goto error;
+      }
+      EVP_PKEY_free(key);
+    } else {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+                   CER(CR_FILE_NOT_FOUND), keyfile);
+      return 1;
     }
   }
-  if (OPT_HAS_EXT_VAL(mysql, tls_pw))
-  {
-    SSL_CTX_set_default_passwd_cb_userdata(SSL_context, NULL);
-    SSL_CTX_set_default_passwd_cb(SSL_context, NULL);
-  }
   /* verify key */
-  if (certfile && !SSL_CTX_check_private_key(SSL_context))
+  if (certfile && !SSL_check_private_key(ssl))
     goto error;
   
   if (mysql->options.extension &&
@@ -499,13 +510,13 @@ void *ma_tls_init(MYSQL *mysql)
 #endif
   pthread_mutex_lock(&LOCK_openssl_config);
 
-  if (ma_tls_set_certs(mysql))
+  if (!(ssl= SSL_new(SSL_context)))
+    goto error;
+
+  if (ma_tls_set_certs(mysql, ssl))
   {
     goto error;
   }
-
-  if (!(ssl= SSL_new(SSL_context)))
-    goto error;
 
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
@@ -703,8 +714,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 
 unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
 {
-  EVP_MD *digest= (EVP_MD *)EVP_sha1();
-  X509 *cert;
+  X509 *cert= NULL;
   MYSQL *mysql;
   unsigned int fp_len;
 
@@ -718,7 +728,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                         ER(CR_SSL_CONNECTION_ERROR), 
                         "Unable to get server certificate");
-    return 0;
+    goto end;
   }
 
   if (len < EVP_MAX_MD_SIZE)
@@ -726,18 +736,21 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                         ER(CR_SSL_CONNECTION_ERROR), 
                         "Finger print buffer too small");
-    return 0;
+    goto end;
   }
-  fp_len= len;
-  if (!X509_digest(cert, digest, (unsigned char *)fp, &fp_len))
+  if (!X509_digest(cert, EVP_sha1(), (unsigned char *)fp, &fp_len))
   {
-    ma_free(fp);
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                         ER(CR_SSL_CONNECTION_ERROR), 
                         "invalid finger print of server certificate");
-    return 0;
+    goto end;
   }
+  
+  X509_free(cert);
   return (fp_len);
+end:  
+  X509_free(cert);
+  return 0;
 }
 
 

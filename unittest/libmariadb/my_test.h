@@ -555,6 +555,5 @@ void run_tests(struct my_tests_st *test) {
     diag("close default");
     mysql_close(mysql_default);
   }
-  mysql_server_end();
 }
 

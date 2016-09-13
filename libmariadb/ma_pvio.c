@@ -521,11 +521,11 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
          ma_pvio_tls_verify_server_cert(pvio->ctls))
     return 1;
 
+
   if (pvio->mysql->options.extension &&
       ((pvio->mysql->options.extension->tls_fp && pvio->mysql->options.extension->tls_fp[0]) ||
       (pvio->mysql->options.extension->tls_fp_list && pvio->mysql->options.extension->tls_fp_list[0])))
   {
-
     if (ma_pvio_tls_check_fp(pvio->ctls, 
           pvio->mysql->options.extension->tls_fp,
           pvio->mysql->options.extension->tls_fp_list))
