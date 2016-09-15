@@ -173,9 +173,9 @@ static int test_conc95(MYSQL *unused __attribute__((unused)))
 
   mysql= mysql_init(NULL);
   mysql_ssl_set(mysql, 
-                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-key.pem", 
-                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/server-cert.pem", 
-                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-key.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem", 
+                NULL,
                 NULL, 
                 NULL);
 
@@ -541,13 +541,14 @@ static int verify_ssl_server_cert(MYSQL *unused __attribute__((unused)))
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
-  mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", NULL, NULL);
+  mysql_ssl_set(mysql, NULL, NULL, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/cacert.pem", NULL, NULL);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
            port, socketname, 0);
 
   FAIL_IF(!mysql_errno(mysql), "Expected error");
+  diag("Error (expected): %s", mysql_error(mysql));
   mysql_close(mysql);
 
   return OK;
@@ -758,8 +759,13 @@ static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
 
   mysql_options(my, MARIADB_OPT_SSL_FP_LIST, "./fingerprint.list");
 
-  FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
-                         port, socketname, 0), mysql_error(my));
+  if(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
+                         port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(my));
+    mysql_close(my);
+    return FAIL;
+  }
 
   FAIL_IF(check_cipher(my) != 0, "Invalid cipher");
   mysql_close(my);
@@ -814,7 +820,6 @@ static int test_schannel_cipher(MYSQL *unused __attribute__((unused)))
                          port, socketname, 0), mysql_error(my));
 
   diag("cipher: %s", mysql_get_ssl_cipher(my));
-  FAIL_IF(strcmp(mysql_get_ssl_cipher(my), "CALG_AES_256") != 0, "expected cipher with 256bit strength");
 
   mysql_close(my);
 
@@ -823,7 +828,7 @@ static int test_schannel_cipher(MYSQL *unused __attribute__((unused)))
 
 #endif
 
-#ifdef HAVE_GNUTLS
+#if defined(HAVE_GNUTLS) || defined(HAVE_OPENSSL)
 
 static int test_cipher_mapping(MYSQL *unused __attribute__((unused)))
 {
@@ -847,44 +852,204 @@ static int test_cipher_mapping(MYSQL *unused __attribute__((unused)))
     MYSQL_RES *res;
     char c[100];
     int rc;
-    mysql_options(mysql, MYSQL_OPT_SSL_CIPHER, ciphers[i]);
+
+    mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, ciphers[i]);
     diag("%s", ciphers[i]);
+    
+    mysql->options.use_ssl= 1;
     FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(mysql));
-    if (strcmp(ciphers[i], mysql_get_ssl_cipher(mysql)) != 0)
+    if (!mysql_get_ssl_cipher(mysql) ||
+        strcmp(ciphers[i], mysql_get_ssl_cipher(mysql)) != 0)
     {
-      diag("expected: %s instead of %s", ciphers[i], mysql_get_ssl_cipher(mysql));
+      diag("cipher %s failed", ciphers[i]);
       mysql_close(mysql);
       return FAIL;
     }
-    rc= mysql_query(mysql, "SHOW STATUS LIKE 'ssl_cipher'");
-    check_mysql_rc(rc, mysql);
-    res= mysql_store_result(mysql);
-    row= mysql_fetch_row(res);
-    strcpy(c, row[1]);
-    mysql_free_result(res);
-    mysql_close(mysql);
-    if (strcmp(ciphers[i], c) != 0)
+    else
     {
-      diag("expected: %s instead of %s", ciphers[i], c);
-      return FAIL;
+      rc= mysql_query(mysql, "SHOW STATUS LIKE 'ssl_cipher'");
+      check_mysql_rc(rc, mysql);
+      res= mysql_store_result(mysql);
+      row= mysql_fetch_row(res);
+      strcpy(c, row[1]);
+      mysql_free_result(res);
+      mysql_close(mysql);
+      if (strcmp(ciphers[i], c) != 0)
+      {
+        diag("expected: %s instead of %s", ciphers[i], c);
+        return FAIL;
+      }
     }
-
     i++;
   }
   return OK;
 }
-
 #endif  
 
+static int test_openssl_1(MYSQL *mysql)
+{
+  int rc;
+  MYSQL *my;
+  uchar val= 1;
+  char query[1024];
+  int i;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  for (i=1; i < 6; i++)
+  {
+    sprintf(query, "DROP USER IF EXISTS 'ssluser%d'@'%s'", i, sslhost);
+    rc= mysql_query(mysql, query);
+    check_mysql_rc(rc, mysql);
+    sprintf(query, "CREATE USER 'ssluser%d'@'%s'", i, sslhost);
+    rc= mysql_query(mysql, query);
+    check_mysql_rc(rc, mysql);
+  }
+  rc= mysql_query(mysql, "FLUSH PRIVILEGES");
+  check_mysql_rc(rc, mysql);
+
+  sprintf(query, "grant select on %s.* to 'ssluser1'@'%s' require ssl", schema, sslhost);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+
+  my= mysql_init(NULL);
+  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES128-SHA");
+  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser1", NULL, schema,
+                         port, socketname, 0), mysql_error(my));
+  FAIL_IF(!mysql_get_ssl_cipher(my), "No TLS connection");
+  mysql_close(my);
+
+  my= mysql_init(NULL);
+  mysql_options(my, MYSQL_OPT_SSL_ENFORCE, &val);
+  my->options.use_ssl= 1;
+  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser1", NULL, schema,
+                         port, socketname, 0), mysql_error(my));
+  FAIL_IF(!mysql_get_ssl_cipher(my), "No TLS connection");
+  mysql_close(my);
+
+  sprintf(query, "grant select on %s.* to 'ssluser2'@'%s' require cipher 'AES256-SHA'", schema, sslhost);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+/* ssl_user1: connect with enforce should work */
+  my= mysql_init(NULL);
+  mysql_options(my, MYSQL_OPT_SSL_ENFORCE, &val);
+  FAIL_IF(mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
+                         port, socketname, 0), "Error expected");
+  mysql_close(my);
+
+  /* ssl_user2: connect with cipher should work */
+  my= mysql_init(NULL);
+  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES128-SHA");
+  FAIL_IF(mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
+                         port, socketname, 0), "Error expected");
+  mysql_close(my);
+
+
+  /* ssl_user2: connect with correct cipher */
+  my= mysql_init(NULL);
+  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
+  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
+                         port, socketname, 0), mysql_error(my));
+  FAIL_IF(strcmp("AES256-SHA", mysql_get_ssl_cipher(my)) != 0, "expected cipher AES256-SHA");
+  mysql_close(my);
+
+
+  sprintf(query, "grant select on %s.* to 'ssluser3'@'%s' require cipher 'AES256-SHA' AND "
+                 " SUBJECT '/DC=com/DC=example/CN=client'", schema, sslhost);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  /* ssluser3: connect with cipher only */
+  my= mysql_init(NULL);
+  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
+  FAIL_IF(mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
+                         port, socketname, 0), "Error expected");
+  mysql_close(my);
+
+  /* ssluser3 connect with cipher and certs */
+  my= mysql_init(NULL);
+  mysql_ssl_set(my, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-key.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 
+                NULL, 
+                "AES256-SHA");
+  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  mysql_close(my);
+
+  sprintf(query, "grant select on %s.* to 'ssluser4'@'%s' require cipher 'AES256-SHA' AND "
+                 " ISSUER '/DC=com/DC=example/CN=client'", schema, sslhost);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  /* ssluser4: connect with cipher only */
+  my= mysql_init(NULL);
+  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
+  FAIL_IF(mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
+                         port, socketname, 0), "Error expected");
+  mysql_close(my);
+
+  /* ssluser4 connect with cipher and certs */
+  my= mysql_init(NULL);
+  mysql_ssl_set(my, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-key.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/client-cert.pem", 
+                "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 
+                NULL, 
+                "AES256-SHA");
+  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  mysql_close(my);
+
+  return OK;
+}
+
+static int test_ssl_timeout(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql;
+  my_bool enforce= 1;
+  int read_timeout= 1;
+  int rc;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
+  mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, &read_timeout);
+  mysql->options.use_ssl= 1;
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+  diag("cipher: %s\n", mysql_get_ssl_cipher(mysql));
+  rc= mysql_query(mysql, "SELECT SLEEP(600)");
+  if (!rc)
+  {
+    diag("error expected (timeout)");
+    return FAIL;
+  }
+
+  mysql_close(mysql);
+  return OK;
+}
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-#ifdef HAVE_GNUTLS
+  {"test_ssl_timeout", test_ssl_timeout, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_openssl_1", test_openssl_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#ifndef HAVE_SCHANNEL
   {"test_cipher_mapping", test_cipher_mapping, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
 #endif
   {"test_conc127", test_conc127, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+/* Both tests work with GNU tls, however we can't create fingerprints with
+   gnutls-cli in CMakeLists.txt */
+#ifdef HAVE_OPENSSL  
   {"test_ssl_fp", test_ssl_fp, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_fp_list", test_ssl_fp_list, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#endif
   {"test_conc50", test_conc50, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_1", test_conc50_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc50_2", test_conc50_2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
@@ -900,7 +1065,7 @@ struct my_tests_st my_tests[] = {
   {"test_ssl_version", test_ssl_version, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_ssl_threads", test_ssl_threads, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
 #ifndef HAVE_SCHANNEL
-  {"test_password_protected", test_password_protected, TEST_CONNECTION_NEW, 0,  NULL,  NULL}, 
+  {"test_password_protected", test_password_protected, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
 #else
   {"test_schannel_cipher", test_schannel_cipher, TEST_CONNECTION_NEW, 0,  NULL,  NULL}, 
 #endif
@@ -914,7 +1079,6 @@ int main(int argc, char **argv)
 
   if (argc > 1)
     get_options(argc, argv);
-
   run_tests(my_tests);
 
   mysql_server_end();

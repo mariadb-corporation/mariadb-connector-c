@@ -124,10 +124,10 @@ static my_bool ma_pvio_tls_compare_fp(const char *fp1, unsigned int fp1_len,
 {
   char hexstr[64];
 
+  fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
   if (fp1_len != fp2_len)
     return 1;
 
-  fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
 #ifdef WIN32
   if (strnicmp(hexstr, fp2, fp1_len) != 0)
 #else
@@ -140,9 +140,11 @@ static my_bool ma_pvio_tls_compare_fp(const char *fp1, unsigned int fp1_len,
 my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list)
 {
   unsigned int cert_fp_len= 64;
-  char cert_fp[64];
+  char *cert_fp= NULL;
   my_bool rc=1;
   MYSQL *mysql= ctls->pvio->mysql;
+
+  cert_fp= (char *)malloc(cert_fp_len);
 
   if ((cert_fp_len= ma_tls_get_finger_print(ctls, cert_fp, cert_fp_len)) < 1)
     goto end;
@@ -154,9 +156,7 @@ my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_l
     char buff[255];
 
     if (!(fp = ma_open(fp_list, "r", mysql)))
-    {
-      return 1;
-    }
+      goto end;
 
     while (ma_gets(buff, sizeof(buff)-1, fp))
     {
@@ -181,6 +181,8 @@ my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_l
   }
 
 end:
+  if (cert_fp)
+    free(cert_fp);
   if (rc)
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
