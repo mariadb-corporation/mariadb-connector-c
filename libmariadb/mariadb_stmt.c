@@ -1696,18 +1696,22 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
   return(0);
 }
 
-
-int  stmt_execute_send(MYSQL_STMT *stmt)
+int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
 {
   MYSQL *mysql= stmt->mysql;
   char *request;
   int ret;
   size_t request_len= 0;
+  enum mariadb_com_multi multi= MARIADB_COM_MULTI_END;
+
   if (!stmt->mysql)
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     return(1);
   }
+
+  mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);
+
   if (stmt->state < MYSQL_STMT_PREPARED)
   {
     SET_CLIENT_ERROR(mysql, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
@@ -1757,12 +1761,11 @@ int  stmt_execute_send(MYSQL_STMT *stmt)
     mysql->net.last_error);
     return(1);
   }
-  return 0;
-}
 
-int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
-{
-  return stmt_execute_send(stmt) || stmt_read_execute_response(stmt);
+  if (multi == MARIADB_COM_MULTI_BEGIN)
+    return(0);
+
+  return(stmt_read_execute_response(stmt));
 }
 
 static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
@@ -2071,7 +2074,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
                                       const char *stmt_str,
                                       size_t length)
 {
-  
+  enum mariadb_com_multi multi= MARIADB_COM_MULTI_BEGIN;
   MYSQL *mysql= stmt->mysql;
 
   if (!mysql)
@@ -2079,6 +2082,9 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     goto fail;
   }
+
+  if (mysql_optionsv(mysql, MARIADB_OPT_COM_MULTI, &multi))
+    goto fail;
 
   if (!stmt->mysql)
   {
@@ -2088,6 +2094,8 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
 
   if (length == (size_t) -1)
     length= strlen(stmt_str);
+
+  mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);
 
   /* clear flags */
   CLEAR_CLIENT_STMT_ERROR(stmt);
@@ -2120,10 +2128,13 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   stmt->state= MYSQL_STMT_PREPARED;
   /* Since we can't determine stmt_id here, we need to set it to -1, so server will know that the
    * execute command belongs to previous prepare */
-
   stmt->stmt_id= -1;
-  ma_net_clear(&mysql->net);
-  if (stmt_execute_send(stmt))
+  if (mysql_stmt_execute(stmt))
+    goto fail;
+
+  /* flush multi buffer */
+  multi= MARIADB_COM_MULTI_END;
+  if (mysql_optionsv(mysql, MARIADB_OPT_COM_MULTI, &multi))
     goto fail;
 
   /* read prepare response */
