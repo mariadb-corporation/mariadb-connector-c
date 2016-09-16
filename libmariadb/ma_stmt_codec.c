@@ -936,18 +936,12 @@ void ps_fetch_bin(MYSQL_BIND *r_param,
     {
       copylen= end - current_pos;
       if (r_param->buffer_length)
-      {
         memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
-        if (copylen < r_param->buffer_length &&
-            r_param->buffer_type == MYSQL_TYPE_STRING)
-          ((char *)r_param->buffer)[copylen]= 0;
-      }
     }
+    if (copylen < r_param->buffer_length &&
+        r_param->buffer_type == MYSQL_TYPE_STRING)
+      ((char *)r_param->buffer)[copylen]= 0;
     *r_param->error= copylen > r_param->buffer_length;
-    /* don't count trailing zero if we fetch into string */
-    if (r_param->buffer_type == MYSQL_TYPE_STRING &&
-      !*r_param->error)
-      field_length--;
     (*row)+= field_length;
   }
   else
