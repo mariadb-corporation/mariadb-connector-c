@@ -264,6 +264,7 @@ IF(NOT WITH_SSL STREQUAL "OFF")
       ADD_DEFINITIONS(-DHAVE_SCHANNEL -DHAVE_TLS)
       SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/schannel.c" "${CC_SOURCE_DIR}/libmariadb/secure/ma_schannel.c")
       INCLUDE_DIRECTORIES("${CC_SOURCE_DIR}/plugins/pvio/")
+      SET(SSL_LIBRARIES secur32)
     ENDIF()
   ENDIF()
 

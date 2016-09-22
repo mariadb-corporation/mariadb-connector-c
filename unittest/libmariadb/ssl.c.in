@@ -22,10 +22,6 @@
 
 static int skip_ssl= 1;
 
-#ifdef WIN32
-#define pthread_exit(A) _endthreadex(0)
-#endif
-
 const char *ssluser= "ssluser";
 const char *sslpw= "sslpw";
 char sslhost[128];
@@ -265,9 +261,8 @@ DWORD WINAPI ssl_thread(void *dummy)
   mysql_thread_init();
   
   if (!(mysql= mysql_init(NULL)))
-  {  
-    mysql_thread_end();
-    pthread_exit(NULL);
+  {
+    goto end;
   }
   mysql_ssl_set(mysql, 0, 0, "@CMAKE_SOURCE_DIR@/unittest/libmariadb/certs/ca-cert.pem", 0, 0);
 
@@ -275,18 +270,20 @@ DWORD WINAPI ssl_thread(void *dummy)
           port, socketname, 0))
   {
     diag(">Error: %s", mysql_error(mysql));
-    mysql_close(mysql);
-    mysql_thread_end();
-    pthread_exit(NULL);
+    goto end;
   }
 
   pthread_mutex_lock(&LOCK_test);
   mysql_query(mysql, "UPDATE ssltest SET a=a+1");
   pthread_mutex_unlock(&LOCK_test);
-  mysql_close(mysql);
+
+end:
+  if(mysql)
+    mysql_close(mysql);
   mysql_thread_end();
-  pthread_exit(0);
-  return;
+#ifdef _WIN32
+  return 0;
+#endif
 }
 
 static int test_ssl_threads(MYSQL *mysql)
@@ -775,7 +772,7 @@ static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
 static int test_ssl_version(MYSQL *unused __attribute__((unused)))
 {
   unsigned int iversion;
-  const char *version, *library;
+  char *version, *library;
   MYSQL *my;
 
   if (check_skip_ssl())

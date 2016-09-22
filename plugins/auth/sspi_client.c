@@ -32,6 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <SecExt.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <mysql/plugin_auth.h>
 #include <mysql.h>
