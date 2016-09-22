@@ -156,7 +156,9 @@ typedef struct signal_entry {
 } signal_entry;
 
 static signal_entry install_signal[]= {
+#ifdef SIGQUIT
   { SIGQUIT, handle_core_signal },
+#endif
   { SIGILL,  handle_core_signal },
   { SIGABRT, handle_core_signal },
   { SIGFPE,  handle_core_signal },

@@ -52,6 +52,7 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
 #else
+#include <ws2tcpip.h>
 #define O_NONBLOCK 1
 #endif
 
@@ -908,8 +909,8 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     /* last call to connect 2 failed */
     if (rc)
     {
-      PVIO_SET_ERROR(cinfo->mysql, CR_CONN_HOST_ERROR, SQLSTATE_UNKNOWN, ER(CR_CONN_HOST_ERROR),
-                           cinfo->host, socket_errno);
+      PVIO_SET_ERROR(cinfo->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                     ER(CR_CONN_HOST_ERROR), cinfo->host, socket_errno);
       goto error;
     }
     if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)

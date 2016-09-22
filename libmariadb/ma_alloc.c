@@ -166,13 +166,13 @@ void *ma_multi_malloc(myf myFlags, ...)
 {
   va_list args;
   char **ptr,*start,*res;
-  uint tot_length,length;
+  size_t tot_length,length;
 
   va_start(args,myFlags);
   tot_length=0;
   while ((ptr=va_arg(args, char **)))
   {
-    length=va_arg(args,uint);
+    length=va_arg(args, size_t);
     tot_length+=ALIGN_SIZE(length);
   }
   va_end(args);
@@ -185,7 +185,7 @@ void *ma_multi_malloc(myf myFlags, ...)
   while ((ptr=va_arg(args, char **)))
   {
     *ptr=res;
-    length=va_arg(args,uint);
+    length=va_arg(args,size_t);
     res+=ALIGN_SIZE(length);
   }
   va_end(args);

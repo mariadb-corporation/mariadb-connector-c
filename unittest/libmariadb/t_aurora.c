@@ -8,7 +8,7 @@ static int aurora1(MYSQL *unused __attribute__((unused)))
 {
   int rc;
   my_bool read_only= 1;
-  const char *primary, *my_schema;
+  char *primary, *my_schema;
   MYSQL_RES *res;
   MYSQL *mysql= mysql_init(NULL);
 
@@ -75,7 +75,7 @@ static int test_reconnect(MYSQL *unused __attribute__((unused)))
   my_bool read_only= 1;
   int rc;
   my_bool reconnect= 1;
-  const char *aurora_host;
+  char *aurora_host;
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 

@@ -922,31 +922,30 @@ void ps_fetch_string(MYSQL_BIND *r_param,
 /* {{{ ps_fetch_bin */
 static
 void ps_fetch_bin(MYSQL_BIND *r_param, 
-             const MYSQL_FIELD *field __attribute__((unused)),
+             const MYSQL_FIELD *field,
              unsigned char **row)
 {
-  ulong field_length= *r_param->length= net_field_length(row);
-  uchar *current_pos= (*row) + r_param->offset,
-        *end= (*row) + field_length;
-  size_t copylen= 0;
-
-  if (current_pos < end)
+  if (field->charsetnr == 63)
   {
-    copylen= end - current_pos;
-    if (r_param->buffer_length)
+    ulong field_length= *r_param->length= net_field_length(row);
+    uchar *current_pos= (*row) + r_param->offset,
+          *end= (*row) + field_length;
+    size_t copylen= 0;
+
+    if (current_pos < end)
     {
-      memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
-      if (copylen < r_param->buffer_length &&
-          r_param->buffer_type == MYSQL_TYPE_STRING)
-        ((char *)r_param->buffer)[copylen]= 0;
+      copylen= end - current_pos;
+      if (r_param->buffer_length)
+        memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
     }
+    if (copylen < r_param->buffer_length &&
+        r_param->buffer_type == MYSQL_TYPE_STRING)
+      ((char *)r_param->buffer)[copylen]= 0;
+    *r_param->error= copylen > r_param->buffer_length;
+    (*row)+= field_length;
   }
-  *r_param->error= copylen > r_param->buffer_length;
-  /* don't count trailing zero if we fetch into string */
-  if (r_param->buffer_type == MYSQL_TYPE_STRING &&
-    !*r_param->error)
-    field_length--;
-  (*row)+= field_length;
+  else
+    ps_fetch_string(r_param, field, row);
 }
 /* }}} */
 

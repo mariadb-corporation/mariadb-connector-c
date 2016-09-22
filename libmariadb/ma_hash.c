@@ -497,7 +497,7 @@ my_bool hash_delete(HASH *hash,uchar *record)
   pos->next=empty_index;
 
 exit:
-  VOID(ma_pop_dynamic(&hash->array));
+  ma_pop_dynamic(&hash->array);
   if (hash->free)
     (*hash->free)((uchar*) record);
   return(0);

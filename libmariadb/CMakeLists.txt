@@ -1,13 +1,13 @@
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include 
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${ZLIB_INC}
-                    ${PROJECT_SOURCE_DIR}/libmariadb)
-					
+                    ${CC_SOURCE_DIR}/libmariadb)
+
 ADD_DEFINITIONS(-D ENABLED_LOCAL_INFILE)
 ADD_DEFINITIONS(-D HAVE_COMPRESS)
 ADD_DEFINITIONS(-D LIBMARIADB)
 ADD_DEFINITIONS(-D THREAD)
 
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/sign.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/sign.cmake)
 
 SET(MARIADB_LIB_SYMBOLS
  mariadb_cancel
@@ -272,16 +272,16 @@ ma_loaddata.c
 ma_stmt_codec.c
 ma_string.c
 ma_dtoa.c
-${PROJECT_BINARY_DIR}/libmariadb/ma_client_plugin.c
+${CC_BINARY_DIR}/libmariadb/ma_client_plugin.c
 ma_io.c
 ${SSL_SOURCES}
 )
 
 IF(WIN32)
   ADD_DEFINITIONS(-DSIZEOF_CHARP=${CMAKE_SIZEOF_VOID_P})
-  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/win-iconv)
+  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/win-iconv)
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
-                         ${PROJECT_SOURCE_DIR}/win-iconv/win_iconv.c)
+                         ${CC_SOURCE_DIR}/win-iconv/win_iconv.c)
 ELSE()
   IF(ICONV_INCLUDE_DIR)
      INCLUDE_DIRECTORIES(BEFORE ${ICONV_INCLUDE_DIR}) 
@@ -311,11 +311,11 @@ ELSE()
     ../zlib/zutil.c
   )
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
-  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/zlib)
+  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/zlib)
 ENDIF()
 
 IF(WITH_DYNCOL)
-  MESSAGE(STATUS "Dynamic column API support=ON")
+  MESSAGE1(WITH_DYNCOL "Dynamic column API support: ON")
   SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_DYNCOL_SYMBOLS})
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_dyncol.c)
 ENDIF()
@@ -323,7 +323,7 @@ ENDIF()
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
 SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/export.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
 CREATE_EXPORT_FILE(mariadbclient
                    ${CMAKE_CURRENT_BINARY_DIR}
                    "${MARIADB_LIB_SYMBOLS}")
@@ -343,8 +343,8 @@ ENDIF()
 # Xcode doesn't support targets that have only object files,
 # so let's add an empty file to keep Xcode happy
 IF(CMAKE_GENERATOR MATCHES Xcode)
-  FILE(WRITE ${PROJECT_SOURCE_DIR}/libmariadb/empty.c "")
-  SET(EMPTY_FILE ${PROJECT_SOURCE_DIR}/libmariadb/empty.c)
+  FILE(WRITE ${CC_SOURCE_DIR}/libmariadb/empty.c "")
+  SET(EMPTY_FILE ${CC_SOURCE_DIR}/libmariadb/empty.c)
 ENDIF()
 
 IF(WIN32)
@@ -359,14 +359,6 @@ ADD_LIBRARY(mariadbclient STATIC ${mariadbclient_RC} ${MARIADB_OBJECTS} ${EMPTY_
 TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
 ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE} mariadbclient.def)
 TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
-IF(FOR_SERVER)
-  SET_TARGET_PROPERTIES(mariadbclient PROPERTIES OUTPUT_NAME mysqlclient)
-  IF(WIN32)
-    SET_TARGET_PROPERTIES(libmariadb PROPERTIES OUTPUT_NAME libmysql)
-  ELSE()
-    SET_TARGET_PROPERTIES(libmariadb PROPERTIES OUTPUT_NAME libmysqlclient)
-  ENDIF()
-ENDIF()
 
 IF(UNIX)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
@@ -379,7 +371,7 @@ ENDIF()
 
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
   TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
-  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${PROJECT_BINARY_DIR}/libmariadb/mariadbclient.def")
+  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${CC_BINARY_DIR}/libmariadb/mariadbclient.def")
 ENDIF()
 
 SET_TARGET_PROPERTIES(mariadbclient PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "${SYSTEM_LIBS}")
@@ -390,7 +382,7 @@ SET_TARGET_PROPERTIES(libmariadb PROPERTIES PREFIX "")
 #
 # Installation
 #
-INCLUDE(${PROJECT_SOURCE_DIR}/cmake/symlink.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/symlink.cmake)
 
 
 # There are still several projects which don't make use
@@ -398,32 +390,17 @@ INCLUDE(${PROJECT_SOURCE_DIR}/cmake/symlink.cmake)
 # use mariadb client library we provide libmysql symlinks
 SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
 
-IF(NOT FOR_SERVER)
-  SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION 
-   ${CPACK_PACKAGE_VERSION_MAJOR}
-   SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
-ELSE()
-  SET(SHARED_LIB_MAJOR_VERSION 18 CACHE STRING "")
-  SET(OS_SHARED_LIB_VERSION "${SHARED_LIB_MAJOR_VERSION}.0.0" CACHE STRING "")
-  IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
-   SET_TARGET_PROPERTIES(libmariadb PROPERTIES 
-     VERSION ${SHARED_LIB_MAJOR_VERSION}
-     SOVERSION ${OS_SHARED_LIB_VERSION})
-  ENDIF()
-  create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
-  create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
-ENDIF()
+SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
+ ${CPACK_PACKAGE_VERSION_MAJOR}
+ SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
 
-IF(NOT WIN32 AND WITH_MYSQLCOMPAT AND NOT FOR_SERVER)  
-  create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
-  create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_PATH})
-  create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
-  create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_PATH})
-ENDIF()
-
-
-INSTALL(TARGETS
-          libmariadb mariadbclient 
+INSTALL(TARGETS mariadbclient
+          COMPONENT Development
+          RUNTIME DESTINATION "${INSTALL_PATH}"
+          LIBRARY DESTINATION "${INSTALL_PATH}"
+          ARCHIVE DESTINATION "${INSTALL_PATH}")
+INSTALL(TARGETS libmariadb
+          COMPONENT SharedLibraries
           RUNTIME DESTINATION "${INSTALL_PATH}"
           LIBRARY DESTINATION "${INSTALL_PATH}"
           ARCHIVE DESTINATION "${INSTALL_PATH}")
@@ -436,5 +413,6 @@ IF(WIN32)
      STRING(REPLACE "${CMAKE_CFG_INTDIR}" "\${CMAKE_INSTALL_CONFIG_NAME}"
       pdb_location ${pdb_location})
    ENDIF()
-   INSTALL(FILES ${pdb_location} DESTINATION "${INSTALL_PATH}")
+   INSTALL(FILES ${pdb_location} DESTINATION "${INSTALL_PATH}"
+           COMPONENT Development)
 ENDIF()

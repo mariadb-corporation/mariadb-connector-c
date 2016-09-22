@@ -32,6 +32,8 @@ IF(UNIX)
       "\${CMAKE_INSTALL_CONFIG_NAME}" output ${target_path}/${symlink_name})
   ENDIF()
 
-  INSTALL(FILES ${target_path}/${symlink_name} DESTINATION ${install_path})
+  # presumably this will be used for libmysql*.so symlinks
+  INSTALL(FILES ${target_path}/${symlink_name} DESTINATION ${install_path}
+          COMPONENT SharedLibraries)
 ENDIF()
 ENDMACRO()

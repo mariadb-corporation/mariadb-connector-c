@@ -20,9 +20,10 @@ ENDIF()
 ENABLE_TESTING()
 
 
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include
-                    ${PROJECT_BINARY_DIR}/include
-                    ${PROJECT_SOURCE_DIR}/unittest/mytap)
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
+                    ${CC_BINARY_DIR}/include
+                    ${CC_SOURCE_DIR}/unittest/mytap
+                    ${CC_SOURCE_DIR}/unittest/libmariadb)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
 SET(API_TESTS "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "features-10_2"
@@ -37,47 +38,50 @@ SET(API_TESTS ${API_TESTS} "async")
 SET(MANUAL_TESTS "t_aurora" "t_conc173")
 # Get finger print from server certificate 
 IF(WITH_SSL)
-  IF(OPENSSL_FOUND)
+  IF(OPENSSL_FOUND AND EXISTS "${CC_SOURCE_DIR}/unittest/libmariadb/certs")
     #create certificates
-    IF(EXISTS "${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
+    IF(EXISTS "${CC_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
       MESSAGE(STATUS "certificates already exist")
     ELSE()
       MESSAGE(STATUS "creating certificates")
       IF(WIN32)
         EXECUTE_PROCESS(COMMAND create_certs.bat 
-                        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs
+                        WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs
                         OUTPUT_FILE x.1 ERROR_FILE x.2)
       ELSE()
         EXECUTE_PROCESS(COMMAND ./create_certs.sh 
-                        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs)
+                        WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs)
       ENDIF()
     ENDIF()
 
     EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
-                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/unittest/libmariadb/certs
+                    WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs
                     OUTPUT_VARIABLE FINGER_PRINT)
     STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT "${FINGER_PRINT}")
     STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
     STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
-    CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
-                   ${PROJECT_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
+    CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
+                   ${CC_BINARY_DIR}/unittest/libmariadb/fingerprint.list)
 
   ENDIF()
   SET(API_TESTS ${API_TESTS} "ssl")
-  CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
-                 ${PROJECT_SOURCE_DIR}/unittest/libmariadb/ssl.c)
+  CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
+                 ${CC_BINARY_DIR}/unittest/libmariadb/ssl.c)
+  ADD_EXECUTABLE(ssl ${CC_BINARY_DIR}/unittest/libmariadb/ssl.c)
 ENDIF()
 
 ADD_LIBRARY(ma_getopt ma_getopt.c)
 
 FOREACH(API_TEST ${API_TESTS})
-  ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
-  TARGET_LINK_LIBRARIES(${API_TEST} mytap ma_getopt mariadbclient)
+  IF (NOT TARGET ${API_TEST})
+    ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
+  ENDIF()
+  TARGET_LINK_LIBRARIES(${API_TEST} cctap ma_getopt mariadbclient)
   ADD_TEST(${API_TEST} ${EXECUTABLE_OUTPUT_PATH}/${API_TEST})
   SET_TESTS_PROPERTIES(${API_TEST} PROPERTIES TIMEOUT 120)
 ENDFOREACH(API_TEST)
 
 FOREACH(API_TEST ${MANUAL_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
-  TARGET_LINK_LIBRARIES(${API_TEST} mytap ma_getopt mariadbclient)
+  TARGET_LINK_LIBRARIES(${API_TEST} cctap ma_getopt mariadbclient)
 ENDFOREACH()

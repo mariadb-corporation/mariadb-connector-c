@@ -22,13 +22,23 @@
 #define _global_h
 
 #ifdef _WIN32
-#include <ma_config_win.h>
-#else
-#include <ma_config.h>
-#if defined(__cplusplus) && defined(inline)
-#undef inline				/* fix configure problem */
+#include <winsock2.h>
+#include <Windows.h>
+#include <stdlib.h>
+#define strcasecmp _stricmp
+#define snprintf _snprintf
+#define sleep(x) Sleep(1000*(x))
+#ifdef _MSC_VER
+#define inline __inline
 #endif
-#endif /* _WIN32... */
+#define STDCALL __stdcall 
+#endif
+
+#include <ma_config.h>
+
+#ifndef __GNUC__
+#define  __attribute(A)
+#endif
 
 /* Fix problem with S_ISLNK() on Linux */
 #if defined(HAVE_LINUXTHREADS)
@@ -243,16 +253,6 @@ double my_ulonglong2double(unsigned long long A);
 #define DONT_REMEMBER_SIGNAL
 #endif
 
-/* Define void to stop lint from generating "null effekt" comments */
-#ifndef DONT_DEFINE_VOID
-#ifdef _lint
-int	__void__;
-#define VOID(X)		(__void__ = (int) (X))
-#else
-#undef VOID
-#define VOID(X)		(X)
-#endif
-#endif /* DONT_DEFINE_VOID */
 
 #if defined(_lint) || defined(FORCE_INIT_OF_VARS)
 #define LINT_INIT(var)	var=0			/* No uninitialize-warning */
@@ -336,6 +336,8 @@ typedef int	File;		/* File descriptor */
 #ifndef my_socket_defined
 typedef int	my_socket;	/* File descriptor for sockets */
 #define my_socket_defined
+#endif
+#ifndef INVALID_SOCKET
 #define INVALID_SOCKET -1
 #endif
 /* Type for fuctions that handles signals */

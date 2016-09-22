@@ -44,17 +44,17 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_UNKNOWN_ERROR	2000
 #define CR_SOCKET_CREATE_ERROR	2001
 #define CR_CONNECTION_ERROR	2002
-#define CR_CONN_HOST_ERROR	2003
+#define CR_CONN_HOST_ERROR	2003 /* never sent to a client, message only */
 #define CR_IPSOCK_ERROR		2004
 #define CR_UNKNOWN_HOST		2005
-#define CR_SERVER_GONE_ERROR	2006
+#define CR_SERVER_GONE_ERROR	2006 /* disappeared _between_ queries */
 #define CR_VERSION_ERROR	2007
 #define CR_OUT_OF_MEMORY	2008
 #define CR_WRONG_HOST_INFO	2009
 #define CR_LOCALHOST_CONNECTION 2010
 #define CR_TCP_CONNECTION	2011
 #define CR_SERVER_HANDSHAKE_ERR 2012
-#define CR_SERVER_LOST		2013
+#define CR_SERVER_LOST		2013 /* disappeared _during_ a query */
 #define CR_COMMANDS_OUT_OF_SYNC 2014
 #define CR_NAMEDPIPE_CONNECTION 2015
 #define CR_NAMEDPIPEWAIT_ERROR 2016
@@ -77,7 +77,7 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_NO_DATA              2051
 #define CR_NO_STMT_METADATA     2052
 #define CR_NOT_IMPLEMENTED      2054
-#define CR_SERVER_LOST_EXTENDED 2055
+#define CR_SERVER_LOST_EXTENDED 2055 /* never sent to a client, message only */
 #define CR_STMT_CLOSED          2056
 #define CR_NEW_STMT_METADATA    2057
 #define CR_ALREADY_CONNECTED    2058

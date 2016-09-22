@@ -14,9 +14,6 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/zlib
-                    ${PROJECT_SOURCE_DIR}/sql
-                    ${PROJECT_BINARY_DIR}/include
-                    ${PROJECT_SOURCE_DIR}/regex
-                    ${PROJECT_SOURCE_DIR}/extra/yassl/include)
-ADD_LIBRARY(mytap tap.c)
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include ${CC_SOURCE_DIR}/zlib
+                    ${CC_BINARY_DIR}/include)
+ADD_LIBRARY(cctap tap.c)

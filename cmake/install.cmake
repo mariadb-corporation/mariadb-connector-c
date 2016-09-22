@@ -46,7 +46,7 @@ ENDIF()
 SET(VALID_INSTALL_LAYOUTS "DEFAULT" "RPM")
 LIST(FIND VALID_INSTALL_LAYOUTS "${INSTALL_LAYOUT}" layout_no)
 IF(layout_no EQUAL -1)
-  MESSAGE(FATAL_ERROR "Invalid installation layout. Please specify one of the following layouts: ${VALID_INSTALL_LAYOUTS}")
+  MESSAGE(FATAL_ERROR "Invalid installation layout ${INSTALL_LAYOUT}. Please specify one of the following layouts: ${VALID_INSTALL_LAYOUTS}")
 ENDIF()
 
 
@@ -64,7 +64,7 @@ SET(BIN_INSTALL_DIR_DEFAULT "bin")
 SET(LIB_INSTALL_DIR_DEFAULT "lib")
 SET(INCLUDE_INSTALL_DIR_DEFAULT "include")
 SET(DOCS_INSTALL_DIR_DEFAULT "docs")
-SET(PLUGIN_INSTALL_DIR_DEFAULT "lib/plugin")
+SET(PLUGIN_INSTALL_DIR_DEFAULT "lib/mariadb/plugin")
 
 #
 # RPM layout
@@ -73,15 +73,14 @@ SET(SUFFIX_INSTALL_DIR_RPM "mariadb")
 SET(BIN_INSTALL_DIR_RPM "bin")
 IF(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
   SET(LIB_INSTALL_DIR_RPM "lib64")
-  SET(PLUGIN_INSTALL_DIRDIR_RPM "lib64/plugin")
+  SET(PLUGIN_INSTALL_DIR_RPM "lib64/plugin")
 ELSE()
   SET(LIB_INSTALL_DIR_RPM "lib")
-  SET(PLUGIN_INSTALL_DIRDIR_RPM "lib/plugin")
+  SET(PLUGIN_INSTALL_DIR_RPM "lib/mariadb/plugin")
 ENDIF()
 
 SET(INCLUDE_INSTALL_DIR_RPM "include")
 SET(DOCS_INSTALL_DIR_RPM "docs")
-SET(PLUGIN_INSTALL_DIR_RPM "lib/plugin")
 
 #
 # Overwrite defaults
