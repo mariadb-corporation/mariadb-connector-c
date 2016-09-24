@@ -978,7 +978,36 @@ static int test_sess_track_db(MYSQL *mysql)
   return OK;
 }
 
+static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  FILE *fp;
+  int i;
+
+  if (!(fp= fopen("./dummy_sock", "w")))
+  {
+    diag("couldn't create dummy socket");
+    return FAIL;
+  }
+  fclose(fp);
+
+  for (i=0; i < 10000; i++)
+  {
+    mysql_real_connect(mysql, "localhost", "user", "passwd", NULL, 0, "./dummy_sock", 0);
+    /* check if we run out of sockets */
+    if (mysql_errno(mysql) == 2001)
+    {
+      diag("out of sockets after %d attempts", i);
+      mysql_close(mysql);
+      return FAIL;
+    }
+  }
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_unix_socket_close", test_unix_socket_close, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_sess_track_db", test_sess_track_db, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_get_options", test_get_options, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
