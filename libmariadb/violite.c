@@ -127,13 +127,13 @@ void vio_timeout(Vio *vio, int type, uint timeval)
 
 void vio_read_timeout(Vio *vio, uint timeout)
 {
-  vio->read_timeout= (timeout >= 0) ? timeout * 1000 : -1;
+  vio->read_timeout= (timeout > 0) ? timeout * 1000 : -1;
   vio_timeout(vio, SO_RCVTIMEO, vio->read_timeout);
 }
 
 void vio_write_timeout(Vio *vio, uint timeout)
 {
-  vio->write_timeout= (timeout >= 0) ? timeout * 1000 : -1;
+  vio->write_timeout= (timeout > 0) ? timeout * 1000 : -1;
   vio_timeout(vio, SO_SNDTIMEO, vio->write_timeout);
 }
 

@@ -272,7 +272,7 @@ static int
 connect_sync_or_async(MYSQL *mysql, NET *net, my_socket fd,
                       const struct sockaddr *name, uint namelen)
 {
-  int vio_timeout= (mysql->options.connect_timeout >= 0) ? 
+  int vio_timeout= (mysql->options.connect_timeout > 0) ?
                    mysql->options.connect_timeout * 1000 : -1;
 
   if (mysql->options.extension && mysql->options.extension->async_context &&
@@ -1872,7 +1872,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     vio_write_timeout(net->vio, mysql->options.read_timeout);
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
-  if (mysql->options.connect_timeout  &&
+  if (mysql->options.connect_timeout > 0 &&
       vio_wait_or_timeout(net->vio, TRUE, mysql->options.connect_timeout * 1000) < 1)
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
