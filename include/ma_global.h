@@ -29,6 +29,9 @@
 #define sleep(x) Sleep(1000*(x))
 #ifdef _MSC_VER
 #define inline __inline
+#if _MSC_VER < 1900
+#define snprintf _snprintf
+#endif
 #endif
 #define STDCALL __stdcall 
 #endif
