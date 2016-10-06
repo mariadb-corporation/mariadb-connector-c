@@ -3291,12 +3291,12 @@ uint STDCALL mysql_errno(MYSQL *mysql)
   return mysql ? mysql->net.last_errno : 0;
 }
 
-char * STDCALL mysql_error(MYSQL *mysql)
+const char * STDCALL mysql_error(MYSQL *mysql)
 {
   return mysql ? (mysql)->net.last_error : (char *)"";
 }
 
-char *STDCALL mysql_info(MYSQL *mysql)
+const char *STDCALL mysql_info(MYSQL *mysql)
 {
   return (mysql)->info;
 }
