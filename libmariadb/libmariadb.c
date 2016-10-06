@@ -3380,12 +3380,12 @@ uint STDCALL mysql_errno(MYSQL *mysql)
   return (mysql)->net.last_errno;
 }
 
-char * STDCALL mysql_error(MYSQL *mysql)
+const char * STDCALL mysql_error(MYSQL *mysql)
 {
   return (mysql)->net.last_error;
 }
 
-char *STDCALL mysql_info(MYSQL *mysql)
+const char *STDCALL mysql_info(MYSQL *mysql)
 {
   return (mysql)->info;
 }
