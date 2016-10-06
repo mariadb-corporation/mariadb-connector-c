@@ -675,25 +675,16 @@ my_context_destroy(struct my_context *c)
 int
 my_context_spawn(struct my_context *c, void (*f)(void *), void *d)
 {
-  void *current_fiber;
   c->user_func= f;
   c->user_arg= d;
-  /*
-    This seems to be a common trick to run ConvertThreadToFiber() only on the
-    first occurence in a thread, in a way that works on multiple Windows
-    versions.
-  */
-  current_fiber= GetCurrentFiber();
-  if (current_fiber == NULL || current_fiber == (void *)0x1e00)
-    current_fiber= ConvertThreadToFiber(c);
-  c->app_fiber= current_fiber;
-  SwitchToFiber(c->lib_fiber);
-  return c->return_value;
+  return my_context_continue(c);
 }
 
 int
 my_context_continue(struct my_context *c)
 {
+  void *current_fiber=  IsThreadAFiber() ? GetCurrentFiber() : ConvertThreadToFiber(c);
+  c->app_fiber= current_fiber;
   SwitchToFiber(c->lib_fiber);
   return c->return_value;
 }
