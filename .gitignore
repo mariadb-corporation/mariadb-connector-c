@@ -13,9 +13,27 @@ mysql_config/mysql_config
 # Keep empty directories:
 # Keep empty directories: >> .gitignore/.git*
 
+# Compiled Static libraries
+*.lib
+*.a
+*.la
+*.lai
+*.lo
+
+# Compiled Dynamic libraries
 *.so
 *.so.*
-*.a
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
 CTestTestfile.cmake
 cmake_install.cmake
 bin/
