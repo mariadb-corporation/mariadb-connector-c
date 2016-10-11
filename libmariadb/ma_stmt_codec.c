@@ -276,7 +276,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     {
       double val= my_atod(buffer, buffer + len, &error);
       *r_param->error= error > 0; /* no need to check for truncation */
-      float8store(r_param->buffer, val);
+      doublestore((uchar *)r_param->buffer, val);
       r_param->buffer_length= sizeof(double);
     }
     break;
@@ -284,7 +284,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     {
       float val= (float)my_atod(buffer, buffer + len, &error);
       *r_param->error= error > 0; /* no need to check for truncation */
-      float4store(r_param->buffer, val);
+      floatstore((uchar *)r_param->buffer, val);
       r_param->buffer_length= sizeof(float);
     }
     break;
@@ -368,7 +368,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
     {
       float fval;
       fval= is_unsigned ? (float)(ulonglong)(val) : (float)val;
-      float4store(r_param->buffer, fval);
+      floatstore((uchar *)r_param->buffer, fval);
       *r_param->error= (fval != ceilf(fval)) ||
                         (is_unsigned ? (ulonglong)fval != (ulonglong)val : 
                                        (longlong)fval != val);
