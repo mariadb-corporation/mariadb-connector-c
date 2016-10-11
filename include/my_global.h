@@ -924,7 +924,7 @@ do { doubleget_union _tmp; \
 #define int8store(T,A)       do { uint def_temp= (uint) (A), def_temp2= (uint) ((A) >> 32); \
                                   int4store((T),def_temp); \
                                   int4store((T+4),def_temp2); } while(0)
-#ifdef WORDS_BIGENDIAN
+#ifdef HAVE_BIGENDIAN
 #define float4store(T,A) do { *(T)= ((uchar *) &A)[3];\
                               *((T)+1)=(char) ((uchar *) &A)[2];\
                               *((T)+2)=(char) ((uchar *) &A)[1];\
@@ -1001,7 +1001,7 @@ do { doubleget_union _tmp; \
   register) variable, M is a pointer to byte
 */
 
-#ifdef WORDS_BIGENDIAN
+#ifdef HAVE_BIGENDIAN
 
 #define ushortget(V,M)  do { V = (uint16) (((uint16) ((uchar) (M)[1]))+\
                                  ((uint16) ((uint16) (M)[0]) << 8)); } while(0)

@@ -148,6 +148,12 @@ static int test_conc70(MYSQL *my)
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (REPEAT('A', 1024 * 1024 * 20))");
   check_mysql_rc(rc, mysql); 
 
+  if (mysql_warning_count(mysql))
+  {
+    diag("server doesn't accept package size");
+    return SKIP;
+  }
+
   rc= mysql_query(mysql, "SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
 
@@ -193,6 +199,11 @@ static int test_conc68(MYSQL *my)
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (REPEAT('A', 1024 * 1024 * 20))");
   check_mysql_rc(rc, mysql); 
+  if (mysql_warning_count(mysql))
+  {
+    diag("server doesn't accept package size");
+    return SKIP;
+  }
 
   rc= mysql_query(mysql, "SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
@@ -765,6 +776,7 @@ struct my_tests_st my_tests[] = {
 
 int main(int argc, char **argv)
 {
+  diag("max_allowed_packet: %ld", max_allowed_packet);
   if (argc > 1)
     get_options(argc, argv);
 

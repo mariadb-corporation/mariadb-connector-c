@@ -270,7 +270,7 @@ static void convert_from_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     {
       double val= my_atod(buffer, buffer + len, &error);
       *r_param->error= error > 0; /* no need to check for truncation */
-      float8store(r_param->buffer, val);
+      doublestore((uchar *)r_param->buffer, val);
       r_param->buffer_length= sizeof(double);
     } 
     break;
@@ -278,7 +278,7 @@ static void convert_from_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     {
       float val= (float)my_atod(buffer, buffer + len, &error);
       *r_param->error= error > 0; /* no need to check for truncation */
-      float4store(r_param->buffer, val);
+      floatstore((uchar *)r_param->buffer, val);
       r_param->buffer_length= sizeof(float);
     } 
     break;
