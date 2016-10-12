@@ -179,7 +179,7 @@ static int bulk3(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   size_t row_size= sizeof(struct st_bulk3);
   int array_size= 3;
-  size_t length= -1;
+  ulong length= -1;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk3");
   check_mysql_rc(rc,mysql);

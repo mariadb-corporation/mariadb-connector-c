@@ -336,7 +336,14 @@ typedef unsigned short ushort;
 
 typedef int	File;		/* File descriptor */
 #ifndef my_socket_defined
-typedef int	my_socket;	/* File descriptor for sockets */
+#define my_socket_defined
+#if defined(_WIN64)
+#define my_socket unsigned long long
+#elif defined(_WIN32)
+#define my_socket unsigned int
+#else
+typedef int my_socket;
+#endif
 #define my_socket_defined
 #endif
 #ifndef INVALID_SOCKET

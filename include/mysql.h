@@ -717,8 +717,8 @@ struct st_mariadb_api {
   my_bool (STDCALL *mysql_rollback)(MYSQL *mysql);
   unsigned long long (STDCALL *mysql_insert_id)(MYSQL *mysql);
   unsigned int (STDCALL *mysql_errno)(MYSQL *mysql);
-  char * (STDCALL *mysql_error)(MYSQL *mysql);
-  char * (STDCALL *mysql_info)(MYSQL *mysql);
+  const char * (STDCALL *mysql_error)(MYSQL *mysql);
+  const char * (STDCALL *mysql_info)(MYSQL *mysql);
   unsigned long (STDCALL *mysql_thread_id)(MYSQL *mysql);
   const char * (STDCALL *mysql_character_set_name)(MYSQL *mysql);
   void (STDCALL *mysql_get_character_set_info)(MYSQL *mysql, MY_CHARSET_INFO *cs);

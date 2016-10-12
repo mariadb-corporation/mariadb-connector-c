@@ -2703,12 +2703,12 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_MAX_ALLOWED_PACKET:
     if (mysql)
-      mysql->options.max_allowed_packet= (*(size_t *)arg1);
+      mysql->options.max_allowed_packet= (unsigned long)(*(size_t *)arg1);
     else
-      max_allowed_packet= (*(size_t *)arg1);
+      max_allowed_packet= (unsigned long)(*(size_t *)arg1);
     break;
   case MYSQL_OPT_NET_BUFFER_LENGTH:
-    net_buffer_length= (*(size_t *)arg1);
+    net_buffer_length= (unsigned long)(*(size_t *)arg1);
     break;
   case MYSQL_OPT_SSL_ENFORCE:
     mysql->options.use_ssl= (*(my_bool *)arg1);

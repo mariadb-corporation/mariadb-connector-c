@@ -565,7 +565,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
       len= (ulong)STMT_NUM_OFS(long, stmt->params[column].length, row_nr);
 
     if ((long)len == STMT_INDICATOR_NTS)
-      len= strlen((char *)buf);
+      len= (ulong)strlen((char *)buf);
     to = mysql_net_store_length(*p, len);
 
     if (len)
@@ -700,7 +700,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
     {
       for (i=0; i < stmt->param_count; i++)
       {
-        ulong size= 0;
+        size_t size= 0;
         my_bool has_data= TRUE;
         char indicator= 0;
 

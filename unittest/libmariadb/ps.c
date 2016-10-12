@@ -3418,7 +3418,7 @@ static int test_double_compare(MYSQL *mysql)
 
   tiny_data= 1;
   strcpy(real_data, "10.2");
-  length[1]= strlen(real_data);
+  length[1]= (ulong)strlen(real_data);
   double_data= 34.5;
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);

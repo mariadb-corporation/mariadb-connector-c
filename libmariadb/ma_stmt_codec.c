@@ -594,7 +594,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
 
       if (field->decimals >= NOT_FIXED_DEC)
       {
-        length= ma_gcvt(val, MY_GCVT_ARG_FLOAT, length, buff, NULL);
+        length= ma_gcvt(val, MY_GCVT_ARG_FLOAT, (int)length, buff, NULL);
       }
       else
       {
@@ -693,7 +693,7 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
 
      if (field->decimals >= NOT_FIXED_DEC)
      {
-       length= ma_gcvt(val, MY_GCVT_ARG_DOUBLE, length, buff, NULL);
+       length= ma_gcvt(val, MY_GCVT_ARG_DOUBLE, (int)length, buff, NULL);
      }
      else
      {
@@ -851,7 +851,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
   {
     char dtbuffer[60];
     MYSQL_TIME tm;
-    unsigned int length;
+    size_t length;
     convert_to_datetime(&tm, row, len, field->type);
  /*   
     if (tm.time_type== MYSQL_TIMESTAMP_TIME && tm.day)
