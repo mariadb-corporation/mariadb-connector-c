@@ -12,6 +12,6 @@ ADD_EXECUTABLE(mariadb_client_plugin_info ${mariadb_client_plugin_info_RC} ma_pl
 TARGET_LINK_LIBRARIES(mariadb_client_plugin_info mariadbclient)
 
 INSTALL(TARGETS mariadb_client_plugin_info
-        DESTINATION "bin"
+        DESTINATION ${INSTALL_BINDIR}
         COMPONENT SharedLibraries)
 SIGN_TARGET(mariadb_client_plugin_info)

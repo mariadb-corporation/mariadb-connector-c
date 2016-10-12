@@ -8,11 +8,7 @@
 # plugin installation
 
 MACRO(INSTALL_PLUGIN name binary_dir)
-  INSTALL(TARGETS ${name}
-          COMPONENT ClientPlugins
-          RUNTIME DESTINATION "${PLUGIN_INSTALL_DIR}"
-          LIBRARY DESTINATION "${PLUGIN_INSTALL_DIR}"
-          ARCHIVE DESTINATION "${PLUGIN_INSTALL_DIR}")
+  INSTALL(TARGETS ${name} COMPONENT ClientPlugins DESTINATION ${INSTALL_PLUGINDIR})
   IF(WIN32)
     FILE(APPEND ${CC_BINARY_DIR}/win/packaging/plugin.conf "<File Id=\"${name}.dll\" Name=\"${name}.dll\" DiskId=\"1\" Source=\"${binary_dir}/${CMAKE_BUILD_TYPE}/${name}.dll\"/>\n")
   ENDIF()

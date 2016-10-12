@@ -388,7 +388,6 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/symlink.cmake)
 # There are still several projects which don't make use
 # of the config program. To make sure these programs can
 # use mariadb client library we provide libmysql symlinks
-SET(INSTALL_PATH ${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
 
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
  ${CPACK_PACKAGE_VERSION_MAJOR}
@@ -396,14 +395,10 @@ SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
 
 INSTALL(TARGETS mariadbclient
           COMPONENT Development
-          RUNTIME DESTINATION "${INSTALL_PATH}"
-          LIBRARY DESTINATION "${INSTALL_PATH}"
-          ARCHIVE DESTINATION "${INSTALL_PATH}")
+          DESTINATION ${INSTALL_LIBDIR})
 INSTALL(TARGETS libmariadb
           COMPONENT SharedLibraries
-          RUNTIME DESTINATION "${INSTALL_PATH}"
-          LIBRARY DESTINATION "${INSTALL_PATH}"
-          ARCHIVE DESTINATION "${INSTALL_PATH}")
+        DESTINATION ${INSTALL_LIBDIR})
 
 IF(WIN32)
    # On Windows, install PDB
@@ -413,6 +408,6 @@ IF(WIN32)
      STRING(REPLACE "${CMAKE_CFG_INTDIR}" "\${CMAKE_INSTALL_CONFIG_NAME}"
       pdb_location ${pdb_location})
    ENDIF()
-   INSTALL(FILES ${pdb_location} DESTINATION "${INSTALL_PATH}"
+   INSTALL(FILES ${pdb_location} DESTINATION "${INSTALL_LIBDIR}"
            COMPONENT Development)
 ENDIF()

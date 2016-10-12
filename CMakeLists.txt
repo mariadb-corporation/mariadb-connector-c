@@ -166,7 +166,7 @@ ENDIF()
 
 INCLUDE("${CC_SOURCE_DIR}/cmake/install.cmake")
 IF(NOT PLUGINDIR)
-  SET(PLUGINDIR "${PREFIX_INSTALL_DIR}/${PLUGIN_INSTALL_DIR}")
+  SET(PLUGINDIR "${INSTALL_PLUGINDIR}")
 ENDIF()
 
 # todo: we don't character sets in share - all is compiled in
@@ -432,8 +432,8 @@ MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- Experimental Sqlite support: ${WITH_SQLITE}
 -- Zlib support: ${zlib_status}
 -- Installation layout: ${INSTALL_LAYOUT}
--- Include files will be installed in ${PREFIX_INSTALL_DIR}/${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}
--- Libraries will be installed in ${PREFIX_INSTALL_DIR}/${LIB_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}
--- Binaries will be installed in ${PREFIX_INSTALL_DIR}/${BIN_INSTALL_DIR}
+-- Include files will be installed in ${INSTALL_INCLUDEDIR}
+-- Libraries will be installed in ${INSTALL_LIBDIR}
+-- Binaries will be installed in ${INSTALL_BINDIR}
 -- Documentation included from ${CLIENT_DOCS}
 -- Required: ${CMAKE_REQUIRED_LIBRARIES}")
