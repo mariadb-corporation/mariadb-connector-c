@@ -216,9 +216,9 @@ static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t lengt
 /* }}} */
 
 /* {{{ size_t ma_pvio_read */
-size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
+ssize_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
-  size_t r= -1;
+  ssize_t r= -1;
   if (!pvio)
     return -1;
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
@@ -266,9 +266,9 @@ end:
 /* }}} */
 
 /* {{{  size_t ma_pvio_cache_read */
-size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
+ssize_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
-  size_t r;
+  ssize_t r;
 
   if (!pvio)
     return -1;
@@ -278,7 +278,9 @@ size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 
   if (pvio->cache + pvio->cache_size > pvio->cache_pos)
   {
-    r= MIN(length, (size_t)(pvio->cache + pvio->cache_size - pvio->cache_pos));
+    ssize_t remaining = pvio->cache + pvio->cache_size - pvio->cache_pos;
+    assert(remaining > 0);
+    r= MIN((ssize_t)length, remaining);
     memcpy(buffer, pvio->cache_pos, r);
     pvio->cache_pos+= r;
   }
@@ -289,9 +291,9 @@ size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   else
   {
     r= ma_pvio_read(pvio, pvio->cache, PVIO_READ_AHEAD_CACHE_SIZE);
-    if ((ssize_t)r > 0)
+    if (r > 0)
     {
-      if (length < r)
+      if (length < (size_t)r)
       {
         pvio->cache_size= r;
         pvio->cache_pos= pvio->cache + length;
@@ -305,7 +307,7 @@ size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 /* }}} */
 
 /* {{{ size_t ma_pvio_write_async */
-static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+static ssize_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t res;
   struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
@@ -334,9 +336,9 @@ static size_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_
 /* }}} */
 
 /* {{{ size_t ma_pvio_write */
-size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
-  size_t r;
+  ssize_t r;
 
   if (!pvio)
    return -1;

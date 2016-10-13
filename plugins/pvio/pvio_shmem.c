@@ -33,8 +33,8 @@
 
 my_bool pvio_shm_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_shm_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
-size_t pvio_shm_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t pvio_shm_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+ssize_t pvio_shm_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+ssize_t pvio_shm_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_shm_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
 my_bool pvio_shm_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
@@ -122,7 +122,7 @@ int pvio_shm_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
   return pvio->timeout[type] / 1000;
 }
 
-size_t pvio_shm_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
+ssize_t pvio_shm_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   PVIO_SHM *pvio_shm= (PVIO_SHM *)pvio->data;
   size_t copy_size= length;
@@ -170,10 +170,10 @@ size_t pvio_shm_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
     if (!SetEvent(pvio_shm->event[PVIO_SHM_CLIENT_READ]))
       return -1;
 
-  return copy_size;
+  return (ssize_t)copy_size;
 }
 
-size_t pvio_shm_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+ssize_t pvio_shm_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   HANDLE events[2];
   PVIO_SHM *pvio_shm= (PVIO_SHM *)pvio->data;
@@ -209,7 +209,7 @@ size_t pvio_shm_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
     if (!SetEvent(pvio_shm->event[PVIO_SHM_CLIENT_WROTE]))
       return -1;
   }
-  return length;
+  return (ssize_t)length;
 }
 
 

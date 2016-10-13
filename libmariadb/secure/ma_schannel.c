@@ -445,12 +445,13 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     {
       if(fDoRead)
       {
-        cbData = (DWORD)pvio->methods->read(pvio, IoBuffer + cbIoBuffer, (size_t)(SC_IO_BUFFER_SIZE - cbIoBuffer));
-        if (cbData == SOCKET_ERROR || cbData == 0)
+        ssize_t nbytes = pvio->methods->read(pvio, IoBuffer + cbIoBuffer, (size_t)(SC_IO_BUFFER_SIZE - cbIoBuffer));
+        if (nbytes <= 0)
         {
           rc = SEC_E_INTERNAL_ERROR;
           break;
         }
+        cbData = (DWORD)nbytes;
         cbIoBuffer += cbData;
       }
       else
@@ -504,14 +505,14 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     {
       if(OutBuffers.cbBuffer && OutBuffers.pvBuffer)
       {
-        cbData= (DWORD)pvio->methods->write(pvio, (uchar *)OutBuffers.pvBuffer, (size_t)OutBuffers.cbBuffer);
-        if(cbData == SOCKET_ERROR || cbData == 0)
+        ssize_t nbytes = pvio->methods->write(pvio, (uchar *)OutBuffers.pvBuffer, (size_t)OutBuffers.cbBuffer);
+        if(nbytes <= 0)
         {
           FreeContextBuffer(OutBuffers.pvBuffer);
           DeleteSecurityContext(&sctx->ctxt);
           return SEC_E_INTERNAL_ERROR;
         }
-
+        cbData= (DWORD)nbytes;
         /* Free output context buffer */
         FreeContextBuffer(OutBuffers.pvBuffer);
         OutBuffers.pvBuffer = NULL;
@@ -648,12 +649,13 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   /* send client hello packaet */
   if(BuffersOut.cbBuffer != 0 && BuffersOut.pvBuffer != NULL)
   {  
-    r= (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
-    if (r <= 0)
+    ssize_t nbytes = (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
+    if (nbytes <= 0)
     {
       sRet= SEC_E_INTERNAL_ERROR;
       goto end;
     }
+    r = (DWORD)nbytes;
   }
   sRet= ma_schannel_handshake_loop(pvio, TRUE, &ExtraData);
 
@@ -708,7 +710,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
                                          uchar *ReadBuffer,
                                          DWORD ReadBufferSize)
 {
-  DWORD dwBytesRead= 0;
+  ssize_t nbytes= 0;
   DWORD dwOffset= 0;
   SC_CTX *sctx;
   SECURITY_STATUS sRet= 0;
@@ -725,22 +727,22 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
 
   while (1)
   {
-    if (!dwBytesRead || sRet == SEC_E_INCOMPLETE_MESSAGE)
+    if (nbytes > 0 || sRet == SEC_E_INCOMPLETE_MESSAGE)
     {
-      dwBytesRead= (DWORD)pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
-      if (dwBytesRead == 0)
+      nbytes= pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
+      if (nbytes == 0)
       {
         /* server closed connection */
         // todo: error 
         return SEC_E_INVALID_HANDLE;
       }
-      if (dwBytesRead < 0)
+      if (nbytes < 0)
       {
         /* socket error */
         // todo: error
         return SEC_E_INVALID_HANDLE;
       }
-      dwOffset+= dwBytesRead;
+      dwOffset+= (DWORD)nbytes;
     }
     ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
     Buffers[0].pvBuffer= sctx->IoBuffer;
@@ -779,6 +781,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
     
     if (pData && pData->cbBuffer)
     {
+      assert(*DecryptLength + pData->cbBuffer <= ReadBufferSize);
       memcpy(ReadBuffer + *DecryptLength, pData->pvBuffer, pData->cbBuffer);
       *DecryptLength+= pData->cbBuffer;
       return sRet;
@@ -893,7 +896,7 @@ end:
     SEC_E_OK         on success
     SEC_E_*          if an error occured
 */ 
-size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
+ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
                                  size_t WriteBufferSize)
 {
@@ -904,6 +907,7 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   PBYTE pbMessage;
   SC_CTX *sctx= (SC_CTX *)pvio->ctls->ssl;
   size_t payload;
+  ssize_t nbytes;
 
   payload= MIN(WriteBufferSize, sctx->IoBufferSize);
 
@@ -934,9 +938,8 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   if ((scRet = EncryptMessage(&sctx->ctxt, 0, &Message, 0))!= SEC_E_OK)
     return -1;
   
-  if (pvio->methods->write(pvio, sctx->IoBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer))
-    return payload; 
-  return 0;
+  nbytes = pvio->methods->write(pvio, sctx->IoBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer);
+  return nbytes;
 }
 /* }}} */
 

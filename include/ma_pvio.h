@@ -93,10 +93,10 @@ struct st_ma_pvio_methods
 {
   my_bool (*set_timeout)(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
   int (*get_timeout)(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
-  size_t (*read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-  size_t (*async_read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-  size_t (*write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
-  size_t (*async_write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+  ssize_t (*read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+  ssize_t (*async_read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+  ssize_t (*write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+  ssize_t (*async_write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
   int (*wait_io_or_timeout)(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
   my_bool (*blocking)(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
   my_bool (*connect)(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
@@ -113,9 +113,9 @@ struct st_ma_pvio_methods
 /* Function prototypes */
 MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo);
 void ma_pvio_close(MARIADB_PVIO *pvio);
-size_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+ssize_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+ssize_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int ma_pvio_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
 my_bool ma_pvio_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int ma_pvio_fast_send(MARIADB_PVIO *pvio);

@@ -69,7 +69,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
 my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char *key_file);
 PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem_file);
 my_bool ma_schannel_verify_certs(SC_CTX *sctx);
-size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
+ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
                                  size_t WriteBufferSize);
  SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
