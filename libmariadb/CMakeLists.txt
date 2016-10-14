@@ -143,7 +143,8 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_thread_init
  mysql_thread_safe
  mysql_use_result
- mysql_warning_count)
+ mysql_warning_count
+ mysql_reset_connection)
 IF(WITH_SSL)
   SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
 ENDIF()
@@ -245,6 +246,8 @@ SET(MARIADB_NONBLOCK_SYMBOLS
  mysql_stmt_store_result_start
  mysql_store_result_cont
  mysql_store_result_start
+ mysql_reset_connection_start
+ mysql_reset_connection_cont
 )
 
 

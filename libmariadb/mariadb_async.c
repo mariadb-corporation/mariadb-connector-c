@@ -1054,6 +1054,42 @@ MK_ASYNC_CONT_BODY(
   1,
   r_int)
 }
+/* Structure used to pass parameters from mysql_ping_start(). */
+struct mysql_reset_connection_params {
+  MYSQL *mysql;
+};
+static void
+mysql_reset_connection_start_internal(void *d)
+{
+MK_ASYNC_INTERNAL_BODY(
+  mysql_reset_connection,
+  (parms->mysql),
+  parms->mysql,
+  int,
+  r_int)
+}
+int STDCALL
+mysql_reset_connection_start(int *ret, MYSQL *mysql)
+{
+MK_ASYNC_START_BODY(
+  mysql_reset_connection,
+  mysql,
+  {
+    WIN_SET_NONBLOCKING(mysql)
+    parms.mysql= mysql;
+  },
+  1,
+  r_int,
+  /* Nothing */)
+}
+int STDCALL
+mysql_reset_connection_cont(int *ret, MYSQL *mysql, int ready_status)
+{
+MK_ASYNC_CONT_BODY(
+  mysql,
+  1,
+  r_int)
+}
 
 /* Structure used to pass parameters from mysql_stat_start(). */
 struct mysql_stat_params {

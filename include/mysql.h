@@ -523,6 +523,7 @@ int		STDCALL mysql_refresh(MYSQL *mysql,
 				     unsigned int refresh_options);
 int		STDCALL mysql_kill(MYSQL *mysql,unsigned long pid);
 int		STDCALL mysql_ping(MYSQL *mysql);
+int		STDCALL mysql_reset_connection(MYSQL *mysql);
 char *		STDCALL mysql_stat(MYSQL *mysql);
 char *		STDCALL mysql_get_server_info(MYSQL *mysql);
 unsigned long   STDCALL mysql_get_server_version(MYSQL *mysql);
@@ -662,6 +663,8 @@ int             STDCALL mysql_set_server_option_cont(int *ret, MYSQL *mysql,
                                                      int status);
 int             STDCALL mysql_ping_start(int *ret, MYSQL *mysql);
 int             STDCALL mysql_ping_cont(int *ret, MYSQL *mysql, int status);
+int             STDCALL mysql_reset_connection_start(int *ret, MYSQL *mysql);
+int             STDCALL mysql_reset_connection_cont(int *ret, MYSQL *mysql, int status);
 int             STDCALL mysql_stat_start(const char **ret, MYSQL *mysql);
 int             STDCALL mysql_stat_cont(const char **ret, MYSQL *mysql,
                                         int status);
@@ -815,8 +818,9 @@ struct st_mariadb_api {
   int (STDCALL *mysql_stmt_next_result)(MYSQL_STMT *stmt);
   my_bool (STDCALL *mysql_stmt_more_results)(MYSQL_STMT *stmt);
   int (STDCALL *mariadb_stmt_execute_direct)(MYSQL_STMT *stmt, const char *stmtstr, size_t length);
+  int (STDCALL *mysql_reset_connection)(MYSQL *mysql);
 };
-  
+
 /* these methods can be overwritten by db plugins */
 struct st_mariadb_methods {
   MYSQL *(*db_connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd,

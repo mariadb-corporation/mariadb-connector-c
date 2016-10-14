@@ -2480,6 +2480,34 @@ mysql_ping(MYSQL *mysql)
   return rc;
 }
 
+int STDCALL
+mysql_reset_connection(MYSQL *mysql)
+{
+  int rc;
+  rc= ma_simple_command(mysql, COM_RESET_CONNECTION,0,0,0,0);
+
+  /* if connection was terminated and reconnect is true, try again */
+  if (rc!=0  && mysql->options.reconnect)
+  {
+    /* There is no big sens in resetting but we need reconnect */
+    rc= ma_simple_command(mysql, COM_RESET_CONNECTION,0,0,0,0);
+  }
+
+  if (!rc)
+  {
+    /*
+      COM_RESET_CONNECTION always releases prepared statements,
+      so we need to invalidate them
+    */
+    ma_invalidate_stmts(mysql, "mysql_reset_connection()");
+    /* Some status should be "ready" without reading server responce */
+    mysql->insert_id= 0;
+    mysql->server_status= MYSQL_STATUS_READY;
+    mysql->affected_rows= ~(my_ulonglong) 0;
+  }
+  return rc;
+}
+
 char * STDCALL
 mysql_get_server_info(MYSQL *mysql)
 {
@@ -4003,7 +4031,8 @@ struct st_mariadb_api MARIADB_API=
   mysql_stmt_field_count,
   mysql_stmt_next_result,
   mysql_stmt_more_results,
-  mariadb_stmt_execute_direct
+  mariadb_stmt_execute_direct,
+  mysql_reset_connection
 };
 
 /*
