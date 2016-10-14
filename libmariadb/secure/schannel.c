@@ -307,6 +307,11 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
   DWORD dlength= 0;
   SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, (DWORD)length);
+  if (status == SEC_I_CONTEXT_EXPIRED)
+    return 0; /* other side shut down the connection. */
+  if (status == SEC_I_RENEGOTIATE)
+    return -1; /* Do not handle renegotiate yet */
+
   return (status == SEC_E_OK)? (ssize_t)dlength : -1;
 }
 

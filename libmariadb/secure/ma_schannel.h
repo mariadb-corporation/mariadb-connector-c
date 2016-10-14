@@ -56,6 +56,11 @@ struct st_schannel {
   SecPkgContext_StreamSizes Sizes;
   CtxtHandle ctxt;
   MYSQL *mysql;
+
+  /* Cached data from the last read/decrypt call.*/
+  SecBuffer extraBuf; /* encrypted data read from server. */
+  SecBuffer dataBuf;  /* decrypted but still unread data from server.*/
+
 };
 
 typedef struct st_schannel SC_CTX;
