@@ -4405,8 +4405,91 @@ static int test_conc198(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc205(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  MYSQL_BIND my_bind[3];
+  char       data[8];
+  ulong      length[3];
+  int        rc, int_col;
+  short      smint_col;
+  my_bool    is_null[3];
+  const char *query = "SELECT text_col, smint_col, int_col FROM test_conc205";
+
+  rc= mysql_query(mysql, "drop table if exists test_conc205");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE test_conc205 (text_col TEXT, smint_col SMALLINT, int_col INT)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO test_conc205 VALUES('data01', 21893, 1718038908), ('data2', -25734, -1857802040)");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  FAIL_IF(!stmt, mysql_error(mysql));
+
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  check_stmt_rc(rc, stmt);
+
+  memset(my_bind, '\0', sizeof(my_bind));
+  my_bind[0].buffer_type= MYSQL_TYPE_STRING;
+  my_bind[0].buffer= (void *)data;
+  my_bind[0].buffer_length= sizeof(data);
+  my_bind[0].is_null= &is_null[0];
+  my_bind[0].length= &length[0];
+
+  my_bind[1].buffer_type= MYSQL_TYPE_SHORT;
+  my_bind[1].buffer= &smint_col;
+  my_bind[1].buffer_length= 2;
+  my_bind[1].is_null= &is_null[1];
+  my_bind[1].length= &length[1];
+
+  my_bind[2].buffer_type= MYSQL_TYPE_LONG;
+  my_bind[2].buffer= &int_col;
+  my_bind[2].buffer_length= 4;
+  my_bind[2].is_null= &is_null[2];
+  my_bind[2].length= &length[2];
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, my_bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(length[0] != 6, "Wrong fetched string length");
+  FAIL_IF(length[1] != 2, "Wrong fetched short length");
+  FAIL_IF(length[2] != 4, "Wrong fetched int length");
+
+  FAIL_IF(strncmp(data, "data01", length[0] + 1) != 0, "Wrong string value");
+  FAIL_IF(smint_col != 21893, "Expected 21893");
+  FAIL_IF(int_col != 1718038908, "Expected 1718038908");
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(length[0] != 5, "Wrong fetched string length");
+  FAIL_IF(length[1] != 2, "Wrong fetched short length");
+  FAIL_IF(length[2] != 4, "Wrong fetched int length");
+
+  FAIL_IF(strncmp(data, "data2", length[0] + 1) != 0, "Wrong string value");
+  FAIL_IF(smint_col != -25734, "Expected 21893");
+  FAIL_IF(int_col != -1857802040, "Expected 1718038908");
+
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc != MYSQL_NO_DATA, "Expected MYSQL_NO_DATA");
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "drop table test_conc205");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"test_conc205", test_conc205, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc198", test_conc198, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc182", test_conc182, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc181", test_conc181, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

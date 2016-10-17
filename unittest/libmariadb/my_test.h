@@ -401,7 +401,7 @@ MYSQL *test_connect(struct my_tests_st *test)
   MYSQL *mysql;
   int i= 0;
   int timeout= 10;
-  int truncation_report= 1;
+  my_bool truncation_report= 1;
   if (!(mysql = mysql_init(NULL))) {
     diag("%s", "mysql_init failed - exiting");
     return(NULL);

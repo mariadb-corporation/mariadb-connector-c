@@ -32,7 +32,7 @@ static int bind_fetch(MYSQL *mysql, int row_count)
   int32        data[10];
   int8         i8_data;
   int16        i16_data;
-  long         i32_data;
+  int          i32_data;
   longlong     i64_data;
   float        f_data;
   double       d_data;
@@ -316,7 +316,7 @@ static int test_fetch_offset(MYSQL *mysql)
 
   rc= mysql_stmt_store_result(stmt);
   check_stmt_rc(rc,stmt);
-
+diag("truncation: %d", mysql->options.report_data_truncation);
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == MYSQL_DATA_TRUNCATED, "rc != MYSQL_DATA_TRUNCATED");
 
@@ -567,7 +567,7 @@ static int test_fetch_null(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int        rc;
   int        i;
-  long       nData= 0;
+  int        nData= 0;
   MYSQL_BIND my_bind[11];
   ulong      length[11];
   my_bool    is_null[11];

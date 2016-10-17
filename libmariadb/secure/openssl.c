@@ -49,7 +49,6 @@
 
 extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
-static SSL_CTX *SSL_context= NULL;
 
 #define MAX_SSL_ERR_LEN 100
 
@@ -287,8 +286,7 @@ static void disable_sigpipe()
 #endif
 
 /*
-  Initializes SSL and allocate global
-  context SSL_context
+  Initializes SSL 
 
   SYNOPSIS
     my_ssl_start
@@ -325,22 +323,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   SSL_load_error_strings();
   /* digests and ciphers */
   OpenSSL_add_all_algorithms();
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
-#else
-  if (!(SSL_context= SSL_CTX_new(SSLv23_client_method())))
-#endif
-  {
-    ma_tls_get_error(errmsg, errmsg_len);
-    goto end;
-  }
-  SSL_CTX_set_options(SSL_context, SSL_OP_ALL);
-#ifdef HAVE_TLS_SESSION_CACHE
-  SSL_CTX_set_session_cache_mode(SSL_context, SSL_SESS_CACHE_CLIENT);
-  ma_tls_sessions= (MA_SSL_SESSION *)calloc(1, sizeof(struct st_ma_tls_session) * ma_tls_session_cache_size);
-  SSL_CTX_sess_set_new_cb(SSL_context, ma_tls_session_cb);
-  SSL_CTX_sess_set_remove_cb(SSL_context, ma_tls_remove_session_cb);
-#endif
+
   disable_sigpipe();
 #if OPENSSL_USE_BIOMETHOD
   memcpy(&ma_BIO_method, BIO_s_socket(), sizeof(BIO_METHOD));
@@ -382,12 +365,6 @@ void ma_tls_end()
     ma_free((gptr)LOCK_crypto);
     LOCK_crypto= NULL;
 #endif
-
-    if (SSL_context)
-    {
-      SSL_CTX_free(SSL_context);
-      SSL_context= NULL;
-    }
     if (mariadb_deinitialize_ssl)
     {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -423,6 +400,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
        *keyfile= mysql->options.ssl_key;
   char *pw= (mysql->options.extension) ?
             mysql->options.extension->tls_pw : NULL;
+  SSL_CTX *ctx= SSL_get_SSL_CTX(ssl);
 
   
   /* add cipher */
@@ -432,13 +410,15 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
     goto error;
 
   /* ca_file and ca_path */
-  if (SSL_CTX_load_verify_locations(SSL_context, 
+  SSL_CTX_set_verify(ctx, (mysql->options.ssl_ca || mysql->options.ssl_capath)?
+                     SSL_VERIFY_NONE : SSL_VERIFY_NONE, NULL);
+  if (SSL_CTX_load_verify_locations(ctx, 
                                     mysql->options.ssl_ca,
-                                    mysql->options.ssl_capath) == 0)
+                                    mysql->options.ssl_capath) <= 0)
   {
     if (mysql->options.ssl_ca || mysql->options.ssl_capath)
       goto error;
-    if (SSL_CTX_set_default_verify_paths(SSL_context) == 0)
+    if (SSL_CTX_set_default_verify_paths(ctx) == 0)
       goto error;
   }
 
@@ -450,7 +430,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   /* set cert */
   if (certfile  && certfile[0] != 0)
   {
-    if (SSL_CTX_use_certificate_chain_file(SSL_context, certfile) != 1 ||
+    if (SSL_CTX_use_certificate_chain_file(ctx, certfile) != 1 ||
         SSL_use_certificate_file(ssl, certfile, SSL_FILETYPE_PEM) != 1)
       goto error; 
   }
@@ -486,7 +466,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   {
     X509_STORE *certstore;
 
-    if ((certstore= SSL_CTX_get_cert_store(SSL_context)))
+    if ((certstore= SSL_CTX_get_cert_store(ctx)))
     {
       if (X509_STORE_load_locations(certstore, mysql->options.extension->ssl_crl,
                                                mysql->options.extension->ssl_crlpath) == 0)
@@ -505,12 +485,27 @@ error:
 void *ma_tls_init(MYSQL *mysql)
 {
   SSL *ssl= NULL;
+  SSL_CTX *ctx= NULL;
 #ifdef HAVE_TLS_SESSION_CACHE
   MA_SSL_SESSION *session= ma_tls_get_session(mysql);
 #endif
   pthread_mutex_lock(&LOCK_openssl_config);
 
-  if (!(ssl= SSL_new(SSL_context)))
+  #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  if (!(ctx= SSL_CTX_new(TLS_client_method())))
+#else
+  if (!(ctx= SSL_CTX_new(SSLv23_client_method())))
+#endif
+    goto error;
+  SSL_CTX_set_options(ctx, SSL_OP_ALL);
+#ifdef HAVE_TLS_SESSION_CACHE
+  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
+  ma_tls_sessions= (MA_SSL_SESSION *)calloc(1, sizeof(struct st_ma_tls_session) * ma_tls_session_cache_size);
+  SSL_CTX_sess_set_new_cb(ctx, ma_tls_session_cb);
+  SSL_CTX_sess_set_remove_cb(ctx, ma_tls_remove_session_cb);
+#endif
+
+  if (!(ssl= SSL_new(ctx)))
     goto error;
 
   if (ma_tls_set_certs(mysql, ssl))
@@ -530,6 +525,8 @@ void *ma_tls_init(MYSQL *mysql)
   return (void *)ssl;
 error:
   pthread_mutex_unlock(&LOCK_openssl_config);
+  if (ctx)
+    SSL_CTX_free(ctx);
   if (ssl)
     SSL_free(ssl);
   return NULL;
@@ -625,6 +622,9 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
   if (!ctls || !ctls->ssl)
     return 1;
   ssl= (SSL *)ctls->ssl;
+  SSL_CTX *ctx= SSL_get_SSL_CTX(ssl);
+  if (ctx)
+    SSL_CTX_free(ctx);
 
   SSL_set_quiet_shutdown(ssl, 1); 
   /* 2 x pending + 2 * data = 4 */ 

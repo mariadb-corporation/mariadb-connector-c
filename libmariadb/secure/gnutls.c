@@ -34,9 +34,15 @@
 
 pthread_mutex_t LOCK_gnutls_config;
 
-static gnutls_certificate_credentials_t GNUTLS_xcred;
 extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
+
+enum ma_pem_type {
+  MA_TLS_PEM_CERT= 0,
+  MA_TLS_PEM_KEY,
+  MA_TLS_PEM_CA,
+  MA_TLS_PEM_CRL
+};
 
 static int my_verify_callback(gnutls_session_t ssl);
 
@@ -47,60 +53,746 @@ struct st_gnutls_data {
 };
 
 struct st_cipher_map {
+  unsigned char sid[2];
+  const char *iana_name;
   const char *openssl_name;
-  const char *priority;
-  gnutls_kx_algorithm_t kx;
-  gnutls_cipher_algorithm_t cipher;
-  gnutls_mac_algorithm_t mac;
+  const char *gnutls_name;
 };
 
-const struct st_cipher_map gtls_ciphers[]=
+const struct st_cipher_map tls_ciphers[]=
 {
-  {"DHE-RSA-AES256-GCM-SHA384", ":+AEAD:+DHE-RSA:+AES-256-GCM",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_GCM, GNUTLS_MAC_AEAD},
-  {"DHE-RSA-AES256-SHA256", ":+SHA256:+DHE-RSA:+AES-256-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA256},
-  {"DHE-RSA-AES256-SHA", ":+SHA1:+DHE-RSA:+AES-256-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
-  {"DHE-RSA-CAMELLIA256-SHA", ":+SHA1:+DHE-RSA:+CAMELLIA-256-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
-  {"AES256-GCM-SHA384", ":+AEAD:+RSA:+AES-256-GCM",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_GCM, GNUTLS_MAC_AEAD},
-  {"AES256-SHA256", ":+SHA256:+RSA:+AES-256-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA256},
-  {"AES256-SHA", ":+SHA1:+RSA:+AES-256-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
-  {"CAMELLIA256-SHA", ":+SHA1:+RSA:+CAMELLIA-256-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
-  {"DHE-RSA-AES128-GCM-SHA256", ":+AEAD:+DHE-RSA:+AES-128-GCM",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_128_GCM, GNUTLS_MAC_AEAD},
-  {"DHE-RSA-AES128-SHA256", ":+SHA256:+DHE-RSA:+AES-128-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA256},
-  {"DHE-RSA-AES128-SHA", ":+SHA1:+DHE-RSA:+AES-128-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA1},
-  {"DHE-RSA-CAMELLIA128-SHA", ":+SHA1:+DHE-RSA:+CAMELLIA-128-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_CAMELLIA_128_CBC, GNUTLS_MAC_SHA1},
-  {"AES128-GCM-SHA256", ":+AEAD:+RSA:+AES-128-GCM",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_128_GCM, GNUTLS_MAC_AEAD},
-  {"AES128-SHA256", ":+SHA256:+RSA:+AES-128-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA256},
-  {"AES128-SHA", ":+SHA1:+RSA:+AES-128-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_128_CBC, GNUTLS_MAC_SHA1},
-  {"CAMELLIA128-SHA", ":+SHA1:+RSA:+CAMELLIA-128-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_CAMELLIA_128_CBC, GNUTLS_MAC_SHA1},
-  {"EDH-RSA-DES-CBC3-SHA", ":+SHA1:+DHE-RSA:+3DES-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_3DES_CBC, GNUTLS_MAC_SHA1},
-  {"DES-CBC3-SHA", ":+SHA1:+RSA:+3DES-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_3DES_CBC, GNUTLS_MAC_SHA1},
-  {"DHE-RSA-AES256-SHA", ":+SHA1:+DHE-RSA:+AES-256-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
-  {"DHE-RSA-CAMELLIA256-SHA", ":+SHA1:+DHE-RSA:+CAMELLIA-256-CBC",
-   GNUTLS_KX_DHE_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
-  {"AES256-SHA", ":+SHA1:+RSA:+AES-256-CBC",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_AES_256_CBC, GNUTLS_MAC_SHA1},
-  {"CAMELLIA256-SHA", ":+SHA1:+RSA:+CAMELLIA-256-CBC:",
-   GNUTLS_KX_RSA, GNUTLS_CIPHER_CAMELLIA_256_CBC, GNUTLS_MAC_SHA1},
-  {NULL, NULL, 0, 0, 0}
+  { {0x00, 0x01},
+    "TLS_RSA_WITH_NULL_MD5",
+     NULL,
+    "TLS_RSA_NULL_MD5"},
+  { {0x00, 0x02},
+    "TLS_RSA_WITH_NULL_SHA",
+     NULL,
+    "TLS_RSA_NULL_SHA1"},
+  { {0x00, 0x3B},
+    "TLS_RSA_WITH_NULL_SHA256",
+     NULL,
+    "TLS_RSA_NULL_SHA256"},
+  { {0x00, 0x05},
+    "TLS_RSA_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_RSA_ARCFOUR_128_SHA1"},
+  { {0x00, 0x04},
+    "TLS_RSA_WITH_RC4_128_MD5",
+     NULL,
+    "TLS_RSA_ARCFOUR_128_MD5"},
+  { {0x00, 0x0A},
+    "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+    "DES-CBC3-SHA",
+    "TLS_RSA_3DES_EDE_CBC_SHA1"},
+  { {0x00, 0x2F},
+    "TLS_RSA_WITH_AES_128_CBC_SHA",
+    "AES128-SHA",
+    "TLS_RSA_AES_128_CBC_SHA1"},
+  { {0x00, 0x35},
+    "TLS_RSA_WITH_AES_256_CBC_SHA",
+    "AES256-SHA",
+    "TLS_RSA_AES_256_CBC_SHA1"},
+  { {0x00, 0xBA},
+    "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+    "CAMELLIA128-SHA256",
+    "TLS_RSA_CAMELLIA_128_CBC_SHA256"},
+  { {0x00, 0xC0},
+    "TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256",
+     NULL,
+    "TLS_RSA_CAMELLIA_256_CBC_SHA256"},
+  { {0x00, 0x41},
+    "TLS_RSA_WITH_CAMELLIA_128_CBC_SHA",
+    "CAMELLIA128-SHA",
+    "TLS_RSA_CAMELLIA_128_CBC_SHA1"},
+  { {0x00, 0x84},
+    "TLS_RSA_WITH_CAMELLIA_256_CBC_SHA",
+    "CAMELLIA256-SHA",
+    "TLS_RSA_CAMELLIA_256_CBC_SHA1"},
+  { {0x00, 0x3C},
+    "TLS_RSA_WITH_AES_128_CBC_SHA256",
+    "AES128-SHA256",
+    "TLS_RSA_AES_128_CBC_SHA256"},
+  { {0x00, 0x3D},
+    "TLS_RSA_WITH_AES_256_CBC_SHA256",
+    "AES256-SHA256",
+    "TLS_RSA_AES_256_CBC_SHA256"},
+  { {0x00, 0x9C},
+    "TLS_RSA_WITH_AES_128_GCM_SHA256",
+    "AES128-GCM-SHA256",
+    "TLS_RSA_AES_128_GCM_SHA256"},
+  { {0x00, 0x9D},
+    "TLS_RSA_WITH_AES_256_GCM_SHA384",
+    "AES256-GCM-SHA384",
+    "TLS_RSA_AES_256_GCM_SHA384"},
+  { {0xC0, 0x7A},
+    "TLS_RSA_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_RSA_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x7B},
+    "TLS_RSA_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_RSA_CAMELLIA_256_GCM_SHA384"},
+  { {0xC0, 0x9C},
+    "TLS_RSA_WITH_AES_128_CCM",
+     NULL,
+    "TLS_RSA_AES_128_CCM"},
+  { {0xC0, 0x9D},
+    "TLS_RSA_WITH_AES_256_CCM",
+     NULL,
+    "TLS_RSA_AES_256_CCM"},
+  { {0xC0, 0xA0},
+    "TLS_RSA_WITH_AES_128_CCM_8",
+     NULL,
+    "TLS_RSA_AES_128_CCM_8"},
+  { {0xC0, 0xA1},
+    "TLS_RSA_WITH_AES_256_CCM_8",
+     NULL,
+    "TLS_RSA_AES_256_CCM_8"},
+  { {0x00, 0x66},
+    "TLS_DHE_DSS_WITH_RC4_128_SHA",
+    NULL,
+    "TLS_DHE_DSS_ARCFOUR_128_SHA1"},
+  { {0x00, 0x13},
+    "TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA",
+     NULL,
+    "TLS_DHE_DSS_3DES_EDE_CBC_SHA1"},
+  { {0x00, 0x32},
+    "TLS_DHE_DSS_WITH_AES_128_CBC_SHA",
+     NULL,
+    "TLS_DHE_DSS_AES_128_CBC_SHA1"},
+  { {0x00, 0x38},
+    "TLS_DHE_DSS_WITH_AES_256_CBC_SHA",
+     NULL,
+    "TLS_DHE_DSS_AES_256_CBC_SHA1"},
+  { {0x00, 0xBD},
+    "TLS_DHE_DSS_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_DHE_DSS_CAMELLIA_128_CBC_SHA256"},
+  { {0x00, 0xC3},
+    "TLS_DHE_DSS_WITH_CAMELLIA_256_CBC_SHA256",
+     NULL,
+    "TLS_DHE_DSS_CAMELLIA_256_CBC_SHA256"},
+  { {0x00, 0x44},
+    "TLS_DHE_DSS_WITH_CAMELLIA_128_CBC_SHA",
+     NULL,
+    "TLS_DHE_DSS_CAMELLIA_128_CBC_SHA1"},
+  { {0x00, 0x87},
+    "TLS_DHE_DSS_WITH_CAMELLIA_256_CBC_SHA",
+     NULL,
+    "TLS_DHE_DSS_CAMELLIA_256_CBC_SHA1"},
+  { {0x00, 0x40},
+    "TLS_DHE_DSS_WITH_AES_128_CBC_SHA256",
+     NULL,
+    "TLS_DHE_DSS_AES_128_CBC_SHA256"},
+  { {0x00, 0x6A},
+    "TLS_DHE_DSS_WITH_AES_256_CBC_SHA256",
+     NULL,
+    "TLS_DHE_DSS_AES_256_CBC_SHA256"},
+  { {0x00, 0xA2},
+    "TLS_DHE_DSS_WITH_AES_128_GCM_SHA256",
+     NULL,
+    "TLS_DHE_DSS_AES_128_GCM_SHA256"},
+  { {0x00, 0xA3},
+    "TLS_DHE_DSS_WITH_AES_256_GCM_SHA384",
+     NULL,
+    "TLS_DHE_DSS_AES_256_GCM_SHA384"},
+  { {0xC0, 0x80},
+    "TLS_DHE_DSS_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_DHE_DSS_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x81},
+    "TLS_DHE_DSS_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_DHE_DSS_CAMELLIA_256_GCM_SHA384"},
+  { {0x00, 0x16},
+    "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA",
+    "EDH-RSA-DES-CBC3-SHA",
+    "TLS_DHE_RSA_3DES_EDE_CBC_SHA1"},
+  { {0x00, 0x33},
+    "TLS_DHE_RSA_WITH_AES_128_CBC_SHA",
+    "DHE-RSA-AES128-SHA",
+    "TLS_DHE_RSA_AES_128_CBC_SHA1"},
+  { {0x00, 0x39},
+    "TLS_DHE_RSA_WITH_AES_256_CBC_SHA",
+    "DHE-RSA-AES256-SHA",
+    "TLS_DHE_RSA_AES_256_CBC_SHA1"},
+  { {0x00, 0xBE},
+    "TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_DHE_RSA_CAMELLIA_128_CBC_SHA256"},
+  { {0x00, 0xC4},
+    "TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256",
+     NULL,
+    "TLS_DHE_RSA_CAMELLIA_256_CBC_SHA256"},
+  { {0x00, 0x45},
+    "TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA",
+    "DHE-RSA-CAMELLIA128-SHA",
+    "TLS_DHE_RSA_CAMELLIA_128_CBC_SHA1"},
+  { {0x00, 0x88},
+    "TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA",
+    "DHE-RSA-CAMELLIA256-SHA",
+    "TLS_DHE_RSA_CAMELLIA_256_CBC_SHA1"},
+  { {0x00, 0x67},
+    "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
+    "DHE-RSA-AES128-SHA256",
+    "TLS_DHE_RSA_AES_128_CBC_SHA256"},
+  { {0x00, 0x6B},
+    "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256",
+    "DHE-RSA-AES256-SHA256",
+    "TLS_DHE_RSA_AES_256_CBC_SHA256"},
+  { {0x00, 0x9E},
+    "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256",
+    "DHE-RSA-AES128-GCM-SHA256",
+    "TLS_DHE_RSA_AES_128_GCM_SHA256"},
+  { {0x00, 0x9F},
+    "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384",
+    "DHE-RSA-AES256-GCM-SHA384",
+    "TLS_DHE_RSA_AES_256_GCM_SHA384"},
+  { {0xC0, 0x7C},
+    "TLS_DHE_RSA_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_DHE_RSA_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x7D},
+    "TLS_DHE_RSA_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_DHE_RSA_CAMELLIA_256_GCM_SHA384"},
+  { {0xCC, 0xAA},
+    "TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+    "DHE-RSA-CHACHA20-POLY1305",
+    "TLS_DHE_RSA_CHACHA20_POLY1305"},
+  { {0xC0, 0x9E},
+    "TLS_DHE_RSA_WITH_AES_128_CCM",
+     NULL,
+    "TLS_DHE_RSA_AES_128_CCM"},
+  { {0xC0, 0x9F},
+    "TLS_DHE_RSA_WITH_AES_256_CCM",
+     NULL,
+    "TLS_DHE_RSA_AES_256_CCM"},
+  { {0xC0, 0xA2},
+    "TLS_DHE_RSA_WITH_AES_128_CCM_8",
+     NULL,
+    "TLS_DHE_RSA_AES_128_CCM_8"},
+  { {0xC0, 0xA3},
+    "TLS_DHE_RSA_WITH_AES_256_CCM_8",
+     NULL,
+    "TLS_DHE_RSA_AES_256_CCM_8"},
+  { {0xC0, 0x10},
+    "TLS_ECDHE_RSA_WITH_",
+     NULL,
+    "TLS_ECDHE_RSA_NULL_SHA1"},
+  { {0xC0, 0x12},
+    "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
+    "ECDHE-RSA-DES-CBC3-SHA",
+    "TLS_ECDHE_RSA_3DES_EDE_CBC_SHA1"},
+  { {0xC0, 0x13},
+    "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+    "ECDHE-RSA-AES128-SHA",
+    "TLS_ECDHE_RSA_AES_128_CBC_SHA1"},
+  { {0xC0, 0x14},
+    "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+    "ECDHE-RSA-AES256-SHA",
+    "TLS_ECDHE_RSA_AES_256_CBC_SHA1"},
+  { {0xC0, 0x28},
+    "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+    "ECDHE-RSA-AES256-SHA384",
+    "TLS_ECDHE_RSA_AES_256_CBC_SHA384"},
+  { {0xC0, 0x11},
+    "TLS_ECDHE_RSA_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_ECDHE_RSA_ARCFOUR_128_SHA1"},
+  { {0xC0, 0x76},
+    "TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_ECDHE_RSA_CAMELLIA_128_CBC_SHA256"},
+  { {0xC0, 0x77},
+    "TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384",
+     NULL,
+    "TLS_ECDHE_RSA_CAMELLIA_256_CBC_SHA384"},
+  { {0xC0, 0x06},
+    "TLS_ECDHE_ECDSA_WITH_",
+     NULL,
+    "TLS_ECDHE_ECDSA_NULL_SHA1"},
+  { {0xC0, 0x08},
+    "TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA",
+    "ECDHE-ECDSA-DES-CBC3-SHA",
+    "TLS_ECDHE_ECDSA_3DES_EDE_CBC_SHA1"},
+  { {0xC0, 0x09},
+    "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
+    "ECDHE-ECDSA-AES128-SHA",
+    "TLS_ECDHE_ECDSA_AES_128_CBC_SHA1"},
+  { {0xC0, 0x0A},
+    "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
+    "ECDHE-ECDSA-AES256-SHA",
+    "TLS_ECDHE_ECDSA_AES_256_CBC_SHA1"},
+  { {0xC0, 0x07},
+    "TLS_ECDHE_ECDSA_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_ECDHE_ECDSA_ARCFOUR_128_SHA1"},
+  { {0xC0, 0x72},
+    "TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_ECDHE_ECDSA_CAMELLIA_128_CBC_SHA256"},
+  { {0xC0, 0x73},
+    "TLS_ECDHE_ECDSA_WITH_CAMELLIA_256_CBC_SHA384",
+     NULL,
+    "TLS_ECDHE_ECDSA_CAMELLIA_256_CBC_SHA384"},
+  { {0xC0, 0x23},
+    "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
+    "ECDHE-ECDSA-AES128-SHA256",
+    "TLS_ECDHE_ECDSA_AES_128_CBC_SHA256"},
+  { {0xC0, 0x27},
+    "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+    "ECDHE-RSA-AES128-SHA256",
+    "TLS_ECDHE_RSA_AES_128_CBC_SHA256"},
+  { {0xC0, 0x86},
+    "TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_ECDHE_ECDSA_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x87},
+    "TLS_ECDHE_ECDSA_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_ECDHE_ECDSA_CAMELLIA_256_GCM_SHA384"},
+  { {0xC0, 0x2B},
+    "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+    "ECDHE-ECDSA-AES128-GCM-SHA256",
+    "TLS_ECDHE_ECDSA_AES_128_GCM_SHA256"},
+  { {0xC0, 0x2C},
+    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+    "ECDHE-ECDSA-AES256-GCM-SHA384",
+    "TLS_ECDHE_ECDSA_AES_256_GCM_SHA384"},
+  { {0xC0, 0x2F},
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+    "ECDHE-RSA-AES128-GCM-SHA256",
+    "TLS_ECDHE_RSA_AES_128_GCM_SHA256"},
+  { {0xC0, 0x30},
+    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+    "ECDHE-RSA-AES256-GCM-SHA384",
+    "TLS_ECDHE_RSA_AES_256_GCM_SHA384"},
+  { {0xC0, 0x24},
+    "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384",
+    "ECDHE-ECDSA-AES256-SHA384",
+    "TLS_ECDHE_ECDSA_AES_256_CBC_SHA384"},
+  { {0xC0, 0x8A},
+    "TLS_ECDHE_RSA_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_ECDHE_RSA_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x8B},
+    "TLS_ECDHE_RSA_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_ECDHE_RSA_CAMELLIA_256_GCM_SHA384"},
+  { {0xCC, 0xA8},
+    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+    "ECDHE-RSA-CHACHA20-POLY1305",
+    "TLS_ECDHE_RSA_CHACHA20_POLY1305"},
+  { {0xCC, 0xA9},
+    "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+    "ECDHE-ECDSA-CHACHA20-POLY1305",
+    "TLS_ECDHE_ECDSA_CHACHA20_POLY1305"},
+  { {0xC0, 0xAC},
+    "TLS_ECDHE_ECDSA_WITH_AES_128_CCM",
+     NULL,
+    "TLS_ECDHE_ECDSA_AES_128_CCM"},
+  { {0xC0, 0xAD},
+    "TLS_ECDHE_ECDSA_WITH_AES_256_CCM",
+     NULL,
+    "TLS_ECDHE_ECDSA_AES_256_CCM"},
+  { {0xC0, 0xAE},
+    "TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8",
+     NULL,
+    "TLS_ECDHE_ECDSA_AES_128_CCM_8"},
+  { {0xC0, 0xAF},
+    "TLS_ECDHE_ECDSA_WITH_AES_256_CCM_8",
+     NULL,
+    "TLS_ECDHE_ECDSA_AES_256_CCM_8"},
+  { {0xC0, 0x34},
+    "TLS_ECDHE_PSK_WITH_3DES_EDE_CBC_SHA",
+    "ECDHE-PSK-3DES-EDE-CBC-SHA",
+    "TLS_ECDHE_PSK_3DES_EDE_CBC_SHA1"},
+  { {0xC0, 0x35},
+    "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA",
+    "ECDHE-PSK-AES128-CBC-SHA",
+    "TLS_ECDHE_PSK_AES_128_CBC_SHA1"},
+  { {0xC0, 0x36},
+    "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA",
+    "ECDHE-PSK-AES256-CBC-SHA",
+    "TLS_ECDHE_PSK_AES_256_CBC_SHA1"},
+  { {0xC0, 0x37},
+    "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA256",
+    "ECDHE-PSK-AES128-CBC-SHA256",
+    "TLS_ECDHE_PSK_AES_128_CBC_SHA256"},
+  { {0xC0, 0x38},
+    "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA384",
+    "ECDHE-PSK-AES256-CBC-SHA384",
+    "TLS_ECDHE_PSK_AES_256_CBC_SHA384"},
+  { {0xC0, 0x33},
+    "TLS_ECDHE_PSK_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_ECDHE_PSK_ARCFOUR_128_SHA1"},
+  { {0xC0, 0x39},
+    "TLS_ECDHE_PSK_WITH_NULL_SHA",
+     NULL,
+    "TLS_ECDHE_PSK_NULL_SHA1"},
+  { {0xC0, 0x3A},
+    "TLS_ECDHE_PSK_WITH_NULL_SHA256",
+     NULL,
+    "TLS_ECDHE_PSK_NULL_SHA256"},
+  { {0xC0, 0x3B},
+    "TLS_ECDHE_PSK_WITH_NULL_SHA384",
+     NULL,
+    "TLS_ECDHE_PSK_NULL_SHA384"},
+  { {0xC0, 0x9A},
+    "TLS_ECDHE_PSK_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_ECDHE_PSK_CAMELLIA_128_CBC_SHA256"},
+  { {0xC0, 0x9B},
+    "TLS_ECDHE_PSK_WITH_CAMELLIA_256_CBC_SHA384",
+     NULL,
+    "TLS_ECDHE_PSK_CAMELLIA_256_CBC_SHA384"},
+  { {0x00, 0x8A},
+    "TLS_PSK_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_PSK_ARCFOUR_128_SHA1"},
+  { {0x00, 0x8B},
+    "TLS_PSK_WITH_3DES_EDE_CBC_SHA",
+    "PSK-3DES-EDE-CBC-SHA",
+    "TLS_PSK_3DES_EDE_CBC_SHA1"},
+  { {0x00, 0x8C},
+    "TLS_PSK_WITH_AES_128_CBC_SHA",
+    "PSK-AES128-CBC-SHA",
+    "TLS_PSK_AES_128_CBC_SHA1"},
+  { {0x00, 0x8D},
+    "TLS_PSK_WITH_AES_256_CBC_SHA",
+    "PSK-AES256-CBC-SHA",
+    "TLS_PSK_AES_256_CBC_SHA1"},
+  { {0x00, 0xAE},
+    "TLS_PSK_WITH_AES_128_CBC_SHA256",
+    "PSK-AES128-CBC-SHA256",
+    "TLS_PSK_AES_128_CBC_SHA256"},
+  { {0x00, 0xA9},
+    "TLS_PSK_WITH_AES_256_GCM_SHA384",
+    "PSK-AES256-GCM-SHA384",
+    "TLS_PSK_AES_256_GCM_SHA384"},
+  { {0xC0, 0x8E},
+    "TLS_PSK_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_PSK_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x8F},
+    "TLS_PSK_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_PSK_CAMELLIA_256_GCM_SHA384"},
+  { {0x00, 0xA8},
+    "TLS_PSK_WITH_AES_128_GCM_SHA256",
+    "PSK-AES128-GCM-SHA256",
+    "TLS_PSK_AES_128_GCM_SHA256"},
+  { {0x00, 0x2C},
+    "TLS_PSK_WITH_",
+     NULL,
+    "TLS_PSK_NULL_SHA1"},
+  { {0x00, 0xB0},
+    "TLS_PSK_WITH_",
+     NULL,
+    "TLS_PSK_NULL_SHA256"},
+  { {0xC0, 0x94},
+    "TLS_PSK_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_PSK_CAMELLIA_128_CBC_SHA256"},
+  { {0xC0, 0x95},
+    "TLS_PSK_WITH_CAMELLIA_256_CBC_SHA384",
+     NULL,
+    "TLS_PSK_CAMELLIA_256_CBC_SHA384"},
+  { {0x00, 0xAF},
+    "TLS_PSK_WITH_AES_256_CBC_SHA384",
+    "PSK-AES256-CBC-SHA384",
+    "TLS_PSK_AES_256_CBC_SHA384"},
+  { {0x00, 0xB1},
+    "TLS_PSK_WITH_",
+     NULL,
+    "TLS_PSK_NULL_SHA384"},
+  { {0x00, 0x92},
+    "TLS_RSA_PSK_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_RSA_PSK_ARCFOUR_128_SHA1"},
+  { {0x00, 0x93},
+    "TLS_RSA_PSK_WITH_3DES_EDE_CBC_SHA",
+    "RSA-PSK-3DES-EDE-CBC-SHA",
+    "TLS_RSA_PSK_3DES_EDE_CBC_SHA1"},
+  { {0x00, 0x94},
+    "TLS_RSA_PSK_WITH_AES_128_CBC_SHA",
+    "RSA-PSK-AES128-CBC-SHA",
+    "TLS_RSA_PSK_AES_128_CBC_SHA1"},
+  { {0x00, 0x95},
+    "TLS_RSA_PSK_WITH_AES_256_CBC_SHA",
+    "RSA-PSK-AES256-CBC-SHA",
+    "TLS_RSA_PSK_AES_256_CBC_SHA1"},
+  { {0xC0, 0x92},
+    "TLS_RSA_PSK_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_RSA_PSK_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x93},
+    "TLS_RSA_PSK_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_RSA_PSK_CAMELLIA_256_GCM_SHA384"},
+  { {0x00, 0xAC},
+    "TLS_RSA_PSK_WITH_AES_128_GCM_SHA256",
+    "RSA-PSK-AES128-GCM-SHA256",
+    "TLS_RSA_PSK_AES_128_GCM_SHA256"},
+  { {0x00, 0xB6},
+    "TLS_RSA_PSK_WITH_AES_128_CBC_SHA256",
+    "RSA-PSK-AES128-CBC-SHA256",
+    "TLS_RSA_PSK_AES_128_CBC_SHA256"},
+  { {0x00, 0x2E},
+    "TLS_RSA_PSK_WITH_NULL_SHA",
+     NULL,
+    "TLS_RSA_PSK_NULL_SHA1"},
+  { {0x00, 0xB8},
+    "TLS_RSA_PSK_WITH_",
+     NULL,
+    "TLS_RSA_PSK_NULL_SHA256"},
+  { {0x00, 0xAD},
+    "TLS_RSA_PSK_WITH_AES_256_GCM_SHA384",
+    "RSA-PSK-AES256-GCM-SHA384",
+    "TLS_RSA_PSK_AES_256_GCM_SHA384"},
+  { {0x00, 0xB7},
+    "TLS_RSA_PSK_WITH_AES_256_CBC_SHA384",
+    "RSA-PSK-AES256-CBC-SHA384",
+    "TLS_RSA_PSK_AES_256_CBC_SHA384"},
+  { {0x00, 0xB9},
+    "TLS_RSA_PSK_WITH_",
+     NULL,
+    "TLS_RSA_PSK_NULL_SHA384"},
+  { {0xC0, 0x98},
+    "TLS_RSA_PSK_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_RSA_PSK_CAMELLIA_128_CBC_SHA256"},
+  { {0xC0, 0x99},
+    "TLS_RSA_PSK_WITH_CAMELLIA_256_CBC_SHA384",
+     NULL,
+    "TLS_RSA_PSK_CAMELLIA_256_CBC_SHA384"},
+  { {0x00, 0x8E},
+    "TLS_DHE_PSK_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_DHE_PSK_ARCFOUR_128_SHA1"},
+  { {0x00, 0x8F},
+    "TLS_DHE_PSK_WITH_3DES_EDE_CBC_SHA",
+    "DHE-PSK-3DES-EDE-CBC-SHA",
+    "TLS_DHE_PSK_3DES_EDE_CBC_SHA1"},
+  { {0x00, 0x90},
+    "TLS_DHE_PSK_WITH_AES_128_CBC_SHA",
+    "DHE-PSK-AES128-CBC-SHA",
+    "TLS_DHE_PSK_AES_128_CBC_SHA1"},
+  { {0x00, 0x91},
+    "TLS_DHE_PSK_WITH_AES_256_CBC_SHA",
+    "DHE-PSK-AES256-CBC-SHA",
+    "TLS_DHE_PSK_AES_256_CBC_SHA1"},
+  { {0x00, 0xB2},
+    "TLS_DHE_PSK_WITH_AES_128_CBC_SHA256",
+    "DHE-PSK-AES128-CBC-SHA256",
+    "TLS_DHE_PSK_AES_128_CBC_SHA256"},
+  { {0x00, 0xAA},
+    "TLS_DHE_PSK_WITH_AES_128_GCM_SHA256",
+    "DHE-PSK-AES128-GCM-SHA256",
+    "TLS_DHE_PSK_AES_128_GCM_SHA256"},
+  { {0x00, 0x2D},
+    "TLS_DHE_PSK_WITH_",
+     NULL,
+    "TLS_DHE_PSK_NULL_SHA1"},
+  { {0x00, 0xB4},
+    "TLS_DHE_PSK_WITH_",
+     NULL,
+    "TLS_DHE_PSK_NULL_SHA256"},
+  { {0x00, 0xB5},
+    "TLS_DHE_PSK_WITH_",
+     NULL,
+    "TLS_DHE_PSK_NULL_SHA384"},
+  { {0x00, 0xB3},
+    "TLS_DHE_PSK_WITH_AES_256_CBC_SHA384",
+    "DHE-PSK-AES256-CBC-SHA384",
+    "TLS_DHE_PSK_AES_256_CBC_SHA384"},
+  { {0x00, 0xAB},
+    "TLS_DHE_PSK_WITH_AES_256_GCM_SHA384",
+    "DHE-PSK-AES256-GCM-SHA384",
+    "TLS_DHE_PSK_AES_256_GCM_SHA384"},
+  { {0xC0, 0x96},
+    "TLS_DHE_PSK_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_DHE_PSK_CAMELLIA_128_CBC_SHA256"},
+  { {0xC0, 0x97},
+    "TLS_DHE_PSK_WITH_CAMELLIA_256_CBC_SHA384",
+     NULL,
+    "TLS_DHE_PSK_CAMELLIA_256_CBC_SHA384"},
+  { {0xC0, 0x90},
+    "TLS_DHE_PSK_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_DHE_PSK_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x91},
+    "TLS_DHE_PSK_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_DHE_PSK_CAMELLIA_256_GCM_SHA384"},
+  { {0xC0, 0xA4},
+    "TLS_PSK_WITH_AES_128_CCM",
+     NULL,
+    "TLS_PSK_AES_128_CCM"},
+  { {0xC0, 0xA5},
+    "TLS_PSK_WITH_AES_256_CCM",
+     NULL,
+    "TLS_PSK_AES_256_CCM"},
+  { {0xC0, 0xA6},
+    "TLS_DHE_PSK_WITH_AES_128_CCM",
+     NULL,
+    "TLS_DHE_PSK_AES_128_CCM"},
+  { {0xC0, 0xA7},
+    "TLS_DHE_PSK_WITH_AES_256_CCM",
+     NULL,
+    "TLS_DHE_PSK_AES_256_CCM"},
+  { {0xC0, 0xA8},
+    "TLS_PSK_WITH_AES_128_CCM_8",
+     NULL,
+    "TLS_PSK_AES_128_CCM_8"},
+  { {0xC0, 0xA9},
+    "TLS_PSK_WITH_AES_256_CCM_8",
+     NULL,
+    "TLS_PSK_AES_256_CCM_8"},
+  { {0xC0, 0xAA},
+    "TLS_PSK_DHE_WITH_AES_128_CCM_8",
+     NULL,
+    "TLS_DHE_PSK_AES_128_CCM_8"},
+  { {0xC0, 0xAB},
+    "TLS_PSK_DHE_WITH_AES_256_CCM_8",
+     NULL,
+    "TLS_DHE_PSK_AES_256_CCM_8"},
+  { {0xCC, 0xAD},
+    "TLS_DHE_PSK_WITH_CHACHA20_POLY1305_SHA256",
+    "DHE-PSK-CHACHA20-POLY1305",
+    "TLS_DHE_PSK_CHACHA20_POLY1305"},
+  { {0xCC, 0xAC},
+    "TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256",
+    "ECDHE-PSK-CHACHA20-POLY1305",
+    "TLS_ECDHE_PSK_CHACHA20_POLY1305"},
+  { {0xCC, 0xAE},
+    "TLS_RSA_PSK_WITH_CHACHA20_POLY1305_SHA256",
+    "RSA-PSK-CHACHA20-POLY1305",
+    "TLS_RSA_PSK_CHACHA20_POLY1305"},
+  { {0xCC, 0xAB},
+    "TLS_PSK_WITH_CHACHA20_POLY1305_SHA256",
+    "PSK-CHACHA20-POLY1305",
+    "TLS_PSK_CHACHA20_POLY1305"},
+  { {0x00, 0x18},
+    "TLS_DH_anon_WITH_RC4_128_MD5",
+     NULL,
+    "TLS_DH_ANON_ARCFOUR_128_MD5"},
+  { {0x00, 0x1B},
+    "TLS_DH_anon_WITH_3DES_EDE_CBC_SHA",
+     NULL,
+    "TLS_DH_ANON_3DES_EDE_CBC_SHA1"},
+  { {0x00, 0x34},
+    "TLS_DH_anon_WITH_AES_128_CBC_SHA",
+     NULL,
+    "TLS_DH_ANON_AES_128_CBC_SHA1"},
+  { {0x00, 0x3A},
+    "TLS_DH_anon_WITH_AES_256_CBC_SHA",
+     NULL,
+    "TLS_DH_ANON_AES_256_CBC_SHA1"},
+  { {0x00, 0xBF},
+    "TLS_DH_anon_WITH_CAMELLIA_128_CBC_SHA256",
+     NULL,
+    "TLS_DH_ANON_CAMELLIA_128_CBC_SHA256"},
+  { {0x00, 0xC5},
+    "TLS_DH_anon_WITH_CAMELLIA_256_CBC_SHA256",
+     NULL,
+    "TLS_DH_ANON_CAMELLIA_256_CBC_SHA256"},
+  { {0x00, 0x46},
+    "TLS_DH_anon_WITH_CAMELLIA_128_CBC_SHA",
+     NULL,
+    "TLS_DH_ANON_CAMELLIA_128_CBC_SHA1"},
+  { {0x00, 0x89},
+    "TLS_DH_anon_WITH_CAMELLIA_256_CBC_SHA",
+     NULL,
+    "TLS_DH_ANON_CAMELLIA_256_CBC_SHA1"},
+  { {0x00, 0x6C},
+    "TLS_DH_anon_WITH_AES_128_CBC_SHA256",
+     NULL,
+    "TLS_DH_ANON_AES_128_CBC_SHA256"},
+  { {0x00, 0x6D},
+    "TLS_DH_anon_WITH_AES_256_CBC_SHA256",
+     NULL,
+    "TLS_DH_ANON_AES_256_CBC_SHA256"},
+  { {0x00, 0xA6},
+    "TLS_DH_anon_WITH_AES_128_GCM_SHA256",
+     NULL,
+    "TLS_DH_ANON_AES_128_GCM_SHA256"},
+  { {0x00, 0xA7},
+    "TLS_DH_anon_WITH_AES_256_GCM_SHA384",
+     NULL,
+    "TLS_DH_ANON_AES_256_GCM_SHA384"},
+  { {0xC0, 0x84},
+    "TLS_DH_anon_WITH_CAMELLIA_128_GCM_SHA256",
+     NULL,
+    "TLS_DH_ANON_CAMELLIA_128_GCM_SHA256"},
+  { {0xC0, 0x85},
+    "TLS_DH_anon_WITH_CAMELLIA_256_GCM_SHA384",
+     NULL,
+    "TLS_DH_ANON_CAMELLIA_256_GCM_SHA384"},
+  { {0xC0, 0x15},
+    "TLS_ECDH_anon_WITH_",
+     NULL,
+    "TLS_ECDH_ANON_NULL_SHA1"},
+  { {0xC0, 0x17},
+    "TLS_ECDH_anon_WITH_3DES_EDE_CBC_SHA",
+     NULL,
+    "TLS_ECDH_ANON_3DES_EDE_CBC_SHA1"},
+  { {0xC0, 0x18},
+    "TLS_ECDH_anon_WITH_AES_128_CBC_SHA",
+     NULL,
+    "TLS_ECDH_ANON_AES_128_CBC_SHA1"},
+  { {0xC0, 0x19},
+    "TLS_ECDH_anon_WITH_AES_256_CBC_SHA",
+     NULL,
+    "TLS_ECDH_ANON_AES_256_CBC_SHA1"},
+  { {0xC0, 0x16},
+    "TLS_ECDH_anon_WITH_RC4_128_SHA",
+     NULL,
+    "TLS_ECDH_ANON_ARCFOUR_128_SHA1"},
+  { {0xC0, 0x1A},
+    "TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA",
+    "SRP-3DES-EDE-CBC-SHA",
+    "TLS_SRP_SHA_3DES_EDE_CBC_SHA1"},
+  { {0xC0, 0x1D},
+    "TLS_SRP_SHA_WITH_AES_128_CBC_SHA",
+    "SRP-AES-128-CBC-SHA",
+    "TLS_SRP_SHA_AES_128_CBC_SHA1"},
+  { {0xC0, 0x20},
+    "TLS_SRP_SHA_WITH_AES_256_CBC_SHA",
+    "SRP-AES-256-CBC-SHA",
+    "TLS_SRP_SHA_AES_256_CBC_SHA1"},
+  { {0xC0, 0x1C},
+    "TLS_SRP_SHA_DSS_WITH_3DES_EDE_CBC_SHA",
+     NULL,
+    "TLS_SRP_SHA_DSS_3DES_EDE_CBC_SHA1"},
+  { {0xC0, 0x1B},
+    "TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA",
+    "SRP-RSA-3DES-EDE-CBC-SHA",
+    "TLS_SRP_SHA_RSA_3DES_EDE_CBC_SHA1"},
+  { {0xC0, 0x1F},
+    "TLS_SRP_SHA_DSS_WITH_AES_128_CBC_SHA",
+     NULL,
+    "TLS_SRP_SHA_DSS_AES_128_CBC_SHA1"},
+  { {0xC0, 0x1E},
+    "TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA",
+    "SRP-RSA-AES-128-CBC-SHA",
+    "TLS_SRP_SHA_RSA_AES_128_CBC_SHA1"},
+  { {0xC0, 0x22},
+    "TLS_SRP_SHA_DSS_WITH_AES_256_CBC_SHA",
+     NULL,
+    "TLS_SRP_SHA_DSS_AES_256_CBC_SHA1"},
+  { {0xC0, 0x21},
+    "TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA",
+    "SRP-RSA-AES-256-CBC-SHA",
+    "TLS_SRP_SHA_RSA_AES_256_CBC_SHA1"},
+  { {0x00, 0x00},
+    NULL,
+    NULL,
+    NULL}
 };
 
 /* free data assigned to the connection */
@@ -122,25 +814,72 @@ static const char *openssl_cipher_name(gnutls_kx_algorithm_t kx,
                                        gnutls_mac_algorithm_t mac)
 {
   unsigned int i=0;
-  while (gtls_ciphers[i].openssl_name)
+  const char *name= 0;
+  unsigned char sid[2];
+  gnutls_kx_algorithm_t lkx;
+  gnutls_cipher_algorithm_t lcipher;
+  gnutls_mac_algorithm_t lmac;
+
+  while ((name= gnutls_cipher_suite_info(i++, (unsigned char *)&sid, &lkx, &lcipher, &lmac, NULL)))
   {
-    if (gtls_ciphers[i].kx == kx &&
-        gtls_ciphers[i].cipher == cipher &&
-        gtls_ciphers[i].mac == mac)
-      return gtls_ciphers[i].openssl_name;
-    i++;
+    if (lkx == kx &&
+        lcipher == cipher &&
+        lmac == mac)
+    {
+      i=0;
+      while (tls_ciphers[i].iana_name)
+      {
+        if (!memcmp(tls_ciphers[i].sid, &sid, 2))
+        {
+          if (tls_ciphers[i].openssl_name)
+            return tls_ciphers[i].openssl_name;
+          if (tls_ciphers[i].gnutls_name)
+            return tls_ciphers[i].gnutls_name;
+          return tls_ciphers[i].iana_name;
+        }
+        i++;
+      }
+    }
   }
   return NULL;
 }
 
 /* get priority string for a given openssl cipher name */
-static const char *get_priority(const char *cipher_name)
+static char *get_priority(const char *cipher_name, char *priority, size_t len)
 {
   unsigned int i= 0;
-  while (gtls_ciphers[i].openssl_name)
+  while (tls_ciphers[i].iana_name)
   {
-    if (strcmp(gtls_ciphers[i].openssl_name, cipher_name) == 0)
-      return gtls_ciphers[i].priority;
+    if (strcmp(tls_ciphers[i].iana_name, cipher_name) == 0 ||
+        (tls_ciphers[i].openssl_name &&
+         strcmp(tls_ciphers[i].openssl_name, cipher_name) == 0) ||
+        (tls_ciphers[i].gnutls_name &&
+         strcmp(tls_ciphers[i].gnutls_name, cipher_name) == 0))
+    {
+      const char *name;
+      gnutls_kx_algorithm_t kx;
+      gnutls_cipher_algorithm_t cipher;
+      gnutls_mac_algorithm_t mac;
+      gnutls_protocol_t min_version;
+      unsigned j= 0;
+
+      if (!tls_ciphers[i].gnutls_name)
+        return NULL;
+
+      while ((name= gnutls_cipher_suite_info(j++, NULL, &kx, &cipher,
+                                             &mac, &min_version)))
+      {
+        if (!strcmp(name, tls_ciphers[i].gnutls_name))
+        {
+          snprintf(priority, len - 1, ":+%s:+%s:+%s",
+                   gnutls_cipher_get_name(cipher),
+                   gnutls_mac_get_name(mac),
+                   gnutls_kx_get_name(kx));
+          return priority;
+        }
+      }
+      return NULL;
+    }
     i++;
   }
   return NULL;
@@ -230,8 +969,6 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
     ma_tls_get_error(errmsg, errmsg_len, rc);
     goto end;
   }
-  /* Allocate a global context for credentials */
-  rc= gnutls_certificate_allocate_credentials(&GNUTLS_xcred);
   ma_tls_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_gnutls_config);
@@ -255,11 +992,6 @@ void ma_tls_end()
   if (ma_tls_initialized)
   {
     pthread_mutex_lock(&LOCK_gnutls_config);
-    gnutls_certificate_free_keys(GNUTLS_xcred);
-    gnutls_certificate_free_cas(GNUTLS_xcred);
-    gnutls_certificate_free_crls(GNUTLS_xcred);
-    gnutls_certificate_free_ca_names(GNUTLS_xcred);
-    gnutls_certificate_free_credentials(GNUTLS_xcred);
     if (mariadb_deinitialize_ssl)
       gnutls_global_deinit();
     ma_tls_initialized= FALSE;
@@ -285,7 +1017,8 @@ static int ma_gnutls_set_ciphers(gnutls_session_t ssl, char *cipher_str)
 
   while (token)
   {
-    const char *p= get_priority(token);
+    char priority[1024];
+    char *p= get_priority(token, priority, 1024);
     if (p)
       strncat(prio, p, PRIO_SIZE - strlen(prio) - 1);
     token = strtok(NULL, ":");
@@ -293,98 +1026,142 @@ static int ma_gnutls_set_ciphers(gnutls_session_t ssl, char *cipher_str)
   return gnutls_priority_set_direct(ssl, prio , &err);
 }
 
-static int ma_tls_set_certs(MYSQL *mysql)
+static int ma_tls_load_cert(const char *filename,
+                            enum ma_pem_type type,
+                            const char *password,
+                            void *ptr)
+{
+  gnutls_datum_t data;
+  int rc;
+
+  data.data= 0;
+
+  if ((rc= gnutls_load_file(filename, &data)) < 0)
+    goto error;
+
+  switch(type) {
+  case MA_TLS_PEM_CERT:
+  {
+    gnutls_x509_crt_t cert;
+    if ((rc= gnutls_x509_crt_init(&cert)) < 0)
+      goto error;
+    if ((rc= gnutls_x509_crt_import(cert, &data, GNUTLS_X509_FMT_PEM)))
+    {
+      gnutls_x509_crt_deinit(cert);
+      goto error;
+    }
+    *((gnutls_x509_crt_t *)ptr)= cert;
+    return 0;
+  }
+  case MA_TLS_PEM_KEY:
+  {
+    gnutls_x509_privkey_t key;
+    if ((rc= gnutls_x509_privkey_init(&key)) < 0)
+      goto error;
+    if ((rc= gnutls_x509_privkey_import2(key, &data, 
+                                         GNUTLS_X509_FMT_PEM,
+                                         password, 0)) < 0)
+    {
+      gnutls_x509_privkey_deinit(key);
+      goto error;
+    }
+    *((gnutls_x509_privkey_t *)ptr)= key;
+  }
+  default:
+    break;
+  }
+error:
+  if (data.data)
+    gnutls_free(data.data);
+  return rc;
+}
+
+static int ma_tls_set_certs(MYSQL *mysql,
+                            gnutls_certificate_credentials_t ctx)
 {
   int  ssl_error= 0;
+  gnutls_x509_privkey_t key= 0;
+  gnutls_x509_crt_t cert= 0;
 
   if (mysql->options.ssl_ca)
   {
 
-    ssl_error= gnutls_certificate_set_x509_trust_file(GNUTLS_xcred,
+    ssl_error= gnutls_certificate_set_x509_trust_file(ctx,
                                                       mysql->options.ssl_ca,
                                                       GNUTLS_X509_FMT_PEM);
     if (ssl_error < 0)
       goto error;
   }
-  gnutls_certificate_set_verify_function(GNUTLS_xcred,
+  gnutls_certificate_set_verify_function(ctx,
                                          my_verify_callback);
 
-  return 1;
+  if (mysql->options.ssl_key || mysql->options.ssl_cert)
+  {
+    char *keyfile= mysql->options.ssl_key;
+    char *certfile= mysql->options.ssl_cert;
+    unsigned char key_id1[65], key_id2[65];
+    size_t key_id1_len, key_id2_len;
 
-error:
+    if (!certfile)
+      certfile= keyfile;
+    else if (!keyfile)
+      keyfile= certfile;
+
+    if ((ssl_error= ma_tls_load_cert(keyfile, MA_TLS_PEM_KEY,
+                                     mysql->options.extension ?
+                                     mysql->options.extension->tls_pw : NULL,
+                                     &key)) < 0)
+      goto error;
+    if ((ssl_error= ma_tls_load_cert(certfile, MA_TLS_PEM_CERT,
+                                     NULL, &cert)) < 0)
+      goto error;
+
+    /* check if private key corresponds to certificate */
+    key_id1_len= key_id2_len= sizeof(key_id1);
+    if ((ssl_error= gnutls_x509_crt_get_key_id(cert, 0, 
+                                               key_id1, &key_id1_len)) < 0 ||
+        (ssl_error= gnutls_x509_privkey_get_key_id(key, 0, 
+                                                   key_id2, &key_id2_len)) < 0)
+      goto error;
+
+    if (key_id1_len != key_id2_len ||
+        memcmp(key_id1, key_id2, key_id1_len) != 0)
+    {
+      ssl_error= GNUTLS_E_CERTIFICATE_KEY_MISMATCH;
+      goto error;
+    }
+
+    /* load cert/key into context */
+    if ((ssl_error= gnutls_certificate_set_x509_key(ctx,
+                                                    &cert,
+                                                    1,
+                                                    key)) < 0)
+      goto error;
+  }
+
+
   return ssl_error;
-}
-
-static int
-client_cert_callback(gnutls_session_t session,
-                     const gnutls_datum_t * req_ca_rdn __attribute__((unused)),
-                     int nreqs __attribute__((unused)),
-                     const gnutls_pk_algorithm_t * sign_algos __attribute__((unused)),
-                     int sign_algos_length __attribute__((unused)), 
-                     gnutls_pcert_st ** pcert,
-                     unsigned int *pcert_length, gnutls_privkey_t * pkey)
-{
-  struct st_gnutls_data *session_data;
-  char *certfile, *keyfile;
-  gnutls_datum_t data;
-  MYSQL *mysql;
-  gnutls_certificate_type_t type= gnutls_certificate_type_get(session);
-
-  session_data= (struct st_gnutls_data *)gnutls_session_get_ptr(session);
-
-  if (!session_data->mysql ||
-      type != GNUTLS_CRT_X509)
-    return -1;
-
-  mysql= session_data->mysql;
-
-  certfile= session_data->mysql->options.ssl_cert;
-  keyfile= session_data->mysql->options.ssl_key;
-
-  if (!certfile && !keyfile)
-    return 0;
-  if (keyfile && !certfile)
-    certfile= keyfile;
-  if (certfile && !keyfile)
-    keyfile= certfile;
-
-  if (gnutls_load_file(certfile, &data) < 0)
-    return -1;
-  if (gnutls_pcert_import_x509_raw(&session_data->cert, &data, GNUTLS_X509_FMT_PEM, 0) < 0)
-  {
-    gnutls_free(data.data);
-    return -1;
-  }
-  gnutls_free(data.data);
-
-  if (gnutls_load_file(keyfile, &data) < 0)
-    return -1;
-  gnutls_privkey_init(&session_data->key);
-  if (gnutls_privkey_import_x509_raw(session_data->key, &data, 
-            GNUTLS_X509_FMT_PEM,
-            mysql->options.extension ? mysql->options.extension->tls_pw : NULL,
-                                     0) < 0)
-  {
-    gnutls_free(data.data);
-    return -1;
-  }
-  gnutls_free(data.data);
-
-  *pcert_length= 1;
-  *pcert= &session_data->cert;
-  *pkey= session_data->key;
-  return 0;
+error:
+  if (key)
+    gnutls_x509_privkey_deinit(key);
+  if (cert)
+    gnutls_x509_crt_deinit(cert);
+  return ssl_error;
 }
 
 void *ma_tls_init(MYSQL *mysql)
 {
   gnutls_session_t ssl= NULL;
+  gnutls_certificate_credentials_t ctx;
   int ssl_error= 0;
   struct st_gnutls_data *data= NULL;
 
   pthread_mutex_lock(&LOCK_gnutls_config);
 
-  if ((ssl_error= ma_tls_set_certs(mysql)) < 0)
+  if (gnutls_certificate_allocate_credentials(&ctx) != GNUTLS_E_SUCCESS)
+    goto error;
+
+  if ((ssl_error= ma_tls_set_certs(mysql, ctx)) < 0)
     goto error;
 
   if ((ssl_error = gnutls_init(&ssl, GNUTLS_CLIENT & GNUTLS_NONBLOCK)) < 0)
@@ -394,16 +1171,17 @@ void *ma_tls_init(MYSQL *mysql)
     goto error;
 
   data->mysql= mysql;
-  gnutls_certificate_set_retrieve_function2(GNUTLS_xcred, client_cert_callback);
   gnutls_session_set_ptr(ssl, (void *)data);
- 
+  /*
+  gnutls_certificate_set_retrieve_function2(GNUTLS_xcred, client_cert_callback);
+ */
   ssl_error= ma_gnutls_set_ciphers(ssl, mysql->options.ssl_cipher);
   if (ssl_error < 0)
     goto error;
 
   /* we don't load private key and cert by default - if the server requests
      a client certificate we will send it via callback function */
-  if ((ssl_error= gnutls_credentials_set(ssl, GNUTLS_CRD_CERTIFICATE, GNUTLS_xcred)) < 0)
+  if ((ssl_error= gnutls_credentials_set(ssl, GNUTLS_CRD_CERTIFICATE, ctx)) < 0)
     goto error;
   
   pthread_mutex_unlock(&LOCK_gnutls_config);
@@ -497,7 +1275,7 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
 {
   if (ctls->ssl)
   {
-    MARIADB_PVIO *pvio= ctls->pvio;
+    gnutls_certificate_credentials_t ctx;
     struct st_gnutls_data *data=
       (struct st_gnutls_data *)gnutls_session_get_ptr(ctls->ssl);
     /* this would be the correct way, however can't dectect afterwards
@@ -506,6 +1284,12 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
     rc= gnutls_bye((gnutls_session_t )ctls->ssl, GNUTLS_SHUT_WR);
     */
     free_gnutls_data(data);
+    gnutls_credentials_get(ctls->ssl, GNUTLS_CRD_CERTIFICATE, (void **)&ctx);
+    gnutls_certificate_free_keys(ctx);
+    gnutls_certificate_free_cas(ctx);
+    gnutls_certificate_free_crls(ctx);
+    gnutls_certificate_free_ca_names(ctx);
+    gnutls_certificate_free_credentials(ctx);
     gnutls_deinit((gnutls_session_t )ctls->ssl);
     ctls->ssl= NULL;
   }
@@ -560,8 +1344,6 @@ static int my_verify_callback(gnutls_session_t ssl)
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "CA verification failed");
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
-
-//  mysql->net.vio->status= status;
 
   if (status & GNUTLS_CERT_INVALID)
   {

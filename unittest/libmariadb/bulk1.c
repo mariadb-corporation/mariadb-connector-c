@@ -128,26 +128,32 @@ static int bulk2(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
-  MYSQL_BIND bind;
+  MYSQL_BIND bind[2];
   unsigned int i;
   unsigned int array_size=1024;
   char indicator[1024];
+  long lval[1024];
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4)");
+  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4, b default 2)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk2 VALUES (?)", -1);
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk2 VALUES (?,1)", -1);
   check_stmt_rc(rc, stmt);
 
-  memset(&bind, 0, sizeof(MYSQL_BIND));
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
 
   for (i=0; i < array_size; i++)
+  {
     indicator[i]= STMT_INDICATOR_DEFAULT;
+    lval[i]= i;
+  }
 
-  bind.buffer_type= MYSQL_TYPE_LONG;
-  bind.u.indicator= indicator;
+  bind[0].buffer_type= MYSQL_TYPE_LONG;
+  bind[0].u.indicator= indicator;
+  bind[1].buffer_type= MYSQL_TYPE_LONG;
+  bind[1].buffer= &lval;
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);

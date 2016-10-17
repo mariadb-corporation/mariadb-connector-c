@@ -231,7 +231,6 @@ static int test_frm_bug(MYSQL *mysql)
   char       test_frm[FN_REFLEN];
   int        rc;
 
-  return SKIP;
   mysql_autocommit(mysql, TRUE);
 
   rc= mysql_query(mysql, "drop table if exists test_frm_bug");
