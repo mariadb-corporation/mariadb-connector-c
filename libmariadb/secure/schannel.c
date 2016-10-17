@@ -301,24 +301,28 @@ end:
   return 1;
 }
 
-size_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
-  DWORD dlength= -1;
+  DWORD dlength= 0;
+  SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, (DWORD)length);
+  if (status == SEC_I_CONTEXT_EXPIRED)
+    return 0; /* other side shut down the connection. */
+  if (status == SEC_I_RENEGOTIATE)
+    return -1; /* Do not handle renegotiate yet */
 
-  ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, (DWORD)length);
-  return dlength;
+  return (status == SEC_E_OK)? (ssize_t)dlength : -1;
 }
 
-size_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
-  size_t rc, wlength= 0;
-  size_t remain= length;
+  ssize_t rc, wlength= 0;
+  ssize_t remain= length;
 
-  while (remain)
+  while (remain > 0)
   {
     if ((rc= ma_schannel_write_encrypt(pvio, (uchar *)buffer + wlength, remain)) <= 0)
       return rc;

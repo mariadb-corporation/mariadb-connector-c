@@ -25,7 +25,7 @@
 #define SC_IO_BUFFER_SIZE 0x4000
 #define MAX_SSL_ERR_LEN 100
 
-#define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage - (A).cbHeader - (A).cbTrailer
+#define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer
 void ma_schannel_set_win_error(MARIADB_PVIO *pvio);
 
 /* {{{ void ma_schannel_set_sec_error */
@@ -445,12 +445,13 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     {
       if(fDoRead)
       {
-        cbData = (DWORD)pvio->methods->read(pvio, IoBuffer + cbIoBuffer, (size_t)(SC_IO_BUFFER_SIZE - cbIoBuffer));
-        if (cbData == SOCKET_ERROR || cbData == 0)
+        ssize_t nbytes = pvio->methods->read(pvio, IoBuffer + cbIoBuffer, (size_t)(SC_IO_BUFFER_SIZE - cbIoBuffer));
+        if (nbytes <= 0)
         {
           rc = SEC_E_INTERNAL_ERROR;
           break;
         }
+        cbData = (DWORD)nbytes;
         cbIoBuffer += cbData;
       }
       else
@@ -504,14 +505,14 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     {
       if(OutBuffers.cbBuffer && OutBuffers.pvBuffer)
       {
-        cbData= (DWORD)pvio->methods->write(pvio, (uchar *)OutBuffers.pvBuffer, (size_t)OutBuffers.cbBuffer);
-        if(cbData == SOCKET_ERROR || cbData == 0)
+        ssize_t nbytes = pvio->methods->write(pvio, (uchar *)OutBuffers.pvBuffer, (size_t)OutBuffers.cbBuffer);
+        if(nbytes <= 0)
         {
           FreeContextBuffer(OutBuffers.pvBuffer);
           DeleteSecurityContext(&sctx->ctxt);
           return SEC_E_INTERNAL_ERROR;
         }
-
+        cbData= (DWORD)nbytes;
         /* Free output context buffer */
         FreeContextBuffer(OutBuffers.pvBuffer);
         OutBuffers.pvBuffer = NULL;
@@ -648,12 +649,13 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   /* send client hello packaet */
   if(BuffersOut.cbBuffer != 0 && BuffersOut.pvBuffer != NULL)
   {  
-    r= (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
-    if (r <= 0)
+    ssize_t nbytes = (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
+    if (nbytes <= 0)
     {
       sRet= SEC_E_INTERNAL_ERROR;
       goto end;
     }
+    r = (DWORD)nbytes;
   }
   sRet= ma_schannel_handshake_loop(pvio, TRUE, &ExtraData);
 
@@ -708,10 +710,10 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
                                          uchar *ReadBuffer,
                                          DWORD ReadBufferSize)
 {
-  DWORD dwBytesRead= 0;
+  ssize_t nbytes= 0;
   DWORD dwOffset= 0;
   SC_CTX *sctx;
-  SECURITY_STATUS sRet= 0;
+  SECURITY_STATUS sRet= SEC_E_INCOMPLETE_MESSAGE;
   SecBufferDesc Msg;
   SecBuffer Buffers[4],
             *pData, *pExtra;
@@ -723,25 +725,37 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
   sctx= (SC_CTX *)pvio->ctls->ssl;
   *DecryptLength= 0;
 
+  if (sctx->dataBuf.cbBuffer)
+  {
+    /* Have unread decrypted data from the last time, copy. */
+    nbytes = MIN(ReadBufferSize, sctx->dataBuf.cbBuffer);
+    memcpy(ReadBuffer, sctx->dataBuf.pvBuffer, nbytes);
+    sctx->dataBuf.pvBuffer = (char *)(sctx->dataBuf.pvBuffer) + nbytes;
+    sctx->dataBuf.cbBuffer -= (DWORD)nbytes;
+    *DecryptLength = (DWORD)nbytes;
+    return SEC_E_OK;
+  }
+
+
   while (1)
   {
-    if (!dwBytesRead || sRet == SEC_E_INCOMPLETE_MESSAGE)
+    /* Check for any encrypted data returned by last DecryptMessage() in SECBUFFER_EXTRA buffer. */
+    if (sctx->extraBuf.cbBuffer)
     {
-      dwBytesRead= (DWORD)pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
-      if (dwBytesRead == 0)
-      {
-        /* server closed connection */
-        // todo: error 
-        return SEC_E_INVALID_HANDLE;
-      }
-      if (dwBytesRead < 0)
-      {
-        /* socket error */
-        // todo: error
-        return SEC_E_INVALID_HANDLE;
-      }
-      dwOffset+= dwBytesRead;
+      memmove(sctx->IoBuffer, sctx->extraBuf.pvBuffer, sctx->extraBuf.cbBuffer);
+      dwOffset = sctx->extraBuf.cbBuffer;
+      sctx->extraBuf.cbBuffer = 0;
     }
+
+    nbytes= pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
+    if (nbytes <= 0)
+    {
+      /* server closed connection, or an error */
+      // todo: error 
+      return SEC_E_INVALID_HANDLE;
+    }
+    dwOffset+= (DWORD)nbytes;
+
     ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
     Buffers[0].pvBuffer= sctx->IoBuffer;
     Buffers[0].cbBuffer= dwOffset;
@@ -757,10 +771,10 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
 
     sRet = DecryptMessage(phContext, &Msg, 0, NULL);
 
-    /* Check for possible errors: we continue in case context has 
-       expired or renogitiation is required */
-    if (sRet != SEC_E_OK && sRet != SEC_I_CONTEXT_EXPIRED &&
-        sRet != SEC_I_RENEGOTIATE && sRet != SEC_E_INCOMPLETE_MESSAGE)
+    if (sRet == SEC_E_INCOMPLETE_MESSAGE)
+      continue; /* Continue reading until full message arrives */
+
+    if (sRet != SEC_E_OK)
     {
       ma_schannel_set_sec_error(pvio, sRet);
       return sRet;
@@ -776,22 +790,40 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
       if (pData && pExtra)
         break;
     }
-    
-    if (pData && pData->cbBuffer)
-    {
-      memcpy(ReadBuffer + *DecryptLength, pData->pvBuffer, pData->cbBuffer);
-      *DecryptLength+= pData->cbBuffer;
-      return sRet;
-    }
 
     if (pExtra)
     {
-      MoveMemory(sctx->IoBuffer, pExtra->pvBuffer, pExtra->cbBuffer);
-      dwOffset= pExtra->cbBuffer;
+      /* Save preread encrypted data, will be processed next time.*/
+      sctx->extraBuf.cbBuffer = pExtra->cbBuffer;
+      sctx->extraBuf.pvBuffer = pExtra->pvBuffer;
+    }
+
+    if (pData && pData->cbBuffer)
+    {
+      /*
+        Copy at most ReadBufferSize bytes to output.
+        Store the rest (if any) to be processed next time.
+      */
+      nbytes=MIN(pData->cbBuffer, ReadBufferSize);
+      memcpy((char *)ReadBuffer, pData->pvBuffer, nbytes);
+
+ 
+      sctx->dataBuf.cbBuffer = pData->cbBuffer - (DWORD)nbytes;
+      sctx->dataBuf.pvBuffer = (char *)pData->pvBuffer + nbytes;
+
+      *DecryptLength = (DWORD)nbytes;
+      return SEC_E_OK;
     }
     else
-      dwOffset= 0;
-  }    
+    {
+      /*
+        DecryptMessage() did not return data buffer.
+        According to MSDN, this happens sometimes and is normal.
+        We retry the read/decrypt in this case.
+      */
+      dwOffset = 0;
+    }
+  }
 }
 /* }}} */
 
@@ -893,7 +925,7 @@ end:
     SEC_E_OK         on success
     SEC_E_*          if an error occured
 */ 
-size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
+ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
                                  size_t WriteBufferSize)
 {
@@ -904,8 +936,10 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   PBYTE pbMessage;
   SC_CTX *sctx= (SC_CTX *)pvio->ctls->ssl;
   size_t payload;
+  ssize_t nbytes;
+  DWORD write_size;
 
-  payload= MIN(WriteBufferSize, sctx->IoBufferSize);
+  payload= MIN(WriteBufferSize, sctx->Sizes.cbMaximumMessage);
 
   memcpy(&sctx->IoBuffer[sctx->Sizes.cbHeader], WriteBuffer, payload);
   pbMessage = sctx->IoBuffer + sctx->Sizes.cbHeader; 
@@ -933,10 +967,9 @@ size_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   Message.pBuffers        = Buffers;
   if ((scRet = EncryptMessage(&sctx->ctxt, 0, &Message, 0))!= SEC_E_OK)
     return -1;
-  
-  if (pvio->methods->write(pvio, sctx->IoBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer))
-    return payload; 
-  return 0;
+  write_size = Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer;
+  nbytes = pvio->methods->write(pvio, sctx->IoBuffer, write_size);
+  return nbytes == write_size ? payload : -1;
 }
 /* }}} */
 

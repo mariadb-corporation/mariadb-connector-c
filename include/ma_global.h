@@ -37,7 +37,7 @@
 #endif
 
 #include <ma_config.h>
-
+#include <assert.h>
 #ifndef __GNUC__
 #define  __attribute(A)
 #endif

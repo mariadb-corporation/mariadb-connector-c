@@ -362,7 +362,7 @@ error:
 int
 ma_net_real_write(NET *net,const char *packet,size_t  len)
 {
-  size_t length;
+  ssize_t length;
   char *pos,*end;
 
   if (net->error == 2)
@@ -399,7 +399,7 @@ ma_net_real_write(NET *net,const char *packet,size_t  len)
   pos=(char*) packet; end=pos+len;
   while (pos != end)
   {
-    if ((ssize_t) (length=ma_pvio_write(net->pvio,(uchar *)pos,(size_t) (end-pos))) <= 0)
+    if ((length=ma_pvio_write(net->pvio,(uchar *)pos,(size_t) (end-pos))) <= 0)
     {
       net->error=2;				/* Close socket */
       net->last_errno= ER_NET_ERROR_ON_WRITE;
@@ -423,7 +423,7 @@ static ulong
 ma_real_read(NET *net, size_t *complen)
 {
   uchar *pos;
-  size_t length;
+  ssize_t length;
   uint i;
   ulong len=packet_error;
   size_t remain= (net->compress ? NET_HEADER_SIZE+COMP_HEADER_SIZE :
@@ -438,7 +438,7 @@ ma_real_read(NET *net, size_t *complen)
       while (remain > 0)
       {
 	/* First read is done with non blocking mode */
-        if ((ssize_t) (length=ma_pvio_cache_read(net->pvio, pos,remain)) <= 0L)
+        if ((length=ma_pvio_cache_read(net->pvio, pos,remain)) <= 0L)
         {
 	  len= packet_error;
 	  net->error=2;				/* Close socket */

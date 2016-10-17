@@ -84,12 +84,12 @@ my_bool ma_pvio_tls_connect(MARIADB_TLS *ctls)
   return rc;
 }
 
-size_t ma_pvio_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_pvio_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   return ma_tls_read(ctls, buffer, length);
 }
 
-size_t ma_pvio_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_pvio_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   return ma_tls_write(ctls, buffer, length);
 }

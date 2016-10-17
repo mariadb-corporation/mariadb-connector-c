@@ -33,10 +33,10 @@
 /* Function prototypes */
 my_bool pvio_npipe_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_npipe_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
-size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t pvio_npipe_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
-size_t pvio_npipe_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+ssize_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+ssize_t pvio_npipe_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
+ssize_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
+ssize_t pvio_npipe_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
 my_bool pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
@@ -110,10 +110,10 @@ int pvio_npipe_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
   return pvio->timeout[type] / 1000;
 }
 
-size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
+ssize_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   DWORD dwRead= 0;
-  size_t r= -1;
+  ssize_t r= -1;
   struct st_pvio_npipe *cpipe= NULL;
 
   if (!pvio || !pvio->data)
@@ -123,7 +123,7 @@ size_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 
   if (ReadFile(cpipe->pipe, (LPVOID)buffer, (DWORD)length, &dwRead, &cpipe->overlapped))
   {
-    r= (size_t)dwRead;
+    r= (ssize_t)dwRead;
     goto end;
   }
   if (GetLastError() == ERROR_IO_PENDING)
@@ -135,10 +135,10 @@ end:
   return r;
 }
 
-size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+ssize_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   DWORD dwWrite= 0;
-  size_t r= -1;
+  ssize_t r= -1;
   struct st_pvio_npipe *cpipe= NULL;
 
   if (!pvio || !pvio->data)
@@ -148,7 +148,7 @@ size_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 
   if (WriteFile(cpipe->pipe, buffer, (DWORD)length, &dwWrite, &cpipe->overlapped))
   {
-    r= (size_t)dwWrite;
+    r= (ssize_t)dwWrite;
     goto end;
   }
   if (GetLastError() == ERROR_IO_PENDING)
