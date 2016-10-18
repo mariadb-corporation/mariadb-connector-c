@@ -158,7 +158,7 @@ static int bulk2(MYSQL *mysql)
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
 
-  rc= mysql_stmt_bind_param(stmt, &bind);
+  rc= mysql_stmt_bind_param(stmt, bind);
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);

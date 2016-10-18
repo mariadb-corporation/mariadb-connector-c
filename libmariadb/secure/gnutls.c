@@ -1261,12 +1261,12 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   return 0;
 }
 
-size_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   return gnutls_record_recv((gnutls_session_t )ctls->ssl, (void *)buffer, length);
 }
 
-size_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
   return gnutls_record_send((gnutls_session_t )ctls->ssl, (void *)buffer, length);
 }

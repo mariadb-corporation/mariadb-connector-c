@@ -604,12 +604,12 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   return 0;
 }
 
-size_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   return SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
 }
 
-size_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
+ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
   return SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
 }
@@ -618,11 +618,12 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
 {
   int i, rc;
   SSL *ssl;
+  SSL_CTX *ctx= NULL;
 
   if (!ctls || !ctls->ssl)
     return 1;
   ssl= (SSL *)ctls->ssl;
-  SSL_CTX *ctx= SSL_get_SSL_CTX(ssl);
+  ctx= SSL_get_SSL_CTX(ssl);
   if (ctx)
     SSL_CTX_free(ctx);
 
