@@ -23,6 +23,12 @@
 #include <mysql.h>
 #include <ma_hash.h>
 
+enum enum_multi_status {
+  COM_MULTI_OFF= 0,
+  COM_MULTI_CANCEL,
+  COM_MULTI_PROGRESS,
+  COM_MULTI_END
+};
 
 typedef struct st_mariadb_db_driver
 {
@@ -72,7 +78,7 @@ typedef struct st_connection_handler
 } MA_CONNECTION_HANDLER;
 
 struct st_mariadb_net_extension {
-  unsigned char *mbuff, *mbuff_end, *mbuff_pos;
+  enum enum_multi_status multi_status;
 };
 
 struct st_mariadb_session_state
@@ -88,7 +94,8 @@ struct st_mariadb_extension {
   unsigned long mariadb_server_capabilities; /* MariaDB specific server capabilities */
 };
 
-#define OPT_HAS_EXT_VAL(a,key) \
-  ((a)->options.extension && (a)->options.extension->key)
+#define OPT_EXT_VAL(a,key) \
+  ((a)->options.extension && (a)->options.extension->key) ?\
+    (a)->options.extension->key : 0
 
 #endif

@@ -378,7 +378,7 @@ void	ma_net_clear(NET *net);
 int	ma_net_flush(NET *net);
 int	ma_net_write(NET *net,const unsigned char *packet, size_t len);
 int	ma_net_write_command(NET *net,unsigned char command,const char *packet,
-			  size_t len);
+			  size_t len, my_bool disable_flush);
 int	ma_net_real_write(NET *net,const char *packet, size_t len);
 extern unsigned long ma_net_read(NET *net);
 

@@ -117,14 +117,12 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 void ma_net_end(NET *net)
 {
   free(net->buff);
-  free(net->extension->mbuff);
   net->buff=0;
-  net->extension->mbuff= 0;
 }
 
 /* Realloc the packet buffer */
 
-static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
+static my_bool net_realloc(NET *net, size_t length)
 {
   uchar *buff;
   size_t pkt_length;
@@ -138,35 +136,24 @@ static my_bool net_realloc(NET *net, my_bool is_multi, size_t length)
   pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
   /* reallocate buffer:
      size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
-  if (!(buff=(uchar*) realloc(is_multi ? net->extension->mbuff : net->buff, 
-                               pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE)))
+  if (!(buff=(uchar*) realloc(net->buff, 
+                              pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE)))
   {
     net->error=1;
     return(1);
   }
-  if (!is_multi)
-  {
-    net->buff=net->write_pos=buff;
-    net->buff_end=buff+(net->max_packet=(unsigned long)pkt_length);
-  }
-  else
-  {
-    net->extension->mbuff= buff;
-    net->extension->mbuff_end= buff + (net->max_packet= (unsigned long)pkt_length);
-  }
+  net->buff=net->write_pos=buff;
+  net->buff_end=buff+(net->max_packet=(unsigned long)pkt_length);
   return(0);
 }
 
 /* Remove unwanted characters from connection */
 void ma_net_clear(NET *net)
 {
-//  size_t len;
-/*  if (net->pvio)
-    ma_pvio_has_data(net->pvio, &len); */
+  if (net->extension->multi_status > COM_MULTI_OFF)
+    return;
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
-  if (net->extension->mbuff)
-    net->extension->mbuff_pos= net->extension->mbuff;
   return;
 }
 
@@ -174,6 +161,10 @@ void ma_net_clear(NET *net)
 int ma_net_flush(NET *net)
 {
   int error=0;
+
+  /* don't flush if com_multi is in progress */
+  if (net->extension->multi_status > COM_MULTI_OFF)
+    return 0;
 
   if (net->buff != net->write_pos)
   {
@@ -223,7 +214,8 @@ ma_net_write(NET *net, const uchar *packet, size_t len)
 
 int
 ma_net_write_command(NET *net, uchar command,
-                  const char *packet, size_t len)
+                  const char *packet, size_t len,
+                  my_bool disable_flush)
 {
   uchar buff[NET_HEADER_SIZE+1];
   size_t buff_size= NET_HEADER_SIZE + 1;
@@ -252,10 +244,11 @@ ma_net_write_command(NET *net, uchar command,
     len= length;
   }
   int3store(buff,length);
-  buff[3]= (net->compress) ? 0 : (uchar) (net->pkt_nr++);
+  buff[3]= (net->compress) ? 0 :(uchar) (net->pkt_nr++);
   rc= test (ma_net_write_buff(net,(char *)buff, buff_size) || 
-            ma_net_write_buff(net,packet,len) || 
-            ma_net_flush(net));
+            ma_net_write_buff(net,packet,len));
+  if (!rc && !disable_flush)
+    return test(ma_net_flush(net)); 
   return rc;
 }
 
@@ -305,57 +298,6 @@ ma_net_write_buff(NET *net,const char *packet, size_t len)
 }
 
 unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
-
-int net_add_multi_command(NET *net, uchar command, const uchar *packet,
-                          size_t length)
-{
-  size_t left_length;
-  size_t required_length, current_length;
-  /* 9 - maximum possible length of data stored in net length format */
-  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE + 9;
-
-  /* We didn't allocate memory in ma_net_init since it was too early to
-   * detect if the server supports COM_MULTI command */
-  if (!net->extension->mbuff)
-  {
-    size_t alloc_size= (required_length + IO_SIZE - 1) & ~(IO_SIZE - 1);
-    if (!(net->extension->mbuff= (unsigned char *)malloc(alloc_size)))
-    {
-      net->last_errno=ER_OUT_OF_RESOURCES;
-      net->error=2;
-      net->reading_or_writing=0;
-      return(1);
-    }
-    net->extension->mbuff_pos= net->extension->mbuff;
-    net->extension->mbuff_end= net->extension->mbuff + alloc_size; 
-  }
-
-  left_length= net->extension->mbuff_end - net->extension->mbuff_pos;
-
-  /* check if our buffer is large enough */
-  if (left_length < required_length)
-  {
-    current_length= net->extension->mbuff_pos - net->extension->mbuff;
-    if (net_realloc(net, 1, current_length + required_length))
-      goto error;
-    net->extension->mbuff_pos = net->extension->mbuff + current_length;
-  }
-  net->extension->mbuff_pos= mysql_net_store_length(net->extension->mbuff_pos,
-                                                    length + 1);
-  *net->extension->mbuff_pos= command;
-  net->extension->mbuff_pos++;
-  memcpy(net->extension->mbuff_pos, packet, length);
-  net->extension->mbuff_pos+= length;
-  return 0;
-
-error:
- if (net->extension->mbuff)
- {
-   free(net->extension->mbuff);
-   net->extension->mbuff= net->extension->mbuff_pos= net->extension->mbuff_end= 0;
- }
- return 1; 
-}
 
 /*  Read and write using timeouts */
 
@@ -467,7 +409,7 @@ ma_real_read(NET *net, size_t *complen)
 	/* The necessary size of net->buff */
 	if (helping >= net->max_packet)
 	{
-	  if (net_realloc(net, 0, helping))
+	  if (net_realloc(net, helping))
 	  {
 	    len= packet_error;		/* Return error */
 	    goto end;
@@ -637,3 +579,40 @@ ulong ma_net_read(NET *net)
 #endif
   return (ulong)len;
 }
+
+int net_add_multi_command(NET *net, uchar command, const uchar *packet,
+                          size_t length)
+{
+  size_t left_length;
+  size_t required_length, current_length;
+  /* 9 - maximum possible length of data stored in net length format */
+  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE + 9;
+
+  /* We didn't allocate memory in ma_net_init since it was too early to
+   * detect if the server supports COM_MULTI command */
+  if (net->extension->multi_status == COM_MULTI_OFF)
+  {
+    return(1);
+  }
+
+  left_length= net->buff_end - net->write_pos;
+
+  /* check if our buffer is large enough */
+  if (left_length < required_length)
+  {
+    current_length= net->write_pos - net->buff;
+    if (net_realloc(net, current_length + required_length))
+      goto error;
+    net->write_pos = net->buff + current_length;
+  }
+  net->write_pos= mysql_net_store_length(net->write_pos, length + 1);
+  *net->write_pos= command;
+  net->write_pos++;
+  memcpy(net->write_pos, packet, length);
+  net->write_pos+= length;
+  return 0;
+
+error:
+ return 1; 
+}
+

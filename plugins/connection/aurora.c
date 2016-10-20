@@ -724,7 +724,7 @@ int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *ar
   AURORA *aurora= (AURORA *)save_hdlr->data;
 
   /* if we don't have slave or slave became unavailable root traffic to master */
-  if (!aurora->mysql[AURORA_REPLICA] || !OPT_HAS_EXT_VAL(mysql, read_only))
+  if (!aurora->mysql[AURORA_REPLICA] || !OPT_EXT_VAL(mysql, read_only))
   {
     if (command != COM_INIT_DB)
     {

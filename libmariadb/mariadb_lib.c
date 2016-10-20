@@ -354,23 +354,11 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 {
   NET *net= &mysql->net;
   int result= -1;
-  enum mariadb_com_multi multi= MARIADB_COM_MULTI_END;
-
-  if (OPT_HAS_EXT_VAL(mysql, multi_command))
-    multi= mysql->options.extension->multi_command;
-
-  if (multi == MARIADB_COM_MULTI_BEGIN)
-  {
-    /* todo: error handling */
-    return(net_add_multi_command(&mysql->net, command, (uchar *)arg, length));
-  }
-
   if (mysql->net.pvio == 0)
-  {						/* Do reconnect if possible */
+  {
+    /* Do reconnect if possible */
     if (mariadb_reconnect(mysql))
-    {
       return(1);
-    }
   }
   if (mysql->status != MYSQL_STATUS_READY ||
       mysql->server_status & SERVER_MORE_RESULTS_EXIST)
@@ -394,8 +382,13 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   if (!arg)
     arg="";
 
+  if (net->extension->multi_status== COM_MULTI_PROGRESS)
+  {
+    return net_add_multi_command(net, command, (const uchar *)arg, length);
+  }
+
   if (ma_net_write_command(net,(uchar) command,arg,
-			length ? length : (ulong) strlen(arg)))
+			length ? length : (ulong) strlen(arg), 0))
   {
     if (net->last_errno == ER_NET_PACKET_TOO_LARGE)
     {
@@ -406,14 +399,19 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
     if (mariadb_reconnect(mysql))
       goto end;
     if (ma_net_write_command(net,(uchar) command,arg,
-			  length ? length : (ulong) strlen(arg)))
+			  length ? length : (ulong) strlen(arg), 0))
     {
       my_set_error(mysql, CR_SERVER_GONE_ERROR, SQLSTATE_UNKNOWN, 0);
       goto end;
     }
   }
   result=0;
-  if (!skipp_check) {
+
+  if (net->extension->multi_status == COM_MULTI_OFF)
+    skipp_check= 1;
+
+  if (!skipp_check)
+  {
     result= ((mysql->packet_length=ma_net_safe_read(mysql)) == packet_error ?
 	     1 : 0);
   }
@@ -426,6 +424,45 @@ ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg
 	       size_t length, my_bool skipp_check, void *opt_arg)
 {
   return mysql->methods->db_command(mysql, command, arg, length, skipp_check, opt_arg);
+}
+
+int ma_multi_command(MYSQL *mysql, enum enum_multi_status status)
+{
+  NET *net= &mysql->net;
+
+  switch (status) {
+  case COM_MULTI_OFF:
+    ma_net_clear(net);
+    net->extension->multi_status= status;
+    return 0;
+  case COM_MULTI_PROGRESS:
+    if (net->extension->multi_status > COM_MULTI_OFF)
+      return 1;
+    ma_net_clear(net);
+    net->extension->multi_status= status;
+    int3store(net->buff, 0);
+    net->buff[3]= (net->compress) ? 0 : (uchar) (net->pkt_nr++);
+    net->buff[4]= COM_MULTI;
+    net->write_pos= net->buff + 5;
+    return 0;
+  case COM_MULTI_END:
+  {
+    size_t len= net->write_pos - net->buff - NET_HEADER_SIZE;
+
+    if (len < NET_HEADER_SIZE) /* don't send empty COM_MULTI */
+      return 1;
+    /* store length after com_multi */
+    int3store(net->buff, len);
+    net->extension->multi_status= COM_MULTI_OFF;
+    return ma_net_flush(net);
+  }
+  case COM_MULTI_CANCEL:
+    ma_net_clear(net);
+    net->extension->multi_status= COM_MULTI_OFF;
+    return 0;
+  default:
+    return 1;
+  }
 }
 
 static void free_old_query(MYSQL *mysql)
@@ -2100,10 +2137,8 @@ mysql_read_query_result(MYSQL *mysql)
 int STDCALL
 mysql_real_query(MYSQL *mysql, const char *query, size_t length)
 {
-  my_bool is_multi= 0;
+  my_bool skip_result= OPT_EXT_VAL(mysql, multi_command);
 
-  if (OPT_HAS_EXT_VAL(mysql, multi_command))
-    is_multi= mysql->options.extension->multi_command;
   if (length == (size_t)-1)
     length= strlen(query);
 
@@ -2111,7 +2146,7 @@ mysql_real_query(MYSQL *mysql, const char *query, size_t length)
 
   if (ma_simple_command(mysql, COM_QUERY,query,length,1,0))
     return(-1);
-  if (!is_multi)
+  if (!skip_result)
     return(mysql->methods->db_read_query_result(mysql));
   return(0);
 }
@@ -2560,31 +2595,6 @@ void ma_hash_free(void *p)
   free(p);
 }
 
-int mariadb_flush_multi_command(MYSQL *mysql)
-{
-  int rc;
-  size_t length= mysql->net.extension->mbuff_pos - mysql->net.extension->mbuff;
-
-  rc= ma_simple_command(mysql, COM_MULTI, (char *)mysql->net.extension->mbuff,
-                     length, 1, 0);
-  /* reset multi_buff */
-  mysql->net.extension->mbuff_pos= mysql->net.extension->mbuff;
-
-  /* don't read result for mysql_stmt_execute_direct() */
-  if (!rc)
-  {
-    uchar *p= (uchar *)mysql->net.extension->mbuff;
-    unsigned long len= net_field_length(&p);
-    if (len && (*p == COM_STMT_PREPARE ||
-                *p == COM_STMT_EXECUTE ||
-                *p == COM_STMT_CLOSE))
-      return rc;
-    else
-      return mysql->methods->db_read_query_result(mysql);
-  }
-  return rc;
-}
-
 int STDCALL
 mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
 {
@@ -2698,8 +2708,6 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         goto end;
       }
     mysql->options.extension->async_context= ctxt;
-//    if (mysql->net.pvio)
-//      mysql->net.pvio->async_context= ctxt;
     break;
   case MYSQL_OPT_MAX_ALLOWED_PACKET:
     if (mysql)
@@ -2931,40 +2939,6 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_TLS_PASSPHRASE:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_pw, (char *)arg1);
     break;
-  case MARIADB_OPT_COM_MULTI:
-    if (&mysql->net.pvio &&
-        !(mysql->server_capabilities & CLIENT_MYSQL))
-    {
-      enum mariadb_com_multi type= *(enum mariadb_com_multi *)arg1;
-      switch (type)
-      {
-        case MARIADB_COM_MULTI_BEGIN:
-          OPT_SET_EXTENDED_VALUE_INT(&mysql->options, multi_command, type);
-          break;
-        case MARIADB_COM_MULTI_CANCEL:
-          if (!mysql->options.extension ||
-               mysql->options.extension->multi_command != MARIADB_COM_MULTI_BEGIN)
-            return(-1);
-          /* reset multi_buff */
-          mysql->net.extension->mbuff_pos= mysql->net.extension->mbuff;
-          OPT_SET_EXTENDED_VALUE_INT(&mysql->options, multi_command, MARIADB_COM_MULTI_END);
-          break;
-        case MARIADB_COM_MULTI_END:
-          if (!mysql->options.extension ||
-               mysql->options.extension->multi_command != MARIADB_COM_MULTI_BEGIN)
-            return(-1);
-          OPT_SET_EXTENDED_VALUE_INT(&mysql->options, multi_command, MARIADB_COM_MULTI_END);
-          if (mariadb_flush_multi_command(mysql))
-            return(-1);
-          break;
-        default:
-          return(-1);
-      }
-      OPT_SET_EXTENDED_VALUE_INT(&mysql->options, multi_command, *(my_bool *)arg1);
-    }
-    else
-      return(-1);
-    break;
   case MARIADB_OPT_CONNECTION_READ_ONLY:
     OPT_SET_EXTENDED_VALUE_INT(&mysql->options, read_only, *(my_bool *)arg1);
     break;
@@ -3053,15 +3027,6 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MYSQL_OPT_NONBLOCK:
     *((my_bool *)arg)= test(mysql->options.extension && mysql->options.extension->async_context);
-    break;
-  case MARIADB_OPT_COM_MULTI:
-    if (!(mysql->server_capabilities & CLIENT_MYSQL))
-    {
-      *((enum mariadb_com_multi *)arg)= mysql->options.extension ?
-                                        mysql->options.extension->multi_command : 0;
-    }
-    else
-      return(-1);
     break;
   case MYSQL_OPT_SSL_ENFORCE:
     *((my_bool *)arg)= mysql->options.use_ssl;

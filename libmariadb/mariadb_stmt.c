@@ -74,6 +74,7 @@ typedef struct
 
 MYSQL_DATA *read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields, uint fields);
 void free_rows(MYSQL_DATA *cur);
+int ma_multi_command(MYSQL *mysql, enum enum_multi_status status);
 MYSQL_FIELD * unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields, my_bool default_value, my_bool long_flag_protocol);
 
 static my_bool is_not_null= 0;
@@ -1346,8 +1347,6 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
 {
   MYSQL *mysql= stmt->mysql;
   int rc= 1;
-  enum mariadb_com_multi multi= MARIADB_COM_MULTI_END;
-
 
   if (!stmt->mysql)
   {
@@ -1357,8 +1356,6 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
 
   if (length == (size_t) -1)
     length= strlen(query);
-
-  mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);
 
   /* clear flags */
   CLEAR_CLIENT_STMT_ERROR(stmt);
@@ -1390,7 +1387,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   if (mysql->methods->db_command(mysql, COM_STMT_PREPARE, query, length, 1, stmt))
     goto fail;
 
-  if (multi == MARIADB_COM_MULTI_BEGIN)
+  if (mysql->net.extension->multi_status > COM_MULTI_OFF)
     return 0;
 
   if (mysql->methods->db_read_prepare_response &&
@@ -1702,15 +1699,12 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   char *request;
   int ret;
   size_t request_len= 0;
-  enum mariadb_com_multi multi= MARIADB_COM_MULTI_END;
 
   if (!stmt->mysql)
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     return(1);
   }
-
-  mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);
 
   if (stmt->state < MYSQL_STMT_PREPARED)
   {
@@ -1751,7 +1745,6 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
 
   ret= stmt->mysql->methods->db_command(mysql, COM_STMT_EXECUTE, request,
                                              request_len, 1, stmt);
-
   if (request)
     free(request);
 
@@ -1762,7 +1755,7 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
     return(1);
   }
 
-  if (multi == MARIADB_COM_MULTI_BEGIN)
+  if (mysql->net.extension->multi_status > COM_MULTI_OFF)
     return(0);
 
   return(stmt_read_execute_response(stmt));
@@ -2074,7 +2067,6 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
                                       const char *stmt_str,
                                       size_t length)
 {
-  enum mariadb_com_multi multi= MARIADB_COM_MULTI_BEGIN;
   MYSQL *mysql= stmt->mysql;
 
   if (!mysql)
@@ -2083,8 +2075,11 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
     goto fail;
   }
 
-  if (mysql_optionsv(mysql, MARIADB_OPT_COM_MULTI, &multi))
+  if (ma_multi_command(mysql, COM_MULTI_PROGRESS))
+  {
+    SET_CLIENT_STMT_ERROR(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     goto fail;
+  }
 
   if (!stmt->mysql)
   {
@@ -2094,8 +2089,6 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
 
   if (length == (size_t) -1)
     length= strlen(stmt_str);
-
-  mysql_get_optionv(mysql, MARIADB_OPT_COM_MULTI, &multi);
 
   /* clear flags */
   CLEAR_CLIENT_STMT_ERROR(stmt);
@@ -2133,8 +2126,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
     goto fail;
 
   /* flush multi buffer */
-  multi= MARIADB_COM_MULTI_END;
-  if (mysql_optionsv(mysql, MARIADB_OPT_COM_MULTI, &multi))
+  if (ma_multi_command(mysql, COM_MULTI_END))
     goto fail;
 
   /* read prepare response */

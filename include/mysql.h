@@ -236,8 +236,7 @@ extern unsigned int mariadb_deinitialize_ssl;
     MARIADB_OPT_FOUND_ROWS,
     MARIADB_OPT_MULTI_RESULTS,
     MARIADB_OPT_MULTI_STATEMENTS,
-    MARIADB_OPT_INTERACTIVE,
-    MARIADB_OPT_COM_MULTI,
+    MARIADB_OPT_INTERACTIVE
   };
 
   enum mariadb_value {
