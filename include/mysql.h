@@ -60,6 +60,7 @@ typedef int my_socket;
 #include "mariadb_version.h"
 #include "ma_list.h"
 #include "mariadb_ctype.h"
+#include "ma_errmsg.h"
 
 #ifndef ST_MA_USED_MEM_DEFINED
 #define ST_MA_USED_MEM_DEFINED

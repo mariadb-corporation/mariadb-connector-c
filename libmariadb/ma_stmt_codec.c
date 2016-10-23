@@ -939,7 +939,8 @@ void ps_fetch_bin(MYSQL_BIND *r_param,
         memcpy(r_param->buffer, current_pos, MIN(copylen, r_param->buffer_length));
     }
     if (copylen < r_param->buffer_length &&
-        r_param->buffer_type == MYSQL_TYPE_STRING)
+        (r_param->buffer_type == MYSQL_TYPE_STRING ||
+         r_param->buffer_type == MYSQL_TYPE_JSON))
       ((char *)r_param->buffer)[copylen]= 0;
     *r_param->error= copylen > r_param->buffer_length;
     (*row)+= field_length;
@@ -1040,6 +1041,10 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_STRING].func      = ps_fetch_string;
   mysql_ps_fetch_functions[MYSQL_TYPE_STRING].pack_len    = MYSQL_PS_SKIP_RESULT_STR;
   mysql_ps_fetch_functions[MYSQL_TYPE_STRING].max_len  = -1;
+
+  mysql_ps_fetch_functions[MYSQL_TYPE_JSON].func      = ps_fetch_string;
+  mysql_ps_fetch_functions[MYSQL_TYPE_JSON].pack_len    = MYSQL_PS_SKIP_RESULT_STR;
+  mysql_ps_fetch_functions[MYSQL_TYPE_JSON].max_len  = -1;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_DECIMAL].func    = ps_fetch_string;
   mysql_ps_fetch_functions[MYSQL_TYPE_DECIMAL].pack_len  = MYSQL_PS_SKIP_RESULT_STR;

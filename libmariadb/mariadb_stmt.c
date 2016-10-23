@@ -118,6 +118,7 @@ my_bool mthd_supported_buffer_type(enum enum_field_types type)
   case MYSQL_TYPE_NULL:
   case MYSQL_TYPE_SHORT:
   case MYSQL_TYPE_STRING:
+  case MYSQL_TYPE_JSON:
   case MYSQL_TYPE_TIME:
   case MYSQL_TYPE_TIMESTAMP:
   case MYSQL_TYPE_TINY:
@@ -551,6 +552,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   case MYSQL_TYPE_VARCHAR:
   case MYSQL_TYPE_VAR_STRING:
   case MYSQL_TYPE_STRING:
+  case MYSQL_TYPE_JSON:
   case MYSQL_TYPE_DECIMAL:
   case MYSQL_TYPE_NEWDECIMAL:
   {
@@ -738,6 +740,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           case MYSQL_TYPE_VARCHAR:
           case MYSQL_TYPE_VAR_STRING:
           case MYSQL_TYPE_STRING:
+          case MYSQL_TYPE_JSON:
           case MYSQL_TYPE_DECIMAL:
           case MYSQL_TYPE_NEWDECIMAL:
           case MYSQL_TYPE_GEOMETRY:
@@ -968,6 +971,7 @@ my_bool STDCALL mysql_stmt_bind_param(MYSQL_STMT *stmt, MYSQL_BIND *bind)
         stmt->params[i].buffer_length= 5;
         break;
       case MYSQL_TYPE_STRING:
+      case MYSQL_TYPE_JSON:
       case MYSQL_TYPE_VAR_STRING:
       case MYSQL_TYPE_BLOB:
       case MYSQL_TYPE_TINY_BLOB:

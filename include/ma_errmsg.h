@@ -67,6 +67,7 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_NO_PREPARE_STMT      2030
 #define CR_PARAMS_NOT_BOUND     2031
 #define CR_INVALID_PARAMETER_NO  2034
+#define CR_INVALID_BUFFER_USE    2035
 #define CR_UNSUPPORTED_PARAM_TYPE 2036
 
 #define CR_SHARED_MEMORY_CONNECTION 2037
