@@ -1115,7 +1115,7 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   const char *passwd, const char *db,
 		   uint port, const char *unix_socket,unsigned long client_flag)
 {
-  char *end;
+  char *end= NULL;
   char *connection_handler= (mysql->options.extension) ?
                             mysql->options.extension->connection_handler : 0;
 

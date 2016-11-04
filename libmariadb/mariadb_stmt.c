@@ -1268,7 +1268,7 @@ MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql)
   /* fill mysql's stmt list */
   stmt->list.data= stmt;
   stmt->mysql= mysql;
-  stmt->stmt_id= -1;
+  stmt->stmt_id= 0;
   mysql->stmts= list_add(mysql->stmts, &stmt->list);
 
 
@@ -2119,6 +2119,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
                                          sizeof(stmt_id), 1, stmt))
       goto fail;
   }
+  stmt->stmt_id= -1;
   if (mysql->methods->db_command(mysql, COM_STMT_PREPARE, stmt_str, length, 1, stmt))
     goto fail;
 
