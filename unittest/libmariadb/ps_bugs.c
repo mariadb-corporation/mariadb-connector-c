@@ -4487,7 +4487,6 @@ static int test_conc205(MYSQL *mysql)
   return OK;
 }
 
-
 struct my_tests_st my_tests[] = {
   {"test_conc205", test_conc205, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc198", test_conc198, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

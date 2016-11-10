@@ -136,7 +136,7 @@ static int bulk2(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4, b default 2)");
+  rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4, b int default 2)");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk2 VALUES (?,1)", -1);

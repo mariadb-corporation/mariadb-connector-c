@@ -17,6 +17,14 @@ static int execute_direct(MYSQL *mysql)
   rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS t1", -1);
   check_stmt_rc(rc, stmt);
 
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1", -1);
+  check_stmt_rc(rc, stmt);
+
+  while (!mysql_stmt_fetch(stmt));
+
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1", -1);
+  check_stmt_rc(rc, stmt);
+
   rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE t1 (a int)", -1);
   check_stmt_rc(rc, stmt);
 
@@ -60,38 +68,36 @@ static int execute_direct_example(MYSQL *mysql)
   MYSQL_BIND bind[2];
   int intval= 1;
   int param_count= 2;
-  const char *strval= "execute_direct_example";
+  int rc;
+  const char *strval= "execute_direct_example1";
 
   /* Direct execution without parameters */
-  if (mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS execute_direct", -1))
-    goto error;
-  if (mariadb_stmt_execute_direct(stmt, "CREATE TABLE execute_direct (a int, b varchar(20))", -1))
-    goto error;
-
+  rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS execute_direct", -1);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE execute_direct (a int, b varchar(20))", -1);
+  rc= mysql_stmt_close(stmt);
+  stmt= mysql_stmt_init(mysql);
+  check_stmt_rc(rc, stmt);
   memset(bind, 0, sizeof(MYSQL_BIND) * 2);
   bind[0].buffer_type= MYSQL_TYPE_SHORT;
   bind[0].buffer= &intval;
   bind[1].buffer_type= MYSQL_TYPE_STRING;
   bind[1].buffer= (char *)strval;
-  bind[1].buffer_length= (ulong)strlen(strval);
+  bind[1].buffer_length= strlen(strval);
 
   /* set number of parameters */
-  if (mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count))
-    goto error;
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
+  check_stmt_rc(rc, stmt);
 
   /* bind parameters */
-  if (mysql_stmt_bind_param(stmt, bind))
-    goto error;
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
 
-  if (mariadb_stmt_execute_direct(stmt, "INSERT INTO execute_direct VALUES (?,?)", -1))
-    goto error;
+  rc= mariadb_stmt_execute_direct(stmt, "INSERT INTO execute_direct VALUES (?,?)", -1);
+  check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
   return OK;
-error:
-  printf("Error: %s\n", mysql_stmt_error(stmt));
-  mysql_stmt_close(stmt);
-  return FAIL;
 }
 
 struct my_tests_st my_tests[] = {

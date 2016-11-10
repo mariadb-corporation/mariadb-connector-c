@@ -90,8 +90,6 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
     printf("Fatal\n");
     exit(-1);
   }
-  /* We don't allocate memory for multi buffer, since we don't know in advance if the server
-   * supports COM_MULTI comand. It will be allocated on demand in net_add_multi_command */
   max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
   net->pvio = pvio;
@@ -583,36 +581,11 @@ ulong ma_net_read(NET *net)
 int net_add_multi_command(NET *net, uchar command, const uchar *packet,
                           size_t length)
 {
-  size_t left_length;
-  size_t required_length, current_length;
-  /* 9 - maximum possible length of data stored in net length format */
-  required_length= length + 1 + COMP_HEADER_SIZE + NET_HEADER_SIZE + 9;
-
-  /* We didn't allocate memory in ma_net_init since it was too early to
-   * detect if the server supports COM_MULTI command */
   if (net->extension->multi_status == COM_MULTI_OFF)
   {
     return(1);
   }
-
-  left_length= net->buff_end - net->write_pos;
-
-  /* check if our buffer is large enough */
-  if (left_length < required_length)
-  {
-    current_length= net->write_pos - net->buff;
-    if (net_realloc(net, current_length + required_length))
-      goto error;
-    net->write_pos = net->buff + current_length;
-  }
-  net->write_pos= mysql_net_store_length(net->write_pos, length + 1);
-  *net->write_pos= command;
-  net->write_pos++;
-  memcpy(net->write_pos, packet, length);
-  net->write_pos+= length;
-  return 0;
-
-error:
- return 1; 
+  net->compress_pkt_nr= net->pkt_nr= 0;
+  return ma_net_write_command(net, command, (const char *)packet, length, 1);
 }
 

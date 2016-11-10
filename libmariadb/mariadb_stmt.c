@@ -466,7 +466,6 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_INT24:
     int4store(*p, (*(int32 *)buf));
-    //stmt->params[column].buffer)[row_nr]);
     (*p)+= 4;
     break;
   case MYSQL_TYPE_TIME:
@@ -560,7 +559,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
     /* to is after p. The latter hasn't been moved */
     uchar *to;
     void *buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
-                                       stmt->params[column].buffer, row_nr);
+                                    stmt->params[column].buffer, row_nr);
 
     if (stmt->row_size)
       len= *stmt->params[column].length;
@@ -1382,6 +1381,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
 
     stmt->param_count= 0;
     stmt->field_count= 0;
+    stmt->params= 0;
 
     int4store(stmt_id, stmt->stmt_id);
     if (mysql->methods->db_command(mysql, COM_STMT_CLOSE, stmt_id,
@@ -2072,11 +2072,24 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
                                       size_t length)
 {
   MYSQL *mysql= stmt->mysql;
+  my_bool emulate_cmd= !(!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
+      (stmt->mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
 
   if (!mysql)
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     goto fail;
+  }
+
+  /* Server versions < 10.2 don't support execute_direct, so we need to 
+     emulate it */
+  if (emulate_cmd)
+  {
+    int rc;
+
+    if ((rc= mysql_stmt_prepare(stmt, stmt_str, length)))
+      return rc;
+    return mysql_stmt_execute(stmt);
   }
 
   if (ma_multi_command(mysql, COM_MULTI_PROGRESS))
@@ -2113,6 +2126,8 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
     ma_free_root(&stmt->mem_root, MYF(MY_KEEP_PREALLOC));
     ma_free_root(&((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root, MYF(0));
     stmt->field_count= 0;
+    stmt->param_count= 0;
+    stmt->params= 0;
 
     int4store(stmt_id, stmt->stmt_id);
     if (mysql->methods->db_command(mysql, COM_STMT_CLOSE, stmt_id,

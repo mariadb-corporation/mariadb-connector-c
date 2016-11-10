@@ -407,7 +407,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   }
   result=0;
 
-  if (net->extension->multi_status == COM_MULTI_OFF)
+  if (net->extension->multi_status > COM_MULTI_OFF)
     skipp_check= 1;
 
   if (!skipp_check)
@@ -440,19 +440,16 @@ int ma_multi_command(MYSQL *mysql, enum enum_multi_status status)
       return 1;
     ma_net_clear(net);
     net->extension->multi_status= status;
-    int3store(net->buff, 0);
-    net->buff[3]= (net->compress) ? 0 : (uchar) (net->pkt_nr++);
-    net->buff[4]= COM_MULTI;
-    net->write_pos= net->buff + 5;
     return 0;
   case COM_MULTI_END:
   {
     size_t len= net->write_pos - net->buff - NET_HEADER_SIZE;
 
     if (len < NET_HEADER_SIZE) /* don't send empty COM_MULTI */
+    {
+      ma_net_clear(net);
       return 1;
-    /* store length after com_multi */
-    int3store(net->buff, len);
+    }
     net->extension->multi_status= COM_MULTI_OFF;
     return ma_net_flush(net);
   }
