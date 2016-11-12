@@ -160,12 +160,6 @@ extern unsigned int mariadb_deinitialize_ssl;
     void *extension;
   } MYSQL_DATA;
 
-  enum mariadb_com_multi {
-    MARIADB_COM_MULTI_END,
-    MARIADB_COM_MULTI_BEGIN,
-    MARIADB_COM_MULTI_CANCEL
-  };
-
   enum mysql_option 
   {
     MYSQL_OPT_CONNECT_TIMEOUT, 

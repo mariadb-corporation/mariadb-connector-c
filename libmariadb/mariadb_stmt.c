@@ -835,7 +835,7 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       *(unsigned long *)value= stmt->prefetch_rows;
       break;
     case STMT_ATTR_PREBIND_PARAMS:
-      *(unsigned int *)value= stmt->param_count;
+      *(unsigned int *)value= stmt->prebind_params;
       break;
     case STMT_ATTR_ARRAY_SIZE:
       *(unsigned int *)value= stmt->array_size;
@@ -870,7 +870,7 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       stmt->prefetch_rows= *(long *)value;
     break;
   case STMT_ATTR_PREBIND_PARAMS:
-    stmt->param_count= *(unsigned int *)value;
+    stmt->prebind_params= *(unsigned int *)value;
     break;
   case STMT_ATTR_ARRAY_SIZE:
     stmt->array_size= *(unsigned int *)value;
@@ -899,17 +899,18 @@ my_bool STDCALL mysql_stmt_bind_param(MYSQL_STMT *stmt, MYSQL_BIND *bind)
      them, e.g. for mariadb_stmt_execute_direct()
      */
   if ((stmt->state < MYSQL_STMT_PREPARED || stmt->state >= MYSQL_STMT_EXECUTED) &&
-      !(mysql->server_capabilities & CLIENT_MYSQL))
+       stmt->prebind_params > 0)
   {
-    if (!stmt->params && stmt->param_count)
+    if (!stmt->params && stmt->prebind_params)
     {
-      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
+      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->prebind_params * sizeof(MYSQL_BIND))))
       {
         SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
         return(1);
       }
-      memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
+      memset(stmt->params, '\0', stmt->prebind_params * sizeof(MYSQL_BIND));
     }
+    stmt->param_count= stmt->prebind_params;
   }
   else if (stmt->state < MYSQL_STMT_PREPARED) {
     SET_CLIENT_STMT_ERROR(stmt, CR_NO_PREPARE_STMT, SQLSTATE_UNKNOWN, 0);
@@ -1350,6 +1351,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
 {
   MYSQL *mysql= stmt->mysql;
   int rc= 1;
+  my_bool is_multi= 0;
 
   if (!stmt->mysql)
   {
@@ -1368,10 +1370,14 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   /* check if we have to clear results */
   if (stmt->state > MYSQL_STMT_INITTED)
   {
+    char stmt_id[STMT_ID_LENGTH];
+    is_multi= (mysql->net.extension->multi_status > COM_MULTI_OFF);
     /* We need to semi-close the prepared statement:
        reset stmt and free all buffers and close the statement
        on server side. Statment handle will get a new stmt_id */
-    char stmt_id[STMT_ID_LENGTH];
+
+    if (!is_multi)
+      ma_multi_command(mysql, COM_MULTI_ENABLED);
 
     if (mysql_stmt_internal_reset(stmt, 1))
       goto fail;
@@ -1391,6 +1397,9 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   if (mysql->methods->db_command(mysql, COM_STMT_PREPARE, query, length, 1, stmt))
     goto fail;
 
+  if (!is_multi && mysql->net.extension->multi_status == COM_MULTI_ENABLED)
+    ma_multi_command(mysql, COM_MULTI_END);
+  
   if (mysql->net.extension->multi_status > COM_MULTI_OFF)
     return 0;
 
@@ -1414,12 +1423,21 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
   }
   if (stmt->param_count)
   {
-    if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
+    if (stmt->prebind_params)
     {
-      SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      goto fail;
+      if (stmt->prebind_params != stmt->param_count)
+      {
+        SET_CLIENT_STMT_ERROR(stmt, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        goto fail;
+      }
+    } else {
+      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
+      {
+        SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+        goto fail;
+      }
+      memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
     }
-    memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
   }
   /* allocated bind buffer for result */
   if (stmt->field_count)
@@ -2087,12 +2105,14 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   {
     int rc;
 
+    /* avoid sending close + prepare in 2 packets */
+
     if ((rc= mysql_stmt_prepare(stmt, stmt_str, length)))
       return rc;
     return mysql_stmt_execute(stmt);
   }
 
-  if (ma_multi_command(mysql, COM_MULTI_PROGRESS))
+  if (ma_multi_command(mysql, COM_MULTI_ENABLED))
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
     goto fail;

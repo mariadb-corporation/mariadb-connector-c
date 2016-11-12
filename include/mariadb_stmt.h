@@ -222,6 +222,7 @@ struct st_mysql_stmt
   struct st_mysqlnd_stmt_methods  *m;
   unsigned int             array_size;
   size_t row_size;
+  unsigned int prebind_params;
 };
 
 typedef void (*ps_field_fetch_func)(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row);

@@ -100,7 +100,66 @@ static int execute_direct_example(MYSQL *mysql)
   return OK;
 }
 
+static int conc_213(MYSQL *mysql)
+{
+  MYSQL_BIND bind;
+  unsigned int param_count= 1;
+  long id= 1234;
+  MYSQL_STMT *stmt;
+
+  stmt = mysql_stmt_init(mysql);
+
+  memset(&bind, '\0', sizeof(bind));
+
+  bind.buffer_type = MYSQL_TYPE_LONG;
+  bind.buffer = (void *)&id;
+  bind.buffer_length = sizeof(long);
+/*  bind.is_null = &is_null;
+  bind.length = &length;
+  bind.error = &error; */
+
+  mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
+  check_stmt_rc(mysql_stmt_bind_param(stmt, &bind), stmt);
+  check_stmt_rc(mariadb_stmt_execute_direct(stmt, "SELECT ?", -1), stmt);
+  check_stmt_rc(mysql_stmt_store_result(stmt), stmt);
+  check_stmt_rc(mysql_stmt_free_result(stmt), stmt);
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
+static int conc_212(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1, 2", -1);
+  check_stmt_rc(rc, stmt);
+  mysql_stmt_store_result(stmt);
+  mysql_stmt_free_result(stmt);
+
+  sleep(100);
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1, 2", -1);
+  check_stmt_rc(rc, stmt);
+  mysql_stmt_store_result(stmt);
+  mysql_stmt_free_result(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc,mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1(a int)");
+  check_mysql_rc(rc,mysql);
+
+  rc= mysql_stmt_close(stmt);
+
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"conc_212", conc_212, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"conc_213", conc_213, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"execute_direct", execute_direct, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"execute_direct_example", execute_direct_example, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}

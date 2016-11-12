@@ -19,6 +19,8 @@
 
 #define TEST_ARRAY_SIZE 1024
 
+static my_bool bulk_enabled= 0;
+
 char *rand_str(size_t length) {
     const char charset[] = "0123456789"
                      "abcdefghijklmnopqrstuvwxyz"
@@ -30,6 +32,14 @@ char *rand_str(size_t length) {
     }
     *dest = '\0';
     return p;
+}
+
+static int check_bulk(MYSQL *mysql)
+{
+  bulk_enabled= (!(mysql->server_capabilities & CLIENT_MYSQL) &&
+      (mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
+  diag("bulk %ssupported", bulk_enabled ? "" : "not ");
+  return OK;
 }
 
 static int bulk1(MYSQL *mysql)
@@ -46,6 +56,9 @@ static int bulk1(MYSQL *mysql)
   MYSQL_RES *res;
   MYSQL_ROW row;
   unsigned int intval;
+
+  if (!bulk_enabled)
+    return SKIP;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk1");
   check_mysql_rc(rc, mysql);
@@ -133,6 +146,9 @@ static int bulk2(MYSQL *mysql)
   unsigned int array_size=1024;
   char indicator[1024];
   long lval[1024];
+
+  if (!bulk_enabled)
+    return SKIP;
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
   check_mysql_rc(rc, mysql);
 
@@ -187,6 +203,8 @@ static int bulk3(MYSQL *mysql)
   int array_size= 3;
   ulong length= -1;
 
+  if (!bulk_enabled)
+    return SKIP;
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk3");
   check_mysql_rc(rc,mysql);
   rc= mysql_query(mysql, "CREATE TABLE bulk3 (name varchar(20), row int)");
@@ -218,6 +236,7 @@ static int bulk3(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+  {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},

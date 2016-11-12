@@ -382,7 +382,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   if (!arg)
     arg="";
 
-  if (net->extension->multi_status== COM_MULTI_PROGRESS)
+  if (net->extension->multi_status== COM_MULTI_ENABLED)
   {
     return net_add_multi_command(net, command, (const uchar *)arg, length);
   }
@@ -435,10 +435,15 @@ int ma_multi_command(MYSQL *mysql, enum enum_multi_status status)
     ma_net_clear(net);
     net->extension->multi_status= status;
     return 0;
-  case COM_MULTI_PROGRESS:
-    if (net->extension->multi_status > COM_MULTI_OFF)
+  case COM_MULTI_ENABLED:
+    if (net->extension->multi_status > COM_MULTI_DISABLED)
       return 1;
     ma_net_clear(net);
+    net->extension->multi_status= status;
+    return 0;
+  case COM_MULTI_DISABLED:
+    /* Opposite to COM_MULTI_OFF we don't clear net buffer,
+       next command or com_nulti_end will flush entire buffer */
     net->extension->multi_status= status;
     return 0;
   case COM_MULTI_END:
