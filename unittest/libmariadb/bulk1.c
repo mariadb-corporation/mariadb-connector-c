@@ -63,7 +63,7 @@ static int bulk1(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE bulk1 (a int, b VARCHAR(255))");
+  rc= mysql_query(mysql, "CREATE TABLE bulk1 (a int , b VARCHAR(255))");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
@@ -83,7 +83,7 @@ static int bulk1(MYSQL *mysql)
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 2);
   bind[0].buffer_type= MYSQL_TYPE_LONG;
-  bind[0].buffer= (int *)&vals[0];
+  bind[0].buffer= vals;
   bind[1].buffer_type= MYSQL_TYPE_STRING;
   bind[1].buffer= (void *)buffer;
   bind[1].length= (unsigned long *)lengths;
@@ -94,11 +94,11 @@ static int bulk1(MYSQL *mysql)
   rc= mysql_stmt_bind_param(stmt, bind);
   check_stmt_rc(rc, stmt);
 
-  for (i=0; i < 10; i++)
+  for (i=0; i < 100; i++)
   {
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
-    diag("Affected rows: %lld", mysql_stmt_affected_rows(stmt));
+    FAIL_IF(mysql_stmt_affected_rows(stmt) != TEST_ARRAY_SIZE, "affected_rows != TEST_ARRAY_SIZE");
   }
 
   for (i=0; i < array_size; i++)
@@ -118,7 +118,7 @@ static int bulk1(MYSQL *mysql)
   row= mysql_fetch_row(res);
   intval= atoi(row[0]);
   mysql_free_result(res);
-  FAIL_IF(intval != array_size * 10, "Expected 10240 rows");
+  FAIL_IF(intval != array_size * 100, "Expected 102400 rows");
 
   rc= mysql_query(mysql, "SELECT MAX(a) FROM bulk1");
   check_mysql_rc(rc, mysql);
@@ -235,11 +235,57 @@ static int bulk3(MYSQL *mysql)
   return OK;
 }
 
+static int bulk_null(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  MYSQL_BIND bind[2];
+  unsigned int param_count= 2;
+  unsigned int array_size= 2;
+  unsigned long lengths[2]= {-1, -1};
+  const char **buf= calloc(1, 2 * sizeof(char *));
+
+  buf[0]= strdup("foo");
+  buf[1]= strdup("foobar");
+
+  rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS bulk_null", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE bulk_null (a int not null auto_increment primary key, b varchar(20))", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
+  bind[0].buffer_type= MYSQL_TYPE_NULL;
+  bind[1].buffer_type= MYSQL_TYPE_STRING;
+  bind[1].buffer= buf;
+  bind[1].length= lengths;
+
+  mysql_stmt_close(stmt);
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mariadb_stmt_execute_direct(stmt, "INSERT INTO bulk_null VALUES (?, ?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+  return OK;
+
+}
+
 struct my_tests_st my_tests[] = {
   {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk_null", bulk_null, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

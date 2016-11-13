@@ -647,6 +647,9 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   int4store(p, num_rows);
   p+= 4;
 
+  if (!stmt->param_count && stmt->prebind_params)
+    stmt->param_count= stmt->prebind_params;
+
   if (stmt->param_count)
   {
     if (!stmt->array_size)
@@ -690,7 +693,8 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         /* this differs from mysqlnd, c api supports unsinged !! */
         uint buffer_type= stmt->params[i].buffer_type | (stmt->params[i].is_unsigned ? 32768 : 0);
         /* check if parameter requires indicator variable */
-        if (bulk_supported && stmt->params[i].u.indicator)
+        if (bulk_supported &&
+            (stmt->params[i].u.indicator || stmt->params[i].buffer_type == MYSQL_TYPE_NULL))
           buffer_type|= 16384;
         int2store(p, buffer_type);
         p+= 2;
@@ -706,9 +710,14 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         my_bool has_data= TRUE;
         char indicator= 0;
 
-        if (bulk_supported && stmt->params[i].u.indicator)
+        if (bulk_supported &&
+           (stmt->params[i].u.indicator || stmt->params[i].buffer_type == MYSQL_TYPE_NULL))
         {
-          if (stmt->row_size)
+          if (stmt->params[i].buffer_type == MYSQL_TYPE_NULL)
+          {
+            indicator= STMT_INDICATOR_NULL;
+          }
+          else if (stmt->row_size)
             indicator= *(char *)(stmt->params[i].u.indicator + j * stmt->row_size);
           else
             indicator= stmt->params[i].u.indicator[j];
@@ -773,20 +782,20 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
             goto mem_error;
           p= start + offset;
         }
+        if ((stmt->params[i].is_null && *stmt->params[i].is_null) ||
+             stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||
+             !stmt->params[i].buffer)
+        {
+          has_data= FALSE;
+          if (!stmt->array_size)
+            (start + null_byte_offset)[i/8] |= (unsigned char) (1 << (i & 7));
+          else
+            indicator= STMT_INDICATOR_NULL;
+        }
         if (bulk_supported && (indicator || stmt->params[i].u.indicator))
         {
           int1store(p, indicator);
           p++;
-        }
-        if (!stmt->array_size)
-        {
-          if ((stmt->params[i].is_null && *stmt->params[i].is_null) ||
-               stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||
-               !stmt->params[i].buffer)
-          {
-            (start + null_byte_offset)[i/8] |= (unsigned char) (1 << (i & 7));
-            has_data= FALSE;
-          }
         }
         if (has_data)
         {
