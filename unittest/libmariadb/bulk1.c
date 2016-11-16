@@ -129,12 +129,9 @@ static int bulk1(MYSQL *mysql)
   mysql_free_result(res);
   FAIL_IF(intval != array_size - 1, "Expected max value 1024");
 
-/*
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk1");
   check_mysql_rc(rc, mysql);
-*/
   return OK;
-
 }
 
 static int bulk2(MYSQL *mysql)

@@ -193,7 +193,7 @@ restart:
     my_set_error(mysql, net->last_errno == ER_NET_PACKET_TOO_LARGE ?
 		     CR_NET_PACKET_TOO_LARGE:
 		     CR_SERVER_LOST,
-         SQLSTATE_UNKNOWN, 0);
+         SQLSTATE_UNKNOWN, 0, errno);
     return(packet_error);
   }
   if (net->read_pos[0] == 255)

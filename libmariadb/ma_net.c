@@ -1,26 +1,26 @@
 /* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
-                 2012-2016 SkySQL AB, MariaDB Corporation AB 
+   2012-2016 SkySQL AB, MariaDB Corporation AB
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
    License as published by the Free Software Foundation; either
    version 2 of the License, or (at your option) any later version.
-   
+
    This library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Library General Public License for more details.
-   
+
    You should have received a copy of the GNU Library General Public
    License along with this library; if not, write to the Free
    Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
    MA 02111-1307, USA */
 
 /* Write and read of logical packets to/from socket
-** Writes are cached into net_buffer_length big packets.
-** Read packets are reallocated dynamicly when reading big packets.
-** Each logical packet has the following pre-info:
-** 3 byte length & 1 byte package-number.
-*/
+ ** Writes are cached into net_buffer_length big packets.
+ ** Read packets are reallocated dynamicly when reading big packets.
+ ** Each logical packet has the following pre-info:
+ ** 3 byte length & 1 byte package-number.
+ */
 
 
 #include <ma_global.h>
@@ -43,7 +43,7 @@
 
 /* net_buffer_length and max_allowed_packet are defined in mysql.h
    See bug conc-57
-*/
+ */
 #undef net_buffer_length
 
 #undef max_allowed_packet
@@ -68,15 +68,15 @@ ulong net_buffer_length= 8192;	/* Default length. Enlarged if necessary */
 
 
 /*
-** Give error if a too big packet is found
-** The server can change this with the -O switch, but because the client
-** can't normally do this the client should have a bigger max-buffer.
-*/
+ ** Give error if a too big packet is found
+ ** The server can change this with the -O switch, but because the client
+ ** can't normally do this the client should have a bigger max-buffer.
+ */
 
 static int ma_net_write_buff(NET *net,const char *packet, size_t len);
 
 
-	/* Init with packet info */
+/* Init with packet info */
 
 int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 {
@@ -98,7 +98,7 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
   net->compress_pkt_nr= net->pkt_nr= 0;
   net->write_pos=net->read_pos = net->buff;
   net->last_error[0]= net->sqlstate[0] =0;
-  
+
   net->compress=0; net->reading_or_writing=0;
   net->where_b = net->remain_in_buf=0;
   net->last_errno=0;
@@ -135,7 +135,7 @@ static my_bool net_realloc(NET *net, size_t length)
   /* reallocate buffer:
      size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
   if (!(buff=(uchar*) realloc(net->buff, 
-                              pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE)))
+          pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE)))
   {
     net->error=1;
     return(1);
@@ -167,7 +167,7 @@ int ma_net_flush(NET *net)
   if (net->buff != net->write_pos)
   {
     error=ma_net_real_write(net,(char*) net->buff,
-			 (size_t) (net->write_pos - net->buff));
+        (size_t) (net->write_pos - net->buff));
     net->write_pos=net->buff;
   }
   if (net->compress)
@@ -176,18 +176,17 @@ int ma_net_flush(NET *net)
 }
 
 /*****************************************************************************
-** Write something to server/client buffer
-*****************************************************************************/
+ ** Write something to server/client buffer
+ *****************************************************************************/
 
 /*
-** Write a logical packet with packet header
-** Format: Packet length (3 bytes), packet number(1 byte)
-**         When compression is used a 3 byte compression length is added
-** NOTE: If compression is used the original package is destroyed!
-*/
+ ** Write a logical packet with packet header
+ ** Format: Packet length (3 bytes), packet number(1 byte)
+ **         When compression is used a 3 byte compression length is added
+ ** NOTE: If compression is used the original package is destroyed!
+ */
 
-int
-ma_net_write(NET *net, const uchar *packet, size_t len)
+int ma_net_write(NET *net, const uchar *packet, size_t len)
 {
   uchar buff[NET_HEADER_SIZE];
   while (len >= MAX_PACKET_LENGTH)
@@ -210,10 +209,9 @@ ma_net_write(NET *net, const uchar *packet, size_t len)
   return 0;
 }
 
-int
-ma_net_write_command(NET *net, uchar command,
-                  const char *packet, size_t len,
-                  my_bool disable_flush)
+int ma_net_write_command(NET *net, uchar command,
+    const char *packet, size_t len,
+    my_bool disable_flush)
 {
   uchar buff[NET_HEADER_SIZE+1];
   size_t buff_size= NET_HEADER_SIZE + 1;
@@ -230,7 +228,7 @@ ma_net_write_command(NET *net, uchar command,
     {
       int3store(buff, MAX_PACKET_LENGTH);
       buff[3]= (net->compress) ? 0 : (uchar) (net->pkt_nr++);
- 
+
       if (ma_net_write_buff(net, (char *)buff, buff_size) ||
           ma_net_write_buff(net, packet, len))
         return(1);
@@ -244,15 +242,14 @@ ma_net_write_command(NET *net, uchar command,
   int3store(buff,length);
   buff[3]= (net->compress) ? 0 :(uchar) (net->pkt_nr++);
   rc= test (ma_net_write_buff(net,(char *)buff, buff_size) || 
-            ma_net_write_buff(net,packet,len));
+      ma_net_write_buff(net,packet,len));
   if (!rc && !disable_flush)
     return test(ma_net_flush(net)); 
   return rc;
 }
 
 
-static int
-ma_net_write_buff(NET *net,const char *packet, size_t len)
+static int ma_net_write_buff(NET *net,const char *packet, size_t len)
 {
   size_t left_length;
 
@@ -268,7 +265,7 @@ ma_net_write_buff(NET *net,const char *packet, size_t len)
     {
       memcpy((char*) net->write_pos,packet,left_length);
       if (ma_net_real_write(net,(char*) net->buff,
-                         (size_t)(net->write_pos - net->buff) + left_length))
+            (size_t)(net->write_pos - net->buff) + left_length))
         return 1;
       packet+=left_length;
       len-=left_length;
@@ -299,8 +296,7 @@ unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
 
 /*  Read and write using timeouts */
 
-int
-ma_net_real_write(NET *net,const char *packet,size_t  len)
+int ma_net_real_write(NET *net, const char *packet, size_t len)
 {
   ssize_t length;
   char *pos,*end;
@@ -357,66 +353,66 @@ ma_net_real_write(NET *net,const char *packet,size_t  len)
 }
 
 /*****************************************************************************
-** Read something from server/clinet
-*****************************************************************************/
-static ulong
-ma_real_read(NET *net, size_t *complen)
+ ** Read something from server/clinet
+ *****************************************************************************/
+static ulong ma_real_read(NET *net, size_t *complen)
 {
   uchar *pos;
   ssize_t length;
   uint i;
   ulong len=packet_error;
   size_t remain= (net->compress ? NET_HEADER_SIZE+COMP_HEADER_SIZE :
-		 NET_HEADER_SIZE);
+      NET_HEADER_SIZE);
   *complen = 0;
 
   net->reading_or_writing=1;
 
-    pos = net->buff + net->where_b;		/* net->packet -4 */
-    for (i=0 ; i < 2 ; i++)
+  pos = net->buff + net->where_b;		/* net->packet -4 */
+  for (i=0 ; i < 2 ; i++)
+  {
+    while (remain > 0)
     {
-      while (remain > 0)
+      /* First read is done with non blocking mode */
+      if ((length=ma_pvio_cache_read(net->pvio, pos,remain)) <= 0L)
       {
-	/* First read is done with non blocking mode */
-        if ((length=ma_pvio_cache_read(net->pvio, pos,remain)) <= 0L)
-        {
-	  len= packet_error;
-	  net->error=2;				/* Close socket */
-	  goto end;
-	}
-	remain -= (ulong) length;
-	pos+= (ulong) length;
+        len= packet_error;
+        net->error=2;				/* Close socket */
+        goto end;
       }
-      if (i == 0)
-      {					/* First parts is packet length */
-	ulong helping;
-	net->pkt_nr= net->buff[net->where_b + 3];
-	net->compress_pkt_nr= ++net->pkt_nr;
+      remain -= (ulong) length;
+      pos+= (ulong) length;
+    }
+
+    if (i == 0)
+    {					/* First parts is packet length */
+      ulong helping;
+      net->pkt_nr= net->buff[net->where_b + 3];
+      net->compress_pkt_nr= ++net->pkt_nr;
 #ifdef HAVE_COMPRESS
-	if (net->compress)
-	{
-	  /* complen is > 0 if package is really compressed */
-	  *complen=uint3korr(&(net->buff[net->where_b + NET_HEADER_SIZE]));
-	}
+      if (net->compress)
+      {
+        /* complen is > 0 if package is really compressed */
+        *complen=uint3korr(&(net->buff[net->where_b + NET_HEADER_SIZE]));
+      }
 #endif
 
-	len=uint3korr(net->buff+net->where_b);
-        if (!len)
+      len=uint3korr(net->buff+net->where_b);
+      if (!len)
+        goto end;
+      helping = max(len,(ulong)*complen) + net->where_b;
+      /* The necessary size of net->buff */
+      if (helping >= net->max_packet)
+      {
+        if (net_realloc(net, helping))
+        {
+          len= packet_error;		/* Return error */
           goto end;
-	helping = max(len,(ulong)*complen) + net->where_b;
-	/* The necessary size of net->buff */
-	if (helping >= net->max_packet)
-	{
-	  if (net_realloc(net, helping))
-	  {
-	    len= packet_error;		/* Return error */
-	    goto end;
-	  }
-	}
-	pos=net->buff + net->where_b;
-	remain = len;
+        }
       }
+      pos=net->buff + net->where_b;
+      remain = len;
     }
+  }
 
 end:
   net->reading_or_writing=0;
@@ -457,23 +453,23 @@ ulong ma_net_read(NET *net)
   else
   {
     /* 
-    compressed protocol:
+       compressed protocol:
 
-    --------------------------------------
-    packet_lengt h      3 
-    sequence_id         1
-    uncompressed_length 3
-    --------------------------------------
-    compressed data     packet_length - 7
-    --------------------------------------
+       --------------------------------------
+       packet_length       3
+       sequence_id         1
+       uncompressed_length 3
+       --------------------------------------
+       compressed data     packet_length - 7
+       --------------------------------------
 
-    Another packet will follow if:
-    packet_length == MAX_PACKET_LENGTH
+       Another packet will follow if:
+       packet_length == MAX_PACKET_LENGTH
 
-    Last package will be identified by
-    - packet_length is zero (special case)
-    - packet_length < MAX_PACKET_LENGTH
-    */
+       Last package will be identified by
+       - packet_length is zero (special case)
+       - packet_length < MAX_PACKET_LENGTH
+     */
 
     size_t packet_length,
            buffer_length;
@@ -517,8 +513,8 @@ ulong ma_net_read(NET *net)
           {
             /* remove packet_header */
             memmove(net->buff + current, 
-                     net->buff + current + 4, 
-                     buffer_length - current);
+                net->buff + current + 4,
+                buffer_length - current);
             buffer_length-= 4;
             current+= packet_length;
           }
@@ -533,7 +529,7 @@ ulong ma_net_read(NET *net)
           if (start)
           {
             memmove(net->buff, net->buff + start,
-                    buffer_length - start);
+                buffer_length - start);
             /* decrease buflen*/
             buffer_length-= start;
             start= 0;
@@ -579,12 +575,13 @@ ulong ma_net_read(NET *net)
 }
 
 int net_add_multi_command(NET *net, uchar command, const uchar *packet,
-                          size_t length)
+    size_t length)
 {
   if (net->extension->multi_status == COM_MULTI_OFF)
   {
     return(1);
   }
+  /* don't increase packet number */
   net->compress_pkt_nr= net->pkt_nr= 0;
   return ma_net_write_command(net, command, (const char *)packet, length, 1);
 }
