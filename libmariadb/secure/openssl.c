@@ -21,7 +21,7 @@
 #include <ma_sys.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
-#include <ma_errmsg.h>
+#include <errmsg.h>
 #include <string.h>
 #include <mysql/client_plugin.h>
 #include <string.h>

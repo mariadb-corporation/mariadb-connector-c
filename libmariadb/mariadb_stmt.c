@@ -48,7 +48,7 @@
 #include <ma_string.h>
 #include <mariadb_ctype.h>
 #include "mysql.h"
-#include "ma_errmsg.h"
+#include "errmsg.h"
 #include <ma_pvio.h>
 #include <sys/stat.h>
 #include <signal.h>

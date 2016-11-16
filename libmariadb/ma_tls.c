@@ -36,7 +36,7 @@
 #include <ma_sys.h>
 #include <ma_common.h>
 #include <string.h>
-#include <ma_errmsg.h>
+#include <errmsg.h>
 #include <ma_pvio.h>
 #include <ma_tls.h>
 #include <mysql/client_plugin.h>

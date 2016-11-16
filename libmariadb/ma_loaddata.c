@@ -43,7 +43,7 @@
 #include "ma_global.h"
 #include <ma_sys.h>
 #include <ma_string.h>
-#include "ma_errmsg.h"
+#include "errmsg.h"
 #include "mysql.h"
 #include <mariadb/ma_io.h>
 #include <string.h>

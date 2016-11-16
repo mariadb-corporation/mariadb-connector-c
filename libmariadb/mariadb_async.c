@@ -23,7 +23,7 @@
 #include "ma_global.h"
 #include "ma_sys.h"
 #include "mysql.h"
-#include "ma_errmsg.h"
+#include "errmsg.h"
 #ifndef LIBMARIADB
 #include "sql_common.h"
 #else

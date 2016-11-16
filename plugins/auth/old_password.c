@@ -21,7 +21,7 @@
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <memory.h>
-#include <ma_errmsg.h>
+#include <errmsg.h>
 
 
 /* function prototypes */

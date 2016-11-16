@@ -46,7 +46,7 @@
 #include <ma_global.h>
 #include <ma_sys.h>
 #include <mysql.h>
-#include <ma_errmsg.h>
+#include <errmsg.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <ma_common.h>

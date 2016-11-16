@@ -32,7 +32,7 @@
 #include "mariadb_version.h"
 #include "ma_server_error.h"
 #include <mariadb/ma_io.h>
-#include "ma_errmsg.h"
+#include "errmsg.h"
 #include <sys/stat.h>
 #include <signal.h>
 #include <time.h>

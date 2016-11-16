@@ -1,6 +1,6 @@
 #include <ma_global.h>
 #include <ma_sys.h>
-#include <ma_errmsg.h>
+#include <errmsg.h>
 #include <string.h>
 #include <ma_common.h>
 #include <mysql/client_plugin.h>

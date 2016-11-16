@@ -19,7 +19,7 @@
 
 #include <ma_global.h>
 #include <ma_sys.h>
-#include <ma_errmsg.h>
+#include <errmsg.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <mariadb/ma_io.h>

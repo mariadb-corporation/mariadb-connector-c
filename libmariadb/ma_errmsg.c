@@ -20,7 +20,7 @@
 
 #include <ma_global.h>
 #include <ma_sys.h>
-#include "ma_errmsg.h"
+#include "errmsg.h"
 #include <stdarg.h>
 
 #ifdef GERMAN
