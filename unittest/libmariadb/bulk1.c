@@ -186,19 +186,19 @@ static int bulk3(MYSQL *mysql)
 {
   struct st_bulk3 {
     char char_value[20];
-    uchar indicator;
+    unsigned long length;
     int  int_value;
   };
 
-  struct st_bulk3 val[]= {{"Row 1", STMT_INDICATOR_NTS, 1},
-                          {"Row 2", STMT_INDICATOR_NTS, 2},
-                          {"Row 3", STMT_INDICATOR_NTS, 3}};
+  struct st_bulk3 val[3]= {{"Row 1", 5, 1},
+                           {"Row 02", 6, 2},
+                           {"Row 003", 7, 3}};
   int rc;
   MYSQL_BIND bind[2];
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   size_t row_size= sizeof(struct st_bulk3);
   int array_size= 3;
-  ulong length= -1;
+  int i;
 
   if (!bulk_enabled)
     return SKIP;
@@ -219,7 +219,7 @@ static int bulk3(MYSQL *mysql)
 
   bind[0].buffer_type= MYSQL_TYPE_STRING;
   bind[0].buffer= &val[0].char_value;
-  bind[0].length= &length;
+  bind[0].length= &val[0].length;
   bind[1].buffer_type= MYSQL_TYPE_LONG;
   bind[1].buffer= &val[0].int_value;
 
@@ -229,6 +229,66 @@ static int bulk3(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+  return OK;
+}
+
+static int bulk4(MYSQL *mysql)
+{
+  struct st_bulk4 {
+    char char_value[20];
+    char indicator1;
+    int  int_value;
+    char indicator2;
+  };
+
+  struct st_bulk4 val[]= {{"Row 1", STMT_INDICATOR_NTS, 0, STMT_INDICATOR_DEFAULT},
+                          {"Row 2", STMT_INDICATOR_NTS, 0, STMT_INDICATOR_DEFAULT},
+                          {"Row 3", STMT_INDICATOR_NTS, 0, STMT_INDICATOR_DEFAULT}};
+  int rc;
+  MYSQL_BIND bind[2];
+  MYSQL_RES *res;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  size_t row_size= sizeof(struct st_bulk4);
+  int array_size= 3;
+  unsigned long lengths[3]= {-1, -1, -1};
+
+  if (!bulk_enabled)
+    return SKIP;
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk4");
+  check_mysql_rc(rc,mysql);
+  rc= mysql_query(mysql, "CREATE TABLE bulk4 (name varchar(20), row int not null default 3)");
+  check_mysql_rc(rc,mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk4 VALUES (?,?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND)*2);
+  
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+  check_stmt_rc(rc, stmt);
+
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].u.indicator= &val[0].indicator1;
+  bind[0].buffer= &val[0].char_value;
+  bind[0].length= lengths;
+  bind[1].buffer_type= MYSQL_TYPE_LONG;
+  bind[1].u.indicator= &val[0].indicator2;
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk4 WHERE row=3");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  rc= mysql_num_rows(res);
+  mysql_free_result(res);
+  FAIL_IF(rc != 3, "expected 3 rows");
   return OK;
 }
 
@@ -282,6 +342,7 @@ struct my_tests_st my_tests[] = {
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk4", bulk4, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk_null", bulk_null, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };

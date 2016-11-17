@@ -421,6 +421,25 @@ unsigned char *mysql_net_store_length(unsigned char *packet, size_t length)
   return packet + 8;
 }
 
+static long ma_get_length(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long row_nr)
+{
+  if (!stmt->params[param_nr].length)
+    return 0;
+  if (stmt->row_size)
+    return *(long *)((char *)stmt->params[param_nr].length + row_nr * stmt->row_size);
+  else
+    return stmt->params[param_nr].length[row_nr];
+}
+
+static char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long row_nr)
+{
+  if (!stmt->params[param_nr].u.indicator)
+    return 0;
+  if (stmt->row_size)
+    return *((char *)stmt->params[param_nr].u.indicator + (row_nr * stmt->row_size));
+  return stmt->params[param_nr].u.indicator[row_nr];
+}
+
 static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
                                   void *buffer, unsigned long row_nr)
 {
@@ -441,6 +460,8 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
 {
   void *buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
                                   stmt->params[column].buffer, row_nr);
+  char indicator= ma_get_indicator(stmt, column, row_nr);
+
   switch (stmt->params[column].buffer_type) {
   case MYSQL_TYPE_TINY:
     int1store(*p, (*(uchar *)buf));
@@ -558,16 +579,15 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
     ulong len;
     /* to is after p. The latter hasn't been moved */
     uchar *to;
-    void *buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
-                                    stmt->params[column].buffer, row_nr);
 
-    if (stmt->row_size)
-      len= *stmt->params[column].length;
+    if (indicator == STMT_INDICATOR_NTS)
+      len= -1;
     else
-      len= (ulong)STMT_NUM_OFS(long, stmt->params[column].length, row_nr);
+      len= ma_get_length(stmt, column, row_nr);
 
-    if ((long)len == STMT_INDICATOR_NTS)
+    if (len == (ulong)-1)
       len= (ulong)strlen((char *)buf);
+
     to = mysql_net_store_length(*p, len);
 
     if (len)
@@ -717,10 +737,8 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           {
             indicator= STMT_INDICATOR_NULL;
           }
-          else if (stmt->row_size)
-            indicator= *(char *)(stmt->params[i].u.indicator + j * stmt->row_size);
           else
-            indicator= stmt->params[i].u.indicator[j];
+            indicator= ma_get_indicator(stmt, i, j);
           /* check if we need to send data */
           if (indicator == STMT_INDICATOR_NULL ||
               indicator == STMT_INDICATOR_DEFAULT)
@@ -782,9 +800,11 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
             goto mem_error;
           p= start + offset;
         }
-        if ((stmt->params[i].is_null && *stmt->params[i].is_null) ||
+
+        if (indicator != STMT_INDICATOR_DEFAULT &&
+            ((stmt->params[i].is_null && *stmt->params[i].is_null) ||
              stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||
-             !stmt->params[i].buffer)
+             !stmt->params[i].buffer))
         {
           has_data= FALSE;
           if (!stmt->array_size)
@@ -794,7 +814,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         }
         if (bulk_supported && (indicator || stmt->params[i].u.indicator))
         {
-          int1store(p, indicator);
+          int1store(p, indicator > 0 ? indicator : 0);
           p++;
         }
         if (has_data)
