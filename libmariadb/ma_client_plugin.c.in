@@ -41,7 +41,7 @@
 #include <ma_string.h>
 #include <ma_pthread.h>
 
-#include "ma_errmsg.h"
+#include "errmsg.h"
 #include <mysql/client_plugin.h>
 
 struct st_client_plugin_int {
