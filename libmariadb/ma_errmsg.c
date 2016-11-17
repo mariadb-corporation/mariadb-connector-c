@@ -23,6 +23,8 @@
 #include "errmsg.h"
 #include <stdarg.h>
 
+const char *SQLSTATE_UNKNOWN= "HY000";
+
 #ifdef GERMAN
 const char *client_errors[]=
 {

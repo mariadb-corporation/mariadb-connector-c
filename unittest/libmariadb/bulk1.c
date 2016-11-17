@@ -198,7 +198,6 @@ static int bulk3(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   size_t row_size= sizeof(struct st_bulk3);
   int array_size= 3;
-  int i;
 
   if (!bulk_enabled)
     return SKIP;

@@ -130,6 +130,7 @@ extern unsigned int mariadb_deinitialize_ssl;
 
 /* For mysql_async.c */
 #define set_mariadb_error(A,B,C) SET_CLIENT_ERROR((A),(B),(C),0)
+extern const char *SQLSTATE_UNKNOWN;
 #define unknown_sqlstate SQLSTATE_UNKNOWN
 
 #define CLEAR_CLIENT_ERROR(a) \
