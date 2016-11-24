@@ -139,7 +139,6 @@ static int conc_212(MYSQL *mysql)
   mysql_stmt_store_result(stmt);
   mysql_stmt_free_result(stmt);
 
-  sleep(100);
   rc= mariadb_stmt_execute_direct(stmt, "SELECT 1, 2", -1);
   check_stmt_rc(rc, stmt);
   mysql_stmt_store_result(stmt);

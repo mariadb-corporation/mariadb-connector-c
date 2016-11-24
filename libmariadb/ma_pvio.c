@@ -372,9 +372,18 @@ ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 
   if (pvio->methods->write)
     r= pvio->methods->write(pvio, buffer, length);
-end:  
-  if (pvio->callback)
-    pvio->callback(pvio, 0, buffer, r);
+end:
+  if (pvio_callback)
+  {
+    void (*callback)(int mode, MYSQL *mysql, const uchar *buffer, size_t length);
+    LIST *p= pvio_callback;
+    while (p)
+    {
+      callback= p->data;
+      callback(1, pvio->mysql, buffer, r);
+      p= p->next;
+    }
+  }
   return r;
 }
 /* }}} */

@@ -60,6 +60,8 @@ static int bulk1(MYSQL *mysql)
   if (!bulk_enabled)
     return SKIP;
 
+  rc= mysql_select_db(mysql, "testc");
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk1");
   check_mysql_rc(rc, mysql);
 

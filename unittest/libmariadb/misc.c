@@ -979,7 +979,7 @@ static int test_read_timeout(MYSQL *unused __attribute__((unused)))
   mysql_options(my, MYSQL_OPT_READ_TIMEOUT, &timeout);
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
-  
+ 
   rc= mysql_query(my, "SELECT SLEEP(50)");
 
   FAIL_IF(rc == 0, "error expected");

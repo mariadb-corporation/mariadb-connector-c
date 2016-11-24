@@ -94,6 +94,7 @@ static const char *commands[]= {
   "COM_SET_OPTION",
   "COM_STMT_FETCH",
   "COM_DAEMON",
+  "COM_MULTI",
   "COM_END"
 };
 
@@ -101,6 +102,7 @@ typedef struct {
   unsigned long thread_id;
   int last_command; /* COM_* values, -1 for handshake */
   unsigned int max_packet_size;
+  unsigned int num_commands;
   size_t total_size[2];
   unsigned int client_flags;
   char *username;
@@ -111,6 +113,7 @@ typedef struct {
   uchar charset;
   void *next;
   int local_infile;
+  unsigned long pkt_length;
 } TRACE_INFO;
 
 #define TRACE_STATUS(a) (!a) ? "ok" : "error"
@@ -121,6 +124,7 @@ static TRACE_INFO *get_trace_info(unsigned long thread_id)
 {
   TRACE_INFO *info= trace_info;
 
+  /* search connection */
   while (info)
   {
     if (info->thread_id == thread_id)
@@ -226,8 +230,7 @@ static void trace_set_command(TRACE_INFO *info, char *buffer, size_t size)
   if (info->command)
     free(info->command);
 
-  info->command= (char *)malloc(size);
-  strncpy(info->command, buffer, size);
+  info->command= strndup(buffer, size);
 }
 
 void dump_buffer(uchar *buffer, size_t len)
@@ -248,7 +251,7 @@ static void dump_simple(TRACE_INFO *info, my_bool is_error)
 
 static void dump_reference(TRACE_INFO *info, my_bool is_error)
 {
-  printf("%8lu: %s(%lu) %s\n", info->thread_id, commands[info->last_command], info->refid, TRACE_STATUS(is_error));
+  printf("%8lu: %s(%lu) %s\n", info->thread_id, commands[info->last_command], (long)info->refid, TRACE_STATUS(is_error));
 }
 
 static void dump_command(TRACE_INFO *info, my_bool is_error)
@@ -271,7 +274,6 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
 {
   unsigned long thread_id= mysql->thread_id;
   TRACE_INFO *info;
-
 
   /* check if package is server greeting package,
    * and set thread_id */
@@ -343,10 +345,17 @@ void trace_callback(int mode, MYSQL *mysql, const uchar *buffer, size_t length)
 
       if (mode == WRITE)
       {
+        if (info->pkt_length > 0)
+        {
+          info->pkt_length-= length;
+          return;
+        }
         len= uint3korr(p);
+        info->pkt_length= len + 4 - length;
         p+= 4;
         info->last_command= *p;
         p++;
+
         switch (info->last_command) {
         case COM_INIT_DB:
         case COM_DROP_DB:
