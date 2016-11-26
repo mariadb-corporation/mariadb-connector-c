@@ -740,8 +740,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           else
             indicator= ma_get_indicator(stmt, i, j);
           /* check if we need to send data */
-          if (indicator == STMT_INDICATOR_NULL ||
-              indicator == STMT_INDICATOR_DEFAULT)
+          if (indicator > 0)
             has_data= FALSE;
           size= 1;
         }
@@ -801,7 +800,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           p= start + offset;
         }
 
-        if (indicator != STMT_INDICATOR_DEFAULT &&
+        if ((indicator != STMT_INDICATOR_DEFAULT && indicator != STMT_INDICATOR_IGNORE) &&
             ((stmt->params[i].is_null && *stmt->params[i].is_null) ||
              stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||
              !stmt->params[i].buffer))

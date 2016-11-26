@@ -335,11 +335,126 @@ static int bulk_null(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
   return OK;
+}
 
+static int bulk5(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[3];
+  MYSQL_RES *res;
+  unsigned long rows;
+  unsigned int array_size= 5;
+  int rc;
+  int intval[]= {12,13,14,15,16};
+  int id[]= {1,2,3,4,5};
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk5");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE bulk5 (a int, b int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO bulk5 VALUES (1,1), (2,2), (3,3), (4,4), (5,5)");
+  check_mysql_rc(rc, mysql);
+
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 3);
+
+  rc= mysql_stmt_prepare(stmt, "UPDATE bulk5 SET a=? WHERE a=?", -1);
+  check_stmt_rc(rc, stmt);
+
+  bind[0].buffer_type= MYSQL_TYPE_LONG;
+  bind[0].buffer= &intval;
+  bind[1].buffer_type= MYSQL_TYPE_LONG;
+  bind[1].buffer= &id;
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk5 WHERE a=b+11");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  rows= mysql_num_rows(res);
+  mysql_free_result(res);
+
+  FAIL_IF(rows != 5, "expected 5 rows");
+
+  return OK;
+}
+
+static int bulk6(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[3];
+  MYSQL_RES *res;
+  unsigned long rows;
+  unsigned int array_size= 5;
+  int rc;
+  int intval[]= {12,13,14,15,16};
+  int id[]= {1,2,3,4,5};
+  char indicator[5];
+
+  memset(indicator, STMT_INDICATOR_IGNORE, 5);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk5");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE bulk5 (a int, b int default 4)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO bulk5 VALUES (1,1), (2,2), (3,3), (4,4), (5,5)");
+  check_mysql_rc(rc, mysql);
+
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 3);
+
+  rc= mysql_stmt_prepare(stmt, "UPDATE bulk5 SET a=?, b=? WHERE a=?", -1);
+  check_stmt_rc(rc, stmt);
+
+  bind[0].buffer_type= MYSQL_TYPE_LONG;
+  bind[0].buffer= &intval;
+  bind[1].buffer_type= MYSQL_TYPE_LONG;
+  bind[1].buffer= &intval;
+  bind[1].u.indicator= indicator;
+  bind[2].buffer_type= MYSQL_TYPE_LONG;
+  bind[2].buffer= &id;
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk5 WHERE a=b+11");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  rows= mysql_num_rows(res);
+  mysql_free_result(res);
+
+  FAIL_IF(rows != 5, "expected 5 rows");
+
+  return OK;
 }
 
 struct my_tests_st my_tests[] = {
   {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk5", bulk5, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk6", bulk6, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
