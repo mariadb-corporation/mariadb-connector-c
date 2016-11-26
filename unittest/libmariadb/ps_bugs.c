@@ -4487,7 +4487,22 @@ static int test_conc205(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc217(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1 FROM nonexisting_table", -1);
+  FAIL_IF(rc==0, "Expected error\n");
+  rc= mysql_query(mysql, "drop table if exists t_count");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc217", test_conc217, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc205", test_conc205, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc198", test_conc198, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc182", test_conc182, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

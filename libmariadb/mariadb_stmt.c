@@ -2235,5 +2235,6 @@ fail:
   stmt->state= MYSQL_STMT_INITTED;
   SET_CLIENT_STMT_ERROR(stmt, mysql->net.last_errno, mysql->net.sqlstate,
       mysql->net.last_error);
+  mysql->methods->db_stmt_flush_unbuffered(stmt);
   return 1;
 }
