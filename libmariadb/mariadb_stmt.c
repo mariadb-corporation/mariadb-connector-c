@@ -76,6 +76,7 @@ MYSQL_DATA *read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields, uint fields);
 void free_rows(MYSQL_DATA *cur);
 int ma_multi_command(MYSQL *mysql, enum enum_multi_status status);
 MYSQL_FIELD * unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields, my_bool default_value, my_bool long_flag_protocol);
+static my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove);
 
 static my_bool is_not_null= 0;
 static my_bool is_null= 1;
@@ -775,15 +776,12 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           case MYSQL_TYPE_SET:
             size+= 5; /* max 8 bytes for size */
             if (indicator == STMT_INDICATOR_NTS || 
-              (!stmt->row_size && stmt->params[i].length[j] == (unsigned long)-1))
+              (!stmt->row_size && ma_get_length(stmt,i,j) == -1))
                 size+= strlen(ma_get_buffer_offset(stmt, 
                                                    stmt->params[i].buffer_type,
                                                    stmt->params[i].buffer,j));
             else
-              if (!stmt->row_size)
-                size+= (size_t)stmt->params[i].length[j];
-              else
-                size+= (size_t)*stmt->params[i].length;
+              size+= (size_t)ma_get_length(stmt, i, j);
             break;
           default:
             size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
@@ -898,6 +896,13 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       stmt->prefetch_rows= *(long *)value;
     break;
   case STMT_ATTR_PREBIND_PARAMS:
+    if (stmt->state > MYSQL_STMT_INITTED)
+    {
+      mysql_stmt_internal_reset(stmt, 1);
+      net_stmt_close(stmt, 0);
+      stmt->state= MYSQL_STMT_INITTED;
+      stmt->params= 0;
+    }
     stmt->prebind_params= *(unsigned int *)value;
     break;
   case STMT_ATTR_ARRAY_SIZE:

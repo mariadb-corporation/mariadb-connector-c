@@ -303,6 +303,12 @@ static int bulk_null(MYSQL *mysql)
   unsigned long lengths[2]= {-1, -1};
   const char **buf= calloc(1, 2 * sizeof(char *));
 
+  if (!bulk_enabled)
+  {
+    free(buf);
+    return SKIP;
+  }
+
   buf[0]= strdup("foo");
   buf[1]= strdup("foobar");
 
@@ -334,6 +340,7 @@ static int bulk_null(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+  free(buf);
   return OK;
 }
 
@@ -347,6 +354,9 @@ static int bulk5(MYSQL *mysql)
   int rc;
   int intval[]= {12,13,14,15,16};
   int id[]= {1,2,3,4,5};
+
+  if (!bulk_enabled)
+    return SKIP;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk5");
   check_mysql_rc(rc, mysql);
@@ -403,21 +413,24 @@ static int bulk6(MYSQL *mysql)
   int id[]= {1,2,3,4,5};
   char indicator[5];
 
+  if (!bulk_enabled)
+    return SKIP;
   memset(indicator, STMT_INDICATOR_IGNORE, 5);
 
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk5");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk6");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE bulk5 (a int, b int default 4)");
+  rc= mysql_query(mysql, "CREATE TABLE bulk6 (a int, b int default 4)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "INSERT INTO bulk5 VALUES (1,1), (2,2), (3,3), (4,4), (5,5)");
+  rc= mysql_query(mysql, "INSERT INTO bulk6 VALUES (1,1), (2,2), (3,3), (4,4), (5,5)");
   check_mysql_rc(rc, mysql);
 
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
 
-  rc= mysql_stmt_prepare(stmt, "UPDATE bulk5 SET a=?, b=? WHERE a=?", -1);
+  /* 1st case: UPDATE */
+  rc= mysql_stmt_prepare(stmt, "UPDATE bulk6 SET a=?, b=? WHERE a=?", -1);
   check_stmt_rc(rc, stmt);
 
   bind[0].buffer_type= MYSQL_TYPE_LONG;
@@ -439,7 +452,7 @@ static int bulk6(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  rc= mysql_query(mysql, "SELECT * FROM bulk5 WHERE a=b+11");
+  rc= mysql_query(mysql, "SELECT * FROM bulk6 WHERE a=b+11");
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
@@ -447,6 +460,40 @@ static int bulk6(MYSQL *mysql)
   mysql_free_result(res);
 
   FAIL_IF(rows != 5, "expected 5 rows");
+
+  /* 2nd case: INSERT - ignore indicator should be same as default */
+  rc= mysql_query(mysql, "DELETE FROM bulk6");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk6 VALUES (?,?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  /* this should insert 5 default values (=4) */
+  memset(indicator, STMT_INDICATOR_DEFAULT, 5);
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  /* this should insert 5 default values (=4) */
+  memset(indicator, STMT_INDICATOR_IGNORE, 5);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk6 WHERE b=4");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  rows= mysql_num_rows(res);
+  mysql_free_result(res);
+
+  FAIL_IF(rows != 10, "expected 10 rows");
 
   return OK;
 }

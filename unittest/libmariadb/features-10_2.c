@@ -155,8 +155,40 @@ static int conc_212(MYSQL *mysql)
   return OK;
 }
 
+static int conc_218(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[2];
+  int id=1;
+  my_bool is_null= 0, error= 0;
+  unsigned int param_count= 1;
+
+  memset(bind, 0, 2 * sizeof(MYSQL_BIND));
+  bind[0].buffer_type = MYSQL_TYPE_LONG;
+  bind[0].buffer = (void *)&id;
+  bind[0].buffer_length = 4;
+  bind[0].is_null = &is_null;
+  bind[0].error = &error;
+
+  mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
+  check_stmt_rc(mysql_stmt_bind_param(stmt, bind), stmt);
+  check_stmt_rc(mariadb_stmt_execute_direct(stmt, "SELECT ?", -1), stmt);
+  check_stmt_rc(mysql_stmt_store_result(stmt), stmt);
+
+  check_stmt_rc(mysql_stmt_free_result(stmt), stmt);
+
+  param_count= 1;
+  mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
+  check_stmt_rc(mysql_stmt_bind_param(stmt, bind), stmt);
+  check_stmt_rc(mariadb_stmt_execute_direct(stmt, "SELECT ?", -1), stmt);
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"conc_218", conc_218, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"conc_212", conc_212, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"conc_213", conc_213, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"execute_direct", execute_direct, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
