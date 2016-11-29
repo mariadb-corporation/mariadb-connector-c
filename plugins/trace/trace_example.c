@@ -230,7 +230,8 @@ static void trace_set_command(TRACE_INFO *info, char *buffer, size_t size)
   if (info->command)
     free(info->command);
 
-  info->command= strndup(buffer, size);
+  info->command= calloc(1, size + 1);
+  memcpy(info->command, buffer, size);
 }
 
 void dump_buffer(uchar *buffer, size_t len)
