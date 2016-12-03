@@ -1155,15 +1155,16 @@ static my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove)
 
 my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
 {
+  my_bool rc;
   if (stmt && stmt->mysql && stmt->mysql->net.pvio)
     mysql_stmt_internal_reset(stmt, 1);
 
-  net_stmt_close(stmt, 1);
+  rc= net_stmt_close(stmt, 1);
 
   free(stmt->extension);
   free(stmt);
 
-  return(0);
+  return(rc);
 }
 
 void STDCALL mysql_stmt_data_seek(MYSQL_STMT *stmt, unsigned long long offset)
