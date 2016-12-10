@@ -1130,7 +1130,34 @@ static int test_zerofill(MYSQL *mysql)
   return OK;
 }
 
+static int test_server_status(MYSQL *mysql)
+{
+  int rc;
+
+  rc= mysql_autocommit(mysql, 1);
+  FAIL_IF(!(mysql_get_server_status(mysql) & SERVER_STATUS_AUTOCOMMIT),
+          "autocommit flag not set");
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1),(2),(3),(4),(5)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "UPDATE t1 SET a=9 WHERE a=8");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(!(mysql_get_server_status(mysql) & SERVER_QUERY_NO_INDEX_USED), "autocommit flag not set");
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  
+  {"test_server_status", test_server_status, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_read_timeout", test_read_timeout, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_zerofill", test_zerofill, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #ifdef HAVE_REMOTEIO

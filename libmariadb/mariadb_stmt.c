@@ -434,7 +434,9 @@ static long ma_get_length(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long
 
 static char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long row_nr)
 {
-  if (!stmt->params[param_nr].u.indicator)
+  if (!MARIADB_STMT_BULK_SUPPORTED(stmt) ||
+      !stmt->array_size ||
+      !stmt->params[param_nr].u.indicator)
     return 0;
   if (stmt->row_size)
     return *((char *)stmt->params[param_nr].u.indicator + (row_nr * stmt->row_size));
@@ -638,13 +640,10 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   size_t free_bytes= 0;
   size_t null_byte_offset;
   uint i, j, num_rows= 1;
-  my_bool bulk_supported= stmt->array_size > 0 &&
-      (!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
-      (stmt->mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
 
   uchar *start= NULL, *p;
 
-  if (!bulk_supported && stmt->array_size > 0)
+  if (!MARIADB_STMT_BULK_SUPPORTED(stmt) && stmt->array_size > 0)
   {
     stmt_set_error(stmt, CR_FUNCTION_NOT_SUPPORTED, SQLSTATE_UNKNOWN,
                    CER(CR_FUNCTION_NOT_SUPPORTED), "Bulk operation");
@@ -663,7 +662,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   /* flags is 4 bytes, we store just 1 */
   int1store(p, (unsigned char) stmt->flags);
   p++;
-  if (bulk_supported && stmt->array_size)
+  if (MARIADB_STMT_BULK_SUPPORTED(stmt) && stmt->array_size)
     num_rows= stmt->array_size;
   int4store(p, num_rows);
   p+= 4;
@@ -714,7 +713,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         /* this differs from mysqlnd, c api supports unsinged !! */
         uint buffer_type= stmt->params[i].buffer_type | (stmt->params[i].is_unsigned ? 32768 : 0);
         /* check if parameter requires indicator variable */
-        if (bulk_supported &&
+        if (MARIADB_STMT_BULK_SUPPORTED(stmt) &&
             (stmt->params[i].u.indicator || stmt->params[i].buffer_type == MYSQL_TYPE_NULL))
           buffer_type|= 16384;
         int2store(p, buffer_type);
@@ -731,7 +730,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         my_bool has_data= TRUE;
         char indicator= 0;
 
-        if (bulk_supported &&
+        if (MARIADB_STMT_BULK_SUPPORTED(stmt) &&
            (stmt->params[i].u.indicator || stmt->params[i].buffer_type == MYSQL_TYPE_NULL))
         {
           if (stmt->params[i].buffer_type == MYSQL_TYPE_NULL)
@@ -755,7 +754,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         {
           switch (stmt->params[i].buffer_type) {
           case MYSQL_TYPE_NULL:
-            if (bulk_supported)
+            if (MARIADB_STMT_BULK_SUPPORTED(stmt))
               indicator= STMT_INDICATOR_NULL;
             has_data= FALSE;
             break;
@@ -809,7 +808,8 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           else
             indicator= STMT_INDICATOR_NULL;
         }
-        if (bulk_supported && (indicator || stmt->params[i].u.indicator))
+        if (MARIADB_STMT_BULK_SUPPORTED(stmt) &&
+            (indicator || stmt->params[i].u.indicator))
         {
           int1store(p, indicator > 0 ? indicator : 0);
           p++;

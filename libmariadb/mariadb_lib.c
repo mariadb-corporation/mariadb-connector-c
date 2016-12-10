@@ -2523,6 +2523,12 @@ mysql_get_server_info(MYSQL *mysql)
   return((char*) mysql->server_version);
 }
 
+unsigned int STDCALL
+mysql_get_server_status(MYSQL *mysql)
+{
+  return mysql->server_status;
+}
+
 static size_t mariadb_server_version_id(MYSQL *mysql)
 {
   size_t major, minor, patch;
@@ -2546,14 +2552,11 @@ unsigned long STDCALL mysql_get_server_version(MYSQL *mysql)
   return (unsigned long)mariadb_server_version_id(mysql);
 }
 
-
-
 char * STDCALL
 mysql_get_host_info(MYSQL *mysql)
 {
   return(mysql->host_info);
 }
-
 
 uint STDCALL
 mysql_get_proto_info(MYSQL *mysql)
@@ -3899,6 +3902,7 @@ struct st_mariadb_api MARIADB_API=
   mysql_ping,
   mysql_stat,
   mysql_get_server_info,
+  mysql_get_server_status,
   mysql_get_server_version,
   mysql_get_host_info,
   mysql_get_proto_info,

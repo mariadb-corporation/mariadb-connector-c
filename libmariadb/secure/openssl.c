@@ -86,24 +86,6 @@ static void ma_tls_set_error(MYSQL *mysql)
 }
 
 
-static void ma_tls_get_error(char *errmsg, size_t length)
-{
-  ulong ssl_errno= ERR_get_error();
-  const char *ssl_error_reason;
-
-  if (!ssl_errno)
-  {
-    strncpy(errmsg, "Unknown SSL error", length);
-    return;
-  }
-  if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
-  {
-    strncpy(errmsg, ssl_error_reason, length);
-    return;
-  }
-  snprintf(errmsg, length, "SSL errno=%lu", ssl_errno);
-}
-
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 /* 
    thread safe callbacks for OpenSSL 
@@ -296,7 +278,7 @@ static void disable_sigpipe()
     0  success
     1  error
 */
-int ma_tls_start(char *errmsg, size_t errmsg_len)
+int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attribute__((unused)))
 {
   int rc= 1;
   if (ma_tls_initialized)
@@ -332,7 +314,6 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
 #endif
   rc= 0;
   ma_tls_initialized= TRUE;
-end:
   pthread_mutex_unlock(&LOCK_openssl_config);
   return rc;
 }

@@ -55,6 +55,7 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_get_parameters
  mysql_get_proto_info
  mysql_get_server_info
+ mysql_get_server_status
  mysql_get_server_name
  mysql_get_server_version
  mysql_get_socket

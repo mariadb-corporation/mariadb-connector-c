@@ -28,6 +28,11 @@
 /* Bind flags */
 #define MADB_BIND_DUMMY 1
 
+#define MARIADB_STMT_BULK_SUPPORTED(stmt)\
+  ((stmt)->array_size > 0 && \
+  (stmt)->mysql && \
+  (!((stmt)->mysql->server_capabilities & CLIENT_MYSQL) &&\
+    ((stmt)->mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32)))
 
 #define SET_CLIENT_STMT_ERROR(a, b, c, d) \
 { \
