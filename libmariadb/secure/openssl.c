@@ -288,7 +288,8 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   pthread_mutex_init(&LOCK_openssl_config,MY_MUTEX_INIT_FAST);
   pthread_mutex_lock(&LOCK_openssl_config);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
+  if (!OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL))
+    goto end;
 #else
   if (ssl_thread_init())
   {
@@ -314,6 +315,7 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
 #endif
   rc= 0;
   ma_tls_initialized= TRUE;
+end:
   pthread_mutex_unlock(&LOCK_openssl_config);
   return rc;
 }

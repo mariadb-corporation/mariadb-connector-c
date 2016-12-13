@@ -910,7 +910,12 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     if (rc)
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                     ER(CR_CONN_HOST_ERROR), cinfo->host, socket_errno);
+                     ER(CR_CONN_HOST_ERROR), cinfo->host,
+#ifdef _WIN32
+                     errno);
+#else
+                     socket_errno);
+#endif
       goto error;
     }
     if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
