@@ -138,7 +138,7 @@ static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   my_bool first_loop= TRUE;
 
   do {
-    if ((packet_length= vio->read_packet(vio, &packet)) == (size_t)-1)
+    if ((packet_length= vio->read_packet(vio, &packet)) == -1)
       /* read error */
       return CR_ERROR;
 

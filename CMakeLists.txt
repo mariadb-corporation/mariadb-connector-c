@@ -232,7 +232,7 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 # check for various types
 INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
-IF(NOT WITH_SSL AND NOT WITH_SSL STREQUAL "OFF")
+IF(NOT WITH_SSL OR WITH_SSL STREQUAL "OFF")
   IF(WIN32)
     SET(WITH_SSL "SCHANNEL")
   ELSE()

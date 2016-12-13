@@ -265,6 +265,10 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_CONNECTION_USER,
     MARIADB_MAX_ALLOWED_PACKET,
     MARIADB_NET_BUFFER_LENGTH,
+    MARIADB_CONNECTION_SERVER_STATUS,
+    MARIADB_CONNECTION_SERVER_CAPABILITIES,
+    MARIADB_CONNECTION_EXTENDED_SERVER_CAPABILITIES,
+    MARIADB_CONNECTION_CLIENT_CAPABILITIES
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -519,7 +523,6 @@ int		STDCALL mysql_kill(MYSQL *mysql,unsigned long pid);
 int		STDCALL mysql_ping(MYSQL *mysql);
 char *		STDCALL mysql_stat(MYSQL *mysql);
 char *		STDCALL mysql_get_server_info(MYSQL *mysql);
-unsigned int STDCALL mysql_get_server_status(MYSQL *mysql);
 unsigned long   STDCALL mysql_get_server_version(MYSQL *mysql);
 char *		STDCALL mysql_get_host_info(MYSQL *mysql);
 unsigned int	STDCALL mysql_get_proto_info(MYSQL *mysql);
@@ -738,7 +741,6 @@ struct st_mariadb_api {
   int (STDCALL *mysql_ping)(MYSQL *mysql);
   char * (STDCALL *mysql_stat)(MYSQL *mysql);
   char * (STDCALL *mysql_get_server_info)(MYSQL *mysql);
-  unsigned int (STDCALL *mysql_get_server_status)(MYSQL *mysql);
   unsigned long (STDCALL *mysql_get_server_version)(MYSQL *mysql);
   char * (STDCALL *mysql_get_host_info)(MYSQL *mysql);
   unsigned int (STDCALL *mysql_get_proto_info)(MYSQL *mysql);

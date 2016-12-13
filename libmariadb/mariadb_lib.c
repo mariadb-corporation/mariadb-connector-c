@@ -2523,12 +2523,6 @@ mysql_get_server_info(MYSQL *mysql)
   return((char*) mysql->server_version);
 }
 
-unsigned int STDCALL
-mysql_get_server_status(MYSQL *mysql)
-{
-  return mysql->server_status;
-}
-
 static size_t mariadb_server_version_id(MYSQL *mysql)
 {
   size_t major, minor, patch;
@@ -3786,6 +3780,29 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     else
       goto error;
     break;
+  case MARIADB_CONNECTION_SERVER_STATUS:
+    if (mysql)
+      *((unsigned int *)arg)= mysql->server_status;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_SERVER_CAPABILITIES:
+    if (mysql)
+      *((unsigned long *)arg)= mysql->server_capabilities;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_EXTENDED_SERVER_CAPABILITIES:
+    if (mysql)
+      *((unsigned long *)arg)= mysql->extension->mariadb_server_capabilities;
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_CLIENT_CAPABILITIES:
+    if (mysql)
+      *((unsigned long *)arg)= mysql->client_flag;
+    else
+      goto error;
   default:
     va_end(ap);
     return(-1);
@@ -3902,7 +3919,6 @@ struct st_mariadb_api MARIADB_API=
   mysql_ping,
   mysql_stat,
   mysql_get_server_info,
-  mysql_get_server_status,
   mysql_get_server_version,
   mysql_get_host_info,
   mysql_get_proto_info,

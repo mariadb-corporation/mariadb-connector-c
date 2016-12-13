@@ -638,7 +638,7 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
 
   size_t length= 1024;
   size_t free_bytes= 0;
-  size_t null_byte_offset;
+  size_t null_byte_offset= 0;
   uint i, j, num_rows= 1;
 
   uchar *start= NULL, *p;

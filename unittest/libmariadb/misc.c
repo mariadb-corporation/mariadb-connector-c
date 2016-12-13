@@ -1133,24 +1133,49 @@ static int test_zerofill(MYSQL *mysql)
 static int test_server_status(MYSQL *mysql)
 {
   int rc;
+  unsigned long server_status;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
 
   rc= mysql_autocommit(mysql, 1);
-  FAIL_IF(!(mysql_get_server_status(mysql) & SERVER_STATUS_AUTOCOMMIT),
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);
+  FAIL_IF(!(server_status & SERVER_STATUS_AUTOCOMMIT),
           "autocommit flag not set");
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int, b int)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1),(2),(3),(4),(5)");
+  rc= mysql_query(mysql, "INSERT INTO t1 (a) VALUES (1),(2),(3),(4),(5)");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "UPDATE t1 SET a=9 WHERE a=8");
   check_mysql_rc(rc, mysql);
 
-  FAIL_IF(!(mysql_get_server_status(mysql) & SERVER_QUERY_NO_INDEX_USED), "autocommit flag not set");
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);
+  FAIL_IF(!(server_status & SERVER_QUERY_NO_INDEX_USED), "autocommit flag not set");
+
+  rc= mysql_query(mysql, "CREATE SCHEMA test_tmp");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_select_db(mysql, "test_tmp");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP SCHEMA test_tmp");
+  check_mysql_rc(rc, mysql);
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);
+  FAIL_IF(!(server_status & SERVER_STATUS_DB_DROPPED),
+          "DB_DROP flag not set");
+
+  FAIL_IF(!(server_status & SERVER_SESSION_STATE_CHANGED),
+          "SESSION_STATE_CHANGED flag not set");
+
+  rc= mysql_select_db(mysql, schema);
+  check_mysql_rc(rc, mysql);
+
+  mysql_stmt_close(stmt);
 
   return OK;
 }
