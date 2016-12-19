@@ -7,13 +7,16 @@ SET(MARIADB_CLIENT_INCLUDES ${CC_SOURCE_DIR}/include/mariadb_com.h
                             ${CC_SOURCE_DIR}/include/ma_list.h
                             ${CC_SOURCE_DIR}/include/errmsg.h
                             ${CC_SOURCE_DIR}/include/mariadb_dyncol.h
-                            ${CC_SOURCE_DIR}/include/mariadb_ctype.h)
+                            ${CC_SOURCE_DIR}/include/mariadb_ctype.h
+                            PARENT_SCOPE)
 SET(MYSQL_ADDITIONAL_INCLUDES
    ${CC_SOURCE_DIR}/include/mysql/client_plugin.h
    ${CC_SOURCE_DIR}/include/mysql/plugin_auth_common.h
-   ${CC_SOURCE_DIR}/include/mysql/plugin_auth.h)
+   ${CC_SOURCE_DIR}/include/mysql/plugin_auth.h
+   PARENT_SCOPE)
  SET(MARIADB_ADDITIONAL_INCLUDES
-   ${CC_SOURCE_DIR}/include/mariadb/ma_io.h)
+   ${CC_SOURCE_DIR}/include/mariadb/ma_io.h
+   PARENT_SCOPE)
 
 INSTALL(FILES
    ${MARIADB_CLIENT_INCLUDES}
@@ -27,5 +30,3 @@ INSTALL(FILES
    ${MARIADB_ADDITIONAL_INCLUDES}
    DESTINATION ${INSTALL_INCLUDEDIR}/mariadb
    COMPONENT Development)
-
-
