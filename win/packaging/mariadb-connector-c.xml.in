@@ -71,6 +71,7 @@
       @MARIADB_INCLUDE_FILES@
     </Component>
     <Component Id="MysqlIncludes" Guid="6BD3D62D-8013-4C0A-B032-61AA04A98EDE" Directory="instincludemysql" DiskId="1" Win64="@IS_WIN64@">
+      <CreateFolder/>
       @MARIADB_INCLUDEMYSQL_FILES@
     </Component>
 </Fragment>
