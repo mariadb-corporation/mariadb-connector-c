@@ -220,6 +220,9 @@ int vio_wait_or_timeout(Vio *vio, my_bool is_read, int timeout)
   fd_set fds, exc_fds;
 #endif
 
+  if (!timeout)
+    timeout= -1;
+
   /* we don't support it via named pipes yet.
    * maybe this could be handled via PeekNamedPipe somehow !? */
   if (vio->type == VIO_TYPE_NAMEDPIPE)
@@ -239,6 +242,7 @@ int vio_wait_or_timeout(Vio *vio, my_bool is_read, int timeout)
   else
   {
 #ifndef _WIN32
+    memset(&p_fd, 0, sizeof(p_fd));
     p_fd.fd= vio->sd;
     p_fd.events= (is_read) ? POLLIN : POLLOUT;
 
@@ -312,19 +316,13 @@ size_t vio_real_read(Vio *vio, gptr buf, size_t size)
         vio_blocking(vio, TRUE, &old_mode);
       }
 #ifndef _WIN32
-      do {
-        r= read(vio->sd, buf, size);
-      } while (r == -1 && errno == EINTR);
-
-      while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)
-                      && vio->read_timeout > 0)
+      if (vio_wait_or_timeout(vio, TRUE, vio->read_timeout) < 1)
       {
-        if (vio_wait_or_timeout(vio, TRUE, vio->write_timeout) < 1)
-          return 0;
-        do {
-          r= read(vio->sd, buf, size);
-        } while (r == -1 && errno == EINTR);
+        return -1;
       }
+      do {
+        r= recv(vio->sd, buf, size, 0);
+      } while (r == -1 && errno == EINTR);
 #else
       {
         WSABUF wsaData;
@@ -371,7 +369,7 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
   else
   {
     r= vio_real_read(vio, vio->cache, VIO_CACHE_SIZE);
-    if (r > 0)
+    if ((ssize_t)r > 0)
     {
       if (size < r)
       {
@@ -384,7 +382,7 @@ size_t vio_read(Vio * vio, gptr buf, size_t size)
   } 
 
 #ifndef DBUG_OFF
-  if ((size_t)r == -1)
+  if ((ssize_t)r == -1)
   {
     DBUG_PRINT("vio_error", ("Got error %d during read",socket_errno));
   }

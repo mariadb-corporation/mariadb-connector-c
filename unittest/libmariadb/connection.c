@@ -763,8 +763,37 @@ static int test_conc_163(MYSQL *mysql)
   return OK;
 }
 
+static int test_read_timeout(MYSQL *my __attribute__((unused)))
+{
+  int timeout= 8;
+  int rc;
+  MYSQL *mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, &timeout);
+
+  if (!mysql_real_connect(mysql, hostname, username,
+                         password, schema, port, socketname, 0))
+  {
+    diag("error: %s\n", mysql_error(mysql));
+    return FAIL;
+  }
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE PROCEDURE p1()"
+                         "BEGIN"
+                         "  set @a:=SLEEP(15);"
+                         "END");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CALL p1()");
+  FAIL_IF(!rc, "expected error");
+
+  mysql_close(mysql);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_read_timeout", test_read_timeout, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc_163", test_conc_163, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
