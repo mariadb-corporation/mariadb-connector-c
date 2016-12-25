@@ -153,7 +153,7 @@ int my_ssl_start(MYSQL *mysql)
     if (ssl_crypto_init())
       goto end;
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x1010000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL);
 #else
     SSL_library_init();
@@ -167,7 +167,7 @@ int my_ssl_start(MYSQL *mysql)
     /* digests and ciphers */
     OpenSSL_add_all_algorithms();
 
-#if OPENSSL_VERSION_NUMBER >= 0x1010000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
 #else
     if (!(SSL_context= SSL_CTX_new(TLSv1_client_method())))
