@@ -76,7 +76,8 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   aurora_close,
   NULL,
   aurora_command,
-  aurora_reconnect
+  aurora_reconnect,
+  NULL
 };
 
 struct st_mariadb_api *mariadb_api= NULL;

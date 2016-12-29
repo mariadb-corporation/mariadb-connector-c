@@ -4501,7 +4501,36 @@ static int test_conc217(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc208(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  int data;
+  MYSQL_BIND bind;
+
+  rc= mysql_stmt_prepare(stmt, "SELECT \"100\" UNION SELECT \"88\" UNION SELECT \"389789\"", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  bind.buffer= (void *)&data;
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, &bind);
+
+  while (mysql_stmt_fetch(stmt) != MYSQL_NO_DATA)
+  {
+    diag("data=%d", data);
+    FAIL_IF(data != 100 && data != 88 && data != 389789, "Wrong value");
+  }
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc217", test_conc217, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc205", test_conc205, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc198", test_conc198, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

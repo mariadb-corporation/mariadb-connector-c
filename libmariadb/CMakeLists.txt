@@ -90,6 +90,7 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_real_escape_string
  mysql_real_query
  mysql_refresh
+ mysql_reset_connection
  mysql_rollback
  mysql_row_seek
  mysql_row_tell
@@ -201,6 +202,8 @@ SET(MARIADB_NONBLOCK_SYMBOLS
  mysql_next_result_start
  mysql_ping_cont
  mysql_ping_start
+ mysql_reset_connection_start
+ mysql_reset_connection_cont
  mysql_query_cont
  mysql_query_start
  mysql_read_query_result_cont

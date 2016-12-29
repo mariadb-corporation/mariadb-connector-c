@@ -69,7 +69,8 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   repl_close,
   repl_set_options,
   repl_command,
-  NULL 
+  NULL,
+  NULL
 };
 
 typedef struct st_conn_repl {

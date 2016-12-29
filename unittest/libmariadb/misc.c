@@ -1180,8 +1180,84 @@ static int test_server_status(MYSQL *mysql)
   return OK;
 }
 
+static int test_wl6797(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int        rc;
+  const char *stmt_text;
+  my_ulonglong res;
+
+  if (mysql_get_server_version(mysql) < 50703 ||
+      (mariadb_connection(mysql) && mysql_get_server_version(mysql) < 100203))
+  {
+    diag("Skipping test_wl6797: "
+            "tested feature does not exist in versions before MySQL 5.7.3 and MariaDB 10.2\n");
+    return OK;
+  }
+  /* clean up the session */
+  rc= mysql_reset_connection(mysql);
+  FAIL_UNLESS(rc == 0, "");
+
+  /* do prepare of a query */
+  mysql_query(mysql, "use test");
+  mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  mysql_query(mysql, "CREATE TABLE t1 (a int)");
+
+  stmt= mysql_stmt_init(mysql);
+  stmt_text= "INSERT INTO t1 VALUES (1), (2)";
+
+  rc= mysql_stmt_prepare(stmt, stmt_text, (ulong)strlen(stmt_text));
+  check_mysql_rc(rc, mysql);
+
+  /* Execute the insert statement */
+  rc= mysql_stmt_execute(stmt);
+  check_mysql_rc(rc, mysql);
+
+  /*
+   clean the session this should remove the prepare statement
+   from the cache.
+  */
+  rc= mysql_reset_connection(mysql);
+  FAIL_UNLESS(rc == 0, "");
+
+  /* this below stmt should report error */
+  rc= mysql_stmt_execute(stmt);
+  FAIL_IF(rc == 0, "");
+
+  /*
+   bug#17653288: MYSQL_RESET_CONNECTION DOES NOT RESET LAST_INSERT_ID
+  */
+
+  mysql_query(mysql, "DROP TABLE IF EXISTS t2");
+  rc= mysql_query(mysql, "CREATE TABLE t2 (a int NOT NULL PRIMARY KEY"\
+                         " auto_increment)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t2 VALUES (null)");
+  check_mysql_rc(rc, mysql);
+  res= mysql_insert_id(mysql);
+  FAIL_UNLESS(res == 1, "");
+  rc= mysql_reset_connection(mysql);
+  FAIL_UNLESS(rc == 0, "");
+  res= mysql_insert_id(mysql);
+  FAIL_UNLESS(res == 0, "");
+
+  rc= mysql_query(mysql, "INSERT INTO t2 VALUES (last_insert_id(100))");
+  check_mysql_rc(rc, mysql);
+  res= mysql_insert_id(mysql);
+  FAIL_UNLESS(res == 100, "");
+  rc= mysql_reset_connection(mysql);
+  FAIL_UNLESS(rc == 0, "");
+  res= mysql_insert_id(mysql);
+  FAIL_UNLESS(res == 0, "");
+
+  mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  mysql_query(mysql, "DROP TABLE IF EXISTS t2");
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
-  
+  {"test_wl6797", test_wl6797, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_server_status", test_server_status, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_read_timeout", test_read_timeout, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_zerofill", test_zerofill, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

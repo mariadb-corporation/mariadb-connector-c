@@ -673,6 +673,8 @@ int             STDCALL mysql_read_query_result_start(my_bool *ret,
                                                       MYSQL *mysql);
 int             STDCALL mysql_read_query_result_cont(my_bool *ret,
                                                      MYSQL *mysql, int status);
+int             STDCALL mysql_reset_connection_start(int *ret, MYSQL *mysql);
+int             STDCALL mysql_reset_connection_cont(int *ret, MYSQL *mysql, int status);
 int STDCALL mysql_session_track_get_next(MYSQL *mysql, enum enum_session_state_type type, const char **data, size_t *length);
 int STDCALL mysql_session_track_get_first(MYSQL *mysql, enum enum_session_state_type type, const char **data, size_t *length);
 int STDCALL mysql_stmt_prepare_start(int *ret, MYSQL_STMT *stmt,const char *query, size_t length);
@@ -696,6 +698,7 @@ int STDCALL mysql_stmt_send_long_data_start(my_bool *ret, MYSQL_STMT *stmt,
                                             size_t len);
 int STDCALL mysql_stmt_send_long_data_cont(my_bool *ret, MYSQL_STMT *stmt,
                                            int status);
+int STDCALL mysql_reset_connection(MYSQL *mysql);
 
 /* API function calls (used by dynmic plugins) */
 struct st_mariadb_api {
@@ -813,6 +816,7 @@ struct st_mariadb_api {
   int (STDCALL *mysql_stmt_next_result)(MYSQL_STMT *stmt);
   my_bool (STDCALL *mysql_stmt_more_results)(MYSQL_STMT *stmt);
   int (STDCALL *mariadb_stmt_execute_direct)(MYSQL_STMT *stmt, const char *stmtstr, size_t length);
+  int (STDCALL *mysql_reset_connection)(MYSQL *mysql);
 };
   
 /* these methods can be overwritten by db plugins */

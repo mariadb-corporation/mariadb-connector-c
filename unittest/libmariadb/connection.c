@@ -1006,7 +1006,57 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_reset(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_RES *res;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1),(2),(3)");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql_affected_rows(mysql) != 3, "Expected 3 rows");
+
+  rc= mysql_reset_connection(mysql);
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql_affected_rows(mysql) != ~(unsigned long)0, "Expected 0 rows");
+
+  rc= mysql_query(mysql, "SELECT a FROM t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SELECT 1 FROM DUAL");
+  FAIL_IF(!rc, "Error expected"); 
+
+  rc= mysql_reset_connection(mysql);
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  FAIL_IF(res, "expected no result");
+
+  rc= mysql_query(mysql, "SELECT a FROM t1");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_use_result(mysql);
+  FAIL_IF(!res, "expected result");
+
+  rc= mysql_reset_connection(mysql);
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql_fetch_row(res), "expected error");
+
+  mysql_free_result(res);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_reset", test_reset, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_unix_socket_close", test_unix_socket_close, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_sess_track_db", test_sess_track_db, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_get_options", test_get_options, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

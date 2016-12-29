@@ -2258,6 +2258,10 @@ mysql_fetch_row(MYSQL_RES *res)
 {
   if (!res)
     return 0;
+  if (res->handle)
+    if (res->handle->status != MYSQL_STATUS_USE_RESULT &&
+        res->handle->status != MYSQL_STATUS_GET_RESULT)
+      return 0;
   if (!res->data)
   {						/* Unbufferred fetch */
     if (!res->eof)
@@ -3873,6 +3877,44 @@ mysql_get_parameters(void)
   return &mariadb_internal_parameters;
 }
 
+int STDCALL mysql_reset_connection(MYSQL *mysql)
+{
+  int rc;
+
+  /* check if connection handler is active */
+  if (IS_CONNHDLR_ACTIVE(mysql))
+  {
+    if (mysql->extension->conn_hdlr->plugin && mysql->extension->conn_hdlr->plugin->reset)
+      return(mysql->extension->conn_hdlr->plugin->reset(mysql));
+  }
+
+  /* skip result sets */
+  if (mysql->status == MYSQL_STATUS_USE_RESULT ||
+      mysql->status == MYSQL_STATUS_GET_RESULT ||
+      mysql->status & SERVER_MORE_RESULTS_EXIST)
+  {
+    mthd_my_skip_result(mysql);
+    mysql->status= MYSQL_STATUS_READY;
+  }
+
+  rc= ma_simple_command(mysql, COM_RESET_CONNECTION, 0, 0, 0, 0);
+  if (rc && mysql->options.reconnect)
+  {
+    /* There is no big sense in resetting but we need reconnect */
+    rc= ma_simple_command(mysql, COM_RESET_CONNECTION,0,0,0,0);
+  }
+  if (rc)
+    return 1;
+
+  /* reset the connection in all active statements */
+  ma_invalidate_stmts(mysql, "mysql_reset_connection()");
+  free_old_query(mysql);
+  mysql->status= MYSQL_STATUS_READY;
+  mysql->affected_rows= ~(my_ulonglong)0;
+  mysql->insert_id= 0;
+  return 0;
+}
+
 #undef STDCALL
 /* API functions for usage in dynamic plugins */
 struct st_mariadb_api MARIADB_API=
@@ -3990,7 +4032,8 @@ struct st_mariadb_api MARIADB_API=
   mysql_stmt_field_count,
   mysql_stmt_next_result,
   mysql_stmt_more_results,
-  mariadb_stmt_execute_direct
+  mariadb_stmt_execute_direct,
+  mysql_reset_connection
 };
 
 /*
