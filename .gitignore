@@ -34,6 +34,7 @@ mysql_config/mysql_config
 *.x86_64
 *.hex
 
+*.dgcov
 CTestTestfile.cmake
 cmake_install.cmake
 bin/
