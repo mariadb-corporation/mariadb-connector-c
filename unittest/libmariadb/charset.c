@@ -765,10 +765,40 @@ static int charset_auto(MYSQL *my __attribute__((unused)))
   }
   mysql_close(mysql);
   return OK;
+}
 
+/* check if all server character sets are supported */
+static int test_conc223(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+  int found= 0;
+
+  rc= mysql_query(mysql, "SELECT ID, CHARACTER_SET_NAME, COLLATION_NAME FROM INFORMATION_SCHEMA.COLLATIONS");
+  check_mysql_rc(rc, mysql);
+
+  res= mysql_store_result(mysql);
+  while ((row = mysql_fetch_row(res)))
+  {
+    int id= atoi(row[0]);
+    if (!mariadb_get_charset_by_nr(id))
+    {
+      diag("%04d %s %s", id, row[1], row[2]);
+      found++;
+    }
+  }
+  mysql_free_result(res);
+  if (found)
+  {
+    diag("%d character sets/collations not found", found);
+    return FAIL;
+  }
+  return OK;
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc223", test_conc223, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"charset_auto", charset_auto, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"bug_8378: mysql_real_escape with gbk", bug_8378, TEST_CONNECTION_NEW, 0,  opt_bug8378,  NULL},
   {"test_client_character_set", test_client_character_set, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
