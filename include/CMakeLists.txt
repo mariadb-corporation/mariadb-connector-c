@@ -8,15 +8,18 @@ SET(MARIADB_CLIENT_INCLUDES ${CC_SOURCE_DIR}/include/mariadb_com.h
                             ${CC_SOURCE_DIR}/include/errmsg.h
                             ${CC_SOURCE_DIR}/include/mariadb_dyncol.h
                             ${CC_SOURCE_DIR}/include/mariadb_ctype.h
-                            PARENT_SCOPE)
+                            )
 SET(MYSQL_ADDITIONAL_INCLUDES
    ${CC_SOURCE_DIR}/include/mysql/client_plugin.h
    ${CC_SOURCE_DIR}/include/mysql/plugin_auth_common.h
    ${CC_SOURCE_DIR}/include/mysql/plugin_auth.h
-   PARENT_SCOPE)
- SET(MARIADB_ADDITIONAL_INCLUDES
+   )
+SET(MARIADB_ADDITIONAL_INCLUDES
    ${CC_SOURCE_DIR}/include/mariadb/ma_io.h
-   PARENT_SCOPE)
+   )
+IF(WIN32)
+  SET(WIX_INCLUDES ${MARIADB_CLIENT_INCLUDES} ${MARIADB_ADDITIONAL_INCLUDES} ${MYSQL_ADDITIONAL_INCLUDES} PARENT_SCOPE)
+ENDIF()
 
 INSTALL(FILES
    ${MARIADB_CLIENT_INCLUDES}
