@@ -392,7 +392,7 @@ MYSQL *test_connect(struct my_tests_st *test) {
   if (!(mysql_real_connect(mysql, hostname, username, password,
                            schema, port, socketname, (test) ? test->connect_flags:0)))
   {
-    diag("Couldn't establish connection to server %s. Error (%d): %s", 
+    diag("-- Couldn't establish connection to server %s. Error (%d): %s", 
                    hostname, mysql_errno(mysql), mysql_error(mysql));
     mysql_close(mysql);
     return(NULL);
