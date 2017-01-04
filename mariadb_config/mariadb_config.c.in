@@ -44,7 +44,7 @@ static const char *values[]=
   PORT,
   PLUGIN_DIR
 };
-  
+
 void usage(void)
 {
   int i=0;
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
       puts(PORT);
       break;
     case 'p':
-      puts(MARIADB_PLUGINDIR);
+      puts(PLUGIN_DIR);
       break;
     case 'y':
       puts(LIBS_SYS);
