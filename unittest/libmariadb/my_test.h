@@ -510,7 +510,7 @@ void run_tests(struct my_tests_st *test) {
   else
   {
     diag("Can't connect to a server. Aborting....");
-    exit(0);
+    exit(-1);
   }
 
   for (i=0; i < total; i++) {
