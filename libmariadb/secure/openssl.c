@@ -669,7 +669,11 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
   if (!(cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry)))
     goto error;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   cn_str = (char *)ASN1_STRING_data(cn_asn1);
+#else
+  cn_str = (char *)ASN1_STRING_get0_data(cn_asn1);
+#endif
 
   /* Make sure there is no embedded \0 in the CN */
   if ((size_t)ASN1_STRING_length(cn_asn1) != strlen(cn_str))

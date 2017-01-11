@@ -12,7 +12,7 @@ IF(COMMAND CMAKE_POLICY)
       IF(POLICY ${P})
         CMAKE_POLICY(SET ${P} ${TYPE})
       ENDIF()
-    ENDFOREACH()   
+    ENDFOREACH()
   ENDFOREACH()
 ENDIF()
 
@@ -61,6 +61,7 @@ ADD_OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
 ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
 ADD_OPTION(WITH_SQLITE "Experimental" OFF)
+ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
 MARK_AS_ADVANCED(${OPT}WITH_SQLITE)
 ###############
 
@@ -122,7 +123,7 @@ IF(MSVC)
           ELSE()
             STRING(REPLACE "/Zi" "/Z7" COMPILER_FLAGS ${COMPILER_FLAGS})
           ENDIF()
-          MESSAGE (STATUS "CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE}= ${COMPILER_FLAGS}") 
+          MESSAGE (STATUS "CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE}= ${COMPILER_FLAGS}")
           SET(CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE} ${COMPILER_FLAGS})
         ENDIF()
       ENDFOREACH()
@@ -131,7 +132,7 @@ IF(MSVC)
 ENDIF()
 ENDIF(NOT IS_SUBPROJECT)
 
-# Disable dbug information for release builds 
+# Disable dbug information for release builds
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DDBUG_OFF")
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDBUG_OFF")
 SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
@@ -231,7 +232,7 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 # check for various types
 INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
-IF(NOT WITH_SSL OR WITH_SSL STREQUAL "OFF")
+IF(WITH_SSL STREQUAL "ON")
   IF(WIN32)
     SET(WITH_SSL "SCHANNEL")
   ELSE()

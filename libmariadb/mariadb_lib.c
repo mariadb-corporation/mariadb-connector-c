@@ -1008,8 +1008,12 @@ error:
 }
 
 int STDCALL
-mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
-        const char *ca, const char *capath, const char *cipher)
+mysql_ssl_set(MYSQL *mysql __attribute__((unused)), 
+              const char *key __attribute__((unused)),
+              const char *cert __attribute__((unused)),
+              const char *ca __attribute__((unused)),
+              const char *capath __attribute__((unused)),
+              const char *cipher __attribute__((unused)))
 {
 #ifdef HAVE_TLS
   char enable= 1;
@@ -1028,7 +1032,7 @@ mysql_ssl_set(MYSQL *mysql, const char *key, const char *cert,
 **************************************************************************/
 
 const char * STDCALL
-mysql_get_ssl_cipher(MYSQL *mysql)
+mysql_get_ssl_cipher(MYSQL *mysql __attribute__((unused)))
 {
 #ifdef HAVE_TLS
   if (mysql->net.pvio && mysql->net.pvio->ctls)
