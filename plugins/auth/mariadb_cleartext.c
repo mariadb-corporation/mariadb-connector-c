@@ -58,6 +58,9 @@ mysql_declare_client_plugin(AUTHENTICATION)
   "Georg Richter",
   "MariaDB clear password authentication plugin",
   {0,1,0},
+  "LGPL",
+  NULL,
+  NULL,
   NULL,
   NULL,
   clear_password_auth_client

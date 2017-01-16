@@ -46,7 +46,10 @@ mysql_declare_client_plugin(AUTHENTICATION)
   "Sergei Golubchik, Georg Richter",
   "Dialog Client Authentication Plugin",
   {0,1,0},
+  "LGPL",
+  NULL,
   auth_dialog_init,
+  NULL,
   NULL,
   auth_dialog_open
 mysql_end_client_plugin;

@@ -40,8 +40,8 @@
 #define MYSQL_CLIENT_reserved                1
 #define MYSQL_CLIENT_AUTHENTICATION_PLUGIN   2
 
-#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0100
-#define MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION  0x0100
+#define MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION  0x0101
+#define MYSQL_CLIENT_DB_PLUGIN_INTERFACE_VERSION  0x0101
 
 #define MYSQL_CLIENT_MAX_PLUGINS             3
 
@@ -60,8 +60,11 @@
   const char *author;                                   \
   const char *desc;                                     \
   unsigned int version[3];                              \
+  const char *license;                                  \
+  void *mysql_api;                                      \
   int (*init)(char *, size_t, int, va_list);            \
-  int (*deinit)(void);
+  int (*deinit)();                                      \
+  int (*options)(const char *option, const void *);
 
 struct st_mysql_client_plugin
 {
