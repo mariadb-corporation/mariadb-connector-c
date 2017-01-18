@@ -208,6 +208,7 @@ extern const char *SQLSTATE_UNKNOWN;
     /* MariaDB specific */
     MYSQL_PROGRESS_CALLBACK=5999,
     MYSQL_OPT_NONBLOCK,
+    MYSQL_OPT_IO_WAIT,
     /* MariaDB Connector/C specific */
     MYSQL_DATABASE_DRIVER=7000,
     MARIADB_OPT_SSL_FP,             /* deprecated, use MARIADB_OPT_TLS_PEER_FP instead */
@@ -316,6 +317,7 @@ struct st_mysql_options {
     int (*local_infile_error)(void *, char *, unsigned int);
     void *local_infile_userdata;
     struct st_mysql_options_extension *extension;
+    int (*io_wait)(my_socket handle, my_bool is_read, int timeout);
 };
 
   typedef struct st_mysql {

@@ -500,6 +500,13 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
   if (!pvio || !pvio->data)
     return 0;
 
+  if (pvio->mysql->options.io_wait != NULL) {
+    my_socket handle;
+    if (pvio_socket_get_handle(pvio, &handle))
+      return 0;
+    return pvio->mysql->options.io_wait(handle, is_read, timeout);
+  }
+
   csock= (struct st_pvio_socket *)pvio->data;
   {
 #ifndef _WIN32

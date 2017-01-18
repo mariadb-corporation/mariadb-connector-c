@@ -162,6 +162,13 @@ end:
 
 int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
+  if (pvio->mysql->options.io_wait != NULL) {
+    HANDLE handle;
+    if (pvio_npipe_get_handle(pvio, &handle))
+      return 0;
+    return pvio->mysql->options.io_wait(handle, is_read, timeout);
+  }
+
   int r= -1;
   DWORD status;
   int save_error;

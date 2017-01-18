@@ -2716,6 +2716,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       }
     mysql->options.extension->async_context= ctxt;
     break;
+  case MYSQL_OPT_IO_WAIT:
+    mysql->options.io_wait = (int(*)(my_socket, bool, int))arg1;
+    break;
   case MYSQL_OPT_MAX_ALLOWED_PACKET:
     if (mysql)
       mysql->options.max_allowed_packet= (unsigned long)(*(size_t *)arg1);
@@ -3035,6 +3038,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
   case MYSQL_OPT_NONBLOCK:
     *((my_bool *)arg)= test(mysql->options.extension && mysql->options.extension->async_context);
     break;
+  case MYSQL_OPT_IO_WAIT:
+    *((int(**)(my_socket, my_bool, int))arg) = mysql->options.io_wait;
+  break;
   case MYSQL_OPT_SSL_ENFORCE:
     *((my_bool *)arg)= mysql->options.use_ssl;
     break;
