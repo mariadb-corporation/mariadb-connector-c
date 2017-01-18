@@ -71,6 +71,7 @@ struct st_mysql_options_extension {
   char *server_public_key;
   char *proxy_header;
   size_t proxy_header_len;
+  int (*io_wait)(my_socket handle, my_bool is_read, int timeout);
 };
 
 typedef struct st_connection_handler
