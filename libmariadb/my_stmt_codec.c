@@ -358,7 +358,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
     {
       float fval;
       fval= is_unsigned ? (float)(ulonglong)(val) : (float)val;
-      float4store(r_param->buffer, fval);
+      float4store((float *)r_param->buffer, fval);
       *r_param->error= is_unsigned ? (ulonglong)fval != (ulonglong)val : (longlong)fval != val;
       r_param->buffer_length= 4;
     }
