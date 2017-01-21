@@ -1008,7 +1008,7 @@ error:
 }
 
 int STDCALL
-mysql_ssl_set(MYSQL *mysql __attribute__((unused)), 
+mysql_ssl_set(MYSQL *mysql __attribute__((unused)),
               const char *key __attribute__((unused)),
               const char *cert __attribute__((unused)),
               const char *ca __attribute__((unused)),
@@ -2672,6 +2672,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.extension->report_progress=
         (void (*)(const MYSQL *, uint, uint, double, const char *, uint)) arg1;
     break;
+  case MYSQL_SERVER_PUBLIC_KEY:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, server_public_key, (char *)arg1);
+    break;
   case MYSQL_PLUGIN_DIR:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, plugin_dir, (char *)arg1);
     break;
@@ -3025,6 +3028,10 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
   case MYSQL_PROGRESS_CALLBACK:
     *((void (**)(const MYSQL *, uint, uint, double, const char *, uint))arg)=
        mysql->options.extension ?  mysql->options.extension->report_progress : NULL;
+    break;
+  case MYSQL_SERVER_PUBLIC_KEY:
+    *((char **)arg)= mysql->options.extension ?
+      mysql->options.extension->server_public_key : NULL;
     break;
   case MYSQL_PLUGIN_DIR:
     *((char **)arg)= mysql->options.extension ? mysql->options.extension->plugin_dir : NULL;

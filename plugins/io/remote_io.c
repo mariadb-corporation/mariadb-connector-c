@@ -156,7 +156,7 @@ static size_t rio_write_callback(char *buffer,
       size= free_bytes;
     else {
       curl_file->length+= size - free_bytes;
-      curl_file->buffer= tmp;
+      curl_file->buffer= (unsigned char *)tmp;
     }
   }
 

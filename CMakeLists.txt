@@ -139,7 +139,7 @@ SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 
 IF(CMAKE_COMPILER_IS_GNUCC)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wdeclaration-after-statement")
+  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement")
 ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
@@ -183,8 +183,10 @@ IF(WITH_EXTERNAL_ZLIB)
   ENDIF()
 ENDIF()
 
-INCLUDE(TestBigEndian)
-TEST_BIG_ENDIAN(HAVE_BIGENDIAN)
+IF(NOT WIN32)
+  INCLUDE(TestBigEndian)
+  TEST_BIG_ENDIAN(HAVE_BIGENDIAN)
+ENDIF()
 
 IF(UNIX)
   SEARCH_LIBRARY(LIBDL dlopen "dl")
@@ -347,7 +349,7 @@ ENDIF()
 IF(WIN32 AND WITH_MSI AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   ADD_SUBDIRECTORY(win/packaging)
 ENDIF()
-
+MESSAGE("SYSTEM processor: ${CMAKE_SYSTEM_PROCESSOR}")
 SET(CPACK_PACKAGE_VENDOR "MariaDB Corporation Ab")
 SET(CPACK_PACKAGE_DESCRIPTION "MariaDB Connector/C. A library for connecting to MariaDB and MySQL servers")
 SET(CPACK_PACKAGE_NAME "mariadb_connector_c")
