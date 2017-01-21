@@ -28,7 +28,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
                ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
 
 ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
-TARGET_LINK_LIBRARIES(mariadb_config mariadbclient)
+TARGET_LINK_LIBRARIES(mariadb_config)
 
 # Installation
 #

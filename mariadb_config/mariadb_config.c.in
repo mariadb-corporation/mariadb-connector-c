@@ -1,7 +1,6 @@
-#include <my_global.h>
-#include <my_sys.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define INCLUDE "-I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@/mysql"
 #define LIBS    "-L@PREFIX_INSTALL_DIR@/@LIB_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -lmariadb" \
@@ -38,6 +37,8 @@ static char *values[]=
   PORT,
   PLUGIN_DIR
 };
+
+const char *my_progname;
 
 void usage(void)
 {
