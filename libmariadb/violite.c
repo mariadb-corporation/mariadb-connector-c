@@ -248,7 +248,7 @@ int vio_wait_or_timeout(Vio *vio, my_bool is_read, int timeout)
 
     do {
       rc= poll(&p_fd, 1, timeout);
-    } while (rc == -1 || errno == EINTR);
+    } while (rc == -1 && errno == EINTR);
 
     if (rc == 0)
       errno= ETIMEDOUT;
