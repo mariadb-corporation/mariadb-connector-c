@@ -26,51 +26,24 @@
 
 extern my_bool ma_tls_initialized;
 
-struct st_cipher_suite {
-  DWORD aid;
-  CHAR *cipher;
-};
-
-const struct st_cipher_suite valid_ciphers[] =
+static struct
 {
-  { CALG_3DES, "CALG_3DES" },
-  { CALG_3DES_112, "CALG_3DES_112" },
-  { CALG_AES, "CALG_AES" },
-  { CALG_AES_128, "CALG_AES_128" },
-  { CALG_AES_192, "CALG_AES_192" },
-  { CALG_AES_256, "CALG_AES_256" },
-  { CALG_AGREEDKEY_ANY, "CALG_AGREEDKEY_ANY" },
-  { CALG_CYLINK_MEK, "CALG_CYLINK_MEK" },
-  { CALG_DES, "CALG_DES" },
-  { CALG_DESX, "CALG_DESX" },
-  { CALG_DH_EPHEM, "CALG_DH_EPHEM" },
-  { CALG_DH_SF, "CALG_DH_SF" },
-  { CALG_DSS_SIGN, "CALG_DSS_SIGN" },
-  { CALG_ECDH, "CALG_ECDH" },
-  { CALG_ECDSA, "CALG_ECDSA" },
-  { CALG_ECMQV, "CALG_ECMQV" },
-  { CALG_HASH_REPLACE_OWF, "CALG_HASH_REPLACE_OWF" },
-  { CALG_HUGHES_MD5, "CALG_HUGHES_MD5" },
-  { CALG_HMAC, "CALG_HMAC" },
-  { CALG_KEA_KEYX, "CALG_KEA_KEYX" },
-  { CALG_MAC, "CALG_MAC" },
-  { CALG_MD2, "CALG_MD2" },
-  { CALG_MD4, "CALG_MD4" },
-  { CALG_MD4, "CALG_MD5" },
-  { CALG_NO_SIGN, "CALG_NO_SIGN" },
-  { CALG_OID_INFO_CNG_ONLY, "CALG_OID_INFO_CNG_ONLY" },
-  { CALG_OID_INFO_PARAMETERS, "CALG_OID_INFO_PARAMETERS" },
-  { CALG_RC2, "CALG_RC2" },
-  { CALG_RC4, "CALG_RC4" },
-  { CALG_RC5, "CALG_RC5" },
-  { CALG_RSA_KEYX, "CALG_RSA_KEYX" },
-  { CALG_RSA_SIGN, "CALG_RSA_SIGN" },
-  { CALG_SHA, "CALG_SHA" },
-  { CALG_SHA1, "CALG_SHA1" },
-  { CALG_SHA_256, "CALG_SHA_256" },
-  { CALG_SHA_384, "CALG_SHA_384" },
-  { CALG_SHA_512, "CALG_SHA_512" },
-  { 0, NULL }
+  ALG_ID algs[3]; /* exchange, encryption, hash */
+  const char *openssl_name;
+}
+cipher_map[] =
+{
+  {{CALG_RSA_KEYX,CALG_AES_256,CALG_SHA}, "AES256-SHA"}, 
+  {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA}, "AES128-SHA"},
+  {{CALG_RSA_KEYX,CALG_RC4,CALG_SHA}, "RC4-SHA"},
+  {{CALG_RSA_KEYX,CALG_3DES,CALG_SHA}, "DES-CBC3-SHA"},
+  {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA_256 }, "AES128-SHA256" },
+  {{CALG_DH_EPHEM,CALG_AES_256,CALG_SHA_384}, "DHE-RSA-AES256-GCM-SHA384"},
+  {{CALG_DH_EPHEM,CALG_AES_128,CALG_SHA_256}, "DHE-RSA-AES128-GCM-SHA256"},
+  {{CALG_DH_EPHEM,CALG_AES_256,CALG_SHA}, "DHE-RSA-AES256-SHA"},
+  {{CALG_DH_EPHEM,CALG_AES_128,CALG_SHA}, "DHE-RSA-AES128-SHA"},
+  {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA_256}, "AES128-GCM-SHA256"},
+  {{CALG_RSA_KEYX,CALG_RC4,0}, "RC4-MD5"},
 };
 
 #define MAX_ALG_ID 50
@@ -170,33 +143,20 @@ void *ma_tls_init(MYSQL *mysql)
   The function returns number of elements written to the 'arr'.
 */
 
+
 static size_t set_cipher(char * cipher_str, ALG_ID *arr , size_t arr_size)
 {
-  /* TODO : extend this mapping table */
-  struct 
-  {
-    ALG_ID algs[3]; /* exchange, encryption, hash */
-    const char *openssl_name;
-  }
-  map[] = 
-  {
-    {{CALG_RSA_KEYX,CALG_AES_256,CALG_SHA}, "AES256-SHA"}, 
-    {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA}, "AES128-SHA"},
-    {{CALG_RSA_KEYX,CALG_RC4,CALG_SHA}, "RC4-SHA"},
-    {{CALG_RSA_KEYX,CALG_3DES,CALG_SHA}, "DES-CBC3-SHA"},
-    {{CALG_RSA_KEYX, CALG_AES_128, CALG_SHA_256 }, "AES128-SHA256" },
-  };
   
   char *token = strtok(cipher_str, ":");
   size_t pos = 0;
   while (token)
   {
     size_t i;
-    for(i = 0; i < sizeof(map)/sizeof(map[0]) ; i++)
+    for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
     {
-      if(pos + 3 < arr_size && strcmp(map[i].openssl_name, token) == 0)
+      if(pos + 3 < arr_size && strcmp(cipher_map[i].openssl_name, token) == 0)
       {
-        memcpy(arr + pos, map[i].algs, sizeof(map[i].algs));
+        memcpy(arr + pos, cipher_map[i].algs, sizeof(cipher_map[i].algs));
         pos += 3;
         break;
       }
@@ -418,6 +378,20 @@ end:
   return rc;
 }
 
+static const char *cipher_name(ALG_ID keyxch, ALG_ID cipher, ALG_ID hash)
+{
+  int i;
+
+  for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
+  {
+    if (cipher_map[i].algs[0] == keyxch &&
+        cipher_map[i].algs[1] == cipher &&
+        cipher_map[i].algs[2] == hash)
+      return cipher_map[i].openssl_name;
+  }
+  return "unknown cipher";
+};
+
 const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 {
   SecPkgContext_ConnectionInfo cinfo;
@@ -433,14 +407,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, (PVOID)&cinfo);
   if (sRet != SEC_E_OK)
     return NULL;
-
-  while (valid_ciphers[i].cipher)
-  {
-    if (valid_ciphers[i].aid == cinfo.aiCipher)
-      return valid_ciphers[i].cipher;
-    i++;
-  }
-  return NULL;
+  return cipher_name(cinfo.aiExch, cinfo.aiCipher, cinfo.aiHash);
 }
 
 unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
