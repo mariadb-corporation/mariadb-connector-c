@@ -68,6 +68,7 @@ struct st_mysql_options_extension {
   char *connection_handler;
   my_bool (*set_option)(MYSQL *mysql, const char *config_option, const char *config_value);
   HASH userdata;
+  char *server_public_key;
 };
 
 typedef struct st_connection_handler

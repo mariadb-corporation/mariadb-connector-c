@@ -1055,7 +1055,18 @@ static int test_reset(MYSQL *mysql)
   return OK;
 }
 
+static int test_auth256(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+  if (!mysql_real_connect(mysql, "127.0.0.1", "sha256user", "foo", NULL, 13000, NULL, 0))
+    diag("error: %s", mysql_error(mysql));
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_auth256", test_auth256, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_reset", test_reset, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_unix_socket_close", test_unix_socket_close, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_sess_track_db", test_sess_track_db, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
