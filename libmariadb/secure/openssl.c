@@ -86,12 +86,12 @@ static void ma_tls_set_error(MYSQL *mysql)
 }
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-/* 
-   thread safe callbacks for OpenSSL 
+/*
+   thread safe callbacks for OpenSSL
    Crypto call back functions will be
    set during ssl_initialization
  */
-#if OPENSSL_VERSION_NUMBER < 0x10000000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
 static unsigned long my_cb_threadid(void)
 {
   /* cast pthread_t to unsigned long */
@@ -209,7 +209,7 @@ static void ma_tls_remove_session_cb(SSL_CTX* ctx __attribute__((unused)),
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-static void my_cb_locking(int mode, int n, 
+static void my_cb_locking(int mode, int n,
                           const char *file __attribute__((unused)),
                           int line __attribute__((unused)))
 {
@@ -225,7 +225,7 @@ static int ssl_thread_init()
 
   if (LOCK_crypto == NULL)
   {
-    if (!(LOCK_crypto= 
+    if (!(LOCK_crypto=
           (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
       return 1;
 
@@ -250,7 +250,7 @@ static int ssl_thread_init()
 #include  <signal.h>
 static void ma_sigpipe_handler()
 {
-} 
+}
 
 static void disable_sigpipe()
 {
@@ -267,7 +267,7 @@ static void disable_sigpipe()
 #endif
 
 /*
-  Initializes SSL 
+  Initializes SSL
 
   SYNOPSIS
     my_ssl_start
@@ -296,7 +296,6 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
     goto end;
   }
   SSL_library_init();
-
 #if SSLEAY_VERSION_NUMBER >= 0x00907000L
   OPENSSL_config(NULL);
 #endif
@@ -386,17 +385,15 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
 
   
   /* add cipher */
-  if ((mysql->options.ssl_cipher && 
+  if ((mysql->options.ssl_cipher &&
         mysql->options.ssl_cipher[0] != 0) &&
       SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
     goto error;
 
   /* ca_file and ca_path */
-  SSL_CTX_set_verify(ctx, (mysql->options.ssl_ca || mysql->options.ssl_capath)?
-                     SSL_VERIFY_NONE : SSL_VERIFY_NONE, NULL);
-  if (SSL_CTX_load_verify_locations(ctx, 
+  if (!SSL_CTX_load_verify_locations(ctx,
                                     mysql->options.ssl_ca,
-                                    mysql->options.ssl_capath) <= 0)
+                                    mysql->options.ssl_capath))
   {
     if (mysql->options.ssl_ca || mysql->options.ssl_capath)
       goto error;
@@ -457,6 +454,8 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
       X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
     }
   }
+  SSL_CTX_set_verify(ctx, (mysql->options.ssl_ca || mysql->options.ssl_capath)?
+                     SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
   return 0;
 
 error:
