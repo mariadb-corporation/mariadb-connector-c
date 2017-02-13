@@ -139,7 +139,14 @@ SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 
 IF(CMAKE_COMPILER_IS_GNUCC)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement")
+  INCLUDE(CheckCCompilerFlag)
+  SET(GCC_FLAGS -Wunused -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement)
+  FOREACH(GCC_FLAG ${GCC_FLAGS})
+    CHECK_C_COMPILER_FLAG("${GCC_FLAG}" HAS_${GCC_FLAG}_FLAG)
+    IF(${HAS_${GCC_FLAG}_FLAG})
+      SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GCC_FLAG}")
+    ENDIF()
+  ENDFOREACH()
 ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
