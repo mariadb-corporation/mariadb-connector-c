@@ -373,7 +373,9 @@ IF(CMAKE_SIZEOF_VOID_P EQUAL 8 AND MSVC)
 ENDIF()
 
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
+  IF (NOT WITH_ASAN)
+    TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
+  ENDIF()
   TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${CC_BINARY_DIR}/libmariadb/mariadbclient.def")
 ENDIF()
 
