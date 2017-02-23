@@ -14,6 +14,7 @@ static char *mariadb_progname;
 #define PLUGIN_DIR "@CMAKE_INSTALL_PREFIX@/@INSTALL_PLUGINDIR@"
 #define SOCKET  "@MARIADB_UNIX_ADDR@"
 #define PORT "@MARIADB_PORT@"
+#define TLS_LIBRARY_VERSION "@TLS_LIBRARY_VERSION@"
 
 static struct option long_options[]=
 {
@@ -27,6 +28,7 @@ static struct option long_options[]=
   {"socket", no_argument, 0, 'g'},
   {"port", no_argument, 0, 'h'},
   {"plugindir", no_argument, 0, 'p'},
+  {"tlsinfo", no_argument, 0, 't'},
   {NULL, 0, 0, 0}
 };
 
@@ -41,7 +43,8 @@ static const char *values[]=
   VERSION,
   SOCKET,
   PORT,
-  PLUGIN_DIR
+  PLUGIN_DIR,
+  TLS_LIBRARY_VERSION
 };
 
 void usage(void)
@@ -100,6 +103,9 @@ int main(int argc, char **argv)
       break;
     case 'p':
       puts(PLUGIN_DIR);
+      break;
+    case 't':
+      puts(TLS_LIBRARY_VERSION);
       break;
     case 'y':
       puts(LIBS_SYS);
