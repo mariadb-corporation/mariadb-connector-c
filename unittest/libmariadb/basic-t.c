@@ -67,6 +67,8 @@ static int test_conc75(MYSQL *my)
     //diag("cs: %s", mysql->charset->csname);
     //FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "wrong character set");
   }
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS a");
+  check_mysql_rc(rc, mysql);
   mysql_close(mysql);
   return OK;
 }
@@ -97,6 +99,9 @@ static int test_conc74(MYSQL *unused __attribute__((unused)))
 
   rc= mysql_query(mysql, "load data local infile './nonexistingfile.csv' into table a (`a`)");
   FAIL_IF(!rc, "Error expected");
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS a");
+  check_mysql_rc(rc, mysql);
 
   mysql_close(mysql);
   return OK;
@@ -147,6 +152,7 @@ static int test_conc70(MYSQL *my)
   check_mysql_rc(rc, my);
 
   mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
+  check_mysql_rc(rc, my);
 
   mysql_options(mysql, MYSQL_OPT_COMPRESS, (void *)1);
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
@@ -159,7 +165,7 @@ static int test_conc70(MYSQL *my)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (REPEAT('A', 1024 * 1024 * 20))");
-  check_mysql_rc(rc, mysql); 
+  check_mysql_rc(rc, mysql);
 
   if (mysql_warning_count(mysql))
   {
@@ -183,6 +189,9 @@ static int test_conc70(MYSQL *my)
   FAIL_IF(strlen(row[0]) != 1024 * 1024 * 20, "Wrong length");
 
   mysql_free_result(res);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
   mysql_close(mysql);
 
   rc= mysql_query(my, "SET global max_allowed_packet=@a");
@@ -631,6 +640,8 @@ static int test_select_direct(MYSQL *mysql)
   FAIL_IF(!result, "Invalid result set");
 
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_select");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -674,6 +685,9 @@ static int test_options_initcmd(MYSQL *unused __attribute__((unused)))
   FAIL_IF(mysql_num_rows(res) != 3, "Expected 3 rows");
 
   mysql_free_result(res);
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
   mysql_close(mysql);
   return OK;
 }
@@ -705,11 +719,8 @@ static int test_reconnect_maxpackage(MYSQL *unused __attribute__((unused)))
   SKIP_CONNECTION_HANDLER;
   mysql= mysql_init(NULL);
 
-  SKIP_CONNECTION_HANDLER;
-  mysql= mysql_init(NULL);
-
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
-                              port, socketname, 
+                              port, socketname,
                               CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
@@ -739,6 +750,8 @@ static int test_reconnect_maxpackage(MYSQL *unused __attribute__((unused)))
   else
     diag("Error: %s", mysql_error(mysql));
 
+  rc= mysql_ping(mysql);
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "SELECT @@max_allowed_packet");
   check_mysql_rc(rc, mysql);
    res= mysql_store_result(mysql);

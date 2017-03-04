@@ -80,7 +80,7 @@ static int bulk1(MYSQL *mysql)
   {
     buffer[i]= rand_str(254);
     lengths[i]= -1;
-    vals[i]= i; 
+    vals[i]= i;
   }
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 2);
@@ -180,6 +180,8 @@ static int bulk2(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk2");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -212,7 +214,7 @@ static int bulk3(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND)*2);
-  
+
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
@@ -230,6 +232,8 @@ static int bulk3(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk3");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -290,6 +294,8 @@ static int bulk4(MYSQL *mysql)
   rc= mysql_num_rows(res);
   mysql_free_result(res);
   FAIL_IF(rc != 3, "expected 3 rows");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk4");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -341,6 +347,8 @@ static int bulk_null(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
   free(buf);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_null");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -397,6 +405,9 @@ static int bulk5(MYSQL *mysql)
   mysql_free_result(res);
 
   FAIL_IF(rows != 5, "expected 5 rows");
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk5");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -494,6 +505,8 @@ static int bulk6(MYSQL *mysql)
   mysql_free_result(res);
 
   FAIL_IF(rows != 10, "expected 10 rows");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk6");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }

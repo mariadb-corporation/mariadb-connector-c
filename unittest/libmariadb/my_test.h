@@ -30,6 +30,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <string.h>
 #include <errmsg.h>
 #include <stdlib.h>
+#include <ma_server_error.h>
 
 #ifndef WIN32
 #include <pthread.h>
@@ -362,9 +363,8 @@ void get_options(int argc, char **argv)
       exit(0);
       break;
     default:
-      printf("Unknown option %c\n", c);
       usage();
-      exit(0);
+      BAIL_OUT("Unknown option %c\n", c);
     }
   }
 }
@@ -403,8 +403,7 @@ MYSQL *test_connect(struct my_tests_st *test)
   int timeout= 10;
   my_bool truncation_report= 1;
   if (!(mysql = mysql_init(NULL))) {
-    diag("%s", "mysql_init failed - exiting");
-    return(NULL);
+    BAIL_OUT("Not enough memory available - mysql_init failed");
   }
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &truncation_report);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
@@ -457,18 +456,32 @@ void get_envvars() {
     hostname= envvar;
   if (!username && (envvar= getenv("MYSQL_TEST_USER")))
     username= envvar;
+  else
+    username= (char *)"root";
   if (!password && (envvar= getenv("MYSQL_TEST_PASSWD")))
     password= envvar;
   if (!schema && (envvar= getenv("MYSQL_TEST_DB")))
     schema= envvar;
   if (!schema)
-    schema= "testc";
-  if (!port && (envvar= getenv("MYSQL_TEST_PORT")))
-    port= atoi(envvar);
+    schema= "test";
+  if (!port)
+  {
+    if ((envvar= getenv("MYSQL_TEST_PORT")))
+      port= atoi(envvar);
+    else if ((envvar= getenv("MASTER_MYPORT")))
+      port= atoi(envvar);
+    diag("port: %d", port);
+  }
   if (!force_tls && (envvar= getenv("MYSQL_TEST_TLS")))
     force_tls= atoi(envvar);
-  if (!socketname && (envvar= getenv("MYSQL_TEST_SOCKET")))
-    socketname= envvar;
+  if (!socketname)
+  {
+    if ((envvar= getenv("MYSQL_TEST_SOCKET")))
+      socketname= envvar;
+    else if ((envvar= getenv("MASTER_MYSOCK")))
+      socketname= envvar;
+    diag("socketname: %s", socketname);
+  }
 }
 
 MYSQL *my_test_connect(MYSQL *mysql,
@@ -509,8 +522,7 @@ void run_tests(struct my_tests_st *test) {
   }
   else
   {
-    diag("Can't connect to a server. Aborting....");
-    exit(-1);
+    BAIL_OUT("Can't connect to a server. Aborting....");
   }
 
   for (i=0; i < total; i++) {

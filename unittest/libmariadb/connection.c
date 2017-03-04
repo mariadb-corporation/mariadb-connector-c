@@ -34,7 +34,7 @@ static int test_conc66(MYSQL *my)
   FILE *fp;
   char query[1024];
 
-  if (!(fp= fopen("./my.cnf", "w")))
+  if (!(fp= fopen("./ma_test.cnf", "w")))
     return FAIL;
 
   fprintf(fp, "[notmygroup]\n");
@@ -49,7 +49,7 @@ static int test_conc66(MYSQL *my)
 
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
   check_mysql_rc(rc, mysql);
-  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./ma_test.cnf");
   check_mysql_rc(rc, mysql);
 
   sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname ? hostname : "localhost");
@@ -69,6 +69,7 @@ static int test_conc66(MYSQL *my)
 
   check_mysql_rc(rc, my);
   mysql_close(mysql);
+  remove("./ma_test.cnf");
   return OK; 
 }
 
@@ -448,7 +449,7 @@ static int test_bug31669(MYSQL *mysql)
 static int test_bug33831(MYSQL *mysql)
 {
   FAIL_IF(my_test_connect(mysql, hostname, username,
-                             password, schema, port, socketname, 0), 
+                             password, schema, port, socketname, 0),
          "Error expected");
   
   return OK;
@@ -693,7 +694,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
   mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
   start= time(NULL);
-  if (my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("timeout error expected");
     elapsed= time(NULL) - start;
@@ -710,7 +711,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, (unsigned int *)&read_write_timeout);
   mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
 
-  if (!my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
@@ -823,6 +824,8 @@ static int test_bind_address(MYSQL *my)
     return FAIL;
   }
   diag("%s", mysql_get_host_info(mysql));
+  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  rc= mysql_query(my, query);
   mysql_close(mysql);
   return OK;
 }
@@ -834,7 +837,7 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
                       MYSQL_OPT_PROTOCOL, MYSQL_OPT_READ_TIMEOUT, MYSQL_OPT_WRITE_TIMEOUT, 0};
   my_bool options_bool[]= {MYSQL_OPT_RECONNECT, MYSQL_REPORT_DATA_TRUNCATION,
                            MYSQL_OPT_COMPRESS, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_SECURE_AUTH,
-#ifdef _WIN32    
+#ifdef _WIN32
     MYSQL_OPT_NAMED_PIPE,
 #endif
                           0};
@@ -919,6 +922,10 @@ static int test_sess_track_db(MYSQL *mysql)
   int rc;
   const char *data;
   size_t len;
+  char query[140];
+
+  diag("fixes not merged");
+  return SKIP;
 
   if (!(mysql->server_capabilities & CLIENT_SESSION_TRACKING))
   {
@@ -934,13 +941,17 @@ static int test_sess_track_db(MYSQL *mysql)
           "session_track_get_first failed");
   FAIL_IF(strncmp(data, "mysql", len), "Expected new schema 'mysql'");
 
-  rc= mysql_query(mysql, "USE testc");
+  snprintf(query, 139, "USE %s", schema);
+  rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
-  FAIL_IF(strcmp(mysql->db, "testc"), "Expected new schema 'testc'");
+  FAIL_IF(strcmp(mysql->db, schema), "Expected new schema 'testc'");
 
   FAIL_IF(mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len),
           "session_track_get_first failed");
-  FAIL_IF(strncmp(data, "testc", len), "Expected new schema 'testc'");
+  FAIL_IF(strncmp(data, schema, len), "Expected new schema 'testc'");
+
+  rc= mysql_query(mysql, "DROP SCHEMA testc");
+  check_mysql_rc(rc, mysql);
 
   diag("charset: %s", mysql->charset->csname);
   rc= mysql_query(mysql, "SET NAMES utf8");
@@ -1031,7 +1042,7 @@ static int test_reset(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "SELECT 1 FROM DUAL");
-  FAIL_IF(!rc, "Error expected"); 
+  FAIL_IF(!rc, "Error expected");
 
   rc= mysql_reset_connection(mysql);
   check_mysql_rc(rc, mysql);
@@ -1051,6 +1062,9 @@ static int test_reset(MYSQL *mysql)
   FAIL_IF(mysql_fetch_row(res), "expected error");
 
   mysql_free_result(res);
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1076,6 +1090,7 @@ struct my_tests_st my_tests[] = {
   {"test_connection_timeout", test_connection_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_connection_timeout2", test_connection_timeout2, TEST_CONNECTION_NONE, 0, NULL, NULL}, 
   {"test_connection_timeout3", test_connection_timeout3, TEST_CONNECTION_NONE, 0, NULL, NULL},
+ 
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

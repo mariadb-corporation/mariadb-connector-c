@@ -227,6 +227,9 @@ static int test_cuted_rows(MYSQL *mysql)
     rc++;
   FAIL_UNLESS(rc == 2, "rowcount != 2");
   mysql_free_result(result);
+
+  rc= mysql_query(mysql, "DROP TABLE t1, t2");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 

@@ -59,6 +59,9 @@ static int execute_direct(MYSQL *mysql)
 
   mysql_free_result(res);
 
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+
   return OK;
 }
 
@@ -97,6 +100,9 @@ static int execute_direct_example(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE execute_direct");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -147,8 +153,6 @@ static int conc_212(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc,mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE t1(a int)");
-  check_mysql_rc(rc,mysql);
 
   rc= mysql_stmt_close(stmt);
 

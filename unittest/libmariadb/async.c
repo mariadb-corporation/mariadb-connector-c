@@ -160,14 +160,17 @@ static int async1(MYSQL *unused __attribute__((unused)))
     mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp"); 
 
     /* Returns 0 when done, else flag for what to wait for when need to block. */
-    status= mysql_real_connect_start(&ret, &mysql, hostname, username, password, NULL,
-                                     0, NULL, 0);
+    status= mysql_real_connect_start(&ret, &mysql, hostname, username, password, schema, port, socketname, 0);
     while (status)
     {
       status= wait_for_mysql(&mysql, status);
       status= mysql_real_connect_cont(&ret, &mysql, status);
     }
-    FAIL_IF(!ret, "Failed to mysql_real_connect()");
+    if (!ret)
+    {
+      diag("Error: %s", mysql_error(&mysql));
+      FAIL_IF(!ret, "Failed to mysql_real_connect()");
+    }
 
     status= mysql_real_query_start(&err, &mysql, SL("SHOW STATUS"));
     while (status)
