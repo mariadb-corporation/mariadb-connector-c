@@ -126,6 +126,8 @@ static int test_multi_result(MYSQL *mysql)
   FAIL_IF(mysql_stmt_field_count(stmt) != 0, "expected 0 fields");
 
   rc= mysql_stmt_close(stmt);
+  rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -413,6 +415,8 @@ int test_sp_reset2(MYSQL *mysql)
 
   rc= mysql_query(mysql, "DROP PROCEDURE p1");
   check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -477,6 +481,8 @@ int test_query(MYSQL *mysql)
     check_stmt_rc(rc, stmt);
   }
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }

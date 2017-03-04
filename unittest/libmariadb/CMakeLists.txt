@@ -33,40 +33,18 @@ ENDIF()
 
 SET(API_TESTS ${API_TESTS} "async")
 
-#exclude following tests from ctests, since we need to run them maually with different credentials            
+#exclude following tests from ctests, since we need to run them maually with different credentials
 SET(MANUAL_TESTS "t_aurora" "t_conc173")
-# Get finger print from server certificate 
+# Get finger print from server certificate
 IF(WITH_SSL)
-  IF(OPENSSL_FOUND AND EXISTS "${CC_SOURCE_DIR}/unittest/libmariadb/certs")
-    #create certificates
-    IF(EXISTS "${CC_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
-      MESSAGE(STATUS "certificates already exist")
-    ELSE()
-      MESSAGE(STATUS "creating certificates")
-      IF(WIN32)
-        EXECUTE_PROCESS(COMMAND create_certs.bat 
-                        WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs
-                        OUTPUT_FILE x.1 ERROR_FILE x.2)
-      ELSE()
-        EXECUTE_PROCESS(COMMAND ./create_certs.sh 
-                        WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs)
-      ENDIF()
-    ENDIF()
-
-    EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
-                    WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs
-                    OUTPUT_VARIABLE FINGER_PRINT)
-    STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT "${FINGER_PRINT}")
-    STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
-    STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
-    CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
-                   ${CC_BINARY_DIR}/unittest/libmariadb/fingerprint.list)
-
+  IF(CERT_PATH)
+    FILE(READ ${CERT_PATH}/server-cert.sha1 CERT_FINGER_PRINT)
+    STRING(REPLACE "\n" "" CERT_FINGER_PRINT "${CERT_FINGER_PRINT}")
+    SET(API_TESTS ${API_TESTS} "ssl")
+    CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
+                   ${CC_BINARY_DIR}/unittest/libmariadb/ssl.c)
+    ADD_EXECUTABLE(ssl ${CC_BINARY_DIR}/unittest/libmariadb/ssl.c)
   ENDIF()
-  SET(API_TESTS ${API_TESTS} "ssl")
-  CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
-                 ${CC_BINARY_DIR}/unittest/libmariadb/ssl.c)
-  ADD_EXECUTABLE(ssl ${CC_BINARY_DIR}/unittest/libmariadb/ssl.c)
 ENDIF()
 
 ADD_LIBRARY(ma_getopt ma_getopt.c)

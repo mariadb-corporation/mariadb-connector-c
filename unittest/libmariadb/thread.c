@@ -72,6 +72,9 @@ static int test_conc_27(MYSQL *mysql)
   rc= mysql_query(mysql, "INSERT INTO t_conc27 VALUES(0)");
   check_mysql_rc(rc, mysql);
 
+  rc= mysql_query(mysql, "SET @a:=@@max_connections");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_query(mysql, "SET GLOBAL max_connections=100000");
   check_mysql_rc(rc, mysql);
 
@@ -93,9 +96,13 @@ static int test_conc_27(MYSQL *mysql)
 #else
     WaitForSingleObject(hthreads[i], INFINITE);
 #endif
-  } 
+  }
+
   pthread_mutex_destroy(&LOCK_test);
  
+  rc= mysql_query(mysql, "SET GLOBAL max_connections=@a");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_query(mysql, "SELECT a FROM t_conc27");
   check_mysql_rc(rc,mysql);
 
@@ -108,6 +115,8 @@ static int test_conc_27(MYSQL *mysql)
   diag("row=%s", row[0]);
   FAIL_IF(atoi(row[0]) != THREAD_NUM, "expected value THREAD_NUM");
   mysql_free_result(res);
+  rc= mysql_query(mysql, "DROP TABLE t_conc27");
+  check_mysql_rc(rc,mysql);
 
   return OK;
 }

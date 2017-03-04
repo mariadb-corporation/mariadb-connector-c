@@ -636,6 +636,9 @@ static int test_fetch_null(MYSQL *mysql)
   FAIL_UNLESS(rc == 3, "Expected 3 rows");
   mysql_stmt_close(stmt);
 
+  rc= mysql_query(mysql, "DROP TABLE test_fetch_null");
+  check_mysql_rc(rc, mysql);
+
   return OK;
 }
 
@@ -760,6 +763,8 @@ static int test_fetch_date(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_result");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -782,7 +787,9 @@ static int test_fetch_str(MYSQL *mysql)
                                                      c7 char(20))");
   check_mysql_rc(rc, mysql);
 
-  return bind_fetch(mysql, 3);
+  rc= bind_fetch(mysql, 3);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_fetch");
+  return rc;
 }
 
 /* Test fetching of long to all types */
@@ -801,7 +808,9 @@ static int test_fetch_long(MYSQL *mysql)
                                                      c6 int unsigned, \
                                                      c7 int)");
   check_mysql_rc(rc, mysql);
-  return bind_fetch(mysql, 4);
+  rc= bind_fetch(mysql, 4);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_fetch");
+  return rc;
 }
 
 
@@ -821,7 +830,9 @@ static int test_fetch_short(MYSQL *mysql)
                                                      c6 smallint, \
                                                      c7 smallint unsigned)");
   check_mysql_rc(rc, mysql);
-  return bind_fetch(mysql, 5);
+  rc= bind_fetch(mysql, 5);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_fetch");
+  return rc;
 }
 
 
@@ -842,7 +853,9 @@ static int test_fetch_tiny(MYSQL *mysql)
                                                      c6 tinyint, \
                                                      c7 tinyint unsigned)");
   check_mysql_rc(rc, mysql);
-  return bind_fetch(mysql, 3);
+  rc= bind_fetch(mysql, 3);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_fetch");
+  return rc;
 }
 
 
@@ -863,7 +876,9 @@ static int test_fetch_bigint(MYSQL *mysql)
                                                    c6 bigint unsigned, \
                                                    c7 bigint unsigned)");
   check_mysql_rc(rc, mysql);
-  return bind_fetch(mysql, 2);
+  rc= bind_fetch(mysql, 2);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_fetch");
+  return rc;
 }
 
 
@@ -885,7 +900,9 @@ static int test_fetch_float(MYSQL *mysql)
                                                    c7 float(10) unsigned)");
   check_mysql_rc(rc, mysql);
 
-  return bind_fetch(mysql, 2);
+  rc= bind_fetch(mysql, 2);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_fetch");
+  return rc;
 }
 
 
@@ -902,7 +919,9 @@ static int test_fetch_double(MYSQL *mysql)
                      "c4 double unsigned, c5 double unsigned, "
                      "c6 double unsigned, c7 double unsigned)");
   check_mysql_rc(rc, mysql);
-  return bind_fetch(mysql, 3);
+  rc= bind_fetch(mysql, 3);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_fetch");
+  return rc;
 }
 
 struct my_tests_st my_tests[] = {

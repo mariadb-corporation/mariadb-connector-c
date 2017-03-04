@@ -356,6 +356,8 @@ static int test_store_result(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_store_result");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -413,6 +415,8 @@ static int test_store_result1(MYSQL *mysql)
   FAIL_UNLESS(rc == 3, "rowcount != 3");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_store_result");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -495,6 +499,8 @@ static int test_store_result2(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_store_result");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -689,6 +695,8 @@ static int test_field_flags(MYSQL *mysql)
   FAIL_UNLESS(field->flags & NOT_NULL_FLAG, "Wrong flags for field 4");
 
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_field_flags");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -737,6 +745,11 @@ static int test_field_names(MYSQL *mysql)
     rc++;
   FAIL_UNLESS(rc == 0, "rowcount != 0");
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_field_names1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_field_names2");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -809,6 +822,8 @@ static int test_func_fields(MYSQL *mysql)
   FAIL_IF(field, "no more fields expected");
 
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_dateformat");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 

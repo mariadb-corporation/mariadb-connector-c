@@ -378,6 +378,8 @@ static int test_prepare_simple(MYSQL *mysql)
   /* now fetch the results ..*/
   rc= mysql_commit(mysql);
   check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_simple");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -431,6 +433,8 @@ static int test_prepare_field_result(MYSQL *mysql)
   FAIL_IF(mysql_num_fields(result) != 5, "Paramcount != 5");
   mysql_free_result(result);
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_field_result");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 
@@ -472,6 +476,8 @@ static int test_prepare_syntax(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_syntax");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -636,6 +642,8 @@ static int test_prepare(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "MYSQL_NO_DATA expected");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS my_prepare");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -778,6 +786,8 @@ static int test_prepare_ext(MYSQL *mysql)
   FAIL_UNLESS(nData == rowcount, "Invalid rowcount");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_ext");
+  check_mysql_rc(rc, mysql)
 
   return OK;
 }
@@ -840,6 +850,8 @@ static int test_prepare_alter(MYSQL *mysql)
   FAIL_UNLESS(rc == 4, "rowcount != 4");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prep_alter");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -872,6 +884,8 @@ static int test_prepare_resultset(MYSQL *mysql)
   FAIL_IF(!result, "Invalid resultset");
   mysql_free_result(result);
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_resultset");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1067,6 +1081,8 @@ static int test_select_show(MYSQL *mysql)
   FAIL_IF(rowcount != 1, "rowcount != 1");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_show");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1149,6 +1165,8 @@ static int test_simple_update(MYSQL *mysql)
   FAIL_IF(rowcount != 1, "rowcount != 1");
 
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_update");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1244,6 +1262,8 @@ static int test_long_data(MYSQL *mysql)
     goto error;
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data");
+  check_mysql_rc(rc, mysql);
   return OK;
 
 error:
@@ -1593,6 +1613,8 @@ static int test_long_data_bin(MYSQL *mysql)
   FAIL_IF(rowcount != 1, "rowcount != 1");
   mysql_free_result(result);
  
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data_bin");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -1678,6 +1700,8 @@ static int test_simple_delete(MYSQL *mysql)
 
   FAIL_IF(rowcount, "rowcount > 0");
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_simple_delete");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1780,6 +1804,8 @@ static int test_update(MYSQL *mysql)
     rowcount++;
   FAIL_IF(rowcount != 1, "rowcount != 1");
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_update");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1832,6 +1858,8 @@ static int test_prepare_noparam(MYSQL *mysql)
 
   FAIL_IF(rowcount != 1, "rowcount != 1");
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS my_prepare");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1918,6 +1946,8 @@ static int test_bind_result(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "MYSQL_NO_DATA expected");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_result");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -2021,6 +2051,8 @@ static int test_bind_result_ext(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "MYSQL_NO_DATA expected");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_result");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -2144,6 +2176,8 @@ static int test_bind_result_ext1(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "MYSQL_NO_DATA expected");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bind_result");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -2277,6 +2311,8 @@ static int test_buffers(MYSQL *mysql)
   FAIL_UNLESS(length == 7, "length != 7");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_buffer");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -2692,6 +2728,9 @@ static int test_insert(MYSQL *mysql)
   FAIL_UNLESS((int) tiny_data == rc, "rowcount != tinydata");
   mysql_free_result(result);
 
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prep_insert");
+  check_mysql_rc(rc, mysql);
+
   return OK;
 }
 
@@ -2984,7 +3023,6 @@ static int test_date(MYSQL *mysql)
 {
   int        rc;
 
-
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
   check_mysql_rc(rc, mysql);
 
@@ -2995,7 +3033,9 @@ static int test_date(MYSQL *mysql)
 
   check_mysql_rc(rc, mysql);
 
-  return test_bind_date_conv(mysql, 5);
+  rc= test_bind_date_conv(mysql, 5);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
+  return rc;
 }
 
 
@@ -3016,7 +3056,9 @@ static int test_date_date(MYSQL *mysql)
 
   check_mysql_rc(rc, mysql);
 
-  return test_bind_date_conv(mysql, 3);
+  rc= test_bind_date_conv(mysql, 3);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
+  return rc;
 }
 
 /* Test all time types to TIMESTAMP and TIMESTAMP to all types */
@@ -3036,7 +3078,9 @@ static int test_date_ts(MYSQL *mysql)
 
   check_mysql_rc(rc, mysql);
 
-  return test_bind_date_conv(mysql, 2);
+  rc= test_bind_date_conv(mysql, 2);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
+  return rc;
 }
 
 
@@ -3054,7 +3098,9 @@ static int test_date_dt(MYSQL *mysql)
                          " c2 datetime, c3 datetime, c4 date)");
   check_mysql_rc(rc, mysql);
 
-  return test_bind_date_conv(mysql, 2);
+  rc= test_bind_date_conv(mysql, 2);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
+  return rc;
 }
 
 /* Test all time types to TIME and TIME to all types */
@@ -3074,7 +3120,9 @@ static int test_date_time(MYSQL *mysql)
 
   check_mysql_rc(rc, mysql);
 
-  return test_bind_date_conv(mysql, 3);
+  rc= test_bind_date_conv(mysql, 3);
+  mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
+  return rc;
 }
 
 /*
@@ -3447,6 +3495,8 @@ static int test_double_compare(MYSQL *mysql)
     rc++;
   FAIL_UNLESS((int)tiny_data == rc, "rowcount != tinydata");
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_double_compare");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -3665,6 +3715,8 @@ static int test_multi_stmt(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
   mysql_stmt_close(stmt2);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_multi_table");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -3840,6 +3892,8 @@ static int test_null(MYSQL *mysql)
   }
   FAIL_UNLESS(rc == (int) nData, "rc != nData");
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_null");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4055,6 +4109,8 @@ static int test_select(MYSQL *mysql)
   FAIL_UNLESS(rc == 1, "rc != 1");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_select");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4124,6 +4180,8 @@ static int test_select_prepare(MYSQL *mysql)
     rc++;
   FAIL_UNLESS(rc == 1, "rowcount != 1");
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_select");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4292,6 +4350,8 @@ static int test_set_option(MYSQL *mysql)
   FAIL_UNLESS(rc == 4, "rowcount != 4");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_limit");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4518,6 +4578,8 @@ static int test_sqlmode(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_piping");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4622,6 +4684,8 @@ static int test_stmt_close(MYSQL *mysql)
     rc++;
   FAIL_UNLESS(rc == 1, "rwcount != 1");
   mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_stmt_close");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4668,6 +4732,8 @@ static int test_new_date(MYSQL *mysql)
   FAIL_IF(rc != MYSQL_NO_DATA, "NO DATA expected");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4706,6 +4772,8 @@ static int test_long_data1(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_close(stmt);
   check_stmt_rc(rc, stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS tld");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4736,6 +4804,8 @@ int test_blob_9000(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS tb9000");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -4899,6 +4969,8 @@ static int test_bit2tiny(MYSQL *mysql)
 
   mysql_stmt_free_result(stmt);
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS justbit");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 

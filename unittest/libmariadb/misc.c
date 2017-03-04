@@ -704,6 +704,12 @@ static int test_wl4284_1(MYSQL *mysql)
     return SKIP;
   }
 
+  if (!rc)
+  {
+    diag("InnoDB Storage engine not available");
+    return SKIP;
+  }
+
   /* set AUTOCOMMIT to OFF */
   rc= mysql_autocommit(mysql, FALSE);
   check_mysql_rc(rc, mysql);
@@ -711,8 +717,16 @@ static int test_wl4284_1(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS trans");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE trans (a INT) ENGINE= InnoDB");
+  rc= mysql_query(mysql, "CREATE TABLE trans (a INT) ENGINE=InnoDB");
+
+  if (mysql_errno(mysql) == ER_UNKNOWN_STORAGE_ENGINE)
+  {
+    diag("InnoDB not configured or available");
+    return SKIP;
+  }
+
   check_mysql_rc(rc, mysql);
+
 
   rc= mysql_query(mysql, "INSERT INTO trans VALUES(1)");
   check_mysql_rc(rc, mysql);
@@ -804,6 +818,8 @@ static int test_conc49(MYSQL *mysql)
   rc= (int)mysql_num_rows(res);
   mysql_free_result(res);
   FAIL_IF(rc != 3, "3 rows expected");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc49");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
