@@ -266,7 +266,7 @@ IF(NOT WITH_SSL STREQUAL "OFF")
 
       TRY_RUN(LIBRESSL_RESULT HAVE_LIBRESSL
               ${CMAKE_BINARY_DIR}
-              ${CMAKE_SOURCE_DIR}/cmake/libressl_version.c
+              ${CC_SOURCE_DIR}/cmake/libressl_version.c
               COMPILE_DEFINITIONS "-I${OPENSSL_INCLUDE_DIR}"
               RUN_OUTPUT_VARIABLE LIBRESSL_VERSION)
       IF(HAVE_LIBRESSL)
