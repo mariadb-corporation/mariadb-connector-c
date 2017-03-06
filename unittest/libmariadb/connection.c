@@ -1036,7 +1036,7 @@ static int test_reset(MYSQL *mysql)
   rc= mysql_reset_connection(mysql);
   check_mysql_rc(rc, mysql);
 
-  FAIL_IF(mysql_affected_rows(mysql) != ~(unsigned long)0, "Expected 0 rows");
+  FAIL_IF(mysql_affected_rows(mysql) != ~(my_ulonglong)0, "Expected 0 rows");
 
   rc= mysql_query(mysql, "SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
