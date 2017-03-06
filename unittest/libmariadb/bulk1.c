@@ -291,7 +291,7 @@ static int bulk4(MYSQL *mysql)
   rc= mysql_query(mysql, "SELECT * FROM bulk4 WHERE row=3");
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
-  rc= mysql_num_rows(res);
+  rc= (int)mysql_num_rows(res);
   mysql_free_result(res);
   FAIL_IF(rc != 3, "expected 3 rows");
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk4");
@@ -307,7 +307,7 @@ static int bulk_null(MYSQL *mysql)
   unsigned int param_count= 2;
   unsigned int array_size= 2;
   unsigned long lengths[2]= {-1, -1};
-  const char **buf= calloc(1, 2 * sizeof(char *));
+  char **buf= calloc(1, 2 * sizeof(char *));
 
   if (!bulk_enabled)
   {
@@ -401,7 +401,7 @@ static int bulk5(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
-  rows= mysql_num_rows(res);
+  rows= (unsigned long)mysql_num_rows(res);
   mysql_free_result(res);
 
   FAIL_IF(rows != 5, "expected 5 rows");
@@ -467,7 +467,7 @@ static int bulk6(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
-  rows= mysql_num_rows(res);
+  rows= (unsigned long)mysql_num_rows(res);
   mysql_free_result(res);
 
   FAIL_IF(rows != 5, "expected 5 rows");
@@ -501,7 +501,7 @@ static int bulk6(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
-  rows= mysql_num_rows(res);
+  rows= (unsigned long)mysql_num_rows(res);
   mysql_free_result(res);
 
   FAIL_IF(rows != 10, "expected 10 rows");
