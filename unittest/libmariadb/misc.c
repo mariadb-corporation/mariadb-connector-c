@@ -704,12 +704,6 @@ static int test_wl4284_1(MYSQL *mysql)
     return SKIP;
   }
 
-  if (!rc)
-  {
-    diag("InnoDB Storage engine not available");
-    return SKIP;
-  }
-
   /* set AUTOCOMMIT to OFF */
   rc= mysql_autocommit(mysql, FALSE);
   check_mysql_rc(rc, mysql);

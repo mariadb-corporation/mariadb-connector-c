@@ -248,7 +248,7 @@ int ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char 
  *  function prototypes
  */
 MYSQL_STMT * STDCALL mysql_stmt_init(MYSQL *mysql);
-int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t length);
+int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned long length);
 int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind_arg, unsigned int column, unsigned long offset);

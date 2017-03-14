@@ -1381,7 +1381,7 @@ int STDCALL mysql_stmt_warning_count(MYSQL_STMT *stmt)
   return stmt->upsert_status.warning_count;
 }
 
-int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t length)
+int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned long length)
 {
   MYSQL *mysql= stmt->mysql;
   int rc= 1;
@@ -1393,8 +1393,8 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, size_t lengt
     return(1);
   }
 
-  if (length == (size_t) -1)
-    length= strlen(query);
+  if (length == (unsigned long) -1)
+    length= (unsigned long)strlen(query);
 
   /* clear flags */
   CLEAR_CLIENT_STMT_ERROR(stmt);
