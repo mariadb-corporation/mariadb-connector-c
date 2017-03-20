@@ -93,13 +93,12 @@ my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
     filename= (char *)malloc(FN_REFLEN + 10);
     if (!_mariadb_get_default_file(filename, FN_REFLEN + 10))
     {
-      free(filename);
       goto err;
     }
   }
 
   if (!(file = ma_open(filename, "r", NULL)))
-    return 1;
+    goto err;
 
   while (ma_gets(buff,sizeof(buff)-1,file))
   {
