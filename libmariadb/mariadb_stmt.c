@@ -1782,7 +1782,11 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   }
   if (stmt->state > MYSQL_STMT_WAITING_USE_OR_STORE && stmt->state < MYSQL_STMT_FETCH_DONE && !stmt->result.data)
   {
-    mysql->methods->db_stmt_flush_unbuffered(stmt);
+    do {
+      if (!stmt->cursor_exists)
+        mysql->methods->db_stmt_flush_unbuffered(stmt);
+    }
+    while (mysql_stmt_next_result(stmt) == 0);
     stmt->state= MYSQL_STMT_PREPARED;
     stmt->mysql->status= MYSQL_STATUS_READY;
   }

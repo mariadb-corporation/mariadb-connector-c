@@ -190,8 +190,31 @@ static int conc_218(MYSQL *mysql)
   return OK;
 }
 
+static int test_cursor(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt;
+  unsigned int prefetch_rows= 1;
+  unsigned long cursor_type= CURSOR_TYPE_READ_ONLY;
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, &cursor_type);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREFETCH_ROWS, &prefetch_rows);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1 FROM DUAL UNION SELECT 2 FROM DUAL", -1);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+  rc= mariadb_stmt_execute_direct(stmt, "SELECT 1 FROM DUAL UNION SELECT 2 FROM DUAL", -1);
+  check_stmt_rc(rc, stmt);
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"test_cursor", test_cursor, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"conc_218", conc_218, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"conc_212", conc_212, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"conc_213", conc_213, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
