@@ -3043,7 +3043,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     mysql->options.charset_name=my_strdup((char *)arg1,MYF(MY_WME));
     break;
   case MYSQL_OPT_RECONNECT:
-    mysql->reconnect= *(uint *)arg1;
+    mysql->reconnect= *(my_bool *)arg1;
     break;
   case MYSQL_OPT_PROTOCOL:
 #ifdef _WIN32
