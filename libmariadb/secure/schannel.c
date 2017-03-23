@@ -389,7 +389,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
-  ctls->handshake_completed = 1;
   
   if (!ma_schannel_verify_certs(sctx))
     goto end;
