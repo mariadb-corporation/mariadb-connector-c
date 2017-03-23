@@ -26,24 +26,138 @@
 
 extern my_bool ma_tls_initialized;
 
+#define PROT_SSL3 1
+#define PROT_TLS1_0 2
+#define PROT_TLS1_2 4
+#define PROT_TLS1_3 8
+
 static struct
 {
-  ALG_ID algs[3]; /* exchange, encryption, hash */
+  DWORD cipher_id;
+  DWORD protocol;
+  const char *iana_name;
   const char *openssl_name;
+  ALG_ID algs[4]; /* exchange, encryption, hash, signature */
 }
 cipher_map[] =
 {
-  {{CALG_RSA_KEYX,CALG_AES_256,CALG_SHA}, "AES256-SHA"}, 
-  {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA}, "AES128-SHA"},
-  {{CALG_RSA_KEYX,CALG_RC4,CALG_SHA}, "RC4-SHA"},
-  {{CALG_RSA_KEYX,CALG_3DES,CALG_SHA}, "DES-CBC3-SHA"},
-  {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA_256 }, "AES128-SHA256" },
-  {{CALG_DH_EPHEM,CALG_AES_256,CALG_SHA_384}, "DHE-RSA-AES256-GCM-SHA384"},
-  {{CALG_DH_EPHEM,CALG_AES_128,CALG_SHA_256}, "DHE-RSA-AES128-GCM-SHA256"},
-  {{CALG_DH_EPHEM,CALG_AES_256,CALG_SHA}, "DHE-RSA-AES256-SHA"},
-  {{CALG_DH_EPHEM,CALG_AES_128,CALG_SHA}, "DHE-RSA-AES128-SHA"},
-  {{CALG_RSA_KEYX,CALG_AES_128,CALG_SHA_256}, "AES128-GCM-SHA256"},
-  {{CALG_RSA_KEYX,CALG_RC4,0}, "RC4-MD5"},
+  {
+    0x0002,
+    PROT_TLS1_0 |  PROT_TLS1_2 | PROT_SSL3,
+    "TLS_RSA_WITH_NULL_SHA", "NULL-SHA",
+    { CALG_RSA_KEYX, 0, CALG_SHA1, CALG_RSA_SIGN }
+  },
+  {
+    0x0004,
+    PROT_TLS1_0 |  PROT_TLS1_2 | PROT_SSL3,
+    "TLS_RSA_WITH_RC4_128_MD5", "RC4-MD5",
+    { CALG_RSA_KEYX, CALG_RC4, CALG_MD5, CALG_RSA_SIGN }
+  },
+  {
+    0x0005,
+    PROT_TLS1_0 |  PROT_TLS1_2 | PROT_SSL3,
+    "TLS_RSA_WITH_RC4_128_SHA", "RC4-SHA",
+    { CALG_RSA_KEYX, CALG_RC4, CALG_SHA1, CALG_RSA_SIGN }
+  },
+#ifdef MARIADB_UNSECURE
+  {
+    0x000A,
+    PROT_SSL3,
+    "TLS_RSA_WITH_3DES_EDE_CBC_SHA", "DES-CBC3-SHA",
+    {CALG_RSA_KEYX, CALG_3DES, CALG_SHA1, CALG_DSS_SIGN}
+  },
+#endif
+  {
+    0x0013,
+    PROT_TLS1_0 |  PROT_TLS1_2 | PROT_SSL3,
+    "TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA", "EDH-DSS-DES-CBC3-SHA",
+    { CALG_DH_EPHEM, CALG_3DES, CALG_SHA1, CALG_DSS_SIGN }
+  },
+  {
+    0x002F,
+    PROT_SSL3 | PROT_TLS1_0 | PROT_TLS1_2,
+    "TLS_RSA_WITH_AES_128_CBC_SHA", "AES128-SHA",
+    { CALG_RSA_KEYX, CALG_AES_128, CALG_SHA, CALG_RSA_SIGN}
+  },
+  {
+    0x0032,
+    PROT_TLS1_0 |  PROT_TLS1_2,
+    "TLS_DHE_DSS_WITH_AES_128_CBC_SHA", "DHE-DSS-AES128-SHA",
+    { CALG_DH_EPHEM, CALG_AES_128, CALG_SHA1, CALG_RSA_SIGN }
+  },
+  {
+    0x0033,
+    PROT_TLS1_0 |  PROT_TLS1_2,
+    "TLS_DHE_RSA_WITH_AES_128_CBC_SHA", "DHE-RSA-AES128-SHA",
+    { CALG_DH_EPHEM, CALG_AES_128, CALG_SHA1, CALG_RSA_SIGN }
+  },
+  {
+    0x0035,
+    PROT_TLS1_0 |  PROT_TLS1_2,
+    "TLS_RSA_WITH_AES_256_CBC_SHA", "AES256-SHA",
+    { CALG_RSA_KEYX, CALG_AES_256, CALG_SHA1, CALG_RSA_SIGN }
+  },
+  {
+    0x0038,
+    PROT_TLS1_0 |  PROT_TLS1_2,
+    "TLS_DHE_DSS_WITH_AES_256_CBC_SHA", "DHE-DSS-AES256-SHA",
+    { CALG_DH_EPHEM, CALG_AES_256, CALG_SHA1, CALG_DSS_SIGN }
+  },
+  {
+    0x0039,
+    PROT_TLS1_0 |  PROT_TLS1_2,
+    "TLS_DHE_RSA_WITH_AES_256_CBC_SHA", "DHE-RSA-AES256-SHA",
+    { CALG_DH_EPHEM, CALG_AES_256, CALG_SHA1, CALG_RSA_SIGN }
+  },
+  {
+    0x003B,
+    PROT_TLS1_2,
+    "TLS_RSA_WITH_NULL_SHA256", "NULL-SHA256",
+    { CALG_RSA_KEYX, 0, CALG_SHA_256, CALG_RSA_SIGN }
+  },
+  {
+    0x003C,
+    PROT_TLS1_2,
+    "TLS_RSA_WITH_AES_128_CBC_SHA256", "AES128-SHA256",
+    { CALG_RSA_KEYX, CALG_AES_128, CALG_SHA_256, CALG_RSA_SIGN }
+  },
+  {
+    0x003D,
+    PROT_TLS1_2,
+    "TLS_RSA_WITH_AES_256_CBC_SHA256", "AES256-SHA256",
+    { CALG_RSA_KEYX, CALG_AES_256, CALG_SHA_256, CALG_RSA_SIGN }
+  },
+  {
+    0x0040,
+    PROT_TLS1_2,
+    "TLS_DHE_DSS_WITH_AES_128_CBC_SHA256", "DHE-DSS-AES128-SHA256",
+    { CALG_DH_EPHEM, CALG_AES_128, CALG_SHA_256, CALG_DSS_SIGN }
+  },
+  {
+    0x009C,
+    PROT_TLS1_2,
+    "TLS_RSA_WITH_AES_128_GCM_SHA256", "AES128-GCM-SHA256",
+    { CALG_RSA_KEYX, CALG_AES_128, CALG_SHA_256, CALG_RSA_SIGN }
+  },
+  {
+    0x009D,
+    PROT_TLS1_2,
+    "TLS_RSA_WITH_AES_256_GCM_SHA384", "AES256-GCM-SHA384",
+    { CALG_RSA_KEYX, CALG_AES_256, CALG_SHA_384, CALG_RSA_SIGN }
+  },
+  {
+    0x009E,
+    PROT_TLS1_2,
+    "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256", "DHE-RSA-AES128-GCM-SHA256",
+    { CALG_DH_EPHEM, CALG_AES_128, CALG_SHA_256, CALG_RSA_SIGN }
+  },
+  {
+    0x009F,
+    PROT_TLS1_2,
+    "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", "DHE-RSA-AES256-GCM-SHA384",
+    { CALG_DH_EPHEM, CALG_AES_256, CALG_SHA_384, CALG_RSA_SIGN }
+  }
+
 };
 
 #define MAX_ALG_ID 50
@@ -134,7 +248,7 @@ void *ma_tls_init(MYSQL *mysql)
 
 /* 
   Maps between openssl suite names and schannel alg_ids.
-  Every suite has 3 algorithms (for exchange, encryption, hash).
+  Every suite has 4 algorithms (for exchange, encryption, hash and signing).
   
   The input string is a set of suite names (openssl),  separated 
   by ':'
@@ -143,21 +257,32 @@ void *ma_tls_init(MYSQL *mysql)
   The function returns number of elements written to the 'arr'.
 */
 
+static struct _tls_version {
+  const char *tls_version;
+  DWORD protocol;
+} tls_version[]= {
+    {"TLSv1.0", PROT_TLS1_0},
+    {"TLSv1.2", PROT_TLS1_2},
+    {"TLSv1.3", PROT_TLS1_3},
+    {"SSLv3",   PROT_SSL3}
+};
 
-static size_t set_cipher(char * cipher_str, ALG_ID *arr , size_t arr_size)
+static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t arr_size)
 {
-  
   char *token = strtok(cipher_str, ":");
   size_t pos = 0;
+
   while (token)
   {
     size_t i;
+
     for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
     {
-      if(pos + 3 < arr_size && strcmp(cipher_map[i].openssl_name, token) == 0)
+      if(pos + 4 < arr_size && strcmp(cipher_map[i].openssl_name, token) == 0 ||
+        (cipher_map[i].protocol <= protocol))
       {
-        memcpy(arr + pos, cipher_map[i].algs, sizeof(cipher_map[i].algs));
-        pos += 3;
+        memcpy(arr + pos, cipher_map[i].algs, sizeof(ALG_ID)* 4);
+        pos += 4;
         break;
       }
     }
@@ -177,7 +302,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   SECURITY_STATUS sRet;
   ALG_ID AlgId[MAX_ALG_ID];
   WORD validTokens = 0;
-
+  
   if (!ctls || !ctls->pvio)
     return 1;;
   
@@ -198,40 +323,61 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
-    Cred.cSupportedAlgs = (DWORD)set_cipher(mysql->options.ssl_cipher, AlgId, MAX_ALG_ID);
+    int i;
+    DWORD protocol = 0;
+
+    /* check if a protocol was specified as a cipher:
+     * In this case don't allow cipher suites which belong to newer protocols
+     * Please note: There are no cipher suites for TLS1.1
+     */
+    for (i = 0; i < sizeof(tls_version) / sizeof(tls_version[0]); i++)
+    {
+      if (!stricmp(mysql->options.ssl_cipher, tls_version[i].tls_version))
+        protocol |= tls_version[i].protocol;
+    }
+    memset(AlgId, 0, MAX_ALG_ID * sizeof(ALG_ID));
+    Cred.cSupportedAlgs = (DWORD)set_cipher(mysql->options.ssl_cipher, protocol, AlgId, MAX_ALG_ID);
     if (Cred.cSupportedAlgs)
     {
       Cred.palgSupportedAlgs = AlgId;
     }
-    else
+    else if (!protocol)
     {
       ma_schannel_set_sec_error(pvio, SEC_E_ALGORITHM_MISMATCH);
       goto end;
     }
   }
+  
   Cred.dwVersion= SCHANNEL_CRED_VERSION;
+  Cred.dwMaximumCipherStrength = 0;
   if (mysql->options.extension)
   {
-    Cred.dwMinimumCipherStrength = mysql->options.extension->tls_cipher_strength;
+    Cred.dwMinimumCipherStrength = 0;
   }
 
-  Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK | SCH_SEND_ROOT_CERT |
-    SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
+  Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK |
+                  SCH_CRED_MANUAL_CRED_VALIDATION |
+                  SCH_USE_STRONG_CRYPTO;
+
   if (sctx->client_cert_ctx)
   {
+    Cred.dwFlags |= SCH_CRED_NO_DEFAULT_CREDS;
     Cred.cCreds = 1;
     Cred.paCred = &sctx->client_cert_ctx;
   }
-  Cred.grbitEnabledProtocols= SP_PROT_TLS1_0|SP_PROT_TLS1_1;
   if (mysql->options.extension && mysql->options.extension->tls_version)
   {
     if (strstr("TLSv1.0", mysql->options.extension->tls_version))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_0;
+      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_0_CLIENT;
     if (strstr("TLSv1.1", mysql->options.extension->tls_version))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1;
+      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1_CLIENT;
     if (strstr("TLSv1.2", mysql->options.extension->tls_version))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2;
+      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
   }
+  if (!Cred.grbitEnabledProtocols)
+    Cred.grbitEnabledProtocols= SP_PROT_TLS1_0_CLIENT |
+                                SP_PROT_TLS1_1_CLIENT |
+                                SP_PROT_TLS1_2_CLIENT;
 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
                                        NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
@@ -243,15 +389,14 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
-
+  ctls->handshake_completed = 1;
   
   if (!ma_schannel_verify_certs(sctx))
     goto end;
- 
+  
   return 0;
 
 end:
-
   if (rc && sctx->IoBufferSize)
     LocalFree(sctx->IoBuffer);
   sctx->IoBufferSize= 0;
@@ -378,23 +523,21 @@ end:
   return rc;
 }
 
-static const char *cipher_name(ALG_ID keyxch, ALG_ID cipher, ALG_ID hash)
+static const char *cipher_name(SecPkgContext_CipherInfo CipherInfo)
 {
   int i;
 
   for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
   {
-    if (cipher_map[i].algs[0] == keyxch &&
-        cipher_map[i].algs[1] == cipher &&
-        cipher_map[i].algs[2] == hash)
+    if (CipherInfo.dwCipherSuite == cipher_map[i].cipher_id)
       return cipher_map[i].openssl_name;
   }
-  return "unknown cipher";
+  return CipherInfo.szCipherSuite;
 };
 
 const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 {
-  SecPkgContext_ConnectionInfo cinfo;
+  SecPkgContext_CipherInfo CipherInfo = { SECPKGCONTEXT_CIPHERINFO_V1 };
   SECURITY_STATUS sRet;
   SC_CTX *sctx;
   DWORD i= 0;
@@ -404,10 +547,11 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 
   sctx= (SC_CTX *)ctls->ssl;
 
-  sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, (PVOID)&cinfo);
+  sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CIPHER_INFO, (PVOID)&CipherInfo);
   if (sRet != SEC_E_OK)
     return NULL;
-  return cipher_name(cinfo.aiExch, cinfo.aiCipher, cinfo.aiHash);
+
+  return cipher_name(CipherInfo);
 }
 
 unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
