@@ -265,7 +265,7 @@ static int test_frm_bug(MYSQL *mysql)
   sprintf(test_frm, "%s/%s/test_frm_bug.frm", data_dir, schema);
 
 
-  if (!(test_file= fopen(test_frm, "rw")))
+  if (!(test_file= fopen(test_frm, "w")))
   {
     mysql_stmt_close(stmt);
     diag("Can't write to file %s -> SKIP", test_frm);
@@ -701,12 +701,6 @@ static int test_wl4284_1(MYSQL *mysql)
 
   if (mysql_get_server_version(mysql) < 60000) {
     diag("Test requires MySQL Server version 6.0 or above");
-    return SKIP;
-  }
-
-  if (!rc)
-  {
-    diag("InnoDB Storage engine not available");
     return SKIP;
   }
 

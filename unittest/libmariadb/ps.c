@@ -5047,7 +5047,32 @@ static int test_reexecute(MYSQL *mysql)
   return OK;
 }
 
+static int test_prepare_error(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  rc= mysql_stmt_prepare(stmt, "SELECT 1 FROM tbl_not_exists", -1);
+  FAIL_IF(!rc, "Expected error");
+
+  rc= mysql_stmt_reset(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_prepare(stmt, "SELECT 1 FROM tbl_not_exists", -1);
+  FAIL_IF(!rc, "Expected error");
+
+  rc= mysql_stmt_reset(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_prepare(stmt, "SET @a:=1", -1);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_prepare_error", test_prepare_error, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_reexecute", test_reexecute, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_bit2tiny", test_bit2tiny, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc97", test_conc97, TEST_CONNECTION_NEW, 0, NULL, NULL},
