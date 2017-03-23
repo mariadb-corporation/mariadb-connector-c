@@ -266,9 +266,7 @@ int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
 ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t r= -1;
-#ifndef _WIN32
   int read_flags= 0;
-#endif
   struct st_pvio_socket *csock= NULL;
 
   if (!pvio || !pvio->data)
@@ -276,32 +274,11 @@ ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 
   csock= (struct st_pvio_socket *)pvio->data;
 
-#ifndef _WIN32
   if (pvio_socket_wait_io_or_timeout(pvio, TRUE, pvio->timeout[PVIO_READ_TIMEOUT]) < 1)
     return -1;
   do {
     r= recv(csock->socket, (void *)buffer, length, read_flags);
   } while (r == -1 && errno == EINTR);
-#else
-  {
-    WSABUF wsaData;
-    DWORD flags= 0,
-          dwBytes= 0;
-
-    /* clear error */
-    errno= 0;
-    wsaData.len = (u_long)length;
-    wsaData.buf = (char*) buffer; 
-
-    r = WSARecv(csock->socket, &wsaData, 1, &dwBytes, &flags, NULL, NULL);
-    if (r == SOCKET_ERROR)
-    {
-      errno= WSAGetLastError();
-      return -1;
-    }
-    r= (ssize_t)dwBytes;
-  }
-#endif
   return r;
 }
 /* }}} */
@@ -452,9 +429,12 @@ ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length
 
   csock= (struct st_pvio_socket *)pvio->data;
 
-#ifndef _WIN32
   do {
-    r= ma_send(csock->socket, buffer, length, send_flags);
+#ifndef _WIN32
+    r = ma_send(csock->socket, buffer, length, send_flags);
+#else
+    r = send(csock->socket, buffer, length, 0);
+#endif
   } while (r == -1 && errno == EINTR);
 
   while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) &&
@@ -463,25 +443,14 @@ ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length
     if (pvio_socket_wait_io_or_timeout(pvio, FALSE, pvio->timeout[PVIO_WRITE_TIMEOUT]) < 1)
       return -1;
     do {
+#ifndef _WIN32
       r= ma_send(csock->socket, buffer, length, send_flags);
+#else
+      r = send(socket, buffer, length, 0);
+#endif
     } while (r == -1 && errno == EINTR);
   }
-#else
-  {
-    WSABUF wsaData;
-    DWORD dwBytes= 0;
 
-    wsaData.len = (u_long)length;
-    wsaData.buf = (char*) buffer;
-
-    r = WSASend(csock->socket, &wsaData, 1, &dwBytes, 0, NULL, NULL);
-    if (r == SOCKET_ERROR) {
-      errno= WSAGetLastError();
-      return -1;
-    }
-    r= dwBytes;
-  }
-#endif
   return r;
 }
 /* }}} */
