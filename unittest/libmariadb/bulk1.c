@@ -402,7 +402,7 @@ static int bulk5(MYSQL *mysql)
 
   res= mysql_store_result(mysql);
   rows= (unsigned long)mysql_num_rows(res);
-  diag("rows: %d", rows);
+  diag("rows: %lu", rows);
   mysql_free_result(res);
 
   FAIL_IF(rows != 5, "expected 5 rows");
