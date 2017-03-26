@@ -313,12 +313,33 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
   return(MYSQL_NO_DATA);
 }
 
+/* flush one result set */
 void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
 {
   ulong packet_len;
+  int in_resultset= stmt->state > MYSQL_STMT_EXECUTED &&
+                    stmt->state < MYSQL_STMT_FETCH_DONE;
   while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
-    if (packet_len < 8 && stmt->mysql->net.read_pos[0] == 254)
-      return;
+  {
+    uchar *pos= stmt->mysql->net.read_pos;
+    if (!in_resultset && *pos == 0) /* OK */
+    {
+      pos++;
+      net_field_length(&pos);
+      net_field_length(&pos);
+      stmt->mysql->server_status= uint2korr(pos);
+      goto end;
+    }
+    if (packet_len < 8 && *pos == 254) /* EOF */
+    {
+      stmt->mysql->server_status= uint2korr(pos + 3);
+      if (in_resultset)
+        goto end;
+      in_resultset= 1;
+    }
+  }
+end:
+  stmt->state= MYSQL_STMT_FETCH_DONE;
 }
 
 int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
@@ -1136,7 +1157,9 @@ static my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove)
     /* check if all data are fetched */
     if (stmt->mysql->status != MYSQL_STATUS_READY)
     {
-      stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
+      do {
+        stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
+      } while(mysql_stmt_more_results(stmt));
       stmt->mysql->status= MYSQL_STATUS_READY;
     }
     if (stmt->state > MYSQL_STMT_INITTED)
@@ -1782,11 +1805,10 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   }
   if (stmt->state > MYSQL_STMT_WAITING_USE_OR_STORE && stmt->state < MYSQL_STMT_FETCH_DONE && !stmt->result.data)
   {
-    do {
-      if (!stmt->cursor_exists)
-        mysql->methods->db_stmt_flush_unbuffered(stmt);
-    }
-    while (mysql_stmt_next_result(stmt) == 0);
+    if (!stmt->cursor_exists)
+      do {
+        stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
+      } while(mysql_stmt_more_results(stmt));
     stmt->state= MYSQL_STMT_PREPARED;
     stmt->mysql->status= MYSQL_STATUS_READY;
   }
@@ -2242,9 +2264,11 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   /* read execute response packet */
   return stmt_read_execute_response(stmt);
 fail:
-  stmt->state= MYSQL_STMT_INITTED;
   SET_CLIENT_STMT_ERROR(stmt, mysql->net.last_errno, mysql->net.sqlstate,
       mysql->net.last_error);
-  mysql->methods->db_stmt_flush_unbuffered(stmt);
+  do {
+    stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
+  } while(mysql_stmt_more_results(stmt));
+  stmt->state= MYSQL_STMT_INITTED;
   return 1;
 }
