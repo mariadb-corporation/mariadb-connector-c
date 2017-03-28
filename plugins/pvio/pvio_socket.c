@@ -52,9 +52,12 @@
 #include <netinet/ip.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
+#define IS_SOCKET_EINTR(err) (err == SOCKET_EINTR)
 #else
 #include <ws2tcpip.h>
 #define O_NONBLOCK 1
+#define MSG_DONTWAIT 0
+#define IS_SOCKET_EINTR(err) 0
 #endif
 
 #ifndef SOCKET_ERROR
@@ -62,6 +65,16 @@
 #endif
 
 #define DNS_TIMEOUT 30
+
+#ifndef O_NONBLOCK
+#if defined(O_NDELAY)
+#define O_NONBLOCK O_NODELAY
+#elif defined (O_FNDELAY)
+#define O_NONBLOCK O_FNDELAY
+#else
+#error socket blocking is not supported on this platform
+#endif
+#endif
 
 
 /* Function prototypes */
@@ -88,6 +101,8 @@ static int pvio_socket_init(char *unused1,
                            int unused3, 
                            va_list);
 static int pvio_socket_end(void);
+static ssize_t ma_send(my_socket socket, const uchar *buffer, size_t length, int flags);
+static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags);
 
 struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_set_timeout,
@@ -265,20 +280,26 @@ int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
 */   
 ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
-  ssize_t r= -1;
-  int read_flags= 0;
-  struct st_pvio_socket *csock= NULL;
+  ssize_t r;
+  int read_flags= MSG_DONTWAIT;
+  struct st_pvio_socket *csock;
+  int timeout;
 
   if (!pvio || !pvio->data)
     return -1;
 
   csock= (struct st_pvio_socket *)pvio->data;
+  timeout = pvio->timeout[PVIO_READ_TIMEOUT];
 
-  if (pvio_socket_wait_io_or_timeout(pvio, TRUE, pvio->timeout[PVIO_READ_TIMEOUT]) < 1)
-    return -1;
-  do {
-    r= recv(csock->socket, (void *)buffer, length, read_flags);
-  } while (r == -1 && errno == EINTR);
+  while ((r = ma_recv(csock->socket, (void *)buffer, length, read_flags)) == -1)
+  {
+    int err = socket_errno;
+    if ((err != SOCKET_EAGAIN && err != SOCKET_EWOULDBLOCK) || timeout == 0)
+      return r;
+
+    if (pvio_socket_wait_io_or_timeout(pvio, TRUE, timeout) < 1)
+      return -1;
+  }
   return r;
 }
 /* }}} */
@@ -328,22 +349,33 @@ ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 }
 /* }}} */
 
-#ifndef _WIN32
-ssize_t ma_send(int socket, const uchar *buffer, size_t length, int flags)
+static ssize_t ma_send(my_socket socket, const uchar *buffer, size_t length, int flags)
 {
   ssize_t r;
-#if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE)
+#if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE) && !defined(_WIN32)
   struct sigaction act, oldact;
   act.sa_handler= SIG_IGN;
   sigaction(SIGPIPE, &act, &oldact);
 #endif
-  r= send(socket, buffer, length, flags);
-#if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE)
+  do {
+    r = send(socket, buffer, IF_WIN((int)length,length), flags);
+  }
+  while (r == -1 && IS_SOCKET_EINTR(socket_errno));
+#if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE) && !defined(_WIN32)
   sigaction(SIGPIPE, &oldact, NULL);
 #endif
   return r;
 }
-#endif
+
+static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags)
+{
+  ssize_t r;
+  do {
+   r = recv(socket, buffer, IF_WIN((int)length, length), flags);
+  }
+  while (r == -1 && IS_SOCKET_EINTR(socket_errno));
+  return r;
+}
 
 /* {{{ pvio_socket_async_write */
 /*
@@ -416,41 +448,27 @@ ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t 
 */
 ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
-  ssize_t r= -1;
-  struct st_pvio_socket *csock= NULL;
-#ifndef _WIN32
+  ssize_t r;
+  struct st_pvio_socket *csock;
+  int timeout;
   int send_flags= MSG_DONTWAIT;
 #ifdef MSG_NOSIGNAL
   send_flags|= MSG_NOSIGNAL;
-#endif
 #endif
   if (!pvio || !pvio->data)
     return -1;
 
   csock= (struct st_pvio_socket *)pvio->data;
+  timeout = pvio->timeout[PVIO_WRITE_TIMEOUT];
 
-  do {
-#ifndef _WIN32
-    r = ma_send(csock->socket, buffer, length, send_flags);
-#else
-    r = send(csock->socket, buffer, length, 0);
-#endif
-  } while (r == -1 && errno == EINTR);
-
-  while (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) &&
-         pvio->timeout[PVIO_WRITE_TIMEOUT] != 0)
+  while ((r = ma_send(csock->socket, (void *)buffer, length,send_flags)) == -1)
   {
-    if (pvio_socket_wait_io_or_timeout(pvio, FALSE, pvio->timeout[PVIO_WRITE_TIMEOUT]) < 1)
+    int err = socket_errno;
+    if ((err != SOCKET_EAGAIN && err != SOCKET_EWOULDBLOCK)|| timeout == 0)
+      return r;
+    if (pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout) < 1)
       return -1;
-    do {
-#ifndef _WIN32
-      r= ma_send(csock->socket, buffer, length, send_flags);
-#else
-      r = send(socket, buffer, length, 0);
-#endif
-    } while (r == -1 && errno == EINTR);
   }
-
   return r;
 }
 /* }}} */
@@ -508,6 +526,7 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
     else if (rc == 0)
     {
       rc= SOCKET_ERROR;
+      WSASetLastError(WSAETIMEDOUT);
       errno= ETIMEDOUT;
     }
     else if (FD_ISSET(csock->socket, &exc_fds))
@@ -516,6 +535,7 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
       int len = sizeof(int);
       if (getsockopt(csock->socket, SOL_SOCKET, SO_ERROR, (char *)&err, &len) != SOCKET_ERROR)
       {
+        WSASetLastError(err);
         errno= err;
       }
       rc= SOCKET_ERROR;
@@ -528,50 +548,42 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
 
 my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
 {
-  int *sd_flags, save_flags;
-  my_bool tmp;
-  struct st_pvio_socket *csock= NULL;
+  my_bool is_blocking;
+  struct st_pvio_socket *csock;
+  int new_fcntl_mode;
 
   if (!pvio || !pvio->data)
     return 1;
 
-  csock= (struct st_pvio_socket *)pvio->data;
-  sd_flags= &csock->fcntl_mode;
-  save_flags= csock->fcntl_mode;
+  csock = (struct st_pvio_socket *)pvio->data;
 
-  if (!previous_mode)
-    previous_mode= &tmp;
+  is_blocking = (csock->fcntl_mode & O_NONBLOCK)?1:0;
+  if (previous_mode)
+    *previous_mode = is_blocking;
+
+  if (is_blocking == block)
+    return 0;
+
+  if (block)
+     new_fcntl_mode = csock->fcntl_mode | O_NONBLOCK;
+  else
+     new_fcntl_mode = csock->fcntl_mode & ~O_NONBLOCK;
 
 #ifdef _WIN32
-  *previous_mode= (*sd_flags & O_NONBLOCK) != 0;
-  *sd_flags = (block) ? *sd_flags & ~O_NONBLOCK : *sd_flags | O_NONBLOCK;
   {
-    ulong arg= 1 - block;
+    ulong arg = block ? 0 : 1;
     if (ioctlsocket(csock->socket, FIONBIO, (void *)&arg))
     {
-      csock->fcntl_mode= save_flags;
       return(WSAGetLastError());
     }
   }
 #else
-#if defined(O_NONBLOCK)
-  *previous_mode= (*sd_flags & O_NONBLOCK) != 0;
-  *sd_flags = (block) ? *sd_flags & ~O_NONBLOCK : *sd_flags | O_NONBLOCK;
-#elif defined(O_NDELAY)
-  *previous_mode= (*sd_flags & O_NODELAY) != 0;
-  *sd_flags = (block) ? *sd_flags & ~O_NODELAY : *sd_flags | O_NODELAY;
-#elif defined(FNDELAY)
-  *previous_mode= (*sd_flags & O_FNDELAY) != 0;
-  *sd_flags = (block) ? *sd_flags & ~O_FNDELAY : *sd_flags | O_FNDELAY;
-#else
-#error socket blocking is not supported on this platform
-#endif
-  if (fcntl(csock->socket, F_SETFL, *sd_flags) == -1)
+  if (fcntl(csock->socket, F_SETFL, new_fcntl_mode) == -1)
   {
-    csock->fcntl_mode= save_flags;
     return errno;
   }
 #endif
+  csock->fcntl_mode = new_fcntl_mode;
   return 0;
 }
 

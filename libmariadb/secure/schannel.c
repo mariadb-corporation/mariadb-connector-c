@@ -59,14 +59,12 @@ cipher_map[] =
     "TLS_RSA_WITH_RC4_128_SHA", "RC4-SHA",
     { CALG_RSA_KEYX, CALG_RC4, CALG_SHA1, CALG_RSA_SIGN }
   },
-#ifdef MARIADB_UNSECURE
   {
     0x000A,
     PROT_SSL3,
     "TLS_RSA_WITH_3DES_EDE_CBC_SHA", "DES-CBC3-SHA",
     {CALG_RSA_KEYX, CALG_3DES, CALG_SHA1, CALG_DSS_SIGN}
   },
-#endif
   {
     0x0013,
     PROT_TLS1_0 |  PROT_TLS1_2 | PROT_SSL3,
@@ -293,7 +291,6 @@ static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t
 
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
-  my_bool blocking;
   MYSQL *mysql;
   SCHANNEL_CRED Cred;
   MARIADB_PVIO *pvio;
@@ -308,10 +305,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   
   pvio= ctls->pvio;
   sctx= (SC_CTX *)ctls->ssl;
-
-  /* Set socket to blocking if not already set */
-  if (!(blocking= pvio->methods->is_blocking(pvio)))
-    pvio->methods->blocking(pvio, TRUE, 0);
 
   mysql= pvio->mysql;
  
@@ -349,19 +342,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   }
   
   Cred.dwVersion= SCHANNEL_CRED_VERSION;
-  Cred.dwMaximumCipherStrength = 0;
-  if (mysql->options.extension)
-  {
-    Cred.dwMinimumCipherStrength = 0;
-  }
 
-  Cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK |
-                  SCH_CRED_MANUAL_CRED_VALIDATION |
-                  SCH_USE_STRONG_CRYPTO;
+  Cred.dwFlags = SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
 
   if (sctx->client_cert_ctx)
   {
-    Cred.dwFlags |= SCH_CRED_NO_DEFAULT_CREDS;
     Cred.cCreds = 1;
     Cred.paCred = &sctx->client_cert_ctx;
   }
@@ -375,9 +360,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
   }
   if (!Cred.grbitEnabledProtocols)
-    Cred.grbitEnabledProtocols= SP_PROT_TLS1_0_CLIENT |
-                                SP_PROT_TLS1_1_CLIENT |
-                                SP_PROT_TLS1_2_CLIENT;
+    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT |  SP_PROT_TLS1_1_CLIENT;
 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
                                        NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
@@ -522,16 +505,16 @@ end:
   return rc;
 }
 
-static const char *cipher_name(SecPkgContext_CipherInfo CipherInfo)
+static const char *cipher_name(const SecPkgContext_CipherInfo *CipherInfo)
 {
   int i;
 
   for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
   {
-    if (CipherInfo.dwCipherSuite == cipher_map[i].cipher_id)
+    if (CipherInfo->dwCipherSuite == cipher_map[i].cipher_id)
       return cipher_map[i].openssl_name;
   }
-  return CipherInfo.szCipherSuite;
+  return "";
 };
 
 const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
@@ -550,7 +533,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   if (sRet != SEC_E_OK)
     return NULL;
 
-  return cipher_name(CipherInfo);
+  return cipher_name(&CipherInfo);
 }
 
 unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)

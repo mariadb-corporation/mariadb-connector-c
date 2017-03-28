@@ -697,7 +697,7 @@ typedef off_t os_off_t;
 #if defined(_WIN32)
 #define socket_errno	WSAGetLastError()
 #define SOCKET_EINTR	WSAEINTR 
-#define SOCKET_EAGAIN	WSAEINPROGRESS
+#define SOCKET_EAGAIN	WSAEWOULDBLOCK
 #define SOCKET_ENFILE	ENFILE
 #define SOCKET_EMFILE	EMFILE
 #define SOCKET_EWOULDBLOCK WSAEWOULDBLOCK
