@@ -557,7 +557,7 @@ my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previou
 
   csock = (struct st_pvio_socket *)pvio->data;
 
-  is_blocking = (csock->fcntl_mode & O_NONBLOCK)?1:0;
+  is_blocking = !(csock->fcntl_mode & O_NONBLOCK);
   if (previous_mode)
     *previous_mode = is_blocking;
 
@@ -565,9 +565,9 @@ my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previou
     return 0;
 
   if (block)
-     new_fcntl_mode = csock->fcntl_mode | O_NONBLOCK;
-  else
      new_fcntl_mode = csock->fcntl_mode & ~O_NONBLOCK;
+  else
+     new_fcntl_mode = csock->fcntl_mode | O_NONBLOCK;
 
 #ifdef _WIN32
   {
