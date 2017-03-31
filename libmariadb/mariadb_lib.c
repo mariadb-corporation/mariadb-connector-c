@@ -1633,6 +1633,8 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   tmp_mysql.stmts= mysql->stmts;
   mysql->stmts= NULL;
 
+  if (ctxt)
+    my_context_install_suspend_resume_hook(ctxt, NULL, NULL);
   /* Don't free options, we moved them to tmp_mysql */
   memset(&mysql->options, 0, sizeof(mysql->options));
   mysql->free_me=0;
