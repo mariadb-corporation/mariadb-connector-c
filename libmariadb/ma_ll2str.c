@@ -39,7 +39,7 @@ char *ma_ll2str(long long val,char *dst,int radix)
     if (radix < -36 || radix > -2) return (char*) 0;
     if (val < 0) {
       *dst++ = '-';
-      val = -val;
+      val = 0ULL - val;
     }
     radix = -radix;
   }

@@ -35,6 +35,8 @@ mysql_config/mysql_config
 *.hex
 
 *.dgcov
+.*.swp
+.gdb_history
 CTestTestfile.cmake
 cmake_install.cmake
 bin/

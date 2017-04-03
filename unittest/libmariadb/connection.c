@@ -988,7 +988,7 @@ static int test_sess_track_db(MYSQL *mysql)
 
   return OK;
 }
-
+#ifndef WIN32
 static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
@@ -1016,6 +1016,7 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   mysql_close(mysql);
   return OK;
 }
+#endif
 
 static int test_reset(MYSQL *mysql)
 {
@@ -1069,9 +1070,32 @@ static int test_reset(MYSQL *mysql)
   return OK;
 }
 
+static int test_mdev12446(MYSQL *my __attribute__((unused)))
+{
+  /*
+    if specified file didn't exist, valgrind reported a leak,
+    if no file was specified and no default file is installed,
+    C/C crashed due to double free.
+  */
+  MYSQL *mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "file.notfound");
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+  mysql_close(mysql);
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "notfound");
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev12446", test_mdev12446, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_reset", test_reset, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
+#ifndef WIN32
   {"test_unix_socket_close", test_unix_socket_close, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+#endif
   {"test_sess_track_db", test_sess_track_db, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_get_options", test_get_options, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

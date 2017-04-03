@@ -4974,7 +4974,106 @@ static int test_bit2tiny(MYSQL *mysql)
   return OK;
 }
 
+static int test_reexecute(MYSQL *mysql)
+{
+    MYSQL_STMT *stmt;
+  MYSQL_BIND ps_params[3];  /* input parameter buffers */
+  int        int_data[3];   /* input/output values */
+  int        rc;
+
+  /* set up stored procedure */
+  rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+
+  rc = mysql_query(mysql,
+      "CREATE PROCEDURE p1("
+      "  IN p_in INT, "
+      "  OUT p_out INT, "
+      "  INOUT p_inout INT) "
+      "BEGIN "
+      "  SELECT p_in, p_out, p_inout; "
+      "  SET p_in = 100, p_out = 200, p_inout = 300; "
+      "  SELECT p_in, p_out, p_inout; "
+      "END");
+  check_mysql_rc(rc, mysql);
+
+  /* initialize and prepare CALL statement with parameter placeholders */
+  stmt = mysql_stmt_init(mysql);
+  if (!stmt)
+  {
+    diag("Could not initialize statement");
+    exit(1);
+  }
+  rc = mysql_stmt_prepare(stmt, "CALL p1(?, ?, ?)", 16);
+  check_stmt_rc(rc, stmt);
+
+  /* initialize parameters: p_in, p_out, p_inout (all INT) */
+  memset(ps_params, 0, sizeof (ps_params));
+
+  ps_params[0].buffer_type = MYSQL_TYPE_LONG;
+  ps_params[0].buffer = (char *) &int_data[0];
+  ps_params[0].length = 0;
+  ps_params[0].is_null = 0;
+
+  ps_params[1].buffer_type = MYSQL_TYPE_LONG;
+  ps_params[1].buffer = (char *) &int_data[1];
+  ps_params[1].length = 0;
+  ps_params[1].is_null = 0;
+
+  ps_params[2].buffer_type = MYSQL_TYPE_LONG;
+  ps_params[2].buffer = (char *) &int_data[2];
+  ps_params[2].length = 0;
+  ps_params[2].is_null = 0;
+
+  /* bind parameters */
+  rc = mysql_stmt_bind_param(stmt, ps_params);
+  check_stmt_rc(rc, stmt);
+
+  /* assign values to parameters and execute statement */
+  int_data[0]= 10;  /* p_in */
+  int_data[1]= 20;  /* p_out */
+  int_data[2]= 30;  /* p_inout */
+
+  rc = mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
+static int test_prepare_error(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  rc= mysql_stmt_prepare(stmt, "SELECT 1 FROM tbl_not_exists", -1);
+  FAIL_IF(!rc, "Expected error");
+
+  rc= mysql_stmt_reset(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_prepare(stmt, "SELECT 1 FROM tbl_not_exists", -1);
+  FAIL_IF(!rc, "Expected error");
+
+  rc= mysql_stmt_reset(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_prepare(stmt, "SET @a:=1", -1);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_prepare_error", test_prepare_error, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_reexecute", test_reexecute, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_bit2tiny", test_bit2tiny, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc97", test_conc97, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc83", test_conc83, TEST_CONNECTION_NONE, 0, NULL, NULL},

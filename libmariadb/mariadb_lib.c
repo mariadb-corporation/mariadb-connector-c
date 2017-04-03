@@ -1595,6 +1595,7 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   tmp_mysql.options.my_cnf_group= tmp_mysql.options.my_cnf_file= NULL;
   if (IS_MYSQL_ASYNC_ACTIVE(mysql))
   {
+    ctxt= mysql->options.extension->async_context;
     hook_data.orig_mysql= mysql;
     hook_data.new_mysql= &tmp_mysql;
     hook_data.orig_pvio= mysql->net.pvio;
@@ -1632,6 +1633,8 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   tmp_mysql.stmts= mysql->stmts;
   mysql->stmts= NULL;
 
+  if (ctxt)
+    my_context_install_suspend_resume_hook(ctxt, NULL, NULL);
   /* Don't free options, we moved them to tmp_mysql */
   memset(&mysql->options, 0, sizeof(mysql->options));
   mysql->free_me=0;

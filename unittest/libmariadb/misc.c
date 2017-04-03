@@ -265,7 +265,7 @@ static int test_frm_bug(MYSQL *mysql)
   sprintf(test_frm, "%s/%s/test_frm_bug.frm", data_dir, schema);
 
 
-  if (!(test_file= fopen(test_frm, "rw")))
+  if (!(test_file= fopen(test_frm, "w")))
   {
     mysql_stmt_close(stmt);
     diag("Can't write to file %s -> SKIP", test_frm);

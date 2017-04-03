@@ -432,7 +432,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
   cbIoBuffer = 0;
   fDoRead = InitialRead;
 
-  /* handshake loop: We will leave a handshake is finished
+  /* handshake loop: We will leave if handshake is finished
      or an error occurs */
 
   rc = SEC_I_CONTINUE_NEEDED;
@@ -656,6 +656,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   if(BuffersOut.cbBuffer != 0 && BuffersOut.pvBuffer != NULL)
   {  
     ssize_t nbytes = (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
+
     if (nbytes <= 0)
     {
       sRet= SEC_E_INTERNAL_ERROR;
