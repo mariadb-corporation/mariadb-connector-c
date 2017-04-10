@@ -497,7 +497,7 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
 
     do {
       rc= poll(&p_fd, 1, timeout);
-    } while (rc == -1 || errno == EINTR);
+    } while (rc == -1 && errno == EINTR);
 
     if (rc == 0)
       errno= ETIMEDOUT;
