@@ -207,7 +207,7 @@ restart:
 
       if (last_errno== 65535 &&
           ((mariadb_connection(mysql) && (mysql->server_capabilities & CLIENT_PROGRESS)) ||
-           (!(mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_PROGRESS >> 32))))
+           (!(mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_PROGRESS << 32))))
       {
         if (cli_report_progress(mysql, (uchar *)pos, (uint) (len-1)))
         {
@@ -1483,7 +1483,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     net->compress= 1;
 
   /* last part: select default db */
-  if (db && !mysql->db)
+  if (!(mysql->server_capabilities & CLIENT_CONNECT_WITH_DB) &&
+      (db && !mysql->db))
   {
     if (mysql_select_db(mysql, db))
     {

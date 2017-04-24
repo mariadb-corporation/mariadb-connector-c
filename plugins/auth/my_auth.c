@@ -165,7 +165,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
   buff= malloc(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
   end= buff;
-  
+
   mysql->client_flag|= mysql->options.client_flag;
   mysql->client_flag|= CLIENT_CAPABILITIES;
 
@@ -212,6 +212,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->client_flag & CLIENT_PROTOCOL_41)
   {
     /* 4.1 server and 4.1 client has a 32 byte option flag */
+    if (!(mysql->server_capabilities & CLIENT_MYSQL))
+      mysql->client_flag&= ~CLIENT_MYSQL;
     int4store(buff,mysql->client_flag);
     int4store(buff+4, net->max_packet_size);
     buff[8]= (char) mysql->charset->nr;

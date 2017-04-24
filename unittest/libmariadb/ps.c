@@ -832,7 +832,6 @@ static int test_prepare_alter(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
- 
   mysql_new= mysql_init(NULL);
   FAIL_IF(!mysql_new, "mysql_init failed");
   FAIL_IF(!(my_test_connect(mysql_new, hostname, username, password,
