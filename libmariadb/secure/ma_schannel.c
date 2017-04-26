@@ -454,7 +454,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
           break;
         }
     fprintf(dump_file, "\nServer (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-    fwrite(sctx->IoBuffer + cbIoBuffer, nBytes, 1, dump_file);
+    fwrite(sctx->IoBuffer + cbIoBuffer, nbytes, 1, dump_file);
         cbData = (DWORD)nbytes;
         cbIoBuffer += cbData;
       }
@@ -517,7 +517,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
           return SEC_E_INTERNAL_ERROR;
         }
         fprintf(dump_file, "\nClient (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-        fwrite(OutBuffers.pvBuffer, nBytes, 1, dump_file);
+        fwrite(OutBuffers.pvBuffer, nbytes, 1, dump_file);
         cbData= (DWORD)nbytes;
         /* Free output context buffer */
         FreeContextBuffer(OutBuffers.pvBuffer);
@@ -663,7 +663,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
       goto end;
     }
     fprintf(dump_file, "\nClient (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-    fwrite(BuffersOut.pvBuffer, nBytes, 1, dump_file);
+    fwrite(BuffersOut.pvBuffer, nbytes, 1, dump_file);
     r = (DWORD)nbytes;
   }
   sRet= ma_schannel_handshake_loop(pvio, TRUE, &ExtraData);
@@ -764,7 +764,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
       return SEC_E_INVALID_HANDLE;
     }
     fprintf(dump_file, "\nServer (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-    fwrite(sctx->IoBuffer + dwOffset, nBytes, 1, dump_file);
+    fwrite(sctx->IoBuffer + dwOffset, nbytes, 1, dump_file);
     dwOffset+= (DWORD)nbytes;
 
     ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
