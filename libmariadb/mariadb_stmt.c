@@ -803,9 +803,8 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
      -----------------------------------------
      0             4      Statement id
      4             2      Flags (cursor type):
-                            STMT_BULK_SEND_TYPES = 64
-                            STMT_BULK_RETURN_AUTO_ID = 128
-     6             4      array size
+                            STMT_BULK_FLAG_CLIENT_SEND_TYPES = 128
+                            STMT_BULK_FLAG_INSERT_ID_REQUEST = 64
      -----------------------------------------
      if (stmt->send_types_to_server):
      for (i=0; i < param_count; i++)
@@ -846,12 +845,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
 
   /* todo: request to return auto generated ids */
   if (stmt->send_types_to_server)
-    flags|= 0x40;
+    flags|= STMT_BULK_FLAG_CLIENT_SEND_TYPES;
   int2store(p, flags);
-  p++;
-
-  int4store(p, stmt->array_size);
-  p+= 4;
+  p+=2;
 
   /* When using mariadb_stmt_execute_direct stmt->paran_count is
      not knowm, so we need to assign prebind_params, which was previously
@@ -862,9 +858,6 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
 
   if (stmt->param_count)
   {
-    int1store(p, stmt->send_types_to_server);
-    p++;
-
     free_bytes= length - (p - start);
 
     /* Store type information:
@@ -2269,7 +2262,8 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
 {
   MYSQL *mysql= stmt->mysql;
   my_bool emulate_cmd= !(!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
-      (stmt->mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
+      (stmt->mysql->extension->mariadb_server_capabilities &
+      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32)));
 
   if (!mysql)
   {

@@ -37,7 +37,8 @@ char *rand_str(size_t length) {
 static int check_bulk(MYSQL *mysql)
 {
   bulk_enabled= (!(mysql->server_capabilities & CLIENT_MYSQL) &&
-      (mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
+      (mysql->extension->mariadb_server_capabilities &
+      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32)));
   diag("bulk %ssupported", bulk_enabled ? "" : "not ");
   return OK;
 }
@@ -605,7 +606,7 @@ struct my_tests_st my_tests[] = {
   {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk4", bulk4, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
-  {"bulk_null", bulk_null, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+//  {"bulk_null", bulk_null, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
