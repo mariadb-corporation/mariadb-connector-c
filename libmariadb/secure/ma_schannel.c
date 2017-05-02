@@ -25,8 +25,6 @@
 #define SC_IO_BUFFER_SIZE 0x4000
 #define MAX_SSL_ERR_LEN 100
 
-extern FILE *dump_file;
-
 #define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer
 void ma_schannel_set_win_error(MARIADB_PVIO *pvio);
 
@@ -453,8 +451,6 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
           rc = SEC_E_INTERNAL_ERROR;
           break;
         }
-    fprintf(dump_file, "\nServer (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-    fwrite(sctx->IoBuffer + cbIoBuffer, nBytes, 1, dump_file);
         cbData = (DWORD)nbytes;
         cbIoBuffer += cbData;
       }
@@ -516,8 +512,6 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
           DeleteSecurityContext(&sctx->ctxt);
           return SEC_E_INTERNAL_ERROR;
         }
-        fprintf(dump_file, "\nClient (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-        fwrite(OutBuffers.pvBuffer, nBytes, 1, dump_file);
         cbData= (DWORD)nbytes;
         /* Free output context buffer */
         FreeContextBuffer(OutBuffers.pvBuffer);
@@ -662,8 +656,6 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
       sRet= SEC_E_INTERNAL_ERROR;
       goto end;
     }
-    fprintf(dump_file, "\nClient (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-    fwrite(BuffersOut.pvBuffer, nBytes, 1, dump_file);
     r = (DWORD)nbytes;
   }
   sRet= ma_schannel_handshake_loop(pvio, TRUE, &ExtraData);
@@ -763,8 +755,6 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
       // todo: error 
       return SEC_E_INVALID_HANDLE;
     }
-    fprintf(dump_file, "\nServer (%d) - %ld bytes\n", pvio->mysql->thread_id, nbytes);
-    fwrite(sctx->IoBuffer + dwOffset, nBytes, 1, dump_file);
     dwOffset+= (DWORD)nbytes;
 
     ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
