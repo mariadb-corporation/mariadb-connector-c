@@ -30,12 +30,14 @@
 static const char *ini_exts[]= {"ini", "cnf", 0};
 static const char *ini_dirs[]= {"C:", ".", 0};
 static const char *ini_env_dirs[]= {"WINDOWS", "HOMEPATH", 0};
+#define ENV_HOME_DIR "HOMEPATH"
 #define R_OK 4
 #else
 #include <unistd.h>
 static const char *ini_exts[]= {"cnf", 0};
 static const char *ini_dirs[]= {"/etc", "/etc/mysql", ".", 0};
 static const char *ini_env_dirs[]= {"HOME", "SYSCONFDIR", 0};
+#define ENV_HOME_DIR "HOME"
 #endif
 
 extern my_bool _mariadb_set_conf_option(MYSQL *mysql, const char *config_option, const char *config_value);
@@ -43,6 +45,7 @@ extern my_bool _mariadb_set_conf_option(MYSQL *mysql, const char *config_option,
 char *_mariadb_get_default_file(char *filename, size_t length)
 {
   int dirs; int exts;
+  char *env;
 
   for (dirs= 0; ini_dirs[dirs]; dirs++)
   {
@@ -58,12 +61,22 @@ char *_mariadb_get_default_file(char *filename, size_t length)
   {
     for (exts= 0; ini_exts[exts]; exts++)
     {
-      char *env= getenv(ini_env_dirs[dirs]);
+      env= getenv(ini_env_dirs[dirs]);
       snprintf(filename, length,
                "%s%cmy.%s", env, FN_LIBCHAR, ini_exts[exts]);
       if (!access(filename, R_OK))
         return filename;
     }
+  }
+
+  /* check for .my file in home directoy */
+  env= getenv(ENV_HOME_DIR);
+  for (exts= 0; ini_exts[exts]; exts++)
+  {
+    snprintf(filename, length,
+             "%s%c.my.%s", env, FN_LIBCHAR, ini_exts[exts]);
+    if (!access(filename, R_OK))
+      return filename;
   }
   return NULL;
 }

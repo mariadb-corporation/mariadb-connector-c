@@ -454,10 +454,13 @@ void get_envvars() {
 
   if (!hostname && (envvar= getenv("MYSQL_TEST_HOST")))
     hostname= envvar;
-  if (!username && (envvar= getenv("MYSQL_TEST_USER")))
-    username= envvar;
-  else
-    username= (char *)"root";
+  if (!username)
+  {
+    if ((envvar= getenv("MYSQL_TEST_USER")))
+      username= envvar;
+    else
+      username= (char *)"root";
+  }
   if (!password && (envvar= getenv("MYSQL_TEST_PASSWD")))
     password= envvar;
   if (!schema && (envvar= getenv("MYSQL_TEST_DB")))
