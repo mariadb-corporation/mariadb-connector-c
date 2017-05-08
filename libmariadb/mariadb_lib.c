@@ -1522,8 +1522,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   strcpy(mysql->net.sqlstate, "00000");
 
   /* connection established, apply timeouts */
-  ma_pvio_set_timeout(mysql->net.pvio, PVIO_READ_TIMEOUT, mysql->options.read_timeout);
-  ma_pvio_set_timeout(mysql->net.pvio, PVIO_WRITE_TIMEOUT, mysql->options.write_timeout);
+  ma_pvio_set_timeout(mysql->net.pvio, PVIO_READ_TIMEOUT, mysql->options.read_timeout * 1000);
+  ma_pvio_set_timeout(mysql->net.pvio, PVIO_WRITE_TIMEOUT, mysql->options.write_timeout * 1000);
   return(mysql);
 
 error:

@@ -30,6 +30,9 @@
 #include <openssl/conf.h>
 #include <openssl/md4.h>
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
+#define HAVE_OPENSSL_CHECK_HOST 1
+#endif
 #ifdef HAVE_TLS_SESSION_CACHE
 #undef HAVE_TLS_SESSION_CACHE
 #endif
@@ -627,13 +630,15 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
 {
   X509 *cert;
   MYSQL *mysql;
+  SSL *ssl;
+  MARIADB_PVIO *pvio;
+#if !defined(HAVE_OPENSSL_CHECK_HOST)
   X509_NAME *x509sn;
   int cn_pos;
   X509_NAME_ENTRY *cn_entry;
   ASN1_STRING *cn_asn1;
   const char *cn_str;
-  SSL *ssl;
-  MARIADB_PVIO *pvio;
+#endif
 
   if (!ctls || !ctls->ssl)
     return 1;
@@ -655,7 +660,10 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
                     ER(CR_SSL_CONNECTION_ERROR), "Unable to get server certificate");
     return 1;
   }
-
+#ifdef HAVE_OPENSSL_CHECK_HOST
+  if (X509_check_host(cert, mysql->host, 0, 0, 0) != 1)
+    goto error;
+#else
   x509sn= X509_get_subject_name(cert);
 
   if ((cn_pos= X509_NAME_get_index_by_NID(x509sn, NID_commonName, -1)) < 0)
@@ -679,7 +687,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
 
   if (strcmp(cn_str, mysql->host))
     goto error;
-
+#endif
   X509_free(cert);
 
   return 0;
