@@ -460,10 +460,10 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
       goto end;
     }
 
-    if (!(NameSize= CertNameToStr(pServerCert->dwCertEncodingType,
-      &pServerCert->pCertInfo->Subject,
-      CERT_X500_NAME_STR | CERT_NAME_STR_NO_PLUS_FLAG,
-      NULL, 0)))
+    if (!(NameSize= CertGetNameString(pServerCert,
+                                      CERT_NAME_DNS_TYPE,
+                                      CERT_NAME_SEARCH_ALL_NAMES_FLAG,
+                                      NULL, NULL, 0)))
     {
       pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error:  Can't retrieve name of server certificate");
       goto end;
@@ -475,27 +475,45 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
       goto end;
     }
 
-    if (!CertNameToStr(pServerCert->dwCertEncodingType,
-      &pServerCert->pCertInfo->Subject,
-      CERT_X500_NAME_STR | CERT_NAME_STR_NO_PLUS_FLAG,
-      szName, NameSize))
+    if (!CertGetNameString(pServerCert,
+                           CERT_NAME_DNS_TYPE,
+                           CERT_NAME_SEARCH_ALL_NAMES_FLAG,
+                           NULL, szName, NameSize))
+
     {
       pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Can't retrieve name of server certificate");
       goto end;
     }
-    if ((p1 = strstr(szName, "CN=")))
+
+    /* szName may contain multiple names: Each name is zero terminated, the last name is
+       double zero terminated */
+
+    
+    p1 = szName;
+    while (p1 && *p1 != 0)
     {
-      p1+= 3;
-      if ((p2= strstr(p1, ", ")))
-        *p2= 0;
-      if (!strcmp(pszServerName, p1))
+      DWORD len = strlen(p1);
+      /* check if given name contains wildcard */
+      if (len && *p1 == '*')
       {
-        rc= 0;
+        DWORD hostlen = strlen(pszServerName);
+        if (hostlen < len)
+          break;
+        if (!stricmp(pszServerName + hostlen - len + 1, p1 + 1))
+        {
+          rc = 0;
+          goto end;
+        }
+      }
+      else if (!stricmp(pszServerName, p1))
+      {
+        rc = 0;
         goto end;
       }
-      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                     "SSL connection error: Name of server certificate didn't match");
+      p1 += (len + 1);
     }
+    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                     "SSL connection error: Name of server certificate didn't match");
   }
 end:
   if (szName)
