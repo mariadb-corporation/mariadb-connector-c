@@ -31,6 +31,7 @@
 #include <openssl/md4.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
+#include <openssl/x509v3.h>
 #define HAVE_OPENSSL_CHECK_HOST 1
 #endif
 #ifdef HAVE_TLS_SESSION_CACHE

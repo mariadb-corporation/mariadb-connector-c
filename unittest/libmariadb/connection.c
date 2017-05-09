@@ -920,6 +920,9 @@ static int test_sess_track_db(MYSQL *mysql)
   const char *data;
   size_t len;
 
+  diag("session tracking not fully supported yet in 10.2");
+  return SKIP;
+
   if (!(mysql->server_capabilities & CLIENT_SESSION_TRACKING))
   {
     diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);

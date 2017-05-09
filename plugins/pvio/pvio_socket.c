@@ -227,7 +227,7 @@ my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type,
   csock= (struct st_pvio_socket *)pvio->data;
   pvio->timeout[type]= (timeout > 0) ? timeout * 1000 : -1;
   if (csock)
-    return pvio_socket_change_timeout(pvio, type, timeout);
+    return pvio_socket_change_timeout(pvio, type, pvio->timeout[type]);
   return 0;
 }
 /* }}} */

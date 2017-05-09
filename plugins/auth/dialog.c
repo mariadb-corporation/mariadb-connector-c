@@ -131,7 +131,7 @@ static char *auth_dialog_native_prompt(MYSQL *mysql __attribute__((unused)),
 static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
   uchar *packet;
-  uchar type;
+  uchar type= 0;
   char dialog_buffer[1024];
   char *response;
   int packet_length;
