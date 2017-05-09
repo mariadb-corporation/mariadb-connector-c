@@ -34,7 +34,7 @@ static int test_conc66(MYSQL *my)
   FILE *fp;
   char query[1024];
 
-  if (!(fp= fopen("./my.cnf", "w")))
+  if (!(fp= fopen("./my-conc66-test.cnf", "w")))
     return FAIL;
 
   fprintf(fp, "[notmygroup]\n");
@@ -49,7 +49,7 @@ static int test_conc66(MYSQL *my)
 
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
   check_mysql_rc(rc, mysql);
-  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my.cnf");
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my-conc66-test.cnf");
   check_mysql_rc(rc, mysql);
 
   sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname ? hostname : "localhost");
@@ -693,7 +693,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
   mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
   start= time(NULL);
-  if (my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("timeout error expected");
     elapsed= time(NULL) - start;
@@ -710,7 +710,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, (unsigned int *)&read_write_timeout);
   mysql_options(mysql, MYSQL_OPT_WRITE_TIMEOUT, (unsigned int *)&read_write_timeout);
 
-  if (!my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
@@ -1014,9 +1014,6 @@ static int test_reset(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
 
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
-  check_mysql_rc(rc, mysql);
-
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
   check_mysql_rc(rc, mysql);
 
@@ -1054,6 +1051,9 @@ static int test_reset(MYSQL *mysql)
   FAIL_IF(mysql_fetch_row(res), "expected error");
 
   mysql_free_result(res);
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
