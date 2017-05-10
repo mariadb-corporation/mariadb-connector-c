@@ -34,6 +34,11 @@
 #include <openssl/x509v3.h>
 #define HAVE_OPENSSL_CHECK_HOST 1
 #endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+#define HAVE_OPENSSL_1_1_API
+#endif
+
 #ifdef HAVE_TLS_SESSION_CACHE
 #undef HAVE_TLS_SESSION_CACHE
 #endif
@@ -57,7 +62,7 @@ extern unsigned int mariadb_deinitialize_ssl;
 #define MAX_SSL_ERR_LEN 100
 
 static pthread_mutex_t LOCK_openssl_config;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#ifndef HAVE_OPENSSL_1_1_API
 static pthread_mutex_t *LOCK_crypto= NULL;
 #endif
 #if OPENSSL_USE_BIOMETHOD
@@ -89,7 +94,7 @@ static void ma_tls_set_error(MYSQL *mysql)
   return;
 }
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#ifndef HAVE_OPENSSL_1_1_API
 /*
    thread safe callbacks for OpenSSL
    Crypto call back functions will be
@@ -212,7 +217,7 @@ static void ma_tls_remove_session_cb(SSL_CTX* ctx __attribute__((unused)),
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#ifndef HAVE_OPENSSL_1_1_API
 static void my_cb_locking(int mode, int n,
                           const char *file __attribute__((unused)),
                           int line __attribute__((unused)))
@@ -290,7 +295,7 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   /* lock mutex to prevent multiple initialization */
   pthread_mutex_init(&LOCK_openssl_config, NULL);
   pthread_mutex_lock(&LOCK_openssl_config);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
+#ifdef HAVE_OPENSSL_1_1_API
   if (!OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL))
     goto end;
 #else
@@ -304,11 +309,12 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   OPENSSL_config(NULL);
 #endif
 #endif
+#ifndef HAVE_OPENSSL_1_1_API
   /* load errors */
   SSL_load_error_strings();
   /* digests and ciphers */
   OpenSSL_add_all_algorithms();
-
+#endif
   disable_sigpipe();
 #if OPENSSL_USE_BIOMETHOD
   memcpy(&ma_BIO_method, BIO_s_socket(), sizeof(BIO_METHOD));
@@ -339,7 +345,7 @@ void ma_tls_end()
   if (ma_tls_initialized)
   {
     pthread_mutex_lock(&LOCK_openssl_config);
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#ifndef HAVE_OPENSSL_1_1_API
     CRYPTO_set_locking_callback(NULL);
     CRYPTO_set_id_callback(NULL);
     {
@@ -352,6 +358,7 @@ void ma_tls_end()
 #endif
     if (mariadb_deinitialize_ssl)
     {
+#ifndef HAVE_OPENSSL_1_1_API
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
       ERR_remove_state(0);
 #endif
@@ -360,6 +367,7 @@ void ma_tls_end()
       ERR_free_strings();
       CONF_modules_free();
       CONF_modules_unload(1);
+#endif
     }
     ma_tls_initialized= FALSE;
     pthread_mutex_unlock(&LOCK_openssl_config);
@@ -676,11 +684,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
   if (!(cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry)))
     goto error;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
   cn_str = (char *)ASN1_STRING_data(cn_asn1);
-#else
-  cn_str = (char *)ASN1_STRING_get0_data(cn_asn1);
-#endif
 
   /* Make sure there is no embedded \0 in the CN */
   if ((size_t)ASN1_STRING_length(cn_asn1) != strlen(cn_str))
