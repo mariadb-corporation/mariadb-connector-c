@@ -185,7 +185,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   mysql->scramble_buff[SCRAMBLE_LENGTH]= 0;
 
   /* if a tls session is active we need to send plain password */
-  if (mysql_get_ssl_cipher(mysql))
+  if (mysql->client_flag & CLIENT_SSL)
   {
     if (vio->write_packet(vio, (unsigned char *)mysql->passwd, strlen(mysql->passwd) + 1))
       return CR_ERROR;
@@ -248,7 +248,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     goto error;
 
   /* Get rsa_size */
-  CryptGetKeyParam(pubkey, KP_KEYLEN, &rsa_size, &ParamSize, 0);
+  CryptGetKeyParam(pubkey, KP_KEYLEN, (BYTE *)&rsa_size, &ParamSize, 0);
   rsa_size /= 8;
 #endif
   if (!pubkey)
