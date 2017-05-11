@@ -66,11 +66,11 @@ IF(CURL_FOUND)
 ENDIF()
 
 #Trace
-REGISTER_PLUGIN("TRACE_EXAMPLE" "${CC_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "DYNAMIC" "trace_example" 1)
+REGISTER_PLUGIN("TRACE_EXAMPLE" "${CC_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "OFF" "trace_example" 1)
 
 #Connection
-REGISTER_PLUGIN("REPLICATION" "${CC_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "DYNAMIC" "replication" 1)
-REGISTER_PLUGIN("AURORA" "${CC_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "DYNAMIC" "aurora"  1)
+REGISTER_PLUGIN("REPLICATION" "${CC_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "OFF" "replication" 1)
+REGISTER_PLUGIN("AURORA" "${CC_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "OFF" "aurora"  1)
 
 # Allow registration of additional plugins
 IF(PLUGIN_CONF_FILE)

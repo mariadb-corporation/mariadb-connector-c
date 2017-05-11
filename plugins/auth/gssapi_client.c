@@ -54,9 +54,10 @@ static void log_error(MYSQL *mysql, OM_uint32 major, OM_uint32 minor, const char
   }
 }
 
-int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
+int auth_client(char *principal_name, char *mech __attribute__((unused)),
+                MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
 {
-
+  gss_buffer_desc input= {0,0};
   int ret= CR_ERROR;
   OM_uint32 major= 0, minor= 0;
   gss_ctx_id_t ctxt= GSS_C_NO_CONTEXT;
@@ -76,7 +77,6 @@ int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO
     }
   }
 
-  gss_buffer_desc input= {0,0};
   do
   {
     gss_buffer_desc output= {0,0};
