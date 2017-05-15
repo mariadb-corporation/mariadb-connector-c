@@ -597,16 +597,47 @@ static int test_conc243(MYSQL *mysql)
   return OK;
 }
 
+static int bulk7(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  int array_size= 5;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "UPDATE t1 SET a=a+1", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+
+  FAIL_IF(!rc, "Error expected: Bulk operation without parameters is not supported");
+  diag("%s", mysql_stmt_error(stmt));
+
+  mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc243", test_conc243, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"update_no_param", bulk7, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk5", bulk5, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk6", bulk6, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk2", bulk2, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk3", bulk3, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk4", bulk4, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
-//  {"bulk_null", bulk_null, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk_null", bulk_null, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

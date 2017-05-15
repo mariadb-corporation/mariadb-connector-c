@@ -831,8 +831,15 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
 
   if (!MARIADB_STMT_BULK_SUPPORTED(stmt))
   {
-    stmt_set_error(stmt, CR_FUNCTION_NOT_SUPPORTED, SQLSTATE_UNKNOWN,
+    stmt_set_error(stmt, CR_FUNCTION_NOT_SUPPORTED, "IM001",
                    CER(CR_FUNCTION_NOT_SUPPORTED), "Bulk operation");
+    return NULL;
+  }
+
+  if (!stmt->param_count)
+  {
+    stmt_set_error(stmt, CR_BULK_WITHOUT_PARAMETERS, "IM001",
+                   CER(CR_BULK_WITHOUT_PARAMETERS), "Bulk operation");
     return NULL;
   }
 
@@ -903,6 +910,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
           switch (stmt->params[i].buffer_type) {
           case MYSQL_TYPE_NULL:
             has_data= FALSE;
+            indicator= STMT_INDICATOR_NULL;
             break;
           case MYSQL_TYPE_TINY_BLOB:
           case MYSQL_TYPE_MEDIUM_BLOB:
