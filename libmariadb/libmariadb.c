@@ -1845,9 +1845,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     if (socket_block(sock, 1) == SOCKET_ERROR)
       goto error;
   }
-  /* set timeouts */
-  net->vio->read_timeout= mysql->options.read_timeout;
-  net->vio->write_timeout= mysql->options.write_timeout;
 
   if (mysql->options.extension && mysql->options.extension->async_context)
     net->vio->async_context= mysql->options.extension->async_context;
@@ -1864,12 +1861,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
 
   /* set read timeout */
-  if (mysql->options.read_timeout >= 0)
-    vio_read_timeout(net->vio, mysql->options.read_timeout);
+  vio_read_timeout(net->vio, mysql->options.read_timeout);
 
   /* set write timeout */
-  if (mysql->options.write_timeout >= 0)
-    vio_write_timeout(net->vio, mysql->options.read_timeout);
+  vio_write_timeout(net->vio, mysql->options.write_timeout);
+
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
   if (mysql->options.connect_timeout > 0 &&

@@ -148,8 +148,8 @@ struct st_vio
   struct sockaddr_in local; /* Local internet address */
   struct sockaddr_in remote; /* Remote internet address */
   struct mysql_async_context *async_context; /* For non-blocking API */
-  int write_timeout;
-  int read_timeout;
+  unsigned int write_timeout;
+  unsigned int read_timeout;
   enum enum_vio_type type; /* Type of connection */
   char desc[30]; /* String description */
 #ifdef HAVE_OPENSSL
