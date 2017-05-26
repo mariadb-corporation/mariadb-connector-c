@@ -143,6 +143,14 @@ static int bug31418_impl()
       - IS_USED_LOCK() should return NULL;
   **********************************************************************/
 
+  if (!mariadb_connection(mysql))
+  {
+    query_int_variable(mysql, "RELEASE_LOCK('bug31418')", &rc);
+
+    diag("Skipping bug31418_impl: "
+            "mysql_change_user failed with MySQL server\n");
+    return OK;
+  }
   rc= mysql_change_user(mysql, username, password, schema ? schema : "test");
   check_mysql_rc(rc, mysql);
 
@@ -1178,6 +1186,15 @@ static int test_server_status(MYSQL *mysql)
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);
   FAIL_IF(!(server_status & SERVER_STATUS_DB_DROPPED),
           "DB_DROP flag not set");
+
+
+  if (mysql_get_server_version(mysql) < 50704 ||
+      (mariadb_connection(mysql) && mysql_get_server_version(mysql) < 100202))
+  {
+    diag("Skipping SERVER_SESSION_STATE_CHANGED: "
+            "tested feature does not exist in versions before MySQL 5.7.4 and MariaDB 10.2.2\n");
+    return OK;
+  }
 
   FAIL_IF(!(server_status & SERVER_SESSION_STATE_CHANGED),
           "SESSION_STATE_CHANGED flag not set");

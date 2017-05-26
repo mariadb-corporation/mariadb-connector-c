@@ -31,6 +31,13 @@ static int test_multi_result(MYSQL *mysql)
   my_bool    is_null[3];    /* output value nullability */
   int        rc, i;
 
+  if (!mariadb_connection(mysql) && mysql_get_server_version(mysql) < 50705)
+  {
+    diag("Skipping test_multi_result: "
+            "tested feature does not exist in versions before MySQL 5.7.5\n");
+    return SKIP;
+  }
+
   /* set up stored procedure */
   rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
@@ -121,7 +128,7 @@ static int test_multi_result(MYSQL *mysql)
   FAIL_IF(mysql_stmt_field_count(stmt) != 2, "expected 2 fields");
   FAIL_IF(int_data[0] != 200 || int_data[1] != 300,
           "expected 100 200 300"); 
-  
+
   FAIL_IF(mysql_stmt_next_result(stmt) != 0, "expected more results");
   FAIL_IF(mysql_stmt_field_count(stmt) != 0, "expected 0 fields");
 

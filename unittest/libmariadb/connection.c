@@ -52,7 +52,7 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my-conc66-test.cnf");
   check_mysql_rc(rc, mysql);
 
-  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname ? hostname : "localhost");
+  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%' IDENTIFIED BY 'test\";#test'", schema);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
@@ -64,7 +64,7 @@ static int test_conc66(MYSQL *my)
     return FAIL;
   }
   
-  sprintf(query, "DROP user conc66@%s", hostname ? hostname : "localhost");
+  sprintf(query, "DROP user 'conc66'@%s", "'%'");
   rc= mysql_query(my, query);
 
   check_mysql_rc(rc, my);
@@ -104,6 +104,12 @@ static int test_bug20023(MYSQL *mysql)
     Test that COM_CHANGE_USER resets the SQL_BIG_SELECTS to the initial value.
   ***********************************************************************/
 
+  if (!mariadb_connection(mysql))
+  {
+    diag("Skipping test_bug20023: "
+            "mysql_change_user failed with MySQL server\n");
+    return SKIP;
+  }
   /* Issue COM_CHANGE_USER. */
   rc= mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);
@@ -1022,6 +1028,14 @@ static int test_reset(MYSQL *mysql)
 
   FAIL_IF(mysql_affected_rows(mysql) != 3, "Expected 3 rows");
 
+  if (mysql_get_server_version(mysql) < 50703 ||
+      (mariadb_connection(mysql) && mysql_get_server_version(mysql) < 100204))
+  {
+    diag("Skipping test_reset: "
+            "tested feature does not exist in versions before MySQL 5.7.3 and MariaDB 10.2.4\n");
+    return OK;
+  }
+
   rc= mysql_reset_connection(mysql);
   check_mysql_rc(rc, mysql);
 
@@ -1075,6 +1089,12 @@ static int test_auth256(MYSQL *my)
   if (!num_rows)
   {
     diag("server doesn't support sha256 authentication");
+    return SKIP;
+  }
+
+  if (!mariadb_connection(my) && mysql_get_server_version(my) < 50706)
+  {
+    diag("Skipping test_auth256: syntax 'identified ...by' does exist only since MySQL 5.7.6");
     return SKIP;
   }
 

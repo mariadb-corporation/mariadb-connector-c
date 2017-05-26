@@ -2191,6 +2191,13 @@ static int test_bind_negative(MYSQL *mysql)
   ulong           my_length= 0L;
   my_bool         my_null= FALSE;
 
+  if (!mariadb_connection(mysql) && mysql_get_server_version(mysql) > 50701)
+  {
+    diag("Skipping test_bind_negative: "
+            "MySQL throw an exception since 5.7\n");
+    return SKIP;
+  }
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
@@ -3076,10 +3083,20 @@ static int test_date_ts(MYSQL *mysql)
                                                  c3 TIMESTAMP, \
                                                  c4 TIMESTAMP)");
 
-  check_mysql_rc(rc, mysql);
+  if (mariadb_connection(mysql) || mysql_get_server_version(mysql) < 50701)
+  {
+    check_mysql_rc(rc, mysql);
+    rc= test_bind_date_conv(mysql, 2);
 
-  rc= test_bind_date_conv(mysql, 2);
-  mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
+    mysql_query(mysql, "DROP TABLE IF EXISTS test_date");
+  }
+  else
+  {
+    //MySQL server since 5.7 throw an exception
+    //"Invalid default value"
+    FAIL_IF(!mysql_errno(rc), "Expected error");
+  }
+
   return rc;
 }
 
@@ -4811,6 +4828,14 @@ int test_blob_9000(MYSQL *mysql)
 
 int test_fracseconds(MYSQL *mysql)
 {
+
+  if (!mariadb_connection(mysql) && mysql_get_server_version(mysql) < 50601)
+  {
+    diag("Skipping test_fracseconds: "
+            "tested feature does not exist in versions before MySQL 5.6\n");
+    return SKIP;
+  }
+
   MYSQL_STMT *stmt;
   int rc;
   const char *str= "SELECT NOW(6)";

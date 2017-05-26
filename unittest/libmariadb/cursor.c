@@ -1341,7 +1341,15 @@ static int test_bug14210(MYSQL *mysql)
   rc= mysql_query(mysql, "create table t1 (a varchar(255)) engine=InnoDB");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "insert into t1 (a) values (repeat('a', 256))");
-  check_mysql_rc(rc, mysql);
+  if (mariadb_connection(mysql) || mysql_get_server_version(mysql) < 50701)
+  {
+    check_mysql_rc(rc, mysql);
+  }
+  else
+  {
+    //MySQL server since 5.7 throw an exception
+    FAIL_IF(!rc, "Expected error");
+  }
   rc= mysql_query(mysql, "set @@session.max_heap_table_size=16384");
 
   /* Create a big enough table (more than max_heap_table_size) */
