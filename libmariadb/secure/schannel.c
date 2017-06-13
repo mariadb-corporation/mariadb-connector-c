@@ -451,7 +451,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
   if (pszServerName && (sctx->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
   {
     DWORD NameSize= 0;
-    char *p1, *p2;
+    char *p1;
     SECURITY_STATUS sRet;
 
     if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
