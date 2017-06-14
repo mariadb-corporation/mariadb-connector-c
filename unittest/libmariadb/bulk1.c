@@ -596,7 +596,6 @@ static int test_conc243(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   return OK;
 }
-
 static int bulk7(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
@@ -627,8 +626,151 @@ static int bulk7(MYSQL *mysql)
   return OK;
 }
 
+static int test_char_conv1(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  MYSQL_BIND bind_in, bind_out;
+  char buffer[100];
+  char outbuffer[100];
+  
+  strcpy (buffer, "\xC3\x82\xC3\x83\xC3\x84\x00");
+
+  rc= mysql_query(mysql, "SET NAMES UTF8");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS char_conv");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE char_conv (a varchar(20)) CHARSET=latin1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO char_conv VALUES (?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind_in, 0, sizeof(MYSQL_BIND));
+  bind_in.buffer_type= MYSQL_TYPE_STRING;
+  bind_in.buffer_length= -1;
+  bind_in.buffer= &buffer;
+
+  rc= mysql_stmt_bind_param(stmt, &bind_in);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt, "SELECT a from char_conv", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind_out, 0, sizeof(MYSQL_BIND));
+  bind_out.buffer_type= MYSQL_TYPE_STRING;
+  bind_out.buffer_length= 100;
+  bind_out.buffer= outbuffer;
+
+  rc= mysql_stmt_bind_result(stmt, &bind_out);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc == MYSQL_NO_DATA, "Error");
+
+  mysql_stmt_close(stmt);
+
+
+  if (strcmp(buffer, outbuffer))
+  {
+    diag("Error: Expected '%s' instead of '%s'", buffer, outbuffer);
+    return FAIL;
+  }
+
+  rc= mysql_query(mysql, "DROP TABLE char_conv");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
+
+static int test_char_conv2(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  int array_size= 1;
+  MYSQL_BIND bind_in, bind_out;
+  char *buffer[1];
+  char outbuffer[100];
+  
+  buffer[0]= calloc(1, 7);
+  strcpy (buffer[0], "\xC3\x82\xC3\x83\xC3\x84\x00");
+
+  rc= mysql_query(mysql, "SET NAMES UTF8");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS char_conv");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE char_conv (a varchar(20)) CHARSET=latin1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO char_conv VALUES (?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind_in, 0, sizeof(MYSQL_BIND));
+  bind_in.buffer_type= MYSQL_TYPE_STRING;
+  bind_in.buffer_length= -1;
+  bind_in.buffer= &buffer;
+
+  rc= mysql_stmt_bind_param(stmt, &bind_in);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt, "SELECT a from char_conv", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind_out, 0, sizeof(MYSQL_BIND));
+  bind_out.buffer_type= MYSQL_TYPE_STRING;
+  bind_out.buffer_length= 100;
+  bind_out.buffer= outbuffer;
+
+  rc= mysql_stmt_bind_result(stmt, &bind_out);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc == MYSQL_NO_DATA, "Error");
+
+  mysql_stmt_close(stmt);
+
+
+  if (strcmp(buffer[0], outbuffer))
+  {
+    diag("Error: Expected '%s' instead of '%s'", buffer[0], outbuffer);
+    return FAIL;
+  }
+  free(buffer[0]);
+
+  rc= mysql_query(mysql, "DROP TABLE char_conv");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"test_char_conv1", test_char_conv1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_char_conv2", test_char_conv2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc243", test_conc243, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"update_no_param", bulk7, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk5", bulk5, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
