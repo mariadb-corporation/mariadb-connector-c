@@ -207,7 +207,7 @@ restart:
 
       if (last_errno== 65535 &&
           ((mariadb_connection(mysql) && (mysql->server_capabilities & CLIENT_PROGRESS)) ||
-           (!(mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_PROGRESS >> 32))))
+           (!(mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_PROGRESS << 32))))
       {
         if (cli_report_progress(mysql, (uchar *)pos, (uint) (len-1)))
         {
@@ -657,9 +657,11 @@ struct st_default_options mariadb_defaults[] =
     else                                                         \
       (OPTS)->extension->KEY= NULL
 
-#define OPT_SET_EXTENDED_VALUE_INT(OPTS, KEY, VAL)                \
+#define OPT_SET_EXTENDED_VALUE(OPTS, KEY, VAL)                \
     CHECK_OPT_EXTENSION_SET(OPTS)                                 \
     (OPTS)->extension->KEY= (VAL)
+
+#define OPT_SET_EXTENDED_VALUE_INT(A,B,C) OPT_SET_EXTENDED_VALUE(A,B,C)
 
 #define OPT_SET_VALUE_STR(OPTS, KEY, VAL)                        \
     free((OPTS)->KEY);                                           \
@@ -1303,6 +1305,17 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     goto error;
   }
 
+  if (mysql->options.extension && mysql->options.extension->proxy_header)
+  {
+    char *hdr = mysql->options.extension->proxy_header;
+    size_t len = mysql->options.extension->proxy_header_len;
+    if (ma_pvio_write(pvio, hdr, len) <= 0)
+    {
+      ma_pvio_close(pvio);
+      goto error;
+    }
+  }
+
   if (ma_net_init(net, pvio))
     goto error;
 
@@ -1483,7 +1496,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     net->compress= 1;
 
   /* last part: select default db */
-  if (db && !mysql->db)
+  if (!(mysql->server_capabilities & CLIENT_CONNECT_WITH_DB) &&
+      (db && !mysql->db))
   {
     if (mysql_select_db(mysql, db))
     {
@@ -2954,6 +2968,13 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MARIADB_OPT_CONNECTION_READ_ONLY:
     OPT_SET_EXTENDED_VALUE_INT(&mysql->options, read_only, *(my_bool *)arg1);
+    break;
+  case MARIADB_OPT_PROXY_HEADER:
+    {
+    size_t arg2 = va_arg(ap, size_t);
+    OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header, (char *)arg1);
+    OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header_len, arg2);
+    }
     break;
   default:
     va_end(ap);

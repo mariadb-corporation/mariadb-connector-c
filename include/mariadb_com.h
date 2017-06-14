@@ -93,6 +93,7 @@ enum enum_server_command
   COM_DAEMON= 29,
   COM_UNSUPPORTED= 30,
   COM_RESET_CONNECTION = 31,
+  COM_STMT_BULK_EXECUTE = 250,
   COM_MULTI = 254,
   COM_END
 };
@@ -135,7 +136,7 @@ enum enum_server_command
 #define REFRESH_READ_LOCK	16384	/* Lock tables for read */
 #define REFRESH_FAST		32768	/* Intern flag */
 
-#define CLIENT_MYSQL                1
+#define CLIENT_MYSQL          1
 #define CLIENT_FOUND_ROWS	    2	/* Found instead of affected rows */
 #define CLIENT_LONG_FLAG	    4	/* Get all column flags */
 #define CLIENT_CONNECT_WITH_DB	    8	/* One can specify db on connect */
