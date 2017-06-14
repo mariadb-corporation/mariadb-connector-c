@@ -37,7 +37,8 @@ char *rand_str(size_t length) {
 static int check_bulk(MYSQL *mysql)
 {
   bulk_enabled= (!(mysql->server_capabilities & CLIENT_MYSQL) &&
-      (mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
+      (mysql->extension->mariadb_server_capabilities &
+      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32)));
   diag("bulk %ssupported", bulk_enabled ? "" : "not ");
   return OK;
 }
@@ -512,8 +513,124 @@ static int bulk6(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc243(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[3];
+  MYSQL_RES  *result;
+  MYSQL_ROW  row;
+
+  struct st_data {
+    unsigned long id;
+    char id_ind;
+    char forename[30];
+    char forename_ind;
+    char surname[30];
+    char surname_ind;
+  };
+
+  struct st_data data[]= {
+    {0, STMT_INDICATOR_NULL, "Monty", STMT_INDICATOR_NTS, "Widenius", STMT_INDICATOR_NTS},
+    {0, STMT_INDICATOR_NULL, "David", STMT_INDICATOR_NTS, "Axmark", STMT_INDICATOR_NTS},
+    {0, STMT_INDICATOR_NULL, "default", STMT_INDICATOR_DEFAULT, "N.N.", STMT_INDICATOR_NTS},
+  };
+
+  unsigned int array_size= 1;
+  size_t row_size= sizeof(struct st_data);
+  int rc;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_example2");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE bulk_example2 (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,"\
+                         "forename CHAR(30) NOT NULL DEFAULT 'unknown', surname CHAR(30))");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk_example2 VALUES (?,?,?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 3);
+
+  /* We autogenerate id's, so all indicators are STMT_INDICATOR_NULL */
+  bind[0].u.indicator= &data[0].id_ind;
+  bind[0].buffer_type= MYSQL_TYPE_LONG;
+
+  bind[1].buffer= &data[0].forename;
+  bind[1].buffer_type= MYSQL_TYPE_STRING;
+  bind[1].u.indicator= &data[0].forename_ind;
+
+  bind[2].buffer_type= MYSQL_TYPE_STRING;
+  bind[2].buffer= &data[0].surname;
+  bind[2].u.indicator= &data[0].surname_ind;
+
+  /* set array size */
+  mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+
+  /* set row size */
+  mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+
+  /* bind parameter */
+  mysql_stmt_bind_param(stmt, bind);
+
+  /* execute */
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "SELECT forename, surname FROM bulk_example2");
+  check_mysql_rc(rc, mysql);
+
+  result= mysql_store_result(mysql);
+  FAIL_IF(!result || !mysql_num_rows(result), "Invalid resultset");
+  row = mysql_fetch_row(result);
+  if (strcmp(row[0], "Monty") || strcmp(row[1], "Widenius"))
+  {
+    mysql_free_result(result);
+    diag("Wrong walues");
+    return FAIL;
+  }
+  mysql_free_result(result);
+  rc= mysql_query(mysql, "DROP TABLE bulk_example2");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
+static int bulk7(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  int array_size= 5;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "UPDATE t1 SET a=a+1", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+
+  FAIL_IF(!rc, "Error expected: Bulk operation without parameters is not supported");
+  diag("%s", mysql_stmt_error(stmt));
+
+  mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"test_conc243", test_conc243, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"update_no_param", bulk7, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk5", bulk5, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk6", bulk6, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bulk1", bulk1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},

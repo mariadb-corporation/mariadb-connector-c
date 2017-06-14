@@ -29,10 +29,10 @@
 #define MADB_BIND_DUMMY 1
 
 #define MARIADB_STMT_BULK_SUPPORTED(stmt)\
-  ((stmt)->array_size > 0 && \
-  (stmt)->mysql && \
+  ((stmt)->mysql && \
   (!((stmt)->mysql->server_capabilities & CLIENT_MYSQL) &&\
-    ((stmt)->mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32)))
+    ((stmt)->mysql->extension->mariadb_server_capabilities & \
+    (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))))
 
 #define SET_CLIENT_STMT_ERROR(a, b, c, d) \
 { \
@@ -83,6 +83,12 @@ enum enum_indicator_type
   STMT_INDICATOR_DEFAULT=2,
   STMT_INDICATOR_IGNORE=3
 };
+
+/*
+  bulk PS flags
+*/
+#define STMT_BULK_FLAG_CLIENT_SEND_TYPES 128
+#define STMT_BULK_FLAG_INSERT_ID_REQUEST 64
 
 typedef enum mysql_stmt_state
 {

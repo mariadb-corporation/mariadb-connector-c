@@ -628,8 +628,8 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   return 0;
 }
 
-/* {{{ mysqlnd_stmt_execute_generate_request */
-unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *request_len)
+/* {{{ mysqlnd_stmt_execute_generate_simple_request */
+unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
      Offset   Length      Description
@@ -648,29 +648,16 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
               unsigned flag (32768)
               indicator variable exists (16384)
      ------------------------------------------
-     Pre 10.2 protocol
      n      data from bind_buffer
-     10.2 protocol
-     if indicator variable exists
-     1st byte: indicator variable
-     2nd-n: data
 
      */
 
   size_t length= 1024;
   size_t free_bytes= 0;
   size_t null_byte_offset= 0;
-  uint i, j, num_rows= 1;
+  uint i;
 
   uchar *start= NULL, *p;
-
-  if (!MARIADB_STMT_BULK_SUPPORTED(stmt) && stmt->array_size > 0)
-  {
-    stmt_set_error(stmt, CR_FUNCTION_NOT_SUPPORTED, SQLSTATE_UNKNOWN,
-                   CER(CR_FUNCTION_NOT_SUPPORTED), "Bulk operation");
-    return NULL;
-  }
-
 
   /* preallocate length bytes */
   /* check: gr */
@@ -683,34 +670,28 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
   /* flags is 4 bytes, we store just 1 */
   int1store(p, (unsigned char) stmt->flags);
   p++;
-  if (MARIADB_STMT_BULK_SUPPORTED(stmt) && stmt->array_size)
-    num_rows= stmt->array_size;
-  int4store(p, num_rows);
-  p+= 4;
 
-  if (!stmt->param_count && stmt->prebind_params)
-    stmt->param_count= stmt->prebind_params;
+  int4store(p, 1);
+  p+= 4;
 
   if (stmt->param_count)
   {
-    if (!stmt->array_size)
+    size_t null_count= (stmt->param_count + 7) / 8;
+
+    free_bytes= length - (p - start);
+    if (null_count + 20 > free_bytes)
     {
-      size_t null_count= (stmt->param_count + 7) / 8;
-
-      free_bytes= length - (p - start);
-      if (null_count + 20 > free_bytes)
-      {
-        size_t offset= p - start;
-        length+= offset + null_count + 20;
-        if (!(start= (uchar *)realloc(start, length)))
-          goto mem_error;
-        p= start + offset;
-      }
-
-      null_byte_offset= p - start;
-      memset(p, 0, null_count);
-      p += null_count;
+      size_t offset= p - start;
+      length+= offset + null_count + 20;
+      if (!(start= (uchar *)realloc(start, length)))
+        goto mem_error;
+      p= start + offset;
     }
+
+    null_byte_offset= p - start;
+    memset(p, 0, null_count);
+    p += null_count;
+
     int1store(p, stmt->send_types_to_server);
     p++;
 
@@ -734,50 +715,202 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
         /* this differs from mysqlnd, c api supports unsinged !! */
         uint buffer_type= stmt->params[i].buffer_type | (stmt->params[i].is_unsigned ? 32768 : 0);
         /* check if parameter requires indicator variable */
-        if (MARIADB_STMT_BULK_SUPPORTED(stmt) &&
-            (stmt->params[i].u.indicator || stmt->params[i].buffer_type == MYSQL_TYPE_NULL))
-          buffer_type|= 16384;
         int2store(p, buffer_type);
         p+= 2;
       }
     }
 
     /* calculate data size */
-    for (j=0; j < num_rows; j++)
+    for (i=0; i < stmt->param_count; i++)
+    {
+      size_t size= 0;
+      my_bool has_data= TRUE;
+
+      if (stmt->params[i].long_data_used)
+      {
+        has_data= FALSE;
+        stmt->params[i].long_data_used= 0;
+      }
+
+      if (has_data)
+      {
+        switch (stmt->params[i].buffer_type) {
+        case MYSQL_TYPE_NULL:
+          has_data= FALSE;
+          break;
+        case MYSQL_TYPE_TINY_BLOB:
+        case MYSQL_TYPE_MEDIUM_BLOB:
+        case MYSQL_TYPE_LONG_BLOB:
+        case MYSQL_TYPE_BLOB:
+        case MYSQL_TYPE_VARCHAR:
+        case MYSQL_TYPE_VAR_STRING:
+        case MYSQL_TYPE_STRING:
+        case MYSQL_TYPE_JSON:
+        case MYSQL_TYPE_DECIMAL:
+        case MYSQL_TYPE_NEWDECIMAL:
+        case MYSQL_TYPE_GEOMETRY:
+        case MYSQL_TYPE_NEWDATE:
+        case MYSQL_TYPE_ENUM:
+        case MYSQL_TYPE_BIT:
+        case MYSQL_TYPE_SET:
+          size+= 5; /* max 8 bytes for size */
+          size+= (size_t)ma_get_length(stmt, i, 0);
+          break;
+        default:
+          size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
+          break;
+        }
+      }
+      free_bytes= length - (p - start);
+      if (free_bytes < size + 20)
+      {
+        size_t offset= p - start;
+        length= MAX(2 * length, offset + size + 20);
+        if (!(start= (uchar *)realloc(start, length)))
+          goto mem_error;
+        p= start + offset;
+      }
+      if (((stmt->params[i].is_null && *stmt->params[i].is_null) ||
+             stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||
+             !stmt->params[i].buffer))
+      {
+        has_data= FALSE;
+        (start + null_byte_offset)[i/8] |= (unsigned char) (1 << (i & 7));
+      }
+
+      if (has_data)
+      {
+        store_param(stmt, i, &p, 0);
+      }
+    }
+  }
+  stmt->send_types_to_server= 0;
+  *request_len = (size_t)(p - start);
+  return start;
+mem_error:
+  SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+  free(start);
+  *request_len= 0;
+  return NULL;
+}
+/* }}} */
+
+/* {{{ mysqlnd_stmt_execute_generate_bulk_request */
+unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
+{
+  /* execute packet has the following format:
+     Offset   Length      Description
+     -----------------------------------------
+     0             4      Statement id
+     4             2      Flags (cursor type):
+                            STMT_BULK_FLAG_CLIENT_SEND_TYPES = 128
+                            STMT_BULK_FLAG_INSERT_ID_REQUEST = 64
+     -----------------------------------------
+     if (stmt->send_types_to_server):
+     for (i=0; i < param_count; i++)
+       1st byte: parameter type
+       2nd byte flag:
+              unsigned flag (32768)
+     ------------------------------------------
+     for (i=0; i < param_count; i++)
+                   1      indicator variable
+                            STMT_INDICATOR_NONE 0
+                            STMT_INDICATOR_NULL 1
+                            STMT_INDICATOR_DEFAULT 2
+                            STMT_INDICATOR_IGNORE 3
+                   n      data from bind buffer
+
+     */
+
+  size_t length= 1024;
+  size_t free_bytes= 0;
+  ushort flags= 0;
+  uint i, j;
+
+  uchar *start= NULL, *p;
+
+  if (!MARIADB_STMT_BULK_SUPPORTED(stmt))
+  {
+    stmt_set_error(stmt, CR_FUNCTION_NOT_SUPPORTED, "IM001",
+                   CER(CR_FUNCTION_NOT_SUPPORTED), "Bulk operation");
+    return NULL;
+  }
+
+  if (!stmt->param_count)
+  {
+    stmt_set_error(stmt, CR_BULK_WITHOUT_PARAMETERS, "IM001",
+                   CER(CR_BULK_WITHOUT_PARAMETERS), "Bulk operation");
+    return NULL;
+  }
+
+  /* preallocate length bytes */
+  if (!(start= p= (uchar *)malloc(length)))
+    goto mem_error;
+
+  int4store(p, stmt->stmt_id);
+  p += STMT_ID_LENGTH;
+
+  /* todo: request to return auto generated ids */
+  if (stmt->send_types_to_server)
+    flags|= STMT_BULK_FLAG_CLIENT_SEND_TYPES;
+  int2store(p, flags);
+  p+=2;
+
+  /* When using mariadb_stmt_execute_direct stmt->paran_count is
+     not knowm, so we need to assign prebind_params, which was previously
+     set by mysql_stmt_attr_set
+  */
+  if (!stmt->param_count && stmt->prebind_params)
+    stmt->param_count= stmt->prebind_params;
+
+  if (stmt->param_count)
+  {
+    free_bytes= length - (p - start);
+
+    /* Store type information:
+       2 bytes per type
+       */
+    if (stmt->send_types_to_server)
+    {
+      if (free_bytes < stmt->param_count * 2 + 20)
+      {
+        size_t offset= p - start;
+        length= offset + stmt->param_count * 2 + 20;
+        if (!(start= (uchar *)realloc(start, length)))
+          goto mem_error;
+        p= start + offset;
+      }
+      for (i = 0; i < stmt->param_count; i++)
+      {
+        /* this differs from mysqlnd, c api supports unsinged !! */
+        uint buffer_type= stmt->params[i].buffer_type | (stmt->params[i].is_unsigned ? 32768 : 0);
+        int2store(p, buffer_type);
+        p+= 2;
+      }
+    }
+
+    /* calculate data size */
+    for (j=0; j < stmt->array_size; j++)
     {
       for (i=0; i < stmt->param_count; i++)
       {
         size_t size= 0;
         my_bool has_data= TRUE;
-        char indicator= 0;
-
-        if (MARIADB_STMT_BULK_SUPPORTED(stmt) &&
-           (stmt->params[i].u.indicator || stmt->params[i].buffer_type == MYSQL_TYPE_NULL))
-        {
-          if (stmt->params[i].buffer_type == MYSQL_TYPE_NULL)
-          {
-            indicator= STMT_INDICATOR_NULL;
-          }
-          else
-            indicator= ma_get_indicator(stmt, i, j);
-          /* check if we need to send data */
-          if (indicator > 0)
-            has_data= FALSE;
-          size= 1;
-        }
-
-        if (stmt->params[i].long_data_used)
-        {
+        char indicator= ma_get_indicator(stmt, i, j);
+        /* check if we need to send data */
+        if (indicator > 0)
           has_data= FALSE;
-          stmt->params[i].long_data_used= 0;
-        }
+        size= 1;
+
+        /* Please note that mysql_stmt_send_long_data is not supported
+           current when performing bulk execute */
+
         if (has_data)
         {
           switch (stmt->params[i].buffer_type) {
           case MYSQL_TYPE_NULL:
-            if (MARIADB_STMT_BULK_SUPPORTED(stmt))
-              indicator= STMT_INDICATOR_NULL;
             has_data= FALSE;
+            indicator= STMT_INDICATOR_NULL;
             break;
           case MYSQL_TYPE_TINY_BLOB:
           case MYSQL_TYPE_MEDIUM_BLOB:
@@ -795,9 +928,9 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           case MYSQL_TYPE_BIT:
           case MYSQL_TYPE_SET:
             size+= 5; /* max 8 bytes for size */
-            if (indicator == STMT_INDICATOR_NTS || 
+            if (indicator == STMT_INDICATOR_NTS ||
               (!stmt->row_size && ma_get_length(stmt,i,j) == -1))
-                size+= strlen(ma_get_buffer_offset(stmt, 
+                size+= strlen(ma_get_buffer_offset(stmt,
                                                    stmt->params[i].buffer_type,
                                                    stmt->params[i].buffer,j));
             else
@@ -818,27 +951,10 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           p= start + offset;
         }
 
-        if ((indicator != STMT_INDICATOR_DEFAULT && indicator != STMT_INDICATOR_IGNORE) &&
-            ((stmt->params[i].is_null && *stmt->params[i].is_null) ||
-             stmt->params[i].buffer_type == MYSQL_TYPE_NULL ||
-             !stmt->params[i].buffer))
-        {
-          has_data= FALSE;
-          if (!stmt->array_size)
-            (start + null_byte_offset)[i/8] |= (unsigned char) (1 << (i & 7));
-          else
-            indicator= STMT_INDICATOR_NULL;
-        }
-        if (MARIADB_STMT_BULK_SUPPORTED(stmt) &&
-            (indicator || stmt->params[i].u.indicator))
-        {
-          int1store(p, indicator > 0 ? indicator : 0);
-          p++;
-        }
+        int1store(p, indicator > 0 ? indicator : 0);
+        p++;
         if (has_data)
-        {
           store_param(stmt, i, &p, j);
-        }
       }
     }
 
@@ -853,7 +969,6 @@ mem_error:
   return NULL;
 }
 /* }}} */
-
 /*!
  *******************************************************************************
 
@@ -1820,13 +1935,17 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
     stmt->result_cursor= stmt->result.data= 0;
     stmt->result.rows= 0;
   }
-  request= (char *)mysql_stmt_execute_generate_request(stmt, &request_len);
+  if (stmt->array_size > 0)
+    request= (char *)mysql_stmt_execute_generate_bulk_request(stmt, &request_len);
+  else
+    request= (char *)mysql_stmt_execute_generate_simple_request(stmt, &request_len);
 
   if (!request)
     return 1;
 
-  ret= stmt->mysql->methods->db_command(mysql, COM_STMT_EXECUTE, request,
-                                             request_len, 1, stmt);
+  ret= stmt->mysql->methods->db_command(mysql, 
+                                        stmt->array_size > 0 ? COM_STMT_BULK_EXECUTE : COM_STMT_EXECUTE,
+                                        request, request_len, 1, stmt);
   if (request)
     free(request);
 
@@ -2151,7 +2270,8 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
 {
   MYSQL *mysql= stmt->mysql;
   my_bool emulate_cmd= !(!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
-      (stmt->mysql->extension->mariadb_server_capabilities & MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32));
+      (stmt->mysql->extension->mariadb_server_capabilities &
+      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32)));
 
   if (!mysql)
   {
