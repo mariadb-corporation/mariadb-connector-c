@@ -1105,7 +1105,152 @@ static int test_auth256(MYSQL *my)
   return OK;
 }
 
+static int test_mdev13100(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+  FILE *fp;
+
+  if (!(fp= fopen("./mdev13100.cnf", "w")))
+    return FAIL;
+
+   /* [client] group only */
+  fprintf(fp, "[client]\n");
+  fprintf(fp, "default-character-set=latin2\n");
+
+  fclose(fp);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
+  check_mysql_rc(rc, mysql);
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+  FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
+  mysql_close(mysql);
+
+  /* value from client-mariadb group */
+  mysql= mysql_init(NULL);
+  if (!(fp= fopen("./mdev13100.cnf", "w")))
+    return FAIL;
+
+  fprintf(fp, "[client]\n");
+  fprintf(fp, "default-character-set=latin1\n");
+  fprintf(fp, "[client-server]\n");
+  fprintf(fp, "default-character-set=latin2\n");
+
+  fclose(fp);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
+  check_mysql_rc(rc, mysql);
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+  FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
+  mysql_close(mysql);
+
+/* values from client-mariadb group */
+  mysql= mysql_init(NULL);
+
+if (!(fp= fopen("./mdev13100.cnf", "w")))
+    return FAIL;
+
+  fprintf(fp, "[client]\n");
+  fprintf(fp, "default-character-set=latin1\n");
+  fprintf(fp, "[client-server]\n");
+  fprintf(fp, "default-character-set=utf8\n");
+  fprintf(fp, "[client-mariadb]\n");
+  fprintf(fp, "default-character-set=latin2\n");
+
+  fclose(fp);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
+  check_mysql_rc(rc, mysql);
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+  FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
+  mysql_close(mysql);
+
+/* values from mdev-13100 group */
+  mysql= mysql_init(NULL);
+  if (!(fp= fopen("./mdev13100.cnf", "w")))
+    return FAIL;
+
+  fprintf(fp, "[client]\n");
+  fprintf(fp, "default-character-set=latin1\n");
+  fprintf(fp, "[client-server]\n");
+  fprintf(fp, "default-character-set=latin1\n");
+  fprintf(fp, "[client-mariadb]\n");
+  fprintf(fp, "default-character-set=utf8\n");
+  fprintf(fp, "[mdev13100]\n");
+  fprintf(fp, "default-character-set=latin2\n");
+
+  fclose(fp);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "mdev13100");
+  check_mysql_rc(rc, mysql);
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+  FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
+  mysql_close(mysql);
+
+/* values from [programname] group */
+  mysql= mysql_init(NULL);
+  if (!(fp= fopen("./mdev13100.cnf", "w")))
+    return FAIL;
+
+  fprintf(fp, "[client]\n");
+  fprintf(fp, "default-character-set=latin1\n");
+  fprintf(fp, "[client-server]\n");
+  fprintf(fp, "default-character-set=latin1\n");
+  fprintf(fp, "[client-mariadb]\n");
+  fprintf(fp, "default-character-set=utf8\n");
+  fprintf(fp, "[connection]\n");
+  fprintf(fp, "default-character-set=latin2\n");
+
+  fclose(fp);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
+  check_mysql_rc(rc, mysql);
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+  FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
+  mysql_close(mysql);
+
+  remove("./mdev13100.cnf");
+
+  return OK; 
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_auth256", test_auth256, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_reset", test_reset, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_unix_socket_close", test_unix_socket_close, TEST_CONNECTION_NONE, 0, NULL,  NULL},

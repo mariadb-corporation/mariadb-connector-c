@@ -27,70 +27,137 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include "Shlwapi.h"
+
 static const char *ini_exts[]= {"ini", "cnf", 0};
-static const char *ini_dirs[]= {"C:", ".", 0};
-static const char *ini_env_dirs[]= {"WINDOWS", "HOMEPATH", 0};
-#define ENV_HOME_DIR "HOMEPATH"
 #define R_OK 4
 #else
 #include <unistd.h>
 static const char *ini_exts[]= {"cnf", 0};
-static const char *ini_dirs[]= {"/etc", "/etc/mysql", ".", 0};
-static const char *ini_env_dirs[]= {"HOME", "SYSCONFDIR", 0};
-#define ENV_HOME_DIR "HOME"
 #endif
 
-extern my_bool _mariadb_set_conf_option(MYSQL *mysql, const char *config_option, const char *config_value);
+char **configuration_dirs= NULL;
+#define MAX_CONFIG_DIRS 6
 
-char *_mariadb_get_default_file(char *filename, size_t length)
+static int add_cfg_dir(char **cfg_dirs, const char *directory)
 {
-  int dirs; int exts;
+  int i;
+
+  for (i=0; i < MAX_CONFIG_DIRS && cfg_dirs[i]; i++);
+
+  if (i < MAX_CONFIG_DIRS) {
+    cfg_dirs[i]= strdup(directory);
+    return 0;
+  }
+  return 1;
+}
+
+void release_configuration_dirs()
+{
+  if (configuration_dirs)
+  {
+    int i= 0;
+    while (configuration_dirs[i])
+      free(configuration_dirs[i++]);
+    free(configuration_dirs);
+  }
+}
+
+char **get_default_configuration_dirs()
+{
+#ifdef _WIN32
+  char dirname[FN_REFLEN];
+#endif
   char *env;
 
-  for (dirs= 0; ini_dirs[dirs]; dirs++)
-  {
-    for (exts= 0; ini_exts[exts]; exts++)
-    {
-      snprintf(filename, length,
-               "%s%cmy.%s", ini_dirs[dirs], FN_LIBCHAR, ini_exts[exts]);
-      if (!access(filename, R_OK))
-        return filename;
-    }
-  }
-  for (dirs= 0; ini_env_dirs[dirs]; dirs++)
-  {
-    for (exts= 0; ini_exts[exts]; exts++)
-    {
-      env= getenv(ini_env_dirs[dirs]);
-      snprintf(filename, length,
-               "%s%cmy.%s", env, FN_LIBCHAR, ini_exts[exts]);
-      if (!access(filename, R_OK))
-        return filename;
-    }
-  }
+  configuration_dirs= (char **)calloc(1, (MAX_CONFIG_DIRS + 1) * sizeof(char *));
+  if (!configuration_dirs)
+    goto end;
 
-  /* check for .my file in home directoy */
-  env= getenv(ENV_HOME_DIR);
-  for (exts= 0; ini_exts[exts]; exts++)
+#ifdef _WIN32
+  /* On Windows operating systems configuration files are stored in
+     1. System directory
+     2. Windows directory
+     3. C:\
+  */
+  if (!GetSystemDirectory(dirname, FN_REFLEN) ||
+      add_cfg_dir(configuration_dirs, dirname))
+    goto error;
+
+  if (!GetWindowsDirectory(dirname, FN_REFLEN) ||
+      add_cfg_dir(configuration_dirs, dirname))
+    goto error;
+
+  if (add_cfg_dir(configuration_dirs, "C:"))
+    goto error;
+
+  if (GetModuleFileName(NULL, dirname, FN_REFLEN))
   {
-    snprintf(filename, length,
-             "%s%c.my.%s", env, FN_LIBCHAR, ini_exts[exts]);
-    if (!access(filename, R_OK))
-      return filename;
+    PathRemoveFileSpec(dirname);
+    if (add_cfg_dir(configuration_dirs, dirname))
+      goto error;
   }
+#else
+  /* on *nix platforms configuration files are stored in
+     1. SYSCONFDIR (if build happens inside server package, or
+        -DDEFAULT_SYSCONFDIR was specified
+     2. /etc
+     3. /etc/mysql
+  */
+#ifdef DEFAULT_SYSCONFDIR
+  if (add_cfg_dir(configuration_dirs, DEFAULT_SYSCONFDIR))
+    goto error;
+#else
+  if (add_cfg_dir(configuration_dirs, "/etc"))
+    goto error;
+  if (add_cfg_dir(configuration_dirs, "/etc/mysql"))
+    goto error;
+#endif
+#endif
+/* This differs from https://mariadb.com/kb/en/mariadb/configuring-mariadb-with-mycnf/ where MYSQL_HOME is not specified for Windows */
+  if ((env= getenv("MYSQL_HOME")) &&
+      add_cfg_dir(configuration_dirs, env))
+    goto error;
+#ifndef _WIN32
+  if ((env= getenv("HOME")) &&
+      add_cfg_dir(configuration_dirs, env))
+    goto error;
+#endif
+end:
+  return configuration_dirs;
+error:
   return NULL;
 }
 
-my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
-    const char *group)
+extern my_bool _mariadb_set_conf_option(MYSQL *mysql, const char *config_option, const char *config_value);
+
+static my_bool is_group(char *ptr, const char **groups)
 {
+  while (*groups)
+  {
+    if (!strcmp(ptr, *groups))
+      return 1;
+    groups++;
+  }
+  return 0;
+}
+
+static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
+                                               const char *config_file,
+                                               const char *group)
+{
+  uint line=0;
+  my_bool read_values= 0, found_group= 0, is_escaped= 0, is_quoted= 0;
   char buff[4096],*ptr,*end,*value, *key= 0, *optval;
   MA_FILE *file= NULL;
-  char *filename;
-  uint line=0;
   my_bool rc= 1;
-  my_bool read_values= 0, found_group= 0, is_escaped= 0, is_quoted= 0;
+  const char *groups[5]= {"client",
+                          "client-server",
+                          "client-mariadb",
+                          group,
+                          NULL};
   my_bool (*set_option)(MYSQL *mysql, const char *config_option, const char *config_value);
+
 
   /* if a plugin registered a hook we will call this hook, otherwise
    * default (_mariadb_set_conf_option) will be called */
@@ -99,18 +166,7 @@ my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
   else
     set_option= _mariadb_set_conf_option;
 
-  if (config_file)
-    filename= strdup(config_file);
-  else
-  {
-    filename= (char *)malloc(FN_REFLEN + 10);
-    if (!_mariadb_get_default_file(filename, FN_REFLEN + 10))
-    {
-      goto err;
-    }
-  }
-
-  if (!(file = ma_open(filename, "r", NULL)))
+  if (!(file = ma_open(config_file, "r", NULL)))
     goto err;
 
   while (ma_gets(buff,sizeof(buff)-1,file))
@@ -137,7 +193,7 @@ my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
       }
       for ( ; isspace(end[-1]) ; end--) ;	/* Remove end space */
       end[0]=0;
-      read_values= test(strcmp(ptr, group) == 0);
+      read_values= is_group(ptr, groups);
       continue;
     }
     if (!found_group)
@@ -224,13 +280,50 @@ my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
       key= optval= 0;
     }
   }
+  if (file)
+    ma_close(file);
   rc= 0;
 
 err:
-  free(filename);
-  if (file)
-    ma_close(file);
   return rc;
 }
 
 
+my_bool _mariadb_read_options(MYSQL *mysql,
+                              const char *config_file,
+                              const char *group)
+{
+  int i= 0,
+      exts,
+      errors= 0;
+  char filename[FN_REFLEN + 1];
+  char *env;
+
+  if (config_file)
+    return _mariadb_read_options_from_file(mysql, config_file, group);
+
+  for (i=0; i < MAX_CONFIG_DIRS && configuration_dirs[i]; i++)
+  {
+    for (exts= 0; exts < 2; exts++)
+    {
+      snprintf(filename, FN_REFLEN,
+               "%s%cmy.%s", configuration_dirs[i], FN_LIBCHAR, ini_exts[exts]);
+      if (!access(filename, R_OK))
+        errors+= _mariadb_read_options_from_file(mysql, filename, group);
+    }
+  }
+#ifndef _WIN32
+  /* special case: .my.cnf in Home directory */
+  if ((env= getenv("HOME")))
+  {
+    for (exts= 0; exts < 2; exts++)
+    {
+      snprintf(filename, FN_REFLEN,
+               "%s%c.my.%s", env, FN_LIBCHAR, ini_exts[exts]);
+      if (!access(filename, R_OK))
+        errors+= _mariadb_read_options_from_file(mysql, filename, group);
+    }
+  }
+#endif
+  return errors;
+}
