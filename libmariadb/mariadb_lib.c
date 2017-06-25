@@ -68,6 +68,9 @@
 #include <ma_tls.h>
 #endif
 #include <mysql/client_plugin.h>
+#ifdef _WIN32
+#include "Shlwapi.h"
+#endif
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
 #define MA_RPL_VERSION_HACK "5.5.5-"
@@ -80,6 +83,8 @@ extern ulong net_buffer_length;  /* net.c */
 static MYSQL_PARAMETERS mariadb_internal_parameters= {&max_allowed_packet, &net_buffer_length, 0};
 static my_bool mysql_client_init=0;
 static void mysql_close_options(MYSQL *mysql);
+extern void release_configuration_dirs();
+extern char **get_default_configuration_dirs();
 extern my_bool  ma_init_done;
 extern my_bool  mysql_ps_subsystem_initialized;
 extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename);
@@ -1309,7 +1314,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     char *hdr = mysql->options.extension->proxy_header;
     size_t len = mysql->options.extension->proxy_header_len;
-    if (ma_pvio_write(pvio, hdr, len) <= 0)
+    if (ma_pvio_write(pvio, (unsigned char *)hdr, len) <= 0)
     {
       ma_pvio_close(pvio);
       goto error;
@@ -2655,6 +2660,26 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_VALUE_STR(&mysql->options, my_cnf_file, (char *)arg1);
     break;
   case MYSQL_READ_DEFAULT_GROUP:
+    if (!arg1 || !((char *)arg1)[0])
+    {
+#if defined(__APPLE__) || defined(__FreeBSD__)
+      const char * appname = getprogname();
+#elif defined(_GNU_SOURCE)
+      const char * appname = program_invocation_short_name;
+#elif defined(WIN32)
+      char appname[FN_REFLEN]= "";
+
+      if (GetModuleFileName(NULL, appname, FN_REFLEN))
+      {
+        PathStripPath(appname);
+        PathRemoveExtension(appname);
+      }
+#else
+      const char * appname = "";
+#endif
+      OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, appname);
+      break;
+    }
     OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, (char *)arg1);
     break;
   case MYSQL_SET_CHARSET_DIR:
@@ -3452,6 +3477,7 @@ static void mysql_once_init()
 {
   ma_init();					/* Will init threads */
   init_client_errs();
+  get_default_configuration_dirs();
   if (mysql_client_plugin_init())
   {
 #ifdef _WIN32
@@ -3485,6 +3511,9 @@ static void mysql_once_init()
   }
   if (!mysql_ps_subsystem_initialized)
     mysql_init_ps_subsystem();
+#ifdef HAVE_TLS
+  ma_tls_start(0, 0);
+#endif
   ignore_sigpipe();
   mysql_client_init = 1;
 #ifdef _WIN32
@@ -3522,6 +3551,7 @@ void STDCALL mysql_server_end(void)
   if (!mysql_client_init)
     return;
 
+  release_configuration_dirs();
   mysql_client_plugin_deinit();
 
   list_free(pvio_callback, 0);

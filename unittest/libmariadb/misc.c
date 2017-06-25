@@ -30,6 +30,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 /*
   Bug#28075 "COM_DEBUG crashes mysqld"
 */
+#ifdef _WIN32
+#define R_OK 4
+#endif
 
 static int test_bug28075(MYSQL *mysql)
 {
@@ -1051,6 +1054,49 @@ static int test_remote2(MYSQL *my)
 }
 #endif
 
+#ifndef _WIN32
+static int test_mdev12965(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql;
+  my_bool reconnect = 0;
+  FILE *fp= NULL;
+	char *env= getenv("HOME");
+  char cnf_file1[FN_REFLEN + 1],
+       cnf_file2[FN_REFLEN + 1];
+
+  snprintf(cnf_file1, FN_REFLEN, "%s%c.my.cnf", env, FN_LIBCHAR);
+  snprintf(cnf_file2, FN_REFLEN, "%s%cmy.cnf", env, FN_LIBCHAR);
+
+  if (!access(cnf_file1, R_OK) || !access(cnf_file2, R_OK))
+  {
+    diag("Skip this test, it would overwrite configuration files in your home directory");
+    return SKIP;
+  }
+
+  mysql= mysql_init(NULL);
+  fp= fopen(cnf_file1, "w");
+  fprintf(fp, "[test]\ndefault-character-set=latin2");
+  fclose(fp);
+
+  fp= fopen(cnf_file2, "w");
+  fprintf(fp, "[test]\nreconnect=1");
+  fclose(fp);
+
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "test");
+  my_test_connect(mysql, hostname, username, password, schema,
+                         0, socketname, 0), mysql_error(mysql);
+
+  remove(cnf_file1);
+  remove(cnf_file2);
+
+  FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
+  mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_IF(reconnect != 1, "expected reconnect=1");
+  mysql_close(mysql);
+  return OK;
+}
+#endif
+
 static int test_get_info(MYSQL *mysql)
 {
   size_t sval;
@@ -1267,6 +1313,9 @@ static int test_wl6797(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+#ifndef _WIN32
+  {"test_mdev12965", test_mdev12965, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+#endif
   {"test_wl6797", test_wl6797, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_server_status", test_server_status, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_read_timeout", test_read_timeout, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

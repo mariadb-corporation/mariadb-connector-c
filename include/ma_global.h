@@ -420,7 +420,7 @@ typedef SOCKET_SIZE_TYPE size_socket;
 #define FN_DEVCHAR	':'
 
 #ifndef FN_LIBCHAR
-#ifdef __EMX__
+#ifdef _WIN32
 #define FN_LIBCHAR	'\\'
 #define FN_ROOTDIR	"\\"
 #else
