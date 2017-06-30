@@ -508,16 +508,6 @@ extern int my_rw_trywrlock(my_rw_lock_t *);
 #define MY_MUTEX_INIT_SLOW   NULL
 #define MY_MUTEX_INIT_FAST   NULL
 #define MY_MUTEX_INIT_ERRCHK NULL
-#ifdef PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP
-extern pthread_mutexattr_t my_fast_mutexattr;
-#undef  MY_MUTEX_INIT_FAST
-#define MY_MUTEX_INIT_FAST &my_fast_mutexattr
-#endif
-#ifdef PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP
-extern pthread_mutexattr_t my_errchk_mutexattr;
-#undef MY_INIT_MUTEX_ERRCHK
-#define MY_INIT_MUTEX_ERRCHK &my_errchk_mutexattr
-#endif
 
 extern my_bool my_thread_global_init(void);
 extern void my_thread_global_end(void);

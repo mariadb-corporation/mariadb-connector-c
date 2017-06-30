@@ -1189,7 +1189,7 @@ static int test_zerofill(MYSQL *mysql)
 static int test_server_status(MYSQL *mysql)
 {
   int rc;
-  unsigned long server_status;
+  unsigned int server_status;
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
 
   rc= mysql_autocommit(mysql, 1);

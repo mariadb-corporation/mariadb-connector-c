@@ -194,7 +194,7 @@ static int test_cursor(MYSQL *mysql)
 {
   int rc;
   MYSQL_STMT *stmt;
-  unsigned int prefetch_rows= 1;
+  unsigned long prefetch_rows= 1;
   unsigned long cursor_type= CURSOR_TYPE_READ_ONLY;
 
   stmt= mysql_stmt_init(mysql);
