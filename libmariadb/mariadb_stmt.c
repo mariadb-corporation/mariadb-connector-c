@@ -453,7 +453,7 @@ static long ma_get_length(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long
     return stmt->params[param_nr].length[row_nr];
 }
 
-static char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long row_nr)
+static signed char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long row_nr)
 {
   if (!MARIADB_STMT_BULK_SUPPORTED(stmt) ||
       !stmt->array_size ||
@@ -484,7 +484,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
 {
   void *buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
                                   stmt->params[column].buffer, row_nr);
-  char indicator= ma_get_indicator(stmt, column, row_nr);
+  signed char indicator= ma_get_indicator(stmt, column, row_nr);
 
   switch (stmt->params[column].buffer_type) {
   case MYSQL_TYPE_TINY:
@@ -896,7 +896,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
       {
         size_t size= 0;
         my_bool has_data= TRUE;
-        char indicator= ma_get_indicator(stmt, i, j);
+        signed char indicator= ma_get_indicator(stmt, i, j);
         /* check if we need to send data */
         if (indicator > 0)
           has_data= FALSE;
@@ -930,9 +930,11 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
             size+= 5; /* max 8 bytes for size */
             if (indicator == STMT_INDICATOR_NTS ||
               (!stmt->row_size && ma_get_length(stmt,i,j) == -1))
+            {
                 size+= strlen(ma_get_buffer_offset(stmt,
                                                    stmt->params[i].buffer_type,
                                                    stmt->params[i].buffer,j));
+            }
             else
               size+= (size_t)ma_get_length(stmt, i, j);
             break;

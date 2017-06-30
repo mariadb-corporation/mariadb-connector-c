@@ -63,6 +63,9 @@ static int test_conc_27(MYSQL *mysql)
   DWORD threads[THREAD_NUM];
 #endif
 
+  diag("please run this test manually as root");
+  return SKIP;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_conc27");
   check_mysql_rc(rc, mysql);
 
