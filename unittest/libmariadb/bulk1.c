@@ -588,7 +588,7 @@ static int test_conc243(MYSQL *mysql)
   if (strcmp(row[0], "Monty") || strcmp(row[1], "Widenius"))
   {
     mysql_free_result(result);
-    diag("Wrong walues");
+    diag("Wrong values");
     return FAIL;
   }
   mysql_free_result(result);
