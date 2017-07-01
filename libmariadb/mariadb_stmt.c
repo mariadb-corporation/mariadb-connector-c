@@ -2150,7 +2150,7 @@ MYSQL_ROW_OFFSET STDCALL mysql_stmt_row_seek(MYSQL_STMT *stmt, MYSQL_ROW_OFFSET 
 }
 
 my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
-    const char *data, size_t length)
+    const char *data, unsigned long length)
 {
   CLEAR_CLIENT_ERROR(stmt->mysql);
   CLEAR_CLIENT_STMT_ERROR(stmt);

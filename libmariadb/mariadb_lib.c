@@ -3586,7 +3586,7 @@ ulong STDCALL mysql_get_client_version(void)
   return MARIADB_VERSION_ID;
 }
 
-ulong STDCALL mysql_hex_string(char *to, const char *from, size_t len)
+ulong STDCALL mysql_hex_string(char *to, const char *from, unsigned long len)
 {
   char *start= to;
   char hexdigits[]= "0123456789ABCDEF";
