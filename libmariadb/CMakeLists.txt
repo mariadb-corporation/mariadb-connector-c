@@ -19,6 +19,17 @@ SET(MARIADB_LIB_SYMBOLS
  mariadb_get_charset_by_nr
  mariadb_get_info
  mariadb_get_infov
+ mysql_get_timeout_value
+ mysql_get_timeout_value_ms
+ mysql_optionsv
+ mysql_ps_fetch_functions
+ mariadb_reconnect
+ mysql_stmt_warning_count)
+IF(WITH_SSL)
+  SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
+ENDIF()
+
+SET(MYSQL_LIB_SYMBOLS
  mysql_affected_rows
  mysql_autocommit
  mysql_change_user
@@ -80,11 +91,8 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_num_rows
  mysql_options
  mysql_options4
- mysql_optionsv
  mysql_ping
- mysql_ps_fetch_functions
  mysql_query
- mariadb_reconnect
  mysql_read_query_result
  mysql_real_connect
  mysql_real_escape_string
@@ -137,7 +145,6 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_stmt_send_long_data
  mysql_stmt_sqlstate
  mysql_stmt_store_result
- mysql_stmt_warning_count
  mysql_store_result
  mysql_thread_end
  mysql_thread_id
@@ -145,9 +152,6 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_thread_safe
  mysql_use_result
  mysql_warning_count)
-IF(WITH_SSL)
-  SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
-ENDIF()
 
 # some gcc versions fail to compile asm parts of my_context.c,
 # if build type is "Release" (see CONC-133), so we need to add -g flag
@@ -250,9 +254,8 @@ SET(MARIADB_NONBLOCK_SYMBOLS
  mysql_store_result_start
 )
 
-
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
-ma_array.c 
+ma_array.c
 ma_charset.c
 ma_hash.c
 ma_net.c
@@ -267,7 +270,7 @@ ma_tls.c
 ma_alloc.c
 ma_compress.c
 ma_init.c
-ma_password.c 
+ma_password.c
 ma_ll2str.c
 ma_sha1.c
 mariadb_stmt.c
@@ -288,7 +291,7 @@ IF(WIN32)
 ELSE()
   IF(ICONV_INCLUDE_DIR)
      INCLUDE_DIRECTORIES(BEFORE ${ICONV_INCLUDE_DIR}) 
-  ENDIF()  
+  ENDIF()
   ADD_DEFINITIONS(-DLIBICONV_PLUG)
 ENDIF()
 
@@ -327,9 +330,28 @@ SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
 SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
-CREATE_EXPORT_FILE(mariadbclient
+IF(NOT WIN32)
+  CREATE_EXPORT_FILE(mariadbclient
                    ${CMAKE_CURRENT_BINARY_DIR}
-                   "${MARIADB_LIB_SYMBOLS}")
+                   "libmysqlclient_18"
+                   "${MYSQL_LIB_SYMBOLS}"
+                   0
+                   "")
+  CREATE_EXPORT_FILE(mariadbclient
+                   ${CMAKE_CURRENT_BINARY_DIR}
+                   "libmariadb_3"
+                   "${MARIADB_LIB_SYMBOLS}"
+                   1
+                   " libmysqlclient_18")
+ELSE()
+  SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MYSQL_LIB_SYMBOLS})
+  CREATE_EXPORT_FILE(mariadbclient
+                   ${CMAKE_CURRENT_BINARY_DIR}
+                   "libmariadb_3"
+                   "${MARIADB_LIB_SYMBOLS}"
+                   0
+                   "")
+ENDIF()
 
 
 IF((NOT WIN32) AND (CMAKE_VERSION VERSION_GREATER 2.8.7))
