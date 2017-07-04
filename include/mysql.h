@@ -569,10 +569,10 @@ MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname);
 MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr);
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode);
-int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...); 
+int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...);
 int STDCALL mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...);
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg);
-unsigned long STDCALL mysql_hex_string(char *to, const char *from, size_t len);
+unsigned long STDCALL mysql_hex_string(char *to, const char *from, unsigned long len);
 my_socket STDCALL mysql_get_socket(MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value(const MYSQL *mysql);
 unsigned int STDCALL mysql_get_timeout_value_ms(const MYSQL *mysql);

@@ -796,7 +796,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       {
         unsigned int timeout= mysql->options.connect_timeout ?
                               mysql->options.connect_timeout : DNS_TIMEOUT;
-        if (time(NULL) - start_t > timeout)
+        if (time(NULL) - start_t > (time_t)timeout)
           break;
 #ifndef _WIN32
         usleep(wait_gai);
@@ -819,7 +819,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     {
       unsigned int timeout= mysql->options.connect_timeout ?
                             mysql->options.connect_timeout : DNS_TIMEOUT;
-      if (time(NULL) - start_t > timeout)
+      if (time(NULL) - start_t > (time_t)timeout)
         break;
 #ifndef _WIN32
       usleep(wait_gai);

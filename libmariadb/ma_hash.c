@@ -291,8 +291,8 @@ my_bool hash_insert(HASH *info,const uchar *record)
 {
   int flag;
   uint halfbuff,hash_nr,first_index,idx;
-  uchar *ptr_to_rec,*ptr_to_rec2;
-  HASH_LINK *data,*empty,*gpos,*gpos2,*pos;
+  uchar *ptr_to_rec= NULL,*ptr_to_rec2= NULL;
+  HASH_LINK *data,*empty,*gpos= NULL,*gpos2 = NULL,*pos;
 
   LINT_INIT(gpos); LINT_INIT(gpos2);
   LINT_INIT(ptr_to_rec); LINT_INIT(ptr_to_rec2);

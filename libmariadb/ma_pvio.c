@@ -182,7 +182,7 @@ my_bool ma_pvio_set_timeout(MARIADB_PVIO *pvio,
 /* {{{ size_t ma_pvio_read_async */
 static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
-  ssize_t res;
+  ssize_t res= 0;
   struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
   int timeout= pvio->timeout[PVIO_READ_TIMEOUT];
 
@@ -338,7 +338,7 @@ static ssize_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size
 /* {{{ size_t ma_pvio_write */
 ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
-  ssize_t r;
+  ssize_t r= 0;
 
   if (!pvio)
    return -1;

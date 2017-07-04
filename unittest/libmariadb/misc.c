@@ -1109,16 +1109,16 @@ static int test_get_info(MYSQL *mysql)
    
   rc= mariadb_get_infov(mysql, MARIADB_MAX_ALLOWED_PACKET, &sval);
   FAIL_IF(rc, "mysql_get_info failed");
-  diag("max_allowed_packet: %lu", sval);
+  diag("max_allowed_packet: %lu", (unsigned long)sval);
   rc= mariadb_get_infov(mysql, MARIADB_NET_BUFFER_LENGTH, &sval);
   FAIL_IF(rc, "mysql_get_info failed");
-  diag("net_buffer_length: %lu", sval);
+  diag("net_buffer_length: %lu", (unsigned long)sval);
   rc= mariadb_get_infov(mysql, MARIADB_CLIENT_VERSION_ID, &sval);
   FAIL_IF(rc, "mysql_get_info failed");
-  diag("client_version_id: %lu", sval);
+  diag("client_version_id: %lu", (unsigned long)sval);
   rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_VERSION_ID, &sval);
   FAIL_IF(rc, "mysql_get_info failed");
-  diag("server_version_id: %lu", sval);
+  diag("server_version_id: %lu", (unsigned long)sval);
   rc= mariadb_get_infov(mysql, MARIADB_CONNECTION_MARIADB_CHARSET_INFO, &cs);
   FAIL_IF(rc, "mysql_get_info failed");
   diag("charset name: %s", cs.csname);

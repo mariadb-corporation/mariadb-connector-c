@@ -497,7 +497,7 @@ static int test_bug11183(MYSQL *mysql)
   FAIL_IF(!rc, "Error expected");
 
   mysql_stmt_reset(stmt);
-  FAIL_IF(!mysql_stmt_errno(stmt) == 0, "stmt->error != 0");
+  FAIL_IF(mysql_stmt_errno(stmt) != 0, "stmt->error != 0");
 
   rc= mysql_query(mysql, "create table t1 (a int)");
   check_mysql_rc(rc, mysql);

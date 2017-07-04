@@ -265,7 +265,7 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT * stmt, MYSQL_BIND * bnd);
 my_bool STDCALL mysql_stmt_close(MYSQL_STMT * stmt);
 my_bool STDCALL mysql_stmt_reset(MYSQL_STMT * stmt);
 my_bool STDCALL mysql_stmt_free_result(MYSQL_STMT *stmt);
-my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, unsigned int param_number, const char *data, size_t length);
+my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, unsigned int param_number, const char *data, unsigned long length);
 MYSQL_RES *STDCALL mysql_stmt_result_metadata(MYSQL_STMT *stmt);
 MYSQL_RES *STDCALL mysql_stmt_param_metadata(MYSQL_STMT *stmt);
 unsigned int STDCALL mysql_stmt_errno(MYSQL_STMT * stmt);
