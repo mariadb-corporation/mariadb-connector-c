@@ -118,11 +118,6 @@ char **get_default_configuration_dirs()
   if ((env= getenv("MYSQL_HOME")) &&
       add_cfg_dir(configuration_dirs, env))
     goto error;
-#ifndef _WIN32
-  if ((env= getenv("HOME")) &&
-      add_cfg_dir(configuration_dirs, env))
-    goto error;
-#endif
 end:
   return configuration_dirs;
 error:
@@ -304,7 +299,7 @@ my_bool _mariadb_read_options(MYSQL *mysql,
 
   for (i=0; i < MAX_CONFIG_DIRS && configuration_dirs[i]; i++)
   {
-    for (exts= 0; exts < 2; exts++)
+    for (exts= 0; ini_exts[exts]; exts++)
     {
       snprintf(filename, FN_REFLEN,
                "%s%cmy.%s", configuration_dirs[i], FN_LIBCHAR, ini_exts[exts]);
@@ -316,7 +311,7 @@ my_bool _mariadb_read_options(MYSQL *mysql,
   /* special case: .my.cnf in Home directory */
   if ((env= getenv("HOME")))
   {
-    for (exts= 0; exts < 2; exts++)
+    for (exts= 0; ini_exts[exts]; exts++)
     {
       snprintf(filename, FN_REFLEN,
                "%s%c.my.%s", env, FN_LIBCHAR, ini_exts[exts]);
