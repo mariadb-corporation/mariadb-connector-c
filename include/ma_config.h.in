@@ -276,6 +276,5 @@
  * various other defines
  */
 #cmakedefine HAVE_THREADS 1
-#cmakedefine SHAREDIR "@SHAREDIR@"
 #cmakedefine DEFAULT_CHARSET_HOME "@DEFAULT_CHARSET_HOME@"
 #cmakedefine DEFAULT_SYSCONFDIR "@DEFAULT_SYSCONFDIR@"

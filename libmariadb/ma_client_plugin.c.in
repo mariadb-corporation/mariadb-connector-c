@@ -269,7 +269,7 @@ int mysql_client_plugin_init()
   MYSQL mysql;
   struct st_mysql_client_plugin **builtin;
   va_list unused;
-  LINT_INIT_STRUCT(unused); 
+  LINT_INIT_STRUCT(unused);
 
   if (initialized)
     return 0;

@@ -1496,7 +1496,7 @@ static int test_long_data_str1(MYSQL *mysql)
   result= mysql_stmt_result_metadata(stmt);
   field= mysql_fetch_fields(result);
 
-  diag("max_length: %lu  max_blob_length: %lu", field->max_length, max_blob_length);
+  diag("max_length: %lu  max_blob_length: %lu", (unsigned long)field->max_length, (unsigned long)max_blob_length);
   FAIL_UNLESS(field->max_length == max_blob_length, "field->max_length != max_blob_length");
 
   /* Fetch results into a data buffer that is smaller than data */

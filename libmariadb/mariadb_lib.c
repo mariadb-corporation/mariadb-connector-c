@@ -1956,7 +1956,7 @@ mysql_close(MYSQL *mysql)
 int STDCALL
 mysql_query(MYSQL *mysql, const char *query)
 {
-  return mysql_real_query(mysql,query, (uint) strlen(query));
+  return mysql_real_query(mysql,query, (unsigned long) strlen(query));
 }
 
 /*
@@ -3301,12 +3301,12 @@ my_bool STDCALL mysql_autocommit(MYSQL *mysql, my_bool mode)
 
 my_bool STDCALL mysql_commit(MYSQL *mysql)
 {
-  return((my_bool)mysql_real_query(mysql, "COMMIT", sizeof("COMMIT")));
+  return((my_bool)mysql_real_query(mysql, "COMMIT", (unsigned long) sizeof("COMMIT")));
 }
 
 my_bool STDCALL mysql_rollback(MYSQL *mysql)
 {
-  return((my_bool)mysql_real_query(mysql, "ROLLBACK", sizeof("ROLLBACK")));
+  return((my_bool)mysql_real_query(mysql, "ROLLBACK", (unsigned long)sizeof("ROLLBACK")));
 }
 
 my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql)
@@ -3436,7 +3436,7 @@ int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname)
     char buff[64];
 
     snprintf(buff, 63, "SET NAMES %s", cs->csname);
-    if (!mysql_real_query(mysql, buff, (uint)strlen(buff)))
+    if (!mysql_real_query(mysql, buff, (unsigned long)strlen(buff)))
     {
       mysql->charset= cs;
       return(0);
