@@ -3,7 +3,11 @@ INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
 # Figure out additional libraries for use with
 
 FUNCTION(GET_LIB_NAME LIB_NAME LIB_OUT)
-  STRING(FIND ${LIB_NAME} ".so" IS_SO)
+  IF(APPLE)
+    STRING(FIND ${LIB_NAME} ".dylib" IS_SO)
+  ELSE()
+    STRING(FIND ${LIB_NAME} ".so" IS_SO)
+  ENDIF()
   IF(NOT ${IS_SO} STREQUAL "-1")
     GET_FILENAME_COMPONENT(LIB_FILE ${LIB_NAME} NAME_WE)
   ELSE()
@@ -24,13 +28,14 @@ FOREACH (LIB_NAME ${SYSTEM_LIBS})
   SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${LIB_OUT}")
 ENDFOREACH()
 STRING(STRIP ${extra_dynamic_LDFLAGS} extra_dynamic_LDFLAGS)
+LIST(REMOVE_DUPLICATES extra_dynamic_LDFLAGS)
 
-
-IF(UNIX)
+IF(UNIX AND NOT APPLE)
   IF(ICONV_EXTERNAL)
-    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${ICONV_LIBRARIES}")
+    GET_LIB_NAME(${ICONV_LIBRARIES} LIB_OUT)
+    SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${LIB_OUT}")
   ENDIF()
-ENDIF(UNIX)
+ENDIF()
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
                ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
