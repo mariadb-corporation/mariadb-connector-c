@@ -1060,34 +1060,32 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   MYSQL *mysql;
   my_bool reconnect = 0;
   FILE *fp= NULL;
-	char *env= getenv("HOME");
-  char cnf_file1[FN_REFLEN + 1],
-       cnf_file2[FN_REFLEN + 1];
+  const char *env= getenv("MYSQL_TMP_DIR");
+  char cnf_file1[FN_REFLEN + 1];
+
+  if (!env)
+    env= "/tmp";
+
+  setenv("HOME", env, 1);
 
   snprintf(cnf_file1, FN_REFLEN, "%s%c.my.cnf", env, FN_LIBCHAR);
-  snprintf(cnf_file2, FN_REFLEN, "%s%cmy.cnf", env, FN_LIBCHAR);
 
-  if (!access(cnf_file1, R_OK) || !access(cnf_file2, R_OK))
-  {
-    diag("Skip this test, it would overwrite configuration files in your home directory");
-    return SKIP;
-  }
+  diag("Config file: %s", cnf_file1);
+
+  FAIL_IF(!access(cnf_file1, R_OK), "access");
 
   mysql= mysql_init(NULL);
   fp= fopen(cnf_file1, "w");
-  fprintf(fp, "[test]\ndefault-character-set=latin2");
+  FAIL_IF(!fp, "fopen");
+
+  fprintf(fp, "[misc]\ndefault-character-set=latin2\n[client]\nreconnect=1\n");
   fclose(fp);
 
-  fp= fopen(cnf_file2, "w");
-  fprintf(fp, "[test]\nreconnect=1");
-  fclose(fp);
-
-  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "test");
-  my_test_connect(mysql, hostname, username, password, schema,
-                         0, socketname, 0), mysql_error(mysql);
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, NULL);
+  my_test_connect(mysql, hostname, username, password,
+                  schema, 0, socketname, 0);
 
   remove(cnf_file1);
-  remove(cnf_file2);
 
   FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
   mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
