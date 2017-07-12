@@ -646,6 +646,7 @@ struct st_default_options mariadb_defaults[] =
   {MARIADB_OPT_SSL_FP_LIST, MARIADB_OPTION_STR, "ssl-fplist"},
   {MARIADB_OPT_TLS_PASSPHRASE, MARIADB_OPTION_STR, "ssl_passphrase"},
   {MYSQL_OPT_BIND, MARIADB_OPTION_STR, "bind-address"},
+  {MYSQL_SERVER_PUBLIC_KEY, MARIADB_OPTION_STR, "server-public-key-path"},
   {0, 0, NULL}
 };
 
