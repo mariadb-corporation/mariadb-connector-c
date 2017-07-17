@@ -1032,7 +1032,7 @@ mysql_ssl_set(MYSQL *mysql __attribute__((unused)),
           mysql_optionsv(mysql, MYSQL_OPT_SSL_CAPATH, capath) |
           mysql_optionsv(mysql, MYSQL_OPT_SSL_CIPHER, cipher)) ? 1 : 0;
 #else
-  return 0;
+  return 1;
 #endif
 }
 
