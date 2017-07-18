@@ -230,25 +230,22 @@ static void my_cb_locking(int mode, int n,
 
 static int ssl_thread_init()
 {
-  int i, max= CRYPTO_num_locks();
-
-  if (LOCK_crypto == NULL)
+  if (!CRYPTO_get_id_callback())
   {
-    if (!(LOCK_crypto=
-          (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
-      return 1;
+    int i, max= CRYPTO_num_locks();
 
-    for (i=0; i < max; i++)
-      pthread_mutex_init(&LOCK_crypto[i], NULL);
+    if (LOCK_crypto == NULL)
+    {
+      if (!(LOCK_crypto=
+            (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
+        return 1;
+
+      for (i=0; i < max; i++)
+        pthread_mutex_init(&LOCK_crypto[i], NULL);
+    }
+    CRYPTO_set_locking_callback(my_cb_locking);
+    CRYPTO_THREADID_set_callback(my_cb_threadid);
   }
-
-#if OPENSSL_VERSION_NUMBER < 0x10000000L
-  CRYPTO_set_id_callback(my_cb_threadid);
-#else
-  CRYPTO_THREADID_set_callback(my_cb_threadid);
-#endif
-  CRYPTO_set_locking_callback(my_cb_locking);
-
   return 0;
 }
 #endif
@@ -346,15 +343,16 @@ void ma_tls_end()
   {
     pthread_mutex_lock(&LOCK_openssl_config);
 #ifndef HAVE_OPENSSL_1_1_API
-    CRYPTO_set_locking_callback(NULL);
-    CRYPTO_set_id_callback(NULL);
+    if (LOCK_crypto)
     {
       int i;
+      CRYPTO_set_locking_callback(NULL);
+      CRYPTO_set_id_callback(NULL);
       for (i=0; i < CRYPTO_num_locks(); i++)
         pthread_mutex_destroy(&LOCK_crypto[i]);
+      ma_free((gptr)LOCK_crypto);
+      LOCK_crypto= NULL;
     }
-    ma_free((gptr)LOCK_crypto);
-    LOCK_crypto= NULL;
 #endif
     if (mariadb_deinitialize_ssl)
     {
