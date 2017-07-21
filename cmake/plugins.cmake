@@ -40,7 +40,7 @@ ENDIF()
 
 # AUTHENTICATION
 IF(WIN32 OR WITH_SSL STREQUAL "OPENSSL")
-  REGISTER_PLUGIN("AUTH_SHA256PW" "${CC_SOURCE_DIR}/plugins/auth/sha256_pw.c" "sha256_password_client_plugin" "DYNAMIC" sha256_password 0)
+  REGISTER_PLUGIN("AUTH_SHA256PW" "${CC_SOURCE_DIR}/plugins/auth/sha256_pw.c" "sha256_password_client_plugin" "DYNAMIC" sha256_password 1)
 ENDIF()
 REGISTER_PLUGIN("AUTH_NATIVE" "${CC_SOURCE_DIR}/plugins/auth/my_auth.c" "native_password_client_plugin" "STATIC" "" 0)
 REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CC_SOURCE_DIR}/plugins/auth/old_password.c" "old_password_client_plugin" "STATIC" "" 1)
