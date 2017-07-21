@@ -2289,7 +2289,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
 
     /* avoid sending close + prepare in 2 packets */
 
-    if ((rc= mysql_stmt_prepare(stmt, stmt_str, length)))
+    if ((rc= mysql_stmt_prepare(stmt, stmt_str, (unsigned long)length)))
       return rc;
     return mysql_stmt_execute(stmt);
   }

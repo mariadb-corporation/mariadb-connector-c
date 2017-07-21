@@ -244,7 +244,7 @@ static int test_frm_bug(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "show variables like 'datadir'", strlen("show variables like 'datadir'"));
+  rc= mysql_stmt_prepare(stmt, "show variables like 'datadir'", (unsigned long)strlen("show variables like 'datadir'"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -336,7 +336,7 @@ static int test_wl4166_1(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   query= "INSERT INTO table_4166(col1, col2, col3, col4, col5, col6, col7) "
           "VALUES(?, ?, ?, ?, ?, ?, ?)";
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 7, "param_count != 7");
@@ -448,7 +448,7 @@ static int test_wl4166_2(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "select * from t1", strlen("select * from t1"));
+  rc= mysql_stmt_prepare(stmt, "select * from t1", (unsigned long)strlen("select * from t1"));
   check_stmt_rc(rc, stmt);
 
   memset(bind_out, '\0', sizeof(bind_out));
@@ -547,7 +547,7 @@ static int test_wl4166_3(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "insert into t1 (year) values (?)", strlen("insert into t1 (year) values (?)"));
+  rc= mysql_stmt_prepare(stmt, "insert into t1 (year) values (?)", (unsigned long)strlen("insert into t1 (year) values (?)"));
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 1, "param_count != 1");
@@ -639,12 +639,12 @@ static int test_wl4166_4(MYSQL *mysql)
 
   stmt_text= "insert into t1 (c1, c2) values (?, ?)";
 
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_bind_param(stmt, bind_array);
 
-  mysql_stmt_send_long_data(stmt, 0, koi8, strlen(koi8));
+  mysql_stmt_send_long_data(stmt, 0, koi8, (unsigned long)strlen(koi8));
 
   /* Cause a reprepare at statement execute */
   rc= mysql_query(mysql, "alter table t1 add column d int");
@@ -656,7 +656,7 @@ static int test_wl4166_4(MYSQL *mysql)
   stmt_text= "select c1, c2 from t1";
 
   /* c1 and c2 are binary so no conversion will be done on select */
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);

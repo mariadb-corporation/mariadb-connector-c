@@ -153,7 +153,7 @@ int test_sp_params(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  rc= mysql_stmt_prepare(stmt, stmtstr, (unsigned long)strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 3, "expected param_count=3");
@@ -236,7 +236,7 @@ int test_sp_reset(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  rc= mysql_stmt_prepare(stmt, stmtstr, (unsigned long)strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 3, "expected param_count=3");
@@ -291,7 +291,7 @@ int test_sp_reset1(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  rc= mysql_stmt_prepare(stmt, stmtstr, (unsigned long)strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
   memset(tmp, 0, sizeof(tmp));
@@ -361,7 +361,7 @@ int test_sp_reset2(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  rc= mysql_stmt_prepare(stmt, stmtstr, (unsigned long)strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -443,7 +443,7 @@ int test_query(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmtstr, strlen(stmtstr));
+  rc= mysql_stmt_prepare(stmt, stmtstr, (unsigned long)strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
   for (i=0; i < 1000; i++)

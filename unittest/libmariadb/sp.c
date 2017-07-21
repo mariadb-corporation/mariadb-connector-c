@@ -37,11 +37,11 @@ static int test_bug15752(MYSQL *mysql)
   rc= mysql_query(mysql, "create procedure p1() select 1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_real_query(mysql, query, strlen(query));
+  rc= mysql_real_query(mysql, query, (unsigned long)strlen(query));
   check_mysql_rc(rc, mysql);
   mysql_free_result(mysql_store_result(mysql));
 
-  rc= mysql_real_query(mysql, query, strlen(query));
+  rc= mysql_real_query(mysql, query, (unsigned long)strlen(query));
   FAIL_UNLESS(rc && mysql_errno(mysql) == CR_COMMANDS_OUT_OF_SYNC, "Error expected");
 
   rc= mysql_next_result(mysql);
@@ -54,7 +54,7 @@ static int test_bug15752(MYSQL *mysql)
 
   for (i = 0; i < ITERATION_COUNT; i++)
   {
-    rc= mysql_real_query(mysql, query, strlen(query));
+    rc= mysql_real_query(mysql, query, (unsigned long)strlen(query));
     check_mysql_rc(rc, mysql);
     mysql_free_result(mysql_store_result(mysql));
     rc= mysql_next_result(mysql);

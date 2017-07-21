@@ -169,20 +169,20 @@ static int test_conversion(MYSQL *mysql)
   ulong length;
 
   stmt_text= "DROP TABLE IF EXISTS t1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
   stmt_text= "CREATE TABLE t1 (a TEXT) DEFAULT CHARSET latin1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text,(unsigned long) strlen(stmt_text));
   check_mysql_rc(rc, mysql);
   stmt_text= "SET character_set_connection=utf8, character_set_client=utf8, "
              " character_set_results=latin1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   stmt_text= "INSERT INTO t1 (a) VALUES (?)";
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
   check_stmt_rc(rc, stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -200,7 +200,7 @@ static int test_conversion(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   stmt_text= "SELECT a FROM t1";
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -217,10 +217,10 @@ static int test_conversion(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
   stmt_text= "DROP TABLE t1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
   stmt_text= "SET NAMES DEFAULT";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   return OK;
@@ -299,7 +299,7 @@ static int test_ps_i18n(MYSQL *mysql)
   ulong buf1_len, buf2_len;
 
   stmt_text= "DROP TABLE IF EXISTS t1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long) strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   /*
@@ -309,14 +309,14 @@ static int test_ps_i18n(MYSQL *mysql)
   */
 
   stmt_text= "CREATE TABLE t1 (c1 VARBINARY(255), c2 VARBINARY(255))";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   stmt_text= "SET CHARACTER_SET_CLIENT=koi8r, "
                  "CHARACTER_SET_CONNECTION=cp1251, "
                  "CHARACTER_SET_RESULTS=koi8r";
 
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   memset(bind_array, '\0', sizeof(bind_array));
@@ -333,7 +333,7 @@ static int test_ps_i18n(MYSQL *mysql)
 
   stmt_text= "INSERT INTO t1 (c1, c2) VALUES (?, ?)";
 
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
   check_stmt_rc(rc, stmt);
   mysql_stmt_bind_param(stmt, bind_array);
   check_stmt_rc(rc, stmt);
@@ -345,7 +345,7 @@ static int test_ps_i18n(MYSQL *mysql)
   stmt_text= "SELECT c1, c2 FROM t1";
 
   /* c1 and c2 are binary so no conversion will be done on select */
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text,(unsigned long) strlen(stmt_text));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -370,7 +370,7 @@ static int test_ps_i18n(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
   stmt_text= "DROP TABLE IF EXISTS t1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text,(unsigned long) strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   /*
@@ -383,12 +383,12 @@ static int test_ps_i18n(MYSQL *mysql)
   stmt_text= "CREATE TABLE t1 (c1 VARCHAR(255) CHARACTER SET cp1251, "
                               "c2 VARCHAR(255) CHARACTER SET cp1251)";
 
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   stmt_text= "INSERT INTO t1 (c1, c2) VALUES (?, ?)";
 
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
   check_stmt_rc(rc, stmt);
   /* this data must be converted */
   bind_array[0].buffer_type= MYSQL_TYPE_STRING;
@@ -425,7 +425,7 @@ static int test_ps_i18n(MYSQL *mysql)
   stmt_text= "SELECT c1, c2 FROM t1";
 
   /* c1 and c2 are binary so no conversion will be done on select */
-  rc= mysql_stmt_prepare(stmt, stmt_text, strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -450,10 +450,10 @@ static int test_ps_i18n(MYSQL *mysql)
   mysql_stmt_close(stmt);
 
   stmt_text= "DROP TABLE t1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
   stmt_text= "SET NAMES DEFAULT";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
   return OK;
 }
@@ -700,7 +700,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
 
     if (memcmp(buffer, in_string[UTF8], rc) != 0)
     {
-      mysql_hex_string(as_hex, buffer, rc);
+      mysql_hex_string(as_hex, buffer, (unsigned long)rc);
       diag("Converted string(%s) does not match the expected one", as_hex);
       return FAIL;
     }
@@ -717,7 +717,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
 
     if (memcmp(buffer, in_string[i], rc) != 0)
     {
-      mysql_hex_string(as_hex, buffer, rc);
+      mysql_hex_string(as_hex, buffer, (unsigned long)rc);
       diag("Converted string(%s) does not match the expected one", as_hex);
       return FAIL;
     }
