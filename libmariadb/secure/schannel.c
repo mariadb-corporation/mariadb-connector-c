@@ -492,11 +492,11 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
     p1 = szName;
     while (p1 && *p1 != 0)
     {
-      DWORD len = strlen(p1);
+      size_t len = strlen(p1);
       /* check if given name contains wildcard */
       if (len && *p1 == '*')
       {
-        DWORD hostlen = strlen(pszServerName);
+        size_t hostlen = strlen(pszServerName);
         if (hostlen < len)
           break;
         if (!stricmp(pszServerName + hostlen - len + 1, p1 + 1))

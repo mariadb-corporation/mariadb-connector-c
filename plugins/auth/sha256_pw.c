@@ -187,7 +187,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   /* if a tls session is active we need to send plain password */
   if (mysql->client_flag & CLIENT_SSL)
   {
-    if (vio->write_packet(vio, (unsigned char *)mysql->passwd, strlen(mysql->passwd) + 1))
+    if (vio->write_packet(vio, (unsigned char *)mysql->passwd, (int)strlen(mysql->passwd) + 1))
       return CR_ERROR;
     return CR_OK;
   }
@@ -254,7 +254,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (!pubkey)
     return CR_ERROR;
 
-  pwlen= strlen(mysql->passwd) + 1;  /* include terminating zero */
+  pwlen= (unsigned int)strlen(mysql->passwd) + 1;  /* include terminating zero */
   if (pwlen > MAX_PW_LEN)
     goto error;
   memcpy(passwd, mysql->passwd, pwlen);

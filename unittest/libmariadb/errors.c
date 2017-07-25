@@ -50,7 +50,7 @@ static int test_ps_client_warnings(MYSQL *mysql)
   check_mysql_rc(rc, mysql); 
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   FAIL_IF(rc, mysql_stmt_error(stmt));
 
   rc= mysql_stmt_execute(stmt);
@@ -115,7 +115,7 @@ static int test_ps_client_errors(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   FAIL_IF(rc, mysql_stmt_error(stmt));
 
   rc= mysql_stmt_execute(stmt);
@@ -247,7 +247,7 @@ static int test_parse_error_and_bad_length(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "SHOW DATABAAAA", strlen("SHOW DATABAAAA"));
+  rc= mysql_stmt_prepare(stmt, "SHOW DATABAAAA", (unsigned long)strlen("SHOW DATABAAAA"));
   FAIL_IF(!rc, "Error expected");
   mysql_stmt_close(stmt);
   stmt= mysql_stmt_init(mysql);

@@ -31,6 +31,7 @@ FOREACH(plugin ${PLUGINS})
     SET(TARGET ${${plugin}_PLUGIN_TARGET})
     # Get dependencies
     SET(DYNAMIC_TARGETS ${DYNAMIC_TARGETS} ${TARGET})
+	MESSAGE("plugin ${plugin}")
     GET_PROPERTY(FILE TARGET ${TARGET} PROPERTY LOCATION)
     #MESSAGE(STATUS "Location for ${TARGET}: ${DIRECTORY}")
     # build file list
