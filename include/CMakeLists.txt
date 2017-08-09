@@ -8,8 +8,12 @@ SET(MARIADB_CLIENT_INCLUDES ${CC_SOURCE_DIR}/include/mariadb_com.h
                             ${CC_SOURCE_DIR}/include/errmsg.h
                             ${CC_SOURCE_DIR}/include/mariadb_dyncol.h
                             ${CC_SOURCE_DIR}/include/mariadb_ctype.h
-                            ${CC_SOURCE_DIR}/include/mysqld_error.h
                             )
+IF(NOT IS_SUBPROJECT)
+  SET(MARIADB_CLIENT_INCLUDES ${MARIADB_CLIENT_INCLUDES}
+                              ${CC_SOURCE_DIR}/include/mysqld_error.h
+                              )
+ENDIF()
 SET(MYSQL_ADDITIONAL_INCLUDES
    ${CC_SOURCE_DIR}/include/mysql/client_plugin.h
    ${CC_SOURCE_DIR}/include/mysql/plugin_auth_common.h
