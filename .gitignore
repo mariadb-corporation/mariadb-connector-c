@@ -87,3 +87,21 @@ unittest/libmariadb/t_aurora
 unittest/libmariadb/t_conc173
 unittest/libmariadb/thread
 unittest/libmariadb/view
+
+#VS files/directories
+*.vcxproj
+*.filters
+*.user
+ipch
+*.sln
+*.suo
+*.sdf
+Win32
+x64
+*.dir
+Debug
+Release
+RelWithDebInfo
+
+#vim backups
+*.*~
