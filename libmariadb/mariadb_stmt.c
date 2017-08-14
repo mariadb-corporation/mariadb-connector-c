@@ -797,7 +797,21 @@ mem_error:
 }
 /* }}} */
 
-/* {{{ mysqlnd_stmt_execute_generate_bulk_request */
+/* {{{ mysql_stmt_skip_paramset */
+my_bool mysql_stmt_skip_paramset(MYSQL_STMT *stmt, uint row)
+{
+  uint i;
+  for (i=0; i < stmt->param_count; i++)
+  {
+    if (ma_get_indicator(stmt, i, row) == STMT_INDICATOR_IGNORE_ROW)
+      return '\1';
+  }
+  
+  return '\0';
+}
+/* }}} */
+
+/* {{{ mysql_stmt_execute_generate_bulk_request */
 unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
@@ -820,6 +834,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
                             STMT_INDICATOR_NULL 1
                             STMT_INDICATOR_DEFAULT 2
                             STMT_INDICATOR_IGNORE 3
+                            STMT_INDICATOR_SKIP_SET 4
                    n      data from bind buffer
 
      */
@@ -894,6 +909,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
     /* calculate data size */
     for (j=0; j < stmt->array_size; j++)
     {
+      if (mysql_stmt_skip_paramset(stmt, j))
+        continue;
+
       for (i=0; i < stmt->param_count; i++)
       {
         size_t size= 0;
