@@ -1248,8 +1248,37 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
   return OK; 
 }
 
+static int test_conc276(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+  my_bool val= 1;
+
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &val);
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &val);
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
+  {
+    diag("Connection failed. Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+  diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+
+  rc= mariadb_reconnect(mysql);
+  check_mysql_rc(rc, mysql);
+
+  diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+  /* this shouldn't crash anymore */
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
+
+  mysql_close(mysql);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_auth256", test_auth256, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_reset", test_reset, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

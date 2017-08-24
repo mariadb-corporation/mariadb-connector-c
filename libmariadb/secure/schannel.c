@@ -235,10 +235,7 @@ void *ma_tls_init(MYSQL *mysql)
 {
   SC_CTX *sctx= NULL;
   if ((sctx= (SC_CTX *)LocalAlloc(0, sizeof(SC_CTX))))
-  {
     ZeroMemory(sctx, sizeof(SC_CTX));
-    sctx->mysql= mysql;
-  }
   return sctx;
 }
 /* }}} */
@@ -373,7 +370,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
   
-  if (!ma_schannel_verify_certs(sctx))
+  if (!ma_schannel_verify_certs(ctls))
     goto end;
   
   return 0;
@@ -391,7 +388,7 @@ end:
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
-  MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
+  MARIADB_PVIO *pvio= ctls->pvio;
   DWORD dlength= 0;
   SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, (DWORD)length);
   if (status == SEC_I_CONTEXT_EXPIRED)
@@ -405,7 +402,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
-  MARIADB_PVIO *pvio= sctx->mysql->net.pvio;
+  MARIADB_PVIO *pvio= ctls->pvio;
   ssize_t rc, wlength= 0;
   ssize_t remain= length;
 
@@ -448,7 +445,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
   PCCERT_CONTEXT pServerCert= NULL;
 
   /* check server name */
-  if (pszServerName && (sctx->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
+  if (pszServerName && (ctls->pvio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
   {
     DWORD NameSize= 0;
     char *p1;
@@ -465,13 +462,13 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
                                       CERT_NAME_SEARCH_ALL_NAMES_FLAG,
                                       NULL, NULL, 0)))
     {
-      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error:  Can't retrieve name of server certificate");
+      pvio->set_error(ctls->pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error:  Can't retrieve name of server certificate");
       goto end;
     }
 
     if (!(szName= (char *)LocalAlloc(0, NameSize + 1)))
     {
-      pvio->set_error(sctx->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
+      pvio->set_error(ctls->pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
       goto end;
     }
 
@@ -481,14 +478,14 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
                            NULL, szName, NameSize))
 
     {
-      pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Can't retrieve name of server certificate");
+      pvio->set_error(ctls->pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Can't retrieve name of server certificate");
       goto end;
     }
 
     /* szName may contain multiple names: Each name is zero terminated, the last name is
        double zero terminated */
 
-    
+
     p1 = szName;
     while (p1 && *p1 != 0)
     {
