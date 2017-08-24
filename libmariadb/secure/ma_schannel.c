@@ -828,12 +828,14 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
 }
 /* }}} */
 
-my_bool ma_schannel_verify_certs(SC_CTX *sctx)
+my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls)
 {
   SECURITY_STATUS sRet;
-  MYSQL *mysql=sctx->mysql;
+  
+  MARIADB_PVIO *pvio= ctls->pvio;
+  MYSQL *mysql= pvio->mysql;
+  SC_CTX *sctx = (SC_CTX *)ctls->ssl;
 
-  MARIADB_PVIO *pvio= mysql->net.pvio;
   const char *ca_file= mysql->options.ssl_ca;
   const char *crl_file= mysql->options.extension ? mysql->options.extension->ssl_crl : NULL;
   PCCERT_CONTEXT pServerCert= NULL;
@@ -868,13 +870,13 @@ my_bool ma_schannel_verify_certs(SC_CTX *sctx)
     if (flags)
     {
       if ((flags & CERT_STORE_SIGNATURE_FLAG) != 0)
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Certificate signature check failed");
+        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Certificate signature check failed");
       else if ((flags & CERT_STORE_REVOCATION_FLAG) != 0)
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate was revoked");
+        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate was revoked");
       else if ((flags & CERT_STORE_TIME_VALIDITY_FLAG) != 0)
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate has expired");
+        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate has expired");
       else
-        pvio->set_error(sctx->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown error during certificate validation");
+        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown error during certificate validation");
       goto end;
     }
   }

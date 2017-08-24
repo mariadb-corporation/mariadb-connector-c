@@ -55,7 +55,6 @@ struct st_schannel {
   DWORD IoBufferSize;
   SecPkgContext_StreamSizes Sizes;
   CtxtHandle ctxt;
-  MYSQL *mysql;
 
   /* Cached data from the last read/decrypt call.*/
   SecBuffer extraBuf; /* encrypted data read from server. */
@@ -73,7 +72,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls);
 SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData);
 my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char *key_file);
 PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem_file);
-my_bool ma_schannel_verify_certs(SC_CTX *sctx);
+my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls);
 ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
                                  size_t WriteBufferSize);
