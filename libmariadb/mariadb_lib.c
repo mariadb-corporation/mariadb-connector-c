@@ -3873,6 +3873,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
       *((unsigned long *)arg)= mysql->client_flag;
     else
       goto error;
+    break;
   default:
     va_end(ap);
     return(-1);
