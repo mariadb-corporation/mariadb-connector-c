@@ -331,25 +331,18 @@ SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
 IF(NOT WIN32)
-  CREATE_EXPORT_FILE(mariadbclient
-                   ${CMAKE_CURRENT_BINARY_DIR}
+  CREATE_EXPORT_FILE(WRITE mariadbclient.def
                    "libmysqlclient_18"
                    "${MYSQL_LIB_SYMBOLS}"
-                   0
+                   "libmariadbclient_18")
+  CREATE_EXPORT_FILE(APPEND mariadbclient.def
+                   "libmariadb_3"
+                   "${MARIADB_LIB_SYMBOLS}"
                    "")
-  CREATE_EXPORT_FILE(mariadbclient
-                   ${CMAKE_CURRENT_BINARY_DIR}
-                   "libmariadb_3"
-                   "${MARIADB_LIB_SYMBOLS}"
-                   1
-                   " libmysqlclient_18")
 ELSE()
-  SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MYSQL_LIB_SYMBOLS})
-  CREATE_EXPORT_FILE(mariadbclient
-                   ${CMAKE_CURRENT_BINARY_DIR}
+  CREATE_EXPORT_FILE(WRITE mariadbclient.def
                    "libmariadb_3"
-                   "${MARIADB_LIB_SYMBOLS}"
-                   0
+                   "${MARIADB_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS}"
                    "")
 ENDIF()
 
@@ -404,7 +397,7 @@ IF(CMAKE_SYSTEM_NAME MATCHES "Linux")
   IF (NOT WITH_ASAN)
     TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
   ENDIF()
-  TARGET_LINK_LIBRARIES (libmariadb "-Wl,--version-script=${CC_BINARY_DIR}/libmariadb/mariadbclient.def")
+  TARGET_LINK_LIBRARIES (libmariadb "${CC_BINARY_DIR}/libmariadb/mariadbclient.def")
 ENDIF()
 
 SET_TARGET_PROPERTIES(mariadbclient PROPERTIES IMPORTED_INTERFACE_LINK_LIBRARIES "${SYSTEM_LIBS}")
