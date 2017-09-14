@@ -656,7 +656,7 @@ static int test_bug_54100(MYSQL *mysql)
   return OK;
 }
 
-
+#ifdef HAVE_ICONV
 /* We need this internal function for the test */
 
 static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
@@ -725,7 +725,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
 
   return OK;
 }
-
+#endif
 static int charset_auto(MYSQL *my __attribute__((unused)))
 {
   const char *csname1, *csname2;
@@ -810,7 +810,9 @@ struct my_tests_st my_tests[] = {
   {"test_bug30472", test_bug30472, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_ps_i18n", test_ps_i18n, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug_54100", test_bug_54100, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
+#ifdef HAVE_ICONV
   {"test_utf16_utf32_noboms", test_utf16_utf32_noboms, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
+#endif
   {NULL, NULL, 0, 0, NULL, 0}
 };
 

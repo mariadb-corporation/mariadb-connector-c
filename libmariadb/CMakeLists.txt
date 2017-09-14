@@ -12,7 +12,6 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/sign.cmake)
 SET(MARIADB_LIB_SYMBOLS
  mariadb_cancel
  mariadb_connection
- mariadb_convert_string
  ma_pvio_register_callback
  mariadb_get_charset_by_name
  mariadb_stmt_execute_direct
@@ -27,6 +26,10 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_stmt_warning_count)
 IF(WITH_SSL)
   SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
+ENDIF()
+
+IF(NOT WITH_ICONV STREQUAL "OFF")
+  SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_convert_string)
 ENDIF()
 
 SET(MYSQL_LIB_SYMBOLS
@@ -70,8 +73,6 @@ SET(MYSQL_LIB_SYMBOLS
  mysql_get_server_version
  mysql_get_socket
  mysql_get_ssl_cipher
- mysql_get_timeout_value
- mysql_get_timeout_value_ms
  mysql_hex_string
  mysql_info
  mysql_init
@@ -326,8 +327,10 @@ IF(WITH_DYNCOL)
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_dyncol.c)
 ENDIF()
 
-SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
-SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
+#IF(NOT ${CC_WITH_ASYNC} STREQUAL "OFF")
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
+  SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
+#ENDIF()
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
 IF(NOT WIN32)

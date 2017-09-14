@@ -42,10 +42,8 @@
 #include <mysql/client_plugin.h>
 #include <mariadb/ma_io.h>
 
-#ifdef HAVE_NONBLOCK
 #include <mariadb_async.h>
 #include <ma_context.h>
-#endif
 
 /* Errors should be handled via pvio callback function */
 my_bool ma_tls_initialized= FALSE;

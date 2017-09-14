@@ -109,7 +109,6 @@ extern void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt);
 extern my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
                                      char *group);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
-
 extern void
 my_context_install_suspend_resume_hook(struct mysql_async_context *b,
                                        void (*hook)(my_bool, void *),
@@ -1563,6 +1562,7 @@ struct my_hook_data {
   /* This is always NULL currently, but restoring does not hurt just in case. */
   MARIADB_PVIO *orig_pvio;
 };
+
 /*
   Callback hook to make the new VIO accessible via the old MYSQL to calling
   application when suspending a non-blocking call during automatic reconnect.
@@ -2665,8 +2665,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     {
 #if defined(__APPLE__) || defined(__FreeBSD__)
       const char * appname = getprogname();
-#elif defined(_GNU_SOURCE)
-      const char * appname = program_invocation_short_name;
+#elif defined(__GLIBC__)
+      const char * appname = __programname;
 #elif defined(WIN32)
       char appname[FN_REFLEN]= "";
 
@@ -3494,7 +3494,7 @@ static void mysql_once_init()
 
     mysql_port = MARIADB_PORT;
     if ((serv_ptr = getservbyname("mysql", "tcp")))
-      mysql_port = (uint)ntohs((ushort)serv_ptr->s_port);
+      mysql_port = (uint)ntohs((unsigned short)serv_ptr->s_port);
     if ((env = getenv("MYSQL_TCP_PORT")))
       mysql_port =(uint)atoi(env);
   }
@@ -4061,7 +4061,11 @@ struct st_mariadb_api MARIADB_API=
   mysql_get_server_name,
   mariadb_get_charset_by_name,
   mariadb_get_charset_by_nr,
+#ifdef HAVE_ICONV
   mariadb_convert_string,
+#else
+  NULL,
+#endif
   mysql_optionsv,
   mysql_get_optionv,
   mysql_get_option,

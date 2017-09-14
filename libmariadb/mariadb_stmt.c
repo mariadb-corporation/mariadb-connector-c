@@ -824,7 +824,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
 
   size_t length= 1024;
   size_t free_bytes= 0;
-  ushort flags= 0;
+  unsigned short flags= 0;
   uint i, j;
 
   uchar *start= NULL, *p;

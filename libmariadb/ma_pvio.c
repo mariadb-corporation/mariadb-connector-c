@@ -457,7 +457,6 @@ int ma_pvio_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
     return ma_pvio_wait_async(pvio->mysql->options.extension->async_context, 
                              (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
                               timeout);
-
   if (pvio && pvio->methods->wait_io_or_timeout)
     return pvio->methods->wait_io_or_timeout(pvio, is_read, timeout);
   return 1;

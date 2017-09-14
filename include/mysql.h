@@ -567,8 +567,10 @@ my_bool STDCALL mariadb_connection(MYSQL *mysql);
 const char * STDCALL mysql_get_server_name(MYSQL *mysql);
 MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname);
 MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr);
+#ifdef HAVE_ICONV
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode);
+#endif
 int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...);
 int STDCALL mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...);
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg);

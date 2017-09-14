@@ -8,7 +8,7 @@
 # plugin configuration
 
 MACRO(REGISTER_PLUGIN name source struct type target allow)
-  SET(PLUGIN_TYPE ${${name}})
+  SET(PLUGIN_TYPE ${${name}_TYPE})
   IF(NOT PLUGIN_TYPE STREQUAL "OFF" AND NOT PLUGIN_TYPE)
     SET(PLUGIN_TYPE ${type})
   ENDIF()
@@ -49,7 +49,7 @@ REGISTER_PLUGIN("AUTH_DIALOG" "${DIALOG_SOURCES}" "auth_dialog_plugin" "DYNAMIC"
 REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CC_SOURCE_DIR}/plugins/auth/mariadb_clear_text.c" "auth_cleartext_plugin" "DYNAMIC" "mysql_clear_password" 1)
 IF(WIN32)
     SET(GSSAPI_SOURCES ${CC_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CC_SOURCE_DIR}/plugins/auth/sspi_client.c ${CC_SOURCE_DIR}/plugins/auth/sspi_errmsg.c)
-    REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
+#    REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
 ELSE()
   IF(GSSAPI_FOUND)
     SET(GSSAPI_SOURCES ${CC_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CC_SOURCE_DIR}/plugins/auth/gssapi_client.c ${CC_SOURCE_DIR}/plugins/auth/gssapi_errmsg.c)

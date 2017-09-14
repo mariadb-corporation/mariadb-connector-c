@@ -981,25 +981,25 @@ static int test_ushort_bug(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   MYSQL_BIND my_bind[4];
-  ushort     short_value;
+  unsigned short     short_value;
   uint32     long_value;
   ulong      s_length, l_length, ll_length, t_length;
   ulonglong  longlong_value;
   int        rc;
   uchar      tiny_value;
-  const char *query= "SELECT * FROM test_ushort";
+  const char *query= "SELECT * FROM test_unsigned short";
 
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_ushort");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_unsigned short");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE test_ushort(a smallint unsigned, \
+  rc= mysql_query(mysql, "CREATE TABLE test_unsigned short(a smallint unsigned, \
                                                   b smallint unsigned, \
                                                   c smallint unsigned, \
                                                   d smallint unsigned)");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql,
-                  "INSERT INTO test_ushort VALUES(35999, 35999, 35999, 200)");
+                  "INSERT INTO test_unsigned short VALUES(35999, 35999, 35999, 200)");
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
@@ -1051,7 +1051,7 @@ static int test_ushort_bug(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
   mysql_stmt_close(stmt);
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_ushort");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_unsigned short");
   check_mysql_rc(rc, mysql);
 
   return OK;

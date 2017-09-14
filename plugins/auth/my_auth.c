@@ -134,7 +134,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
 
   if (mysql->server_capabilities & CLIENT_PROTOCOL_41)
   {
-    int2store(end, (ushort) mysql->charset->nr);
+    int2store(end, (unsigned short) mysql->charset->nr);
     end+= 2;
   }
 

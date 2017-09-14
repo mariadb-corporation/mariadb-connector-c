@@ -55,7 +55,7 @@
 
 #ifdef _WIN32
 #include "../win-iconv/iconv.h"
-#else
+#elif defined(HAVE_ICONV)
 #include <iconv.h>
 #endif
 
@@ -1321,6 +1321,7 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
 }
 /* }}} */
 
+#if defined(HAVE_ICONV) || defined(WIN32)
 /* {{{ mariadb_convert_string
    Converts string from one charset to another, and writes converted string to given buffer
    @param[in]     from
@@ -1371,4 +1372,4 @@ error:
   return rc;
 }
 /* }}} */
-
+#endif

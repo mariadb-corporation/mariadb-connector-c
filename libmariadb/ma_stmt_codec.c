@@ -104,8 +104,8 @@ void ps_fetch_from_1_to_8_bytes(MYSQL_BIND *r_param, const MYSQL_FIELD * const f
       *r_param->error= is_unsigned != r_param->is_unsigned && *(uchar *)r_param->buffer > INT_MAX8;
       break;
     case 2:
-      shortstore(r_param->buffer, ((ushort) sint2korr(*row)));
-      *r_param->error= is_unsigned != r_param->is_unsigned && *(ushort *)r_param->buffer > INT_MAX16;
+      shortstore(r_param->buffer, ((unsigned short) sint2korr(*row)));
+      *r_param->error= is_unsigned != r_param->is_unsigned && *(unsigned short *)r_param->buffer > INT_MAX16;
       break;
     case 4:
     {
@@ -447,7 +447,7 @@ void ps_fetch_int16(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
     default:
     {
       short sval= sint2korr(*row);
-      longlong lval= field->flags & UNSIGNED_FLAG ? (longlong)(ushort) sval : (longlong)sval;
+      longlong lval= field->flags & UNSIGNED_FLAG ? (longlong)(unsigned short) sval : (longlong)sval;
       convert_from_long(r_param, field, lval, field->flags & UNSIGNED_FLAG);
       (*row) += 2;
     }
@@ -537,7 +537,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
     {
       if (r_param->is_unsigned)
       {
-        ushort sval= (ushort)val;
+        unsigned short sval= (unsigned short)val;
         shortstore(buf, sval);
         *r_param->error= check_trunc_val != (double)sval;
       } else { 
@@ -635,7 +635,7 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
     {
       if (r_param->is_unsigned)
       {
-        ushort sval= (ushort)val;
+        unsigned short sval= (unsigned short)val;
         shortstore(buf, sval);
         *r_param->error= check_trunc_val != (double)sval;
       } else { 
