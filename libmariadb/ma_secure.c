@@ -170,13 +170,18 @@ int my_ssl_start(MYSQL *mysql)
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     if (!(SSL_context= SSL_CTX_new(TLS_client_method())))
 #else
-    if (!(SSL_context= SSL_CTX_new(TLSv1_client_method())))
+    if (!(SSL_context= SSL_CTX_new(SSLv23_client_method())))
 #endif
     {
       my_SSL_error(mysql);
       rc= 1;
       goto end;
     }
+    /* use server preferences instead of client preferences:
+       client sends lowest tls version (=1.0) first, and will 
+       update to the version the server sent in client hellp
+       response packet */
+    SSL_CTX_set_options(SSL_context, SSL_OP_ALL);
     my_ssl_initialized= TRUE;
   }
 end:
@@ -434,16 +439,19 @@ int my_ssl_connect(SSL *ssl)
     DBUG_RETURN(1);
   }
 
-  rc= SSL_get_verify_result(ssl);
-  if (rc != X509_V_OK)
+  if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
   {
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
-                 ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
-    /* restore blocking mode */
-    if (!blocking)
-      vio_blocking(mysql->net.vio, FALSE, 0);
+    rc= SSL_get_verify_result(ssl);
+    if (rc != X509_V_OK)
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+                   ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(rc));
+      /* restore blocking mode */
+      if (!blocking)
+        vio_blocking(mysql->net.vio, FALSE, 0);
 
-    DBUG_RETURN(1);
+      DBUG_RETURN(1);
+    }
   }
 
   vio_reset(mysql->net.vio, VIO_TYPE_SSL, mysql->net.vio->sd, 0, 0);
