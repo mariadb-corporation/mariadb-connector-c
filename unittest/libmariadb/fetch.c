@@ -924,7 +924,56 @@ static int test_fetch_double(MYSQL *mysql)
   return rc;
 }
 
+static int test_conc282(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[2];
+  unsigned long length= 0;
+  char buffer[2048];
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc282");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE conc282 (a blob, b varchar(1000), c int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO conc282 VALUES (REPEAT('A',2000), REPEAT('B', 999),3)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "SELECT a, b FROM conc282", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 2);
+
+  bind[0].buffer_type= MYSQL_TYPE_BLOB;
+  bind[0].buffer= buffer;
+  bind[0].buffer_length= 2048;
+  bind[0].length= &length;
+
+  rc= mysql_stmt_fetch_column(stmt, &bind[0], 0, 0);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(length != 2000, "Expected length= 2000");
+  FAIL_IF(buffer[0] != 'A' || buffer[1999] != 'A', "Wrong result");
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE conc282");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc282", test_conc282, 1, 0, NULL, NULL},
   {"test_fetch_seek", test_fetch_seek, 1, 0, NULL , NULL},
   {"test_fetch_offset", test_fetch_offset, 1, 0, NULL , NULL},
   {"test_fetch_column", test_fetch_column, 1, 0, NULL , NULL},
