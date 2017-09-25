@@ -50,7 +50,7 @@ static const char *values[]=
 void usage(void)
 {
   int i=0;
-  puts("Copyright 2011-2015 MariaDB Corporation AB");
+  puts("Copyright 2011-2017 MariaDB Corporation AB");
   puts("Get compiler flags for using the MariaDB Connector/C.");
   printf("Usage: %s [OPTIONS]\n", mariadb_progname);
   while (long_options[i].name)
