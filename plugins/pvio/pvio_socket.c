@@ -815,7 +815,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     /* Get the address information for the server using getaddrinfo() */
     wait_gai= 1;
     while ((gai_rc= getaddrinfo(cinfo->host, server_port,
-                                &hints, &res) == EAI_AGAIN))
+                                &hints, &res)) == EAI_AGAIN)
     {
       unsigned int timeout= mysql->options.connect_timeout ?
                             mysql->options.connect_timeout : DNS_TIMEOUT;
