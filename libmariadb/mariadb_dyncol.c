@@ -3968,8 +3968,7 @@ mariadb_dyncol_val_long(longlong *ll, DYNAMIC_COLUMN_VALUE *val)
           {
             sign= -1;
             src++;
-          } else if (*src == '-')
-            src++;
+          }
           while(len && isdigit(*src))
           {
             i= i * 10 + (*src - '0');
