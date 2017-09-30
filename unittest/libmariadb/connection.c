@@ -1063,7 +1063,7 @@ static int test_auth256(MYSQL *my)
   MYSQL *mysql= mysql_init(NULL);
   int rc;
   MYSQL_RES *res;
-  int num_rows= 0;
+  my_ulonglong num_rows= 0;
 
   rc= mysql_query(my, "SELECT * FROM information_schema.plugins where plugin_name='sha256_password'");
   check_mysql_rc(rc, mysql);

@@ -192,10 +192,6 @@
 # define HAVE_LONG_LONG 1
 #endif
 
-#cmakedefine SIZEOF_OFF_T @SIZEOF_OFF_T@
-#if SIZEOF_OFF_T
-# define HAVE_OFF_T 1
-#endif
 
 #cmakedefine SIZEOF_SIGSET_T @SIZEOF_SIGSET_T@
 #if SIZEOF_SIGSET_T
@@ -271,10 +267,3 @@
 
 #cmakedefine RETSIGTYPE @RETSIGTYPE@
 #cmakedefine RETQSORTTYPE @RETQSORTTYPE@ 
-
-/*
- * various other defines
- */
-#cmakedefine HAVE_THREADS 1
-#cmakedefine DEFAULT_CHARSET_HOME "@DEFAULT_CHARSET_HOME@"
-#cmakedefine DEFAULT_SYSCONFDIR "@DEFAULT_SYSCONFDIR@"

@@ -5,6 +5,11 @@
 #  BSD license.
 #  For details see the COPYING-CMAKE-SCRIPTS file.
 #
+IF(COMMAND SIGN_TARGET)
+  # Do not override server's SIGN_TARGET macro
+  RETURN()
+ENDIF()
+
 MACRO(SIGN_TARGET target)
   IF(WITH_SIGNCODE)
     IF(WIN32)

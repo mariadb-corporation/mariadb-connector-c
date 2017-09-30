@@ -2699,7 +2699,7 @@ static int test_bug5194(MYSQL *mysql)
     }
     *query_ptr= '\0';
 
-    rc= mysql_stmt_prepare(stmt, query, query_ptr - query);
+    rc= mysql_stmt_prepare(stmt, query, (ulong)(query_ptr - query));
 
     if (rc && nrows * COLUMN_COUNT > uint16_max) /* expected error */
       break;

@@ -292,7 +292,9 @@ my_bool _mariadb_read_options(MYSQL *mysql,
       exts,
       errors= 0;
   char filename[FN_REFLEN + 1];
+#ifndef _WIN32
   char *env;
+#endif
 
   if (config_file)
     return _mariadb_read_options_from_file(mysql, config_file, group);
