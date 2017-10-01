@@ -924,7 +924,7 @@ static int test_fetch_double(MYSQL *mysql)
   return rc;
 }
 
-static int test_conc282(MYSQL *mysql)
+static int test_conc281(MYSQL *mysql)
 {
   int rc;
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
@@ -973,7 +973,7 @@ static int test_conc282(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
-  {"test_conc282", test_conc282, 1, 0, NULL, NULL},
+  {"test_conc281", test_conc282, 1, 0, NULL, NULL},
   {"test_fetch_seek", test_fetch_seek, 1, 0, NULL , NULL},
   {"test_fetch_offset", test_fetch_offset, 1, 0, NULL , NULL},
   {"test_fetch_column", test_fetch_column, 1, 0, NULL , NULL},
