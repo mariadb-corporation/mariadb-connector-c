@@ -11,6 +11,7 @@ static char *mariadb_progname;
 #define LIBS_SYS "@extra_dynamic_LDFLAGS@"
 #define CFLAGS  INCLUDE
 #define VERSION "@MARIADB_CLIENT_VERSION@"
+#define CC_VERSION "@CPACK_PACKAGE_VERSION@"
 #define PLUGIN_DIR "@CMAKE_INSTALL_PREFIX@/@INSTALL_PLUGINDIR@"
 #define SOCKET  "@MARIADB_UNIX_ADDR@"
 #define PORT "@MARIADB_PORT@"
@@ -23,12 +24,13 @@ static struct option long_options[]=
   {"include", no_argument, 0, 'c'},
   {"libs", no_argument, 0, 'd'},
   {"libs_r", no_argument, 0, 'e'},
-  {"libs_sys", no_argument, 0, 'y'},
+  {"libs_sys", no_argument, 0, 'l'},
   {"version", no_argument, 0, 'f'},
-  {"socket", no_argument, 0, 'g'},
-  {"port", no_argument, 0, 'h'},
-  {"plugindir", no_argument, 0, 'p'},
-  {"tlsinfo", no_argument, 0, 't'},
+  {"cc_version", no_argument, 0, 'g'},
+  {"socket", no_argument, 0, 'h'},
+  {"port", no_argument, 0, 'i'},
+  {"plugindir", no_argument, 0, 'j'},
+  {"tlsinfo", no_argument, 0, 'k'},
   {NULL, 0, 0, 0}
 };
 
@@ -41,6 +43,7 @@ static const char *values[]=
   LIBS,
   LIBS_SYS,
   VERSION,
+  CC_VERSION,
   SOCKET,
   PORT,
   PLUGIN_DIR,
@@ -76,7 +79,7 @@ int main(int argc, char **argv)
   while(1)
   {
     int option_index= 0;
-    c= getopt_long(argc, argv, "abcdef", long_options, &option_index);
+    c= getopt_long(argc, argv, "abcdefghij", long_options, &option_index);
 
     switch(c) {
     case 'a':
@@ -96,18 +99,21 @@ int main(int argc, char **argv)
       puts(VERSION);
       break;
     case 'g':
-      puts(SOCKET);
+      puts(CC_VERSION);
       break;
     case 'h':
+      puts(SOCKET);
+      break;
+    case 'i':
       puts(PORT);
       break;
-    case 'p':
+    case 'j':
       puts(PLUGIN_DIR);
       break;
-    case 't':
+    case 'k':
       puts(TLS_LIBRARY_VERSION);
       break;
-    case 'y':
+    case 'l':
       puts(LIBS_SYS);
       break;
     default:

@@ -39,6 +39,9 @@ SET(CPACK_PACKAGE_VERSION_MAJOR 3)
 SET(CPACK_PACKAGE_VERSION_MINOR 0)
 SET(CPACK_PACKAGE_VERSION_PATCH 2)
 SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+MATH(EXPR MARIADB_PACKAGE_VERSION_ID "${CPACK_PACKAGE_VERSION_MAJOR} * 10000 +
+                            ${CPACK_PACKAGE_VERSION_MINOR} * 100   +
+                            ${CPACK_PACKAGE_VERSION_PATCH}")
 
 MACRO(ADD_OPTION _name _text _default)
   IF(NOT DEFINED ${_name})
@@ -165,6 +168,7 @@ IF(GIT_EXECUTABLE)
   ENDIF()
 ENDIF()
 SET(PROTOCOL_VERSION 10) # we adapted new password option from PHP's mysqlnd !
+
 # if C/C is build as subproject inside MariaDB server tree we will
 # use the version defined by server
 IF(MAJOR_VERSION)
