@@ -50,8 +50,12 @@ int check_skip_ssl()
   }
   if (!(ssldir= getenv("SECURE_LOAD_PATH")))
   {
-    diag("certificate directory not found");
-    return 1;
+    ssldir= "@CERT_PATH@";
+    if (!strlen(ssldir))
+    {
+      diag("certificate directory not found");
+      return 1;
+    }
   }
   snprintf(sslcert, FNLEN - 1, "%s/%s", ssldir, "client-cert.pem");
   snprintf(sslkey, FNLEN - 1, "%s/%s", ssldir, "client-key.pem");
@@ -744,6 +748,12 @@ static int test_ssl_fp(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
+  if (!ssl_cert_finger_print[0])
+  {
+    diag("No fingerprint available");
+    return SKIP;
+  }
+
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
@@ -780,6 +790,11 @@ static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
+  if (!ssl_cert_finger_print[0])
+  {
+    diag("No fingerprint available");
+    return SKIP;
+  }
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
@@ -1091,8 +1106,35 @@ static int drop_ssl_user(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc286(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *my;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  if (!ssl_cert_finger_print[0])
+  {
+    diag("No fingerprint available");
+    return SKIP;
+  }
+  my= mysql_init(NULL);
+  FAIL_IF(!my, "mysql_init() failed");
+
+  mysql_options(my, MARIADB_OPT_SSL_FP, ssl_cert_finger_print);
+
+  FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(my));
+  
+  FAIL_IF(check_cipher(my) != 0, "Invalid cipher");
+
+  mysql_close(my);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_conc286", test_conc286, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_timeout", test_ssl_timeout, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_openssl_1", test_openssl_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
 #ifndef HAVE_SCHANNEL

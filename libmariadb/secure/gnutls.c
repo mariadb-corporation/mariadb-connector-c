@@ -1347,6 +1347,9 @@ static int my_verify_callback(gnutls_session_t ssl)
 
   if (status & GNUTLS_CERT_INVALID)
   {
+    char errbuf[100];
+    snprintf(errbuf, 99, "CA Verification failed (Status: %d)", status);
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, errbuf);
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
   /* Up to here the process is the same for X.509 certificates and
