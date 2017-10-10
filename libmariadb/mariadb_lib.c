@@ -2984,10 +2984,12 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_SSL_FP:
   case MARIADB_OPT_TLS_PEER_FP:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_fp, (char *)arg1);
+    mysql->options.use_ssl= 1;
     break;
   case MARIADB_OPT_SSL_FP_LIST:
   case MARIADB_OPT_TLS_PEER_FP_LIST:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_fp_list, (char *)arg1);
+    mysql->options.use_ssl= 1;
     break;
   case MARIADB_OPT_TLS_PASSPHRASE:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_pw, (char *)arg1);

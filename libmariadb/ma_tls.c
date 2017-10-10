@@ -119,21 +119,48 @@ my_bool ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_versio
   return ma_tls_get_protocol_version(ctls, version);
 }
 
-static my_bool ma_pvio_tls_compare_fp(const char *fp1, unsigned int fp1_len,
-                                   const char *fp2, unsigned int fp2_len)
+static char ma_hex2int(char c)
 {
-  char hexstr[64];
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'A' && c <= 'F')
+    return 10 + c - 'A';
+  if (c >= 'a' && c <= 'f')
+    return 10 + c - 'a';
+  return -1;
+}
 
-  fp1_len= (unsigned int)mysql_hex_string(hexstr, fp1, fp1_len);
-  if (fp1_len != fp2_len)
+static my_bool ma_pvio_tls_compare_fp(const char *cert_fp,
+                                     unsigned int cert_fp_len,
+                                     const char *fp, unsigned int fp_len)
+{
+  char *p= (char *)fp,
+       *c;
+
+  /* check length */
+  if (cert_fp_len != 20)
     return 1;
 
-#ifdef WIN32
-  if (strnicmp(hexstr, fp2, fp1_len) != 0)
-#else
-  if (strncasecmp(hexstr, fp2, fp1_len) != 0)
-#endif
-   return 1;
+  /* We support two formats:
+     2 digits hex numbers, separated by colons (length=59)
+     20 * 2 digits hex numbers without separators (length = 40)
+  */
+  if (fp_len != (strchr(fp, ':') ? 59 : 40))
+    return 1;
+
+  for(c= (char *)cert_fp; c < cert_fp + cert_fp_len; c++)
+  {
+    char d1, d2;
+    if (*p == ':')
+      p++;
+    if (p - fp > fp_len -1)
+      return 1;
+    if ((d1 = ma_hex2int(*p)) == - 1 ||
+        (d2 = ma_hex2int(*(p+1))) == -1 ||
+        (char)(d1 * 16 + d2) != *c)
+      return 1;
+    p+= 2;
+  }
   return 0;
 }
 
