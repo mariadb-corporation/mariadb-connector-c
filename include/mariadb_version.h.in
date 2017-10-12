@@ -29,4 +29,7 @@
 #endif
 #endif
 
+/* Source information */
+#define CC_SOURCE_REVISION "@CC_SOURCE_REVISION@"
+
 #endif /* _mariadb_version_h_ */
