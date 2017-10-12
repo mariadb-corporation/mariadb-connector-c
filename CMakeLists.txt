@@ -63,9 +63,7 @@ ADD_OPTION(WITH_UNITTEST "build test suite" ON)
 ADD_OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
 ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
-ADD_OPTION(WITH_SQLITE "Experimental" OFF)
 ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
-MARK_AS_ADVANCED(${OPT}WITH_SQLITE)
 ###############
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/misc.cmake)
@@ -159,7 +157,16 @@ IF(NOT CMAKE_BUILD_TYPE)
 ENDIF()
 
 # various defines for generating include/mysql_version.h
-
+INCLUDE(FindGit)
+IF(GIT_EXECUTABLE)
+  EXECUTE_PROCESS(
+    COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+      WORKING_DIRECTORY ${CC_SOURCE_DIR}
+       OUTPUT_VARIABLE OUT RESULT_VARIABLE RES)
+   IF(RES EQUAL 0)
+    STRING(REGEX REPLACE "\n$" "" CC_SOURCE_REVISION "${OUT}")
+  ENDIF()
+ENDIF()
 SET(PROTOCOL_VERSION 10) # we adapted new password option from PHP's mysqlnd !
 
 # if C/C is build as subproject inside MariaDB server tree we will
@@ -217,11 +224,10 @@ IF(UNIX)
   SEARCH_LIBRARY(LIBNSL gethostbyname_r "nsl_r;nsl")
   SEARCH_LIBRARY(LIBSOCKET setsockopt socket)
   FIND_PACKAGE(Threads)
-  SET(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${LIBNSL} ${LIBBIND} ${LIBICONV}
+  SET(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${LIBNSL} ${LIBBIND} ${LIBICONV} ${LIBZ}
     ${LIBSOCKET} ${LIBDL} ${LIBM} ${LIBPTHREAD})
-  SET(SYSTEM_LIBS ${LIBNSL} ${LIBBIND} ${LIBICONV}
+  SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBNSL} ${LIBBIND} ${LIBICONV} ${LIBZ}
     ${LIBSOCKET} ${LIBDL} ${LIBM} ${LIBPTHREAD})
-  MESSAGE1(SYSTEM_LIBS "SYSTEM_LIBS ${SYSTEM_LIBS}")
   #remove possible dups from required libraries
   LIST(LENGTH CMAKE_REQUIRED_LIBRARIES rllength)
   IF(${rllength} GREATER 0)
@@ -334,7 +340,7 @@ INCLUDE_DIRECTORIES(${CC_BINARY_DIR}/include)
 IF(WIN32)
   SET(SYSTEM_LIBS ws2_32 advapi32 kernel32 shlwapi)
 ELSE()
-  SET(SYSTEM_LIBS ${LIBPTHREAD} ${LIBDL} ${LIBM})
+  SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBPTHREAD} ${LIBDL} ${LIBM})
   IF(ICONV_EXTERNAL)
     SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${ICONV_LIBRARIES})
   ENDIF()
@@ -342,6 +348,7 @@ ENDIF()
 IF(WITH_SSL)
   SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${SSL_LIBRARIES})
 ENDIF()
+MESSAGE1(SYSTEM_LIBS "SYSTEM_LIBS ${SYSTEM_LIBS}")
 MARK_AS_ADVANCED(SYSTEM_LIBS)
 
 IF(NOT REMOTEIO_PLUGIN_TYPE MATCHES "OFF")
@@ -462,15 +469,14 @@ ENDIF()
 INCLUDE(CPack)
 
 IF(WITH_EXTERNAL_ZLIB)
-  SET(zlib_status: ${WITH_EXTERNAL_ZLIB})
+  SET(zlib_status ${WITH_EXTERNAL_ZLIB})
 ELSE()
-  SET(zlib_status: "yes (using bundled zlib")
+  SET(zlib_status "yes (using bundled zlib)")
 ENDIF()
 
 MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- CPack generation: ${CPACK_GENERATOR}
 -- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
--- Experimental Sqlite support: ${WITH_SQLITE}
 -- Zlib support: ${zlib_status}
 -- Installation layout: ${INSTALL_LAYOUT}
 -- Include files will be installed in ${INSTALL_INCLUDEDIR}
