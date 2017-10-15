@@ -21,8 +21,8 @@
 
 #pragma comment (lib, "crypt32.lib")
 #pragma comment (lib, "secur32.lib")
-#pragma comment (lib, "version.lib")
 
+//#define VOID void
 
 extern my_bool ma_tls_initialized;
 
@@ -30,8 +30,6 @@ extern my_bool ma_tls_initialized;
 #define PROT_TLS1_0 2
 #define PROT_TLS1_2 4
 #define PROT_TLS1_3 8
-
-char tls_library_version[TLS_VERSION_LENGTH];
 
 static struct
 {
@@ -163,6 +161,7 @@ cipher_map[] =
 #define MAX_ALG_ID 50
 
 void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
+void ma_schannel_set_win_error(MYSQL *mysql);
 
 /*
   Initializes SSL and allocate global
@@ -177,31 +176,7 @@ void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
 */
 int ma_tls_start(char *errmsg, size_t errmsg_len)
 {
-  DWORD size;
-  DWORD handle;
 
-  if ((size= GetFileVersionInfoSize("schannel.dll", &handle)))
-  {
-    LPBYTE VersionInfo;
-    if ((VersionInfo = (LPBYTE)malloc(size)))
-    {
-      unsigned int len;
-      VS_FIXEDFILEINFO *fileinfo;
-
-      GetFileVersionInfo("schannel.dll", 0, size, VersionInfo);
-      VerQueryValue(VersionInfo, "\\", (LPVOID *)&fileinfo, &len);
-      snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "Schannel %d.%d.%d.%d\n",
-        HIWORD(fileinfo->dwFileVersionMS),
-        LOWORD(fileinfo->dwFileVersionMS),
-        HIWORD(fileinfo->dwFileVersionLS),
-        LOWORD(fileinfo->dwFileVersionLS));
-      free(VersionInfo);
-      goto end;
-    }
-  }
-  /* this shouldn't happen anyway */
-  strcpy(tls_library_version, "Schannel 0.0.0.0");
-end:
   ma_tls_initialized = TRUE;
   return 0;
 }

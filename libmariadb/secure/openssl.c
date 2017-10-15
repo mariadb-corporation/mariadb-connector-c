@@ -26,7 +26,6 @@
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <openssl/ssl.h> /* SSL and SSL_CTX */
-#include <openssl/crypto.h> /* for OpenSSL_version */
 #include <openssl/err.h> /* error reporting */
 #include <openssl/conf.h>
 #include <openssl/md4.h>
@@ -61,7 +60,7 @@ extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
 
 #define MAX_SSL_ERR_LEN 100
-char tls_library_version[TLS_VERSION_LENGTH];
+
 static pthread_mutex_t LOCK_openssl_config;
 #ifndef HAVE_OPENSSL_1_1_API
 static pthread_mutex_t *LOCK_crypto= NULL;
@@ -320,13 +319,6 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   ma_BIO_method.bwrite= ma_bio_write;
 #endif
   rc= 0;
-  snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "%s",
-#if defined(LIBRESSL_VERSION_NUMBER) || !defined(HAVE_OPENSSL_1_1_API)
-           SSLeay_version(SSLEAY_VERSION));
-#else
-           OpenSSL_version(OPENSSL_VERSION));
-#endif
-
   ma_tls_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_openssl_config);
