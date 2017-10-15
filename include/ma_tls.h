@@ -1,9 +1,6 @@
 #ifndef _ma_tls_h_
 #define _ma_tls_h_
 
-#define TLS_VERSION_LENGTH 64
-extern char tls_library_version[TLS_VERSION_LENGTH];
-
 enum enum_pvio_tls_type {
   SSL_TYPE_DEFAULT=0,
 #ifdef _WIN32
