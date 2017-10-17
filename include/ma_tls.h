@@ -10,6 +10,9 @@ enum enum_pvio_tls_type {
   SSL_TYPE_GNUTLS
 };
 
+#define TLS_VERSION_LENGTH 64
+extern char tls_library_version[TLS_VERSION_LENGTH];
+
 typedef struct st_ma_pvio_tls {
   void *data;
   MARIADB_PVIO *pvio;

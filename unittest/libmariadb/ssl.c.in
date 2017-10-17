@@ -19,6 +19,9 @@
 
 #include "my_test.h"
 #include <ma_pthread.h>
+#ifdef HAVE_OPENSSL
+#include <openssl/opensslv.h>
+#endif
 
 #define FNLEN 4096
 
@@ -107,6 +110,7 @@ static int test_ssl(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
   MYSQL_ROW row;
+  char *tls_library;
 
   rc= mysql_query(mysql, "SELECT @@have_ssl UNION SELECT @@have_openssl");
   check_mysql_rc(rc, mysql);
@@ -124,13 +128,8 @@ static int test_ssl(MYSQL *mysql)
   }
   mysql_free_result(res);
 
-#ifdef HAVE_GNUTLS
-  diag("SSL library: GNUTLS");
-#elif HAVE_OPENSSL
-  diag("SSL library: OPENSSL");
-#elif HAVE_SCHANNEL
-  diag("SSL library: SCHANNEL");
-#endif
+  mariadb_get_infov(NULL, MARIADB_TLS_LIBRARY, &tls_library);
+  diag("SSL library: %s", tls_library);
 
   sslhost[0]= 0;
 
@@ -1132,8 +1131,36 @@ static int test_conc286(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_mdev14027(MYSQL *mysql __attribute__((unused)))
+{
+  char *tls_library;
+  const char *check_library=
+#if defined(HAVE_OPENSSL)
+#if defined(HAVE_LIBRESSL)
+    "LibreSSL";
+#else
+    "OpenSSL";
+#endif
+#elif defined(HAVE_GNUTLS)
+    "GnuTLS";
+#elif defined(HAVE_SCHANNEL)
+    "Schannel";
+#else
+    "Off";
+#endif
+  mariadb_get_infov(NULL, MARIADB_TLS_LIBRARY, &tls_library);
+  diag("TLS/SSL library in use: %s\n", tls_library);
+  if (!strstr(tls_library, check_library))
+  {
+    diag("expected %s, got %s", check_library, tls_library);
+    return FAIL;
+  }
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+  {"test_mdev14027", test_mdev14027, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc286", test_conc286, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_ssl_timeout", test_ssl_timeout, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_openssl_1", test_openssl_1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},

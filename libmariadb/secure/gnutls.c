@@ -46,6 +46,8 @@ enum ma_pem_type {
 
 static int my_verify_callback(gnutls_session_t ssl);
 
+char tls_library_version[TLS_VERSION_LENGTH];
+
 struct st_gnutls_data {
   MYSQL *mysql;
   gnutls_privkey_t key;
@@ -969,6 +971,9 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
     ma_tls_get_error(errmsg, errmsg_len, rc);
     goto end;
   }
+  snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "GnuTLS %s",
+          gnutls_check_version(NULL));
+
   ma_tls_initialized= TRUE;
 end:
   pthread_mutex_unlock(&LOCK_gnutls_config);

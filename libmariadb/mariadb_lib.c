@@ -3709,15 +3709,9 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
     break;
   case MARIADB_TLS_LIBRARY:
 #ifdef HAVE_TLS
-#ifdef HAVE_GNUTLS
-    *((const char **)arg)= "GNUTLS";
-#elif HAVE_OPENSSL
-    *((const char **)arg)= "OPENSSL";
-#elif HAVE_SCHANNEL
-    *((const char **)arg)= "SCHANNEL";
-#endif
+    *((const char **)arg)= tls_library_version;
 #else
-    *((char **)arg)= "OFF";
+    *((char **)arg)= "Off";
 #endif
     break;
   case MARIADB_CLIENT_VERSION:

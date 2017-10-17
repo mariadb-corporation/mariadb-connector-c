@@ -153,7 +153,7 @@ static my_bool ma_pvio_tls_compare_fp(const char *cert_fp,
     char d1, d2;
     if (*p == ':')
       p++;
-    if (p - fp > fp_len -1)
+    if (p - fp > (int)fp_len -1)
       return 1;
     if ((d1 = ma_hex2int(*p)) == - 1 ||
         (d2 = ma_hex2int(*(p+1))) == -1 ||
