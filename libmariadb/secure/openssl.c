@@ -60,6 +60,7 @@ extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
 
 #define MAX_SSL_ERR_LEN 100
+char tls_library_version[TLS_VERSION_LENGTH];
 
 static pthread_mutex_t LOCK_openssl_config;
 #ifndef HAVE_OPENSSL_1_1_API
@@ -286,6 +287,7 @@ static void disable_sigpipe()
 int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attribute__((unused)))
 {
   int rc= 1;
+  char *p;
   if (ma_tls_initialized)
     return 0;
 
@@ -318,6 +320,15 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   ma_BIO_method.bread= ma_bio_read;
   ma_BIO_method.bwrite= ma_bio_write;
 #endif
+  snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "%s",
+#if defined(LIBRESSL_VERSION_NUMBER) || !defined(HAVE_OPENSSL_1_1_API)
+           SSLeay_version(SSLEAY_VERSION));
+#else
+           OpenSSL_version(OPENSSL_VERSION));
+#endif
+  /* remove date from version */
+  if ((p= strstr(tls_library_version, "  ")))
+    *p= 0;
   rc= 0;
   ma_tls_initialized= TRUE;
 end:
