@@ -851,7 +851,7 @@ my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls)
 
   if (crl_file && !(crl_ctx= (CRL_CONTEXT *)ma_schannel_create_crl_context(pvio, mysql->options.extension->ssl_crl)))
     goto end;
-  
+
   if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
   {
     ma_schannel_set_sec_error(pvio, sRet);
@@ -978,8 +978,8 @@ ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
 
 extern char *ssl_protocol_version[5];
 
-/* {{{ ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version) */
-my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
+/* {{{ ma_tls_get_protocol_version(MARIADB_TLS *ctls) */
+int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
 {
   SC_CTX *sctx;
   SecPkgContext_ConnectionInfo ConnectionInfo;
@@ -989,27 +989,20 @@ my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *ve
   sctx= (SC_CTX *)ctls->ssl;
 
   if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo) != SEC_E_OK)
-    return 1;
+    return -1;
 
   switch(ConnectionInfo.dwProtocol)
   {
   case SP_PROT_SSL3_CLIENT:
-    version->iversion= 1;
-    break;
+    return PROTOCOL_SSLV3;
   case SP_PROT_TLS1_CLIENT:
-    version->iversion= 2;
-    break;
+    return PROTOCOL_TLS_1_0;
   case SP_PROT_TLS1_1_CLIENT:
-    version->iversion= 3;
-    break;
+    return PROTOCOL_TLS_1_1;
   case SP_PROT_TLS1_2_CLIENT:
-    version->iversion= 4;
-    break;
+    return PROTOCOL_TLS_1_2;
   default:
-    version->iversion= 0;
-    break;
+    return -1;
   }
-  version->cversion= ssl_protocol_version[version->iversion];
-  return 0;
 }
 /* }}} */

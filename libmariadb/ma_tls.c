@@ -51,7 +51,8 @@
 my_bool ma_tls_initialized= FALSE;
 unsigned int mariadb_deinitialize_ssl= 1;
 
-const char *ssl_protocol_version[5]= {"TLS1.0", "TLS1.1", "TLS1.2"};
+const char *tls_protocol_version[]=
+  {"SSLv3", "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3", "Unknown"};
 
 MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 {
@@ -114,9 +115,19 @@ void ma_pvio_tls_end()
   ma_tls_end();
 }
 
-my_bool ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
+int ma_pvio_tls_get_protocol_version_id(MARIADB_TLS *ctls)
 {
-  return ma_tls_get_protocol_version(ctls, version);
+  return ma_tls_get_protocol_version(ctls);
+}
+
+const char *ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls)
+{
+  int version;
+
+  version= ma_tls_get_protocol_version(ctls);
+  if (version < 0 || version > PROTOCOL_MAX)
+    return tls_protocol_version[PROTOCOL_UNKNOWN];
+  return tls_protocol_version[version];
 }
 
 static char ma_hex2int(char c)
