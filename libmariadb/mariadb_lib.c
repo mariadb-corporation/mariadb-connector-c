@@ -135,7 +135,7 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 #define native_password_plugin_name "mysql_native_password"
 
 #define IS_CONNHDLR_ACTIVE(mysql)\
-  (((mysql)->extension->conn_hdlr))
+  ((mysql)->extension && (mysql)->extension->conn_hdlr)
 
 static void end_server(MYSQL *mysql);
 static void mysql_close_memory(MYSQL *mysql);
@@ -644,7 +644,8 @@ struct st_default_options mariadb_defaults[] =
   {MARIADB_OPT_SSL_FP, MARIADB_OPTION_STR, "ssl-fp"},
   {MARIADB_OPT_SSL_FP_LIST, MARIADB_OPTION_STR, "ssl-fp-list"},
   {MARIADB_OPT_SSL_FP_LIST, MARIADB_OPTION_STR, "ssl-fplist"},
-  {MARIADB_OPT_TLS_PASSPHRASE, MARIADB_OPTION_STR, "ssl_passphrase"},
+  {MARIADB_OPT_TLS_PASSPHRASE, MARIADB_OPTION_STR, "ssl-passphrase"},
+  {MARIADB_OPT_TLS_VERSION, MARIADB_OPTION_STR, "tls_version"},
   {MYSQL_OPT_BIND, MARIADB_OPTION_STR, "bind-address"},
   {0, 0, NULL}
 };
@@ -3003,6 +3004,10 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header_len, arg2);
     }
     break;
+  case MARIADB_OPT_TLS_VERSION:
+  case MYSQL_OPT_TLS_VERSION:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_version, (char *)arg1);
+    break;
   default:
     va_end(ap);
     return(-1);
@@ -3685,11 +3690,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
   case MARIADB_CONNECTION_TLS_VERSION:
     #ifdef HAVE_TLS
     if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
-    {
-      struct st_ssl_version version;
-      if (!ma_pvio_tls_get_protocol_version(mysql->net.pvio->ctls, &version))
-      *((char **)arg)= version.cversion;
-    }
+      *((char **)arg)= (char *)ma_pvio_tls_get_protocol_version(mysql->net.pvio->ctls);
     else
     #endif
       goto error;
@@ -3697,11 +3698,7 @@ my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *
   case MARIADB_CONNECTION_TLS_VERSION_ID:
     #ifdef HAVE_TLS
     if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
-    {
-      struct st_ssl_version version;
-      if (!ma_pvio_tls_get_protocol_version(mysql->net.pvio->ctls, &version))
-      *((unsigned int *)arg)= version.iversion;
-    }
+      *((unsigned int *)arg)= ma_pvio_tls_get_protocol_version_id(mysql->net.pvio->ctls);
     else
     #endif
       goto error;

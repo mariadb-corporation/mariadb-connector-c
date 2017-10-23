@@ -10,6 +10,14 @@ enum enum_pvio_tls_type {
   SSL_TYPE_GNUTLS
 };
 
+#define PROTOCOL_SSLV3    0
+#define PROTOCOL_TLS_1_0  1
+#define PROTOCOL_TLS_1_1  2
+#define PROTOCOL_TLS_1_2  3
+#define PROTOCOL_TLS_1_3  4
+#define PROTOCOL_UNKNOWN  5
+#define PROTOCOL_MAX PROTOCOL_TLS_1_3
+
 #define TLS_VERSION_LENGTH 64
 extern char tls_library_version[TLS_VERSION_LENGTH];
 
@@ -18,11 +26,6 @@ typedef struct st_ma_pvio_tls {
   MARIADB_PVIO *pvio;
   void *ssl;
 } MARIADB_TLS;
-
-struct st_ssl_version {
-  unsigned int iversion;
-  char *cversion;
-};
 
 /* Function prototypes */
 
@@ -133,15 +136,15 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ssl);
 unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int fp_len);
 
 /* ma_tls_get_protocol_version 
-   returns protocol version in use
+   returns protocol version number in use
    Parameter:
      MARIADB_TLS    MariaDB SSL container
-     version        pointer to ssl version info
    Returns:
-     0              success
-     1              error
+     protocol number
 */
-my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version);
+int ma_tls_get_protocol_version(MARIADB_TLS *ctls);
+const char *ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls);
+int ma_pvio_tls_get_protocol_version_id(MARIADB_TLS *ctls);
 
 /* Function prototypes */
 MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql);
@@ -153,7 +156,6 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls);
 const char *ma_pvio_tls_cipher(MARIADB_TLS *ctls);
 my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list);
 my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
-my_bool ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version);
 void ma_pvio_tls_end();
 
 #endif /* _ma_tls_h_ */

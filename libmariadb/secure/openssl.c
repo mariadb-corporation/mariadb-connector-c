@@ -72,6 +72,30 @@ static int ma_bio_write(BIO *h, const char *buf, int size);
 static BIO_METHOD ma_BIO_method;
 #endif
 
+
+static long ma_tls_version_options(const char *version)
+{
+  long protocol_options,
+       disable_all_protocols;
+
+  protocol_options= disable_all_protocols=
+    SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2;
+
+  if (!version)
+    return 0;
+
+  if (strstr(version, "TLSv1.0"))
+    protocol_options&= ~SSL_OP_NO_TLSv1;
+  if (strstr(version, "TLSv1.1"))
+    protocol_options&= ~SSL_OP_NO_TLSv1_1;
+  if (strstr(version, "TLSv1.2"))
+    protocol_options&= ~SSL_OP_NO_TLSv1_2;
+
+  if (protocol_options != disable_all_protocols)
+    return protocol_options;
+  return 0;
+}
+
 static void ma_tls_set_error(MYSQL *mysql)
 {
   ulong ssl_errno= ERR_get_error();
@@ -488,6 +512,7 @@ void *ma_tls_init(MYSQL *mysql)
 {
   SSL *ssl= NULL;
   SSL_CTX *ctx= NULL;
+  long options= SSL_OP_ALL;
 #ifdef HAVE_TLS_SESSION_CACHE
   MA_SSL_SESSION *session= ma_tls_get_session(mysql);
 #endif
@@ -499,7 +524,9 @@ void *ma_tls_init(MYSQL *mysql)
   if (!(ctx= SSL_CTX_new(SSLv23_client_method())))
 #endif
     goto error;
-  SSL_CTX_set_options(ctx, SSL_OP_ALL);
+  if (mysql->options.extension)
+    options|= ma_tls_version_options(mysql->options.extension->tls_version);
+  SSL_CTX_set_options(ctx, options);
 #ifdef HAVE_TLS_SESSION_CACHE
   SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
   ma_tls_sessions= (MA_SSL_SESSION *)calloc(1, sizeof(struct st_ma_tls_session) * ma_tls_session_cache_size);
@@ -762,18 +789,11 @@ end:
 }
 
 
-extern char *ssl_protocol_version[5];
-
-my_bool ma_tls_get_protocol_version(MARIADB_TLS *ctls, struct st_ssl_version *version)
+int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
 {
-  SSL *ssl;
-
   if (!ctls || !ctls->ssl)
-    return 1;
+    return -1;
 
-  ssl = (SSL *)ctls->ssl;
-  version->iversion= SSL_version(ssl) - TLS1_VERSION;
-  version->cversion= ssl_protocol_version[version->iversion];
-  return 0;  
+  return SSL_version(ctls->ssl) & 0xFF;
 }
 
