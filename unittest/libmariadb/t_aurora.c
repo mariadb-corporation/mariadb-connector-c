@@ -97,7 +97,9 @@ static int test_reconnect(MYSQL *unused __attribute__((unused)))
   /* we force cluster restart and promoting new primary:
    * we wait for 50 seconds - however there is no guarantee that
    * cluster was restarted already - so this test might fail */
-  system("/usr/local/aws/bin/aws rds failover-db-cluster --db-cluster-identifier instance-1-cluster");
+  rc= system("/usr/local/aws/bin/aws rds failover-db-cluster --db-cluster-identifier instance-1-cluster");
+
+  diag("aws return code: %d", rc);
 
   sleep(50);
   diag("Q1");
