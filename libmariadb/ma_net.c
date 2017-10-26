@@ -82,14 +82,11 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 {
   if (!(net->buff=(uchar*) malloc(net_buffer_length)))
     return 1;
+  if (!net->extension)
+    return 1;
 
   memset(net->buff, 0, net_buffer_length);
 
-  if (!net->extension)
-  {
-    printf("Fatal\n");
-    exit(-1);
-  }
   max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
   net->pvio = pvio;
