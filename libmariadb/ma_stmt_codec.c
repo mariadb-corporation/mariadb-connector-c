@@ -377,10 +377,11 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
     break;
     default:
     {
-      char buffer[22];
+      char *buffer;
       char *endptr;
       uint len;
 
+      buffer= alloca(MAX(field->length, 22));
       endptr= ma_ll2str(val, buffer, is_unsigned ? 10 : -10);
       len= (uint)(endptr - buffer);
 
@@ -392,7 +393,6 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
         memset((char*) buffer, '0', field->length - len);
         len= field->length;
       }
-      
       convert_froma_string(r_param, buffer, len);
     }
     break;
