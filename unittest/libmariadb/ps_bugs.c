@@ -4580,7 +4580,62 @@ static int test_conc208(MYSQL *mysql)
   return OK;
 }
 
+static int test_mdev14165(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_FIELD *fields;
+  MYSQL_RES *result;
+  my_bool val= 1;
+  MYSQL_BIND bind[1];
+  char buf1[52];
+
+  rc= mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &val);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  rc= mysql_query(mysql, "CREATE TABLE t1 (i INT(20) ZEROFILL)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (2),(1)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_stmt_prepare(stmt, "SELECT i FROM t1", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer_length= 51;
+  bind[0].buffer= buf1;
+
+  mysql_stmt_bind_result(stmt, bind);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, &val);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  result= mysql_stmt_result_metadata(stmt);
+
+  fields= mysql_fetch_fields(result);
+
+  FAIL_IF(fields[0].length < 20, "Expected length=20");
+  FAIL_IF(fields[0].max_length < 20, "Expected max_length=20");
+
+  mysql_stmt_fetch(stmt);
+
+  FAIL_UNLESS(strcmp(buf1, "00000000000000000002") == 0, "Wrong result");
+  mysql_free_result(result);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev14165", test_mdev14165, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc217", test_conc217, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc205", test_conc205, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
