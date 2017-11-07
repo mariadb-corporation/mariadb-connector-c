@@ -1277,7 +1277,48 @@ static int test_conc276(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_mdev9059_1(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @a:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @b:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SELECT @a,@b");
+
+  FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
+                              port, socketname,
+                              CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS), mysql_error(mysql));
+
+  rc= mysql_query(mysql, "SET @a:=0, @b:=0");
+  check_mysql_rc(rc, mysql);
+
+  mysql_close(mysql);
+  return OK;
+}
+
+static int test_mdev9059_2(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @a:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @b:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "this is an error, connect should fail");
+
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+
+  FAIL_IF(!mysql_errno(mysql), "Error expected");
+
+  mysql_close(mysql);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev9059_1", test_mdev9059_1, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_mdev9059_2", test_mdev9059_2, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_auth256", test_auth256, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

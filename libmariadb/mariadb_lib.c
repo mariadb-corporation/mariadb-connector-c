@@ -146,6 +146,17 @@ static int cli_report_progress(MYSQL *mysql, uchar *packet, uint length);
 extern int mysql_client_plugin_init();
 extern void mysql_client_plugin_deinit();
 
+static size_t get_store_length(size_t length)
+{
+  if (length < (size_t) L64(251))
+    return 1;
+  if (length < (size_t) L64(65536))
+    return 2;
+  if (length < (size_t) L64(16777216))
+    return 3;
+  return 8;
+}
+
 /* net_get_error */
 void net_get_error(char *buf, size_t buf_len,
        char *error, size_t error_len,
@@ -1182,6 +1193,43 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
                                     db, port, unix_socket, client_flag);
 }
 
+size_t ma_init_command_length(MYSQL *mysql)
+{
+  size_t total_len= 0;
+  if (mysql->options.init_command)
+  {
+    char **begin= (char **)mysql->options.init_command->buffer;
+    char **end= begin + mysql->options.init_command->elements;
+    for (;begin < end; begin++)
+    {
+      size_t len= 1 + strlen(*begin); /* COM_QUERY + command */
+      total_len+= len;
+      total_len+= get_store_length(len);
+    }
+  }
+  return total_len;
+}
+
+char *ma_send_init_command(MYSQL *mysql, uchar *buffer)
+{
+  uchar *p= buffer;
+
+  if (mysql->options.init_command)
+  {
+    char **begin= (char **)mysql->options.init_command->buffer;
+    char **end= begin + mysql->options.init_command->elements;
+    for (;begin < end; begin++)
+    {
+      size_t len= strlen(*begin);
+      p= mysql_net_store_length(p, len + 1);
+      *p++= COM_QUERY;
+      memcpy(p, *begin, len);
+      p+= len;
+    }
+  }
+  return (char *)p;
+}
+
 MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   const char *passwd, const char *db,
 		   uint port, const char *unix_socket, unsigned long client_flag)
@@ -1499,10 +1547,24 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
                              scramble_plugin, db))
     goto error;
 
+
+  if (mysql->options.init_command &&
+      HAS_MARIADB_SERVER_EXTENDED_CAPABILITY(mysql, MARIADB_CLIENT_COM_IN_AUTH))
+  {
+    int rc;
+    if ((rc= mysql->methods->db_read_query_result(mysql)))
+      goto error;
+    do {
+      MYSQL_RES *res;
+      if ((res= mysql_use_result(mysql)))
+        mysql_free_result(res);
+    } while (!mysql_next_result(mysql));
+  }
+
   if (mysql->client_flag & CLIENT_COMPRESS)
     net->compress= 1;
 
-  /* last part: select default db */
+  /* select default db */
   if (!(mysql->server_capabilities & CLIENT_CONNECT_WITH_DB) &&
       (db && !mysql->db))
   {
@@ -1516,7 +1578,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     }
   }
 
-  if (mysql->options.init_command)
+  if (mysql->options.init_command &&
+      !HAS_MARIADB_SERVER_EXTENDED_CAPABILITY(mysql, MARIADB_CLIENT_COM_IN_AUTH))
   {
     char **begin= (char **)mysql->options.init_command->buffer;
     char **end= begin + mysql->options.init_command->elements;
@@ -2594,17 +2657,6 @@ const char * STDCALL
 mysql_get_client_info(void)
 {
   return (char*) MARIADB_CLIENT_VERSION_STR;
-}
-
-static size_t get_store_length(size_t length)
-{
-  if (length < (size_t) L64(251))
-    return 1;
-  if (length < (size_t) L64(65536))
-    return 2;
-  if (length < (size_t) L64(16777216))
-    return 3;
-  return 9;
 }
 
 uchar *ma_get_hash_keyval(const uchar *hash_entry,
