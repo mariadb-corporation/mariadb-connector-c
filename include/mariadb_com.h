@@ -169,13 +169,22 @@ enum enum_server_command
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
 #define MARIADB_CLIENT_COM_MULTI (1ULL << 33)
 #define MARIADB_CLIENT_STMT_BULK_OPERATIONS (1ULL << 34)
+/* support bundle first command with the authentication packet */
+#define MARIADB_CLIENT_COM_IN_AUTH (1ULL << 35)
+
 
 #define IS_MARIADB_EXTENDED_SERVER(mysql)\
-        !(mysql->server_capabilities & CLIENT_MYSQL)
+((mysql) && !(mysql->server_capabilities & CLIENT_MYSQL))
+
+#define HAS_MARIADB_SERVER_EXTENDED_CAPABILITY(mysql, capability)\
+(IS_MARIADB_EXTENDED_SERVER(mysql) && \
+ (mysql)->extension->mariadb_server_capabilities & (capability >> 32))
+
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
                                        MARIADB_CLIENT_COM_MULTI |\
-                                       MARIADB_CLIENT_STMT_BULK_OPERATIONS)
+                                       MARIADB_CLIENT_STMT_BULK_OPERATIONS |\
+                                       MARIADB_CLIENT_COM_IN_AUTH)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_MYSQL |\
                                  CLIENT_FOUND_ROWS |\

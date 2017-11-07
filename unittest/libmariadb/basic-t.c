@@ -672,7 +672,8 @@ static int test_options_initcmd(MYSQL *unused __attribute__((unused)))
   MYSQL_RES *res;
   int rc;
 
-  mysql_options(mysql, MYSQL_INIT_COMMAND, "DROP TABLE IF EXISTS t1; CREATE TABLE t1 (a int)");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "DROP TABLE IF EXISTS t1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "CREATE TABLE t1 (a int)");
   mysql_options(mysql, MYSQL_INIT_COMMAND, "INSERT INTO t1 VALUES (1),(2),(3)");
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                               port, socketname, 
@@ -790,6 +791,8 @@ static int test_compressed(MYSQL *unused __attribute__((unused)))
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_options_initcmd", test_options_initcmd, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+  /*
   {"test_conc75", test_conc75, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc74", test_conc74, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc71", test_conc71, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
@@ -806,8 +809,7 @@ struct my_tests_st my_tests[] = {
   {"test_bug12001", test_bug12001, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS,  NULL,  NULL},
   {"test_status", test_status, TEST_CONNECTION_NEW, CLIENT_MULTI_STATEMENTS,  NULL,  NULL},
   {"bug_conc1", bug_conc1, TEST_CONNECTION_NEW, 0, NULL, NULL},
-  {"test_options_initcmd", test_options_initcmd, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
-  {"test_extended_init_values", test_extended_init_values, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+  {"test_extended_init_values", test_extended_init_values, TEST_CONNECTION_NONE, 0,  NULL,  NULL}, */
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
