@@ -1315,10 +1315,28 @@ static int test_mdev9059_2(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_mdev9059_3(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @a:=1");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "SET @b:=1");
+
+  my_test_connect(mysql, hostname, "thisuserdoesntexist", password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+
+  diag("error (expected): %s", mysql_error(mysql));
+  FAIL_IF(!mysql_errno(mysql), "Error expected");
+
+  mysql_close(mysql);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
   {"test_mdev9059_1", test_mdev9059_1, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_2", test_mdev9059_2, TEST_CONNECTION_NONE, 0, NULL,  NULL},
+  {"test_mdev9059_3", test_mdev9059_3, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_auth256", test_auth256, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
