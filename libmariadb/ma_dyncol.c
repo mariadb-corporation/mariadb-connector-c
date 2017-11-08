@@ -4078,7 +4078,7 @@ mariadb_dyncol_val_double(double *dbl, DYNAMIC_COLUMN_VALUE *val)
     case DYN_COL_STRING:
       {
         char *str, *end;
-        if ((str= malloc(val->x.string.value.length + 1)))
+        if (!(str= malloc(val->x.string.value.length + 1)))
           return ER_DYNCOL_RESOURCE;
         memcpy(str, val->x.string.value.str, val->x.string.value.length);
         str[val->x.string.value.length]= '\0';
