@@ -381,12 +381,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       char *endptr;
       uint len;
 
-      buffer= 
-#ifdef WIN32
-              _malloca(MAX(field->length, 22));
-#else
-              alloca(MAX(field->length, 22));
-#endif
+      buffer= alloca(MAX(field->length, 22));
       endptr= ma_ll2str(val, buffer, is_unsigned ? 10 : -10);
       len= (uint)(endptr - buffer);
 
