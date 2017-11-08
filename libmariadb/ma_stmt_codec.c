@@ -50,6 +50,10 @@
 #include "mysql.h"
 #include <math.h> /* ceil() */
 
+#ifdef WIN32
+#include <malloc.h>
+#endif
+
 #define MYSQL_SILENT
 
 /* ranges for C-binding */
