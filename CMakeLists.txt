@@ -140,7 +140,6 @@ SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 
 IF(CMAKE_COMPILER_IS_GNUCC)
-  ADD_DEFINITIONS(-D_GNU_SOURCE=1)
   INCLUDE(CheckCCompilerFlag)
   SET(GCC_FLAGS -Wunused -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement)
   FOREACH(GCC_FLAG ${GCC_FLAGS})
@@ -149,6 +148,10 @@ IF(CMAKE_COMPILER_IS_GNUCC)
       SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GCC_FLAG}")
     ENDIF()
   ENDFOREACH()
+ENDIF()
+
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  ADD_DEFINITIONS(-D_GNU_SOURCE=1)
 ENDIF()
 
 # If the build type isn't specified, set to Relwithdebinfo as default.
