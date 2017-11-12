@@ -711,20 +711,19 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
                                          uchar *ReadBuffer,
                                          DWORD ReadBufferSize)
 {
-  ssize_t nbytes= 0;
-  DWORD dwOffset= 0;
+  ssize_t nbytes = 0;
+  DWORD dwOffset = 0;
   SC_CTX *sctx;
-  SECURITY_STATUS sRet= SEC_E_INCOMPLETE_MESSAGE;
+  SECURITY_STATUS sRet = 0;
   SecBufferDesc Msg;
-  SecBuffer Buffers[4],
-            *pData, *pExtra;
+  SecBuffer Buffers[4];
   int i;
 
   if (!pvio || !pvio->methods || !pvio->methods->read || !pvio->ctls || !DecryptLength)
     return SEC_E_INTERNAL_ERROR;
 
-  sctx= (SC_CTX *)pvio->ctls->ssl;
-  *DecryptLength= 0;
+  sctx = (SC_CTX *)pvio->ctls->ssl;
+  *DecryptLength = 0;
 
   if (sctx->dataBuf.cbBuffer)
   {
@@ -748,32 +747,36 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
       sctx->extraBuf.cbBuffer = 0;
     }
 
-    nbytes= pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
-    if (nbytes <= 0)
-    {
-      /* server closed connection, or an error */
-      // todo: error 
-      return SEC_E_INVALID_HANDLE;
-    }
-    dwOffset+= (DWORD)nbytes;
+    do {
+      assert(sctx->IoBufferSize > dwOffset);
+      if (dwOffset == 0 || sRet == SEC_E_INCOMPLETE_MESSAGE)
+      {
+        nbytes = pvio->methods->read(pvio, sctx->IoBuffer + dwOffset, (size_t)(sctx->IoBufferSize - dwOffset));
+        if (nbytes <= 0)
+        {
+          /* server closed connection, or an error */
+          // todo: error 
+          return SEC_E_INVALID_HANDLE;
+        }
+        dwOffset += (DWORD)nbytes;
+      }
+      ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
+      Buffers[0].pvBuffer = sctx->IoBuffer;
+      Buffers[0].cbBuffer = dwOffset;
 
-    ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
-    Buffers[0].pvBuffer= sctx->IoBuffer;
-    Buffers[0].cbBuffer= dwOffset;
+      Buffers[0].BufferType = SECBUFFER_DATA;
+      Buffers[1].BufferType = SECBUFFER_EMPTY;
+      Buffers[2].BufferType = SECBUFFER_EMPTY;
+      Buffers[3].BufferType = SECBUFFER_EMPTY;
 
-    Buffers[0].BufferType= SECBUFFER_DATA; 
-    Buffers[1].BufferType=
-    Buffers[2].BufferType=
-    Buffers[3].BufferType= SECBUFFER_EMPTY;
+      Msg.ulVersion = SECBUFFER_VERSION;    // Version number
+      Msg.cBuffers = 4;
+      Msg.pBuffers = Buffers;
 
-    Msg.ulVersion= SECBUFFER_VERSION;    // Version number
-    Msg.cBuffers= 4;
-    Msg.pBuffers= Buffers;
+      sRet = DecryptMessage(phContext, &Msg, 0, NULL);
 
-    sRet = DecryptMessage(phContext, &Msg, 0, NULL);
+    } while (sRet == SEC_E_INCOMPLETE_MESSAGE); /* Continue reading until full message arrives */
 
-    if (sRet == SEC_E_INCOMPLETE_MESSAGE)
-      continue; /* Continue reading until full message arrives */
 
     if (sRet != SEC_E_OK)
     {
@@ -781,49 +784,33 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
       return sRet;
     }
 
-    pData= pExtra= NULL;
-    for (i=0; i < 4; i++)
+    sctx->extraBuf.cbBuffer = 0;
+    sctx->dataBuf.cbBuffer = 0;
+    for (i = 0; i < 4; i++)
     {
-      if (!pData && Buffers[i].BufferType == SECBUFFER_DATA)
-        pData= &Buffers[i];
-      if (!pExtra && Buffers[i].BufferType == SECBUFFER_EXTRA)
-        pExtra= &Buffers[i];
-      if (pData && pExtra)
-        break;
+      if (Buffers[i].BufferType == SECBUFFER_DATA)
+        sctx->dataBuf = Buffers[i];
+      if (Buffers[i].BufferType == SECBUFFER_EXTRA)
+        sctx->extraBuf = Buffers[i];
     }
 
-    if (pExtra)
-    {
-      /* Save preread encrypted data, will be processed next time.*/
-      sctx->extraBuf.cbBuffer = pExtra->cbBuffer;
-      sctx->extraBuf.pvBuffer = pExtra->pvBuffer;
-    }
 
-    if (pData && pData->cbBuffer)
+    if (sctx->dataBuf.cbBuffer)
     {
+      assert(sctx->dataBuf.pvBuffer);
       /*
         Copy at most ReadBufferSize bytes to output.
         Store the rest (if any) to be processed next time.
       */
-      nbytes=MIN(pData->cbBuffer, ReadBufferSize);
-      memcpy((char *)ReadBuffer, pData->pvBuffer, nbytes);
-
- 
-      sctx->dataBuf.cbBuffer = pData->cbBuffer - (DWORD)nbytes;
-      sctx->dataBuf.pvBuffer = (char *)pData->pvBuffer + nbytes;
+      nbytes = MIN(sctx->dataBuf.cbBuffer, ReadBufferSize);
+      memcpy((char *)ReadBuffer, sctx->dataBuf.pvBuffer, nbytes);
+      sctx->dataBuf.cbBuffer -= (unsigned long)nbytes;
+      sctx->dataBuf.pvBuffer = (char *)sctx->dataBuf.pvBuffer + nbytes;
 
       *DecryptLength = (DWORD)nbytes;
       return SEC_E_OK;
     }
-    else
-    {
-      /*
-        DecryptMessage() did not return data buffer.
-        According to MSDN, this happens sometimes and is normal.
-        We retry the read/decrypt in this case.
-      */
-      dwOffset = 0;
-    }
+    // No data buffer, loop
   }
 }
 /* }}} */
