@@ -56,6 +56,9 @@
 #ifdef _WIN32
 #include "../win-iconv/iconv.h"
 #else
+#ifdef LIBICONV_PLUG
+#undef LIBICONV_PLUG
+#endif
 #include <iconv.h>
 #endif
 
