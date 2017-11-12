@@ -69,7 +69,7 @@
 #endif
 #include <mysql/client_plugin.h>
 #ifdef _WIN32
-#include "Shlwapi.h"
+#include "shlwapi.h"
 #endif
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)

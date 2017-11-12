@@ -23,7 +23,7 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-#include <Windows.h>
+#include <windows.h>
 #include <stdlib.h>
 #define strcasecmp _stricmp
 #define sleep(x) Sleep(1000*(x))

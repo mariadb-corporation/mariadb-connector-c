@@ -38,7 +38,7 @@
 
 #include <schnlsp.h>
 #undef SECURITY_WIN32
-#include <Windows.h>
+#include <windows.h>
 #include <sspi.h>
 
 #define SC_IO_BUFFER_SIZE 0x4000

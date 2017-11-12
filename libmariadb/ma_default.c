@@ -27,7 +27,7 @@
 
 #ifdef _WIN32
 #include <io.h>
-#include "Shlwapi.h"
+#include "shlwapi.h"
 
 static const char *ini_exts[]= {"ini", "cnf", 0};
 #define R_OK 4
