@@ -23,7 +23,7 @@
 #pragma comment (lib, "secur32.lib")
 
 extern my_bool ma_tls_initialized;
-char tls_library_version[TLS_VERSION_LENGTH];
+char tls_library_version[] = "Schannel";
 
 #define PROT_SSL3 1
 #define PROT_TLS1_0 2
@@ -175,31 +175,6 @@ void ma_schannel_set_win_error(MYSQL *mysql);
 */
 int ma_tls_start(char *errmsg, size_t errmsg_len)
 {
-  DWORD size;
-  DWORD handle;
-
-  if ((size= GetFileVersionInfoSize("schannel.dll", &handle)))
-  {
-    LPBYTE VersionInfo;
-    if ((VersionInfo = (LPBYTE)malloc(size)))
-    {
-      unsigned int len;
-      VS_FIXEDFILEINFO *fileinfo;
-
-      GetFileVersionInfo("schannel.dll", 0, size, VersionInfo);
-      VerQueryValue(VersionInfo, "\\", (LPVOID *)&fileinfo, &len);
-      snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "Schannel %d.%d.%d.%d\n",
-        HIWORD(fileinfo->dwFileVersionMS),
-        LOWORD(fileinfo->dwFileVersionMS),
-        HIWORD(fileinfo->dwFileVersionLS),
-        LOWORD(fileinfo->dwFileVersionLS));
-      free(VersionInfo);
-      goto end;
-    }
-  }
-  /* this shouldn't happen anyway */
-  strcpy(tls_library_version, "Schannel 0.0.0.0");
-end:
   ma_tls_initialized = TRUE;
   return 0;
 }
