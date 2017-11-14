@@ -364,7 +364,22 @@ int pvio_npipe_shutdown(MARIADB_PVIO *pvio)
   HANDLE h;
   if (pvio_npipe_get_handle(pvio, &h) == 0)
   {
-    return(CancelIoEx(h, NULL) ? 0 : 1);
+	HMODULE kernel32_dll;
+	BOOL WINAPI (*_CancelIoEx)(HANDLE hFile, LPOVERLAPPED lpOverlapped);
+
+	kernel32_dll = LoadLibrary(TEXT("kernel32.dll"));
+	if (!kernel32_dll)
+	  return -1;
+
+	_CancelIoEx = GetProcAddress(kernel32_dll, "CancelIoEx");
+	if (_CancelIoEx)
+	  return(CancelIoEx(h, NULL) ? 0 : 1);
+	else
+	  {
+		/* Windows XP or Server 2003 */
+		fprintf(stderr, "warning: pvio_npipe_shutdown is NOT thread-safe on this version of Windows");
+		return(CancelIo(h) ? 0 : 1);
+	  }
   }
   return 1;
 }

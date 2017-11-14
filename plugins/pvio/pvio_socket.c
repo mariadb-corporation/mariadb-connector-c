@@ -1060,8 +1060,26 @@ int pvio_socket_shutdown(MARIADB_PVIO *pvio)
   {
     my_socket s = ((struct st_pvio_socket *)pvio->data)->socket;
 #ifdef _WIN32
-    shutdown(s, SD_BOTH);
-    CancelIoEx((HANDLE)s, NULL);
+	{
+	  HMODULE kernel32_dll;
+	  BOOL WINAPI (*_CancelIoEx)(HANDLE hFile, LPOVERLAPPED lpOverlapped);
+
+	  shutdown(s, SD_BOTH);
+
+	  kernel32_dll = LoadLibrary(TEXT("kernel32.dll"));
+	  if (!kernel32_dll)
+		return -1;
+
+	  _CancelIoEx = GetProcAddress(kernel32_dll, "CancelIoEx");
+	  if (_CancelIoEx)
+		_CancelIoEx((HANDLE)s, NULL);
+	  else
+		{
+		  /* Windows XP or Server 2003 */
+		  fprintf(stderr, "warning: pvio_socket_shutdown is NOT thread-safe on this version of Windows");
+		  CancelIo((HANDLE)s);
+		}
+	}
 #else
     shutdown(s, SHUT_RDWR);
 #endif
