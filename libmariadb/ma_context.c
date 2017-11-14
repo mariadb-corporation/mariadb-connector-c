@@ -683,7 +683,15 @@ my_context_spawn(struct my_context *c, void (*f)(void *), void *d)
 int
 my_context_continue(struct my_context *c)
 {
-  void *current_fiber=  IsThreadAFiber() ? GetCurrentFiber() : ConvertThreadToFiber(c);
+  /*
+    This seems to be a common trick to run ConvertThreadToFiber() only on the
+    first occurence in a thread, in a way that works on multiple Windows
+    versions (Note: IsThreadAFiber() is not supported prior to Vista and
+	Server 2008)
+  */
+  void *current_fiber= GetCurrentFiber();
+  if (current_fiber == NULL || current_fiber == (void *)0x1e00)
+	current_fiber= ConvertThreadToFiber(c);
   c->app_fiber= current_fiber;
   SwitchToFiber(c->lib_fiber);
   return c->return_value;
