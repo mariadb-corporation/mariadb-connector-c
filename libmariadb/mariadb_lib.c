@@ -3597,9 +3597,26 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
   char **groups __attribute__((unused)))
 {
 #ifdef _WIN32
-  static INIT_ONCE init_once = INIT_ONCE_STATIC_INIT;
-  BOOL ret = InitOnceExecuteOnce(&init_once, win_init_once, NULL, NULL);
-  return ret? 0: 1;
+  HMODULE kernel32_dll;
+  BOOL WINAPI (*_InitOnceExecuteOnce)(PINIT_ONCE InitOnce, PINIT_ONCE_FN InitFn, PVOID Parameter, LPVOID *Context);
+
+  kernel32_dll = LoadLibrary(TEXT("kernel32.dll"));
+  if (!kernel32_dll)
+	return 1;
+
+  _InitOnceExecuteOnce = GetProcAddress(kernel32_dll, "InitOnceExecuteOnce");
+  if (_InitOnceExecuteOnce)
+	{
+	  static INIT_ONCE init_once = INIT_ONCE_STATIC_INIT;
+	  BOOL ret = _InitOnceExecuteOnce(&init_once, win_init_once, NULL, NULL);
+	  return ret? 0: 1;
+	}
+  else
+	{
+	  /* Windows XP or Server 2003 */
+	  fprintf(stderr, "warning: mysql_server_init is NOT thread-safe on this version of Windows");
+	  return mysql_once_init();
+	}
 #else
   static pthread_once_t init_once = PTHREAD_ONCE_INIT;
   return pthread_once(&init_once, mysql_once_init);
