@@ -298,6 +298,7 @@ static int test_frm_bug(MYSQL *mysql)
 
   fclose(test_file);
   mysql_query(mysql, "drop table if exists test_frm_bug");
+  unlink(test_frm);
   return OK;
 }
 
