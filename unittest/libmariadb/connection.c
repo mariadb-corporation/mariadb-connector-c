@@ -1210,6 +1210,7 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
+  diag("charset: %s", mysql_character_set_name(mysql));
   FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
   mysql_close(mysql);
 
@@ -1333,7 +1334,26 @@ static int test_mdev9059_3(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_conc277(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+
+
+  mysql_library_end();
+  mysql= mysql_init(NULL);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+
+  diag("error: %s", mysql_error(mysql));
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc277", test_conc277, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_1", test_mdev9059_1, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_2", test_mdev9059_2, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_3", test_mdev9059_3, TEST_CONNECTION_NONE, 0, NULL,  NULL},

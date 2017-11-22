@@ -2745,6 +2745,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, appname);
       break;
     }
+    else
+      OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, (char *)arg1);
     break;
   case MYSQL_SET_CHARSET_DIR:
     OPT_SET_VALUE_STR(&mysql->options, charset_dir, arg1);
@@ -3592,6 +3594,8 @@ static void mysql_once_init()
 }
 
 #ifdef _WIN32
+static INIT_ONCE init_once = INIT_ONCE_STATIC_INIT;
+
 BOOL CALLBACK win_init_once(
   PINIT_ONCE InitOnce,
   PVOID Parameter,
@@ -3600,6 +3604,8 @@ BOOL CALLBACK win_init_once(
   return !mysql_once_init();
   return TRUE;
 }
+#else
+static pthread_once_t init_once = PTHREAD_ONCE_INIT;
 #endif
 
 int STDCALL mysql_server_init(int argc __attribute__((unused)),
@@ -3607,11 +3613,9 @@ int STDCALL mysql_server_init(int argc __attribute__((unused)),
   char **groups __attribute__((unused)))
 {
 #ifdef _WIN32
-  static INIT_ONCE init_once = INIT_ONCE_STATIC_INIT;
   BOOL ret = InitOnceExecuteOnce(&init_once, win_init_once, NULL, NULL);
   return ret? 0: 1;
 #else
-  static pthread_once_t init_once = PTHREAD_ONCE_INIT;
   return pthread_once(&init_once, mysql_once_init);
 #endif
 }
@@ -3632,6 +3636,13 @@ void STDCALL mysql_server_end(void)
 #endif
   mysql_client_init= 0;
   ma_init_done= 0;
+
+  /* Fix for CONC-277: Allow reinitialization of client library */
+#ifdef WIN32
+  init_once = INIT_ONCE_STATIC_INIT;
+#else
+  init_once = PTHREAD_ONCE_INIT;
+#endif
 }
 
 my_bool STDCALL mysql_thread_init(void)
