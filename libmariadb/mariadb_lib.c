@@ -2663,17 +2663,16 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MYSQL_READ_DEFAULT_GROUP:
     if (!arg1 || !((char *)arg1)[0])
     {
-#if defined(__APPLE__) || defined(__FreeBSD__)
-      const char * appname = getprogname();
-#elif defined(_GNU_SOURCE)
+#if defined(HAVE_PROGRAM_INVOCATION_SHORT_NAME)
       const char * appname = program_invocation_short_name;
+#elif defined(HAVE_GETPROGNAME)
+      const char * appname = getprogname();
 #elif defined(WIN32)
-      char appname[FN_REFLEN]= "";
-
-      if (GetModuleFileName(NULL, appname, FN_REFLEN))
+      char module_filename[MAX_PATH];
+      char appname[MAX_PATH]="";
+      if (GetModuleFileName(NULL, module_filename, MAX_PATH))
       {
-        PathStripPath(appname);
-        PathRemoveExtension(appname);
+        _splitpath(module_filename,NULL, NULL, appname, NULL);
       }
 #else
       const char * appname = "";
