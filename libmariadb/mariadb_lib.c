@@ -3639,7 +3639,7 @@ void STDCALL mysql_server_end(void)
 
   /* Fix for CONC-277: Allow reinitialization of client library */
 #ifdef WIN32
-  init_once = INIT_ONCE_STATIC_INIT;
+  init_once = (INIT_ONCE)INIT_ONCE_STATIC_INIT;
 #else
   init_once = (pthread_once_t)PTHREAD_ONCE_INIT;
 #endif
