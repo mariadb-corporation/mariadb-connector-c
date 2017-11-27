@@ -3641,7 +3641,7 @@ void STDCALL mysql_server_end(void)
 #ifdef WIN32
   init_once = INIT_ONCE_STATIC_INIT;
 #else
-  init_once = PTHREAD_ONCE_INIT;
+  init_once = (pthread_once_t)PTHREAD_ONCE_INIT;
 #endif
 }
 
