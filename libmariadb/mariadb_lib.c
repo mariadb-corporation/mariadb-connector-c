@@ -637,7 +637,7 @@ struct st_default_options mariadb_defaults[] =
   {MYSQL_SET_CHARSET_NAME, MARIADB_OPTION_STR, "default-character-set"},
   {MARIADB_OPT_INTERACTIVE, MARIADB_OPTION_NONE, "interactive-timeout"},
   {MYSQL_OPT_CONNECT_TIMEOUT, MARIADB_OPTION_INT, "connect-timeout"},
-  {MYSQL_OPT_LOCAL_INFILE, MARIADB_OPTION_BOOL, "local-infile"},
+  {MYSQL_OPT_LOCAL_INFILE, MARIADB_OPTION_INT, "local-infile"},
   {0, 0 ,"disable-local-infile",},
   {MYSQL_OPT_SSL_CIPHER, MARIADB_OPTION_STR, "ssl-cipher"},
   {MYSQL_OPT_MAX_ALLOWED_PACKET, MARIADB_OPTION_SIZET, "max-allowed-packet"},
@@ -2702,7 +2702,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     mysql->options.named_pipe=1;		/* Force named pipe */
     break;
   case MYSQL_OPT_LOCAL_INFILE:			/* Allow LOAD DATA LOCAL ?*/
-    if (!arg1 || test(*(my_bool*) arg1))
+    if (!arg1 || test(*(unsigned int*) arg1))
       mysql->options.client_flag|= CLIENT_LOCAL_FILES;
     else
       mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;

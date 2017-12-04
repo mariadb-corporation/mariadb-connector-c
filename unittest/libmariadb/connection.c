@@ -834,7 +834,7 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
                       MYSQL_OPT_PROTOCOL, MYSQL_OPT_READ_TIMEOUT, MYSQL_OPT_WRITE_TIMEOUT, 0};
   my_bool options_bool[]= {MYSQL_OPT_RECONNECT, MYSQL_REPORT_DATA_TRUNCATION,
                            MYSQL_OPT_COMPRESS, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MYSQL_SECURE_AUTH,
-#ifdef _WIN32    
+#ifdef _WIN32
     MYSQL_OPT_NAMED_PIPE,
 #endif
                           0};
@@ -877,7 +877,7 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
     mysql_options(mysql, options_char[i], char1);
     char2= NULL;
     mysql_get_optionv(mysql, options_char[i], (void *)&char2);
-    if (options_char[i] != MYSQL_SET_CHARSET_NAME) 
+    if (options_char[i] != MYSQL_SET_CHARSET_NAME)
       FAIL_IF(strcmp(char1, char2), "mysql_get_optionv (char) failed");
   }
 
@@ -1345,14 +1345,61 @@ static int test_conc277(MYSQL *my __attribute__((unused)))
                   port, socketname,
                   CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
 
-  diag("error: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql), "No error expected");
 
   mysql_close(mysql);
   return OK;
 }
 
+/* CONC-297: libmysql incompatibility: According to the documentation
+   load data local infile will be enabled by passing NULL pointer 
+   or a pointer to an unsigned int value */
+static int test_conc297(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  int  local_infile= 0;
+
+  mysql= mysql_init(NULL);
+  mysql_optionsv(mysql, MYSQL_OPT_LOCAL_INFILE, NULL);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+
+  mysql_get_option(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+
+  FAIL_IF(!local_infile, "local infile was not enabled");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  local_infile= 0;
+  mysql_optionsv(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+  mysql_get_option(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+
+  FAIL_IF(local_infile, "local infile was not disabled");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  local_infile= 1;
+  mysql_optionsv(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+  mysql_get_option(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+
+  FAIL_IF(!local_infile, "local infile was not enabled");
+  mysql_close(mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc297", test_conc297, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc277", test_conc277, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_1", test_mdev9059_1, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_2", test_mdev9059_2, TEST_CONNECTION_NONE, 0, NULL,  NULL},
