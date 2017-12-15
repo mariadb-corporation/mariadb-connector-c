@@ -2898,8 +2898,10 @@ mysql_ping(MYSQL *mysql)
   rc= simple_command(mysql,MYSQL_COM_PING,0,0,0,0);
 
   /* if connection was terminated and reconnect is true, try again */
+  /* temporary fix for MDEV_10361 
   if (rc!=0  && mysql->reconnect)
     rc= simple_command(mysql,MYSQL_COM_PING,0,0,0,0);
+  */
   return rc;
 }
 
