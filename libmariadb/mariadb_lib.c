@@ -2093,7 +2093,6 @@ get_info:
               si_type= (enum enum_session_state_type)net_field_length(&pos);
               switch(si_type) {
               case SESSION_TRACK_SCHEMA:
-              case SESSION_TRACK_STATE_CHANGE:
               case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
               case SESSION_TRACK_SYSTEM_VARIABLES:
                 net_field_length(&pos); /* ignore total length, item length will follow next */
@@ -2155,6 +2154,26 @@ get_info:
                       mysql->charset= cs_info;
                   }
                 }
+                break;
+              /* Session track state change flag indicates if session state
+                 tracking was enabled. The flag is represented as "1" */
+              case SESSION_TRACK_STATE_CHANGE:
+                plen = net_field_length(&pos);
+                if (!ma_multi_malloc(0,
+                                    &session_item, sizeof(LIST),
+                                    &str, sizeof(MYSQL_LEX_STRING),
+                                    &data, plen,
+                                    NULL))
+                {
+                  SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+                  return -1;
+                }
+                str->length= plen;
+                str->str= data;
+                memcpy(str->str, (char *)pos, plen);
+                pos+= plen;
+                session_item->data= str;
+                mysql->extension->session_state[si_type].list= list_add(mysql->extension->session_state[si_type].list, session_item);
                 break;
               default:
                 /* not supported yet */

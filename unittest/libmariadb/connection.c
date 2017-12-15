@@ -1398,7 +1398,44 @@ static int test_conc297(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_mdev14647(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  int rc;
+  char *data= "0";
+  size_t length= 0;
+  long server_capabilities;
+
+  mysql= mysql_init(NULL);
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname,
+                  CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
+  FAIL_IF(mysql_errno(mysql), "No error expected");
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &server_capabilities);
+
+  if (!(server_capabilities & CLIENT_SESSION_TRACKING) ||
+      !mariadb_connection(mysql))
+  {
+    diag("Server doesn't support session tracking or doesn't send SESSION_TRACK_STATE_CHANGE information");
+    mysql_close(mysql);
+    return SKIP;
+  }
+
+  rc= mysql_query(mysql, "SET SESSION session_track_state_change = 1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_session_track_get_first(mysql, SESSION_TRACK_STATE_CHANGE, (const char **)&data, &length);
+
+  FAIL_IF(length != 1, "expected length=1");
+  FAIL_IF(data[0] != 0x31, "expected 1");
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev14647", test_mdev14647, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc297", test_conc297, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc277", test_conc277, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_1", test_mdev9059_1, TEST_CONNECTION_NONE, 0, NULL,  NULL},
