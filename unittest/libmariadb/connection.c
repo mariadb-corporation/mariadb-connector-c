@@ -1014,6 +1014,9 @@ static int test_reset(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
 
+  rc= mysql_query(mysql, "DROP TABLE IF exists t1");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
   check_mysql_rc(rc, mysql);
 
@@ -1023,6 +1026,11 @@ static int test_reset(MYSQL *mysql)
   FAIL_IF(mysql_affected_rows(mysql) != 3, "Expected 3 rows");
 
   rc= mysql_reset_connection(mysql);
+  if (rc && mysql_errno(mysql) == 1047)
+  {
+    diag("server doesn't support RESET_CONNECTION");
+    return SKIP;
+  }
   check_mysql_rc(rc, mysql);
 
   FAIL_IF(mysql_affected_rows(mysql) != ~(unsigned long)0, "Expected 0 rows");
@@ -1402,7 +1410,7 @@ static int test_mdev14647(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql;
   int rc;
-  char *data= "0";
+  const char *data= "0";
   size_t length= 0;
   long server_capabilities;
 
