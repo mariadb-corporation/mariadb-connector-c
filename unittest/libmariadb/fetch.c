@@ -913,23 +913,31 @@ static int test_conc281(MYSQL *mysql)
   unsigned long length= 0;
   char buffer[2048];
 
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc282");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc281");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE conc282 (a blob, b varchar(1000), c int)");
+  rc= mysql_query(mysql, "CREATE TABLE conc281 (a blob, b varchar(1000), c int)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "INSERT INTO conc282 VALUES (REPEAT('A',2000), REPEAT('B', 999),3)");
+  rc= mysql_query(mysql, "INSERT INTO conc281 VALUES (REPEAT('A',2000), REPEAT('B', 999),3)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "SELECT a, b FROM conc282", 0);
+  rc= mysql_stmt_prepare(stmt, "SELECT a, b FROM conc281", 24);
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
+  memset(bind, 0, sizeof(MYSQL_BIND) * 2);
+
+  bind[0].buffer_type= MYSQL_TYPE_BLOB;
+  bind[0].buffer_length= 0;
+  bind[0].length= &length;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+
   rc= mysql_stmt_fetch(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc != MYSQL_DATA_TRUNCATED, "Truncation expected");
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 2);
 
@@ -946,11 +954,10 @@ static int test_conc281(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  rc= mysql_query(mysql, "DROP TABLE conc282");
+  rc= mysql_query(mysql, "DROP TABLE conc281");
   check_mysql_rc(rc, mysql);
 
   return OK;
-
 }
 
 struct my_tests_st my_tests[] = {

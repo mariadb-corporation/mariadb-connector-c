@@ -1064,15 +1064,12 @@ int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt)
     DBUG_RETURN(rc);
   }
 
-  if ((rc= stmt->mysql->methods->db_stmt_fetch_to_bind(stmt, row)))
-  {
-    DBUG_RETURN(rc);
-  }
+  rc= stmt->mysql->methods->db_stmt_fetch_to_bind(stmt, row);
 
   stmt->state= MYSQL_STMT_USER_FETCHING;
   CLEAR_CLIENT_ERROR(stmt->mysql);
   CLEAR_CLIENT_STMT_ERROR(stmt);
-  DBUG_RETURN(0);
+  DBUG_RETURN(rc);
 }
 
 int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind, unsigned int column, unsigned long offset)
