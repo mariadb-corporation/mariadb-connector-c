@@ -539,6 +539,8 @@ static int test_conc243(MYSQL *mysql)
   size_t row_size= sizeof(struct st_data);
   int rc;
 
+  if (!bulk_enabled)
+    return SKIP;
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_example2");
   check_mysql_rc(rc, mysql);
 
@@ -703,6 +705,9 @@ static int test_char_conv2(MYSQL *mysql)
   char *buffer[1];
   char outbuffer[100];
   
+  if (!bulk_enabled)
+    return SKIP;
+
   buffer[0]= calloc(1, 7);
   strcpy (buffer[0], "\xC3\x82\xC3\x83\xC3\x84\x00");
 
@@ -793,6 +798,9 @@ static int bulk_skip_row(MYSQL *mysql)
   unsigned int array_size= 3;
   size_t row_size= sizeof(struct st_data);
   int rc;
+
+  if (!bulk_enabled)
+    return SKIP;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_example2");
   check_mysql_rc(rc, mysql);
