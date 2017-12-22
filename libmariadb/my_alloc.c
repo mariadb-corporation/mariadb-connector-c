@@ -144,6 +144,8 @@ void free_root(MEM_ROOT *root, myf MyFlags)
     root->free->left=root->pre_alloc->size-ALIGN_SIZE(sizeof(USED_MEM));
     root->free->next=0;
   }
+  root->block_num= 4;
+  root->first_block_usage= 0;
   DBUG_VOID_RETURN;
 }
 
