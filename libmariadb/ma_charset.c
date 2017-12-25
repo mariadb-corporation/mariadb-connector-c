@@ -493,6 +493,46 @@ mysql_mbcharlen_utf32(unsigned int utf32 __attribute((unused)))
 }
 /* }}} */
 
+/* {{{ gb18030 functions */
+#define is_gb18030_odd(c)          (0x81 <= (unsigned char) (c) && (unsigned char) (c) <= 0xFE)
+#define is_gb18030_even_2(c)       ((0x40 <= (unsigned char) (c) && (unsigned char) (c) <= 0x7E) || (0x80 <= (unsigned char) (c) && (unsigned char) (c) <= 0xFE))
+#define is_gb18030_even_4(c)       (0x30 <= (unsigned char) (c) && (unsigned char) (c) <= 0x39)
+
+
+static unsigned int mysql_mbcharlen_gb18030(unsigned int c)
+{
+	if (c <= 0xFF) {
+		return !is_gb18030_odd(c);
+	}
+	if (c > 0xFFFF || !is_gb18030_odd((c >> 8) & 0xFF)) {
+		return 0;
+	}
+	if (is_gb18030_even_2((c & 0xFF))) {
+	    return 2;
+	}
+	if (is_gb18030_even_4((c & 0xFF))) {
+		return 4;
+	}
+
+	return 0;
+}
+
+static unsigned int check_mb_gb18030_valid(const char * start, const char * end)
+{
+	if (end - start <= 1 || !is_gb18030_odd(start[0])) {
+		return 0;
+	}
+
+	if (is_gb18030_even_2(start[1])) {
+		return 2;
+	} else if (end - start > 3 && is_gb18030_even_4(start[1]) && is_gb18030_odd(start[2]) && is_gb18030_even_4(start[3])) {
+		return 4;
+	}
+
+	return 0;
+}
+/* }}} */
+
 /*
   The server compiles sometimes the full utf-8 (the mb4) as utf8m4, and the old as utf8,
   for BC reasons. Sometimes, utf8mb4 is just utf8 but the old charsets are utf8mb3.
@@ -586,6 +626,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   {  73, 1, "keybcs2", "keybcs2_bin", "", 0, "", 1, 1, NULL, NULL},
   {  74, 1, "koi8r", "koi8r_bin", "", 20866, "KOI8R", 1, 1, NULL, NULL},
   {  75, 1, "koi8u", "koi8u_bin", "", 21866, "KOI8U", 1, 1, NULL, NULL},
+  {  76, 1, UTF8_MB3, UTF8_MB3"_tolower_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3,  check_mb_utf8mb3_valid},
   {  77, 1, "latin2", "latin2_bin", "", 28592, "LATIN2", 1, 1, NULL, NULL},
   {  78, 1, "latin5", "latin5_bin", "", 1254, "LATIN5", 1, 1, NULL, NULL},
   {  79, 1, "latin7", "latin7_bin", "", 28603, "LATIN7", 1, 1, NULL, NULL},
@@ -730,8 +771,60 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   { 245, 1, UTF8_MB4, UTF8_MB4"_croatian_mysql561_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 246, 1, UTF8_MB4, UTF8_MB4"_unicode_520_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 247, 1, UTF8_MB4, UTF8_MB4"_vietnamese_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 248, 1, "gb18030", "gb18030_chinese_ci", "", 54936, "GB18030", 1, 4, mysql_mbcharlen_gb18030, check_mb_gb18030_valid},
+  { 249, 1, "gb18030", "gb18030_bin", "", 54936, "GB18030", 1, 4, mysql_mbcharlen_gb18030, check_mb_gb18030_valid},
+  { 250, 1, "gb18030", "gb18030_unicode_520_ci", "", 54936, "GB18030", 1, 4, mysql_mbcharlen_gb18030, check_mb_gb18030_valid},
+
 
   { 254, 1, UTF8_MB3, UTF8_MB3"_general_cs", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+
+  { 255, 1, UTF8_MB4, UTF8_MB4"_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 256, 1, UTF8_MB4, UTF8_MB4"_de_pb_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 257, 1, UTF8_MB4, UTF8_MB4"_is_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 258, 1, UTF8_MB4, UTF8_MB4"_lv_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 259, 1, UTF8_MB4, UTF8_MB4"_ro_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 260, 1, UTF8_MB4, UTF8_MB4"_sl_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 261, 1, UTF8_MB4, UTF8_MB4"_pl_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 262, 1, UTF8_MB4, UTF8_MB4"_et_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 263, 1, UTF8_MB4, UTF8_MB4"_es_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 264, 1, UTF8_MB4, UTF8_MB4"_sv_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 265, 1, UTF8_MB4, UTF8_MB4"_tr_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 266, 1, UTF8_MB4, UTF8_MB4"_cs_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 267, 1, UTF8_MB4, UTF8_MB4"_da_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 268, 1, UTF8_MB4, UTF8_MB4"_lt_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 269, 1, UTF8_MB4, UTF8_MB4"_sk_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 270, 1, UTF8_MB4, UTF8_MB4"_es_trad_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 271, 1, UTF8_MB4, UTF8_MB4"_la_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 273, 1, UTF8_MB4, UTF8_MB4"_eo_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 274, 1, UTF8_MB4, UTF8_MB4"_hu_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 275, 1, UTF8_MB4, UTF8_MB4"_hr_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 277, 1, UTF8_MB4, UTF8_MB4"_vi_0900_ai_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 278, 1, UTF8_MB4, UTF8_MB4"_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 279, 1, UTF8_MB4, UTF8_MB4"_de_pb__0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 280, 1, UTF8_MB4, UTF8_MB4"_is_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 281, 1, UTF8_MB4, UTF8_MB4"_lv_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 282, 1, UTF8_MB4, UTF8_MB4"_ro_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 283, 1, UTF8_MB4, UTF8_MB4"_sl_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 284, 1, UTF8_MB4, UTF8_MB4"_pl_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 285, 1, UTF8_MB4, UTF8_MB4"_et_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 286, 1, UTF8_MB4, UTF8_MB4"_es_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 287, 1, UTF8_MB4, UTF8_MB4"_sv_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 288, 1, UTF8_MB4, UTF8_MB4"_tr_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 289, 1, UTF8_MB4, UTF8_MB4"_cs_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 290, 1, UTF8_MB4, UTF8_MB4"_da_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 291, 1, UTF8_MB4, UTF8_MB4"_lt_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 292, 1, UTF8_MB4, UTF8_MB4"_sk_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 293, 1, UTF8_MB4, UTF8_MB4"_es_trad_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 294, 1, UTF8_MB4, UTF8_MB4"_la_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 296, 1, UTF8_MB4, UTF8_MB4"_eo_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 297, 1, UTF8_MB4, UTF8_MB4"_hu_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 298, 1, UTF8_MB4, UTF8_MB4"_hr_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 300, 1, UTF8_MB4, UTF8_MB4"_vi_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 303, 1, UTF8_MB4, UTF8_MB4"_ja_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 304, 1, UTF8_MB4, UTF8_MB4"_ja_0900_as_cs_ks", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 305, 1, UTF8_MB4, UTF8_MB4"_0900_as_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 306, 1, UTF8_MB4, UTF8_MB4"_ru_0900_as_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 307, 1, UTF8_MB4, UTF8_MB4"_ru_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 576, 1, UTF8_MB3, UTF8_MB3"_croatian_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
   { 577, 1, UTF8_MB3, UTF8_MB3"_myanmar_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
   { 578, 1, UTF8_MB3, UTF8_MB3"_thai_520_w2", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
