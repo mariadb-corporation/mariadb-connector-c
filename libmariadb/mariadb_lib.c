@@ -2092,6 +2092,8 @@ get_info:
               old_pos= pos;
               si_type= (enum enum_session_state_type)net_field_length(&pos);
               switch(si_type) {
+              case SESSION_TRACK_GTIDS:
+                net_field_length(&pos);  // skip encoding
               case SESSION_TRACK_SCHEMA:
               case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
               case SESSION_TRACK_SYSTEM_VARIABLES:
