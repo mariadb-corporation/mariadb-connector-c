@@ -408,7 +408,12 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
       res= 1; /* no chit-chat in embedded */
     else
       res= ma_net_write(net, (unsigned char *)pkt, pkt_len) || ma_net_flush(net);
-    if (res)
+  }
+
+  if (res)
+  {
+    /* don't overwrite errors */
+    if (!mysql_errno(mpvio->mysql))
       my_set_error(mpvio->mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                                  ER(CR_SERVER_LOST_EXTENDED),
                                  "sending authentication information",

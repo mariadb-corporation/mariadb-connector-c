@@ -1229,6 +1229,7 @@ error:
   return NULL;
 }
 
+#ifdef GNUTLS_EXTERNAL_TRANSPORT
 ssize_t ma_tls_push(gnutls_transport_ptr_t ptr, const void* data, size_t len)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
@@ -1248,6 +1249,7 @@ static int ma_tls_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
   return pvio->methods->wait_io_or_timeout(pvio, 0, ms);
 }
+#endif
 
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
@@ -1269,12 +1271,16 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (!(blocking= pvio->methods->is_blocking(pvio)))
     pvio->methods->blocking(pvio, TRUE, 0);
 
+#ifdef GNUTLS_EXTERNAL_TRANSPORT
   /* we don't use GnuTLS read/write functions */
   gnutls_transport_set_ptr(ssl, pvio);
   gnutls_transport_set_push_function(ssl, ma_tls_push);
   gnutls_transport_set_pull_function(ssl, ma_tls_pull);
   gnutls_transport_set_pull_timeout_function(ssl, ma_tls_pull_timeout);
   gnutls_handshake_set_timeout(ssl, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
+#else
+  gnutls_transport_set_int(ssl, mysql_get_socket(mysql));
+#endif
 
   do {
     ret = gnutls_handshake(ssl);
