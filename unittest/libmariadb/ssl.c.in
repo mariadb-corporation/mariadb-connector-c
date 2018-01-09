@@ -394,6 +394,10 @@ static int test_password_protected(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
+#ifndef TEST_SSL_PASSPHRASE
+  return SKIP;
+#endif
+
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
@@ -785,9 +789,13 @@ static int test_ssl_fp(MYSQL *unused __attribute__((unused)))
 static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *my;
-  
+
   if (check_skip_ssl())
     return SKIP;
+
+#ifndef TEST_SSL_SHA1
+  return SKIP;
+#endif
 
   if (!ssl_cert_finger_print[0])
   {

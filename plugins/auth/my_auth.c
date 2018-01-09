@@ -441,10 +441,14 @@ static int client_mpvio_write_packet(struct st_plugin_vio *mpv,
   }
 
   if (res)
-    my_set_error(mpvio->mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
-                               ER(CR_SERVER_LOST_EXTENDED),
-                               "sending authentication information",
-                               errno);
+  {
+    /* don't overwrite SSL errors */
+    if (!mysql_errno(mpvio->mysql))
+      my_set_error(mpvio->mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                                 ER(CR_SERVER_LOST_EXTENDED),
+                                 "sending authentication information",
+                                 errno);
+  }
   mpvio->packets_written++;
   return res;
 }
