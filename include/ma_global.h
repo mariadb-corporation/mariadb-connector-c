@@ -346,9 +346,7 @@ typedef int my_socket;
 #ifndef INVALID_SOCKET
 #define INVALID_SOCKET -1
 #endif
-/* Type for fuctions that handles signals */
-#define sig_handler RETSIGTYPE
-typedef void	(*sig_return)(void);/* Returns type from signal */
+
 #if defined(__GNUC__) && !defined(_lint)
 typedef char	pchar;		/* Mixed prototypes can take char */
 typedef char	puchar;		/* Mixed prototypes can take char */

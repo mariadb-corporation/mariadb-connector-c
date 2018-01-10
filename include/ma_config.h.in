@@ -268,13 +268,3 @@
 #endif
 
 #cmakedefine SOCKET_SIZE_TYPE @SOCKET_SIZE_TYPE@
-
-#cmakedefine RETSIGTYPE @RETSIGTYPE@
-#cmakedefine RETQSORTTYPE @RETQSORTTYPE@ 
-
-/*
- * various other defines
- */
-#cmakedefine HAVE_THREADS 1
-#cmakedefine DEFAULT_CHARSET_HOME "@DEFAULT_CHARSET_HOME@"
-#cmakedefine DEFAULT_SYSCONFDIR "@DEFAULT_SYSCONFDIR@"
