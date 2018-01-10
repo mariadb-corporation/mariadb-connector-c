@@ -407,7 +407,6 @@ extern void allow_break(void);
 #define allow_break()
 #endif
 
-extern void my_remember_signal(int signal_number,sig_handler (*func)(int));
 extern void caseup(my_string str,uint length);
 extern void casedn(my_string str,uint length);
 extern void caseup_str(my_string str);
