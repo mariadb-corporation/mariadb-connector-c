@@ -1,5 +1,5 @@
 /* Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
-                 2016 MariaDB Corporation AB
+                 2016,2018 MariaDB Corporation AB
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -1158,10 +1158,6 @@ static const double tens[] =
 };
 
 static const double bigtens[]= { 1e16, 1e32, 1e64, 1e128, 1e256 };
-static const double tinytens[]=
-{ 1e-16, 1e-32, 1e-64, 1e-128,
-  9007199254740992.*9007199254740992.e-256 /* = 2^106 * 1e-53 */
-};
 /*
   The factor of 2^53 in tinytens[4] helps us avoid setting the underflow 
   flag unnecessarily.  It leads to a song and dance at the end of strtod.

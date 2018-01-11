@@ -1,5 +1,5 @@
 /* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
-                 2016 MariaDB Corporation AB
+                 2016,2018 MariaDB Corporation AB
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -20,13 +20,8 @@
 #include "ma_string.h"
 #include <ctype.h>
 
-char NEAR _dig_vec[] =
+static char NEAR _dig_vec[] =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-#define char_val(X) (X >= '0' && X <= '9' ? X-'0' :\
-		     X >= 'A' && X <= 'Z' ? X-'A'+10 :\
-		     X >= 'a' && X <= 'z' ? X-'a'+10 :\
-		     '\177')
 
 char *ma_ll2str(long long val,char *dst,int radix)
 {
