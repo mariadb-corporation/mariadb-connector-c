@@ -101,7 +101,7 @@ static int test_free_result(MYSQL *mysql)
   strcpy(query, "select * from test_free_result");
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   check_stmt_rc(rc, stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -183,7 +183,7 @@ static int test_free_store_result(MYSQL *mysql)
   strcpy(query, "select * from test_free_result");
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   check_stmt_rc(rc, stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -287,7 +287,7 @@ static int test_store_result(MYSQL *mysql)
   strcpy(query, "SELECT * FROM test_store_result");
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_result(stmt, my_bind);
@@ -389,7 +389,7 @@ static int test_store_result1(MYSQL *mysql)
   strcpy(query, "SELECT * FROM test_store_result");
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -458,7 +458,7 @@ static int test_store_result2(MYSQL *mysql)
   strcpy((char *)query , "SELECT col1 FROM test_store_result where col1= ?");
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, strlen(query));
+  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_param(stmt, my_bind);
@@ -635,7 +635,7 @@ static int test_bug6761(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt_text= "CREATE TABLE t1 (a int, b char(255), c decimal)";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
 
   res= mysql_list_fields(mysql, "t1", "%");
@@ -643,7 +643,7 @@ static int test_bug6761(MYSQL *mysql)
   mysql_free_result(res);
 
   stmt_text= "DROP TABLE t1";
-  rc= mysql_real_query(mysql, stmt_text, strlen(stmt_text));
+  rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
   check_mysql_rc(rc, mysql);
   return OK;
 }
