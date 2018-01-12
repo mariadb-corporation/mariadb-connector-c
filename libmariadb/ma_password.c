@@ -1,5 +1,5 @@
 /* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
-                 2016 MariaDB Corporation AB
+                 2016,2018 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -78,13 +78,6 @@ void ma_hash_password(ulong *result, const char *password, size_t len)
   result[0]=nr & (((ulong) 1L << 31) -1L); /* Don't use sign bit (str2int) */;
   result[1]=nr2 & (((ulong) 1L << 31) -1L);
   return;
-}
-
-static inline unsigned int char_val(char X)
-{
-  return (uint) (X >= '0' && X <= '9' ? X-'0' :
-		 X >= 'A' && X <= 'Z' ? X-'A'+10 :
-		 X-'a'+10);
 }
 
 /*
