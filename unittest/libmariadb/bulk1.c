@@ -69,7 +69,7 @@ static int bulk1(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk1 (a int , b VARCHAR(255))");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str));
+  rc= mysql_stmt_prepare(stmt, stmt_str, (unsigned long)strlen(stmt_str));
   check_stmt_rc(rc, stmt);
 
   /* allocate memory */

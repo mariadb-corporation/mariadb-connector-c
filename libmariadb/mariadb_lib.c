@@ -2169,7 +2169,7 @@ mysql_real_query(MYSQL *mysql, const char *query, unsigned long length)
   my_bool skip_result= OPT_EXT_VAL(mysql, multi_command);
 
   if (length == (unsigned long)-1)
-    length= strlen(query);
+    length= (unsigned long)strlen(query);
 
   free_old_query(mysql);
 

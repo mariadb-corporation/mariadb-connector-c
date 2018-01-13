@@ -78,7 +78,7 @@ static int test_logs(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, data, strlen(data));
+  rc= mysql_stmt_prepare(stmt, data, (unsigned long)strlen(data));
   check_stmt_rc(rc, stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -129,7 +129,7 @@ static int test_logs(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, data, strlen(data));
+  rc= mysql_stmt_prepare(stmt, data, (unsigned long)strlen(data));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -144,7 +144,7 @@ static int test_logs(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, data, strlen(data));
+  rc= mysql_stmt_prepare(stmt, data, (unsigned long)strlen(data));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_param(stmt, my_bind);
