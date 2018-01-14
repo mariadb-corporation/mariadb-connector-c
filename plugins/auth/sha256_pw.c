@@ -158,7 +158,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   char passwd[MAX_PW_LEN];
   unsigned char rsa_enc_pw[MAX_PW_LEN];
   unsigned int rsa_size;
-  DWORD pwlen, i;
+  unsigned int pwlen, i;
 
 #if defined(HAVE_OPENSSL)
   RSA *pubkey= NULL;
@@ -254,7 +254,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (!pubkey)
     return CR_ERROR;
 
-  pwlen= (DWORD)strlen(mysql->passwd) + 1;  /* include terminating zero */
+  pwlen= (unsigned int)strlen(mysql->passwd) + 1;  /* include terminating zero */
   if (pwlen > MAX_PW_LEN)
     goto error;
   memcpy(passwd, mysql->passwd, pwlen);
