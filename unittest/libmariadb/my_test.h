@@ -52,6 +52,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 # define TRUE 1
 #endif
 
+#ifndef SL
+#define SL(s) (s), (unsigned long)strlen((s))
+#endif
+
 #define MAX_KEY MAX_INDEXES
 #define MAX_KEY_LENGTH_DECIMAL_WIDTH 4          /* strlen("4096") */
 

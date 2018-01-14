@@ -112,7 +112,10 @@ MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declaration_ =
 mysql_end_client_plugin;
 
 /* {{{ ma_rio_init - Plugin initialization */
-int ma_rio_init(char *unused1, size_t unused2, int unused3, va_list unused4)
+int ma_rio_init(char *unused1 __attribute__((unused)),
+                size_t unused2 __attribute__((unused)),
+                int unused3 __attribute__((unused)),
+                va_list unused4 __attribute__((unused)))
 {
   curl_global_init(CURL_GLOBAL_ALL);
   if (!multi_handle)
