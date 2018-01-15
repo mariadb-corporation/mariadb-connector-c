@@ -7,11 +7,6 @@ and PHP's mysqlnd extension.
 This product includes PHP software, freely available from
 <http://www.php.net/software/>
 
-The following are the main known limitations:
-
-- double to string conversion for prepared statements
-  doesn't work correctly
-
 If you want to be part of this development effort, you can discuss this at
 maria-developers@lists.launchpad.org.
 
