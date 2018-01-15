@@ -2733,39 +2733,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_VALUE_STR(&mysql->options, my_cnf_file, (char *)arg1);
     break;
   case MYSQL_READ_DEFAULT_GROUP:
-    if (!arg1 || !((char *)arg1)[0])
-    {
-#if defined(__APPLE__) || defined(__FreeBSD__)
-      const char *appname = getprogname();
-#elif defined(__sun)
-      const char *appname= getexecname();
-#elif defined(__unix__)
-      char buf[FN_REFLEN]= "";
-      char *appname= NULL;
-      if (readlink("/proc/self/exe", buf, FN_REFLEN - 1))
-      {
-        if ((appname= strrchr(buf, '/')))
-          appname++;
-        else
-          appname= buf;
-      }
-#elif defined(WIN32)
-      char appname[FN_REFLEN]= "";
-
-      if (GetModuleFileName(NULL, appname, FN_REFLEN))
-      {
-        PathStripPath(appname);
-        PathRemoveExtension(appname);
-      }
-#else
-      const char * appname= NULL;
-#endif
-      if (appname && appname[0])
-        OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, appname);
-      break;
-    }
-    else
-      OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, (char *)arg1);
+    OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, arg1 ? (char *)arg1 : "");
     break;
   case MYSQL_SET_CHARSET_DIR:
     OPT_SET_VALUE_STR(&mysql->options, charset_dir, arg1);

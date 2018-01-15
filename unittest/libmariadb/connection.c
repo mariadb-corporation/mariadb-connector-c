@@ -1240,8 +1240,6 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
 
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
   check_mysql_rc(rc, mysql);
-  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
-  check_mysql_rc(rc, mysql);
 
   if (!my_test_connect(mysql, hostname, username,
                              password, schema, port, socketname, 0))
@@ -1249,7 +1247,8 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
-  FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
+
+  FAIL_IF(strcmp("utf8", mysql_character_set_name(mysql)), "Expected charset utf8");
   mysql_close(mysql);
 
   remove("./mdev13100.cnf");

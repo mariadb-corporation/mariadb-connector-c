@@ -1078,7 +1078,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   fp= fopen(cnf_file1, "w");
   FAIL_IF(!fp, "fopen");
 
-  fprintf(fp, "[misc]\ndefault-character-set=latin2\n[client]\nreconnect=1\n");
+  fprintf(fp, "[client]\ndefault-character-set=latin2\nreconnect=1\n");
   fclose(fp);
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, NULL);
