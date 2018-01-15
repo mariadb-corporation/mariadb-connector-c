@@ -1419,6 +1419,12 @@ static int test_mdev14647(MYSQL *my __attribute__((unused)))
                   CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS);
   FAIL_IF(mysql_errno(mysql), "No error expected");
 
+  if (!mariadb_connection(mysql))
+  {
+    diag("MySQL doesn't send SESSION_TRACK_STATE_CHANGE");
+    return SKIP;
+  }
+
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &server_capabilities);
 
   if (!(server_capabilities & CLIENT_SESSION_TRACKING) ||
