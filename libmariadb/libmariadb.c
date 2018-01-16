@@ -2897,10 +2897,7 @@ mysql_ping(MYSQL *mysql)
   DBUG_ENTER("mysql_ping");
   rc= simple_command(mysql,MYSQL_COM_PING,0,0,0,0);
 
-  /* if connection was terminated and reconnect is true, try again */
-  if (rc!=0  && mysql->reconnect)
-    rc= simple_command(mysql,MYSQL_COM_PING,0,0,0,0);
-  return rc;
+  DBUG_RETURN(rc);
 }
 
 
