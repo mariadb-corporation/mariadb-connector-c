@@ -272,6 +272,8 @@ double my_ulonglong2double(unsigned long long A);
 
 #if defined(__EMX__) || !defined(HAVE_UINT)
 typedef unsigned int uint;
+#endif
+#if defined(__EMX__) || !defined(HAVE_USHORT)
 typedef unsigned short ushort;
 #endif
 
