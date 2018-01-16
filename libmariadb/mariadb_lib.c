@@ -2539,13 +2539,7 @@ mysql_stat(MYSQL *mysql)
 int STDCALL
 mysql_ping(MYSQL *mysql)
 {
-  int rc;
-  rc= ma_simple_command(mysql, COM_PING,0,0,0,0);
-
-  /* if connection was terminated and reconnect is true, try again */
-  if (rc!=0  && mysql->options.reconnect)
-    rc= ma_simple_command(mysql, COM_PING,0,0,0,0);
-  return rc;
+  return ma_simple_command(mysql, COM_PING,0,0,0,0);
 }
 
 char * STDCALL
