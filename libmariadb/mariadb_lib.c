@@ -1382,22 +1382,12 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 
   /* Get version info */
   mysql->protocol_version= PROTOCOL_VERSION;	/* Assume this */
-/*
-  if (ma_pvio_wait_io_or_timeout(net->pvio, FALSE, 0) < 1)
-  {
-    my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
-                 ER(CR_SERVER_LOST_EXTENDED),
-                 "handshake: waiting for inital communication packet",
-                 errno);
-    goto error;
-  }
- */
   if ((pkt_length=ma_net_safe_read(mysql)) == packet_error)
   {
     if (mysql->net.last_errno == CR_SERVER_LOST)
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
-                 "handshake: reading inital communication packet",
+                 "handshake: reading initial communication packet",
                  errno);
 
     goto error;
