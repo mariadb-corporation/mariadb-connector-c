@@ -1,0 +1,26 @@
+sudo: required
+language: cpp
+
+services:
+  - docker
+
+env:
+  - OS=debian_jessie DB=mariadb:10.2
+  - OS=centos7.1 DB=mariadb:10.2
+  - OS=debian_wheezy DB=mariadb:10.2
+  - OS=debian_jessie DB=mariadb:10.3
+  - OS=debian_jessie DB=mariadb:10.1
+  - OS=debian_jessie DB=mariadb:10.0
+  - OS=debian_jessie DB=mysql:8
+  - OS=debian_jessie DB=mysql:5.7
+  - OS=debian_jessie DB=mysql:5.6
+
+install:
+  - docker-compose -f .docker/docker-compose.yml build
+  - docker-compose -f .docker/docker-compose.yml run -d db
+
+script:
+  - docker-compose -f .docker/docker-compose.yml run cc
+
+after_script:
+  - docker-compose down

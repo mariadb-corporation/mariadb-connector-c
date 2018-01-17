@@ -579,6 +579,12 @@ static int test_bug30472(MYSQL *mysql)
   FAIL_UNLESS(strcmp(collation_connnection_1, collation_connnection_2) != 0, "collation1 = collation2");
 
   /* Call mysql_change_user() with the same username, password, database. */
+  if (!mariadb_connection(mysql))
+  {
+    diag("Skipping test_bug30472: "
+            "mysql_change_user failed with MySQL server\n");
+    return SKIP;
+  }
 
   rc= mysql_change_user(mysql, username, password, (schema) ? schema : "test");
   mysql_set_character_set(mysql, "latin1");

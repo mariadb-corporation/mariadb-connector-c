@@ -124,28 +124,28 @@ session_id  char(9) NOT NULL, \
     d  datetime NOT NULL)");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO test_select VALUES "
-                         "(\"abc\", 1, 2, 3, 2003-08-30), "
-                         "(\"abd\", 1, 2, 3, 2003-08-30), "
-                         "(\"abf\", 1, 2, 3, 2003-08-30), "
-                         "(\"abg\", 1, 2, 3, 2003-08-30), "
-                         "(\"abh\", 1, 2, 3, 2003-08-30), "
-                         "(\"abj\", 1, 2, 3, 2003-08-30), "
-                         "(\"abk\", 1, 2, 3, 2003-08-30), "
-                         "(\"abl\", 1, 2, 3, 2003-08-30), "
-                         "(\"abq\", 1, 2, 3, 2003-08-30) ");
+                         "(\"abc\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abd\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abf\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abg\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abh\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abj\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abk\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abl\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abq\", 1, 2, 3, '2003-08-30') ");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO test_select VALUES "
-                         "(\"abw\", 1, 2, 3, 2003-08-30), "
-                         "(\"abe\", 1, 2, 3, 2003-08-30), "
-                         "(\"abr\", 1, 2, 3, 2003-08-30), "
-                         "(\"abt\", 1, 2, 3, 2003-08-30), "
-                         "(\"aby\", 1, 2, 3, 2003-08-30), "
-                         "(\"abu\", 1, 2, 3, 2003-08-30), "
-                         "(\"abi\", 1, 2, 3, 2003-08-30), "
-                         "(\"abo\", 1, 2, 3, 2003-08-30), "
-                         "(\"abp\", 1, 2, 3, 2003-08-30), "
-                         "(\"abz\", 1, 2, 3, 2003-08-30), "
-                         "(\"abx\", 1, 2, 3, 2003-08-30)");
+                         "(\"abw\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abe\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abr\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abt\", 1, 2, 3, '2003-08-30'), "
+                         "(\"aby\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abu\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abi\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abo\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abp\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abz\", 1, 2, 3, '2003-08-30'), "
+                         "(\"abx\", 1, 2, 3, '2003-08-30')");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "SELECT * FROM test_select WHERE "
@@ -2497,7 +2497,6 @@ static int test_bug4236(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt1, SL(stmt_text));
   check_stmt_rc(rc, stmt);
 
-  stmt->stmt_id= stmt1->stmt_id;
   rc= mysql_stmt_execute(stmt);
   FAIL_IF(!rc, "Error expected");
 
@@ -2736,6 +2735,12 @@ static int test_bug5315(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
+  if (!mariadb_connection(mysql))
+  {
+    diag("Skipping test_bug5315: "
+            "mysql_change_user failed with MySQL server\n");
+    return SKIP;
+  }
   rc= mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);
 
@@ -2872,6 +2877,13 @@ static int test_bug6049(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   check_stmt_rc(rc, stmt);
 
+  if (!mariadb_connection(mysql) && mysql_get_server_version(mysql) < 50601)
+  {
+    diag("Skipping test_bug6049: "
+            "tested feature does not exist in versions before MySQL 5.6\n");
+    return SKIP;
+  }
+
   FAIL_UNLESS(strcmp(row[0], (char*) buffer) == 0, "row[0] != buffer");
 
   mysql_free_result(res);
@@ -2890,6 +2902,12 @@ static int test_bug6058(MYSQL *mysql)
   ulong length;
   int rc;
 
+  if (!mariadb_connection(mysql) && mysql_get_server_version(mysql) < 50701)
+  {
+    //MySQL server doesn't permit 0000-00-00 in 5.7 (see NO_ZERO_DATE / SQL strict mode)
+    diag("Skipping test_bug6058: syntax '0000-00-00' not permitted since MySQL 5.7");
+    return SKIP;
+  }
 
   stmt_text= "SELECT CAST('0000-00-00' AS DATE)";
 
@@ -4104,6 +4122,13 @@ static int test_conc168(MYSQL *mysql)
   char buffer[100];
   int rc;
 
+  if (!mariadb_connection(mysql) && mysql_get_server_version(mysql) < 50601)
+  {
+    diag("Skipping test_conc168: "
+            "tested feature does not exist in versions before MySQL 5.6\n");
+    return SKIP;
+  }
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc168");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE conc168(a datetime(3))");
@@ -4286,8 +4311,12 @@ static int test_conc179(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(stmtstr));
   check_stmt_rc(rc, stmt);
 
-  FAIL_IF(mysql_warning_count(mysql) < 2, "expected 2 or more warnings");
-  FAIL_IF(mysql_stmt_warning_count(stmt) < 2, "expected 2 or more warnings");
+  // server with version < 10.1 throw an error, >= 10.1 throw warnings
+  if (mariadb_connection(mysql) && mysql_get_server_version(mysql) >= 100100)
+  {
+      FAIL_IF(mysql_warning_count(mysql) < 2, "expected 2 or more warnings");
+      FAIL_IF(mysql_stmt_warning_count(stmt) < 2, "expected 2 or more warnings");
+  }
 
   mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");

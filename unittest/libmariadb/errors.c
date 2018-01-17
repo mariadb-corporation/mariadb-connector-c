@@ -193,40 +193,55 @@ static int test_cuted_rows(MYSQL *mysql)
   FAIL_UNLESS(count == 0, "warnings != 0");
 
   rc= mysql_query(mysql, "INSERT INTO t2 SELECT * FROM t1");
-  check_mysql_rc(rc, mysql);
+  if (mariadb_connection(mysql) || mysql_get_server_version(mysql) < 50701)
+  {
+    check_mysql_rc(rc, mysql);
 
-  count= mysql_warning_count(mysql);
-  FAIL_UNLESS(count == 2, "warnings != 2");
+    count= mysql_warning_count(mysql);
+    FAIL_UNLESS(count == 2, "warnings != 2");
 
-  rc= mysql_query(mysql, "SHOW WARNINGS");
-  check_mysql_rc(rc, mysql);
+    rc= mysql_query(mysql, "SHOW WARNINGS");
+    check_mysql_rc(rc, mysql);
 
-  result= mysql_store_result(mysql);
-  FAIL_IF(!result, "Invalid result set");
+    result= mysql_store_result(mysql);
+    FAIL_IF(!result, "Invalid result set");
 
-  rc= 0;
-  while (mysql_fetch_row(result))
-    rc++;
-  FAIL_UNLESS(rc == 2, "rowcount != 2");
-  mysql_free_result(result);
+    rc= 0;
+    while (mysql_fetch_row(result))
+      rc++;
+    FAIL_UNLESS(rc == 2, "rowcount != 2");
+    mysql_free_result(result);
+  }
+  else
+  {
+    //mysql server since 5.7 throw an error
+    FAIL_IF(!rc, "Expected error");
+  }
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES('junk'), (876789)");
-  check_mysql_rc(rc, mysql);
+if (mariadb_connection(mysql) || mysql_get_server_version(mysql) < 50701)
+  {
+    check_mysql_rc(rc, mysql);
+    count= mysql_warning_count(mysql);
+    FAIL_UNLESS(count == 2, "warnings != 2");
 
-  count= mysql_warning_count(mysql);
-  FAIL_UNLESS(count == 2, "warnings != 2");
+    rc= mysql_query(mysql, "SHOW WARNINGS");
+    check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "SHOW WARNINGS");
-  check_mysql_rc(rc, mysql);
+    result= mysql_store_result(mysql);
+    FAIL_IF(!result, "Invalid result set");
 
-  result= mysql_store_result(mysql);
-  FAIL_IF(!result, "Invalid result set");
-
-  rc= 0;
-  while (mysql_fetch_row(result))
-    rc++;
-  FAIL_UNLESS(rc == 2, "rowcount != 2");
-  mysql_free_result(result);
+    rc= 0;
+    while (mysql_fetch_row(result))
+      rc++;
+    FAIL_UNLESS(rc == 2, "rowcount != 2");
+    mysql_free_result(result);
+  }
+  else
+  {
+    //mysql server since 5.7 throw an error
+    FAIL_IF(!rc, "Expected error");
+  }
 
   rc= mysql_query(mysql, "DROP TABLE t1, t2");
   check_mysql_rc(rc, mysql);

@@ -67,6 +67,13 @@ static int execute_direct(MYSQL *mysql)
 
 static int execute_direct_example(MYSQL *mysql)
 {
+  if (!mariadb_connection(mysql) || mysql_get_server_version(mysql) < 100201)
+  {
+    diag("Skipping execute_direct_example: "
+            "execute_direct_example available since MariaDB server 10.2\n");
+    return SKIP;
+  }
+
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   MYSQL_BIND bind[2];
   int intval= 1;

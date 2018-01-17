@@ -560,8 +560,18 @@ void run_tests(struct my_tests_st *test) {
       }
       /* clear connection: reset default connection or close extra connection */
       else if (mysql_default && (test[i].connection & TEST_CONNECTION_DEFAULT))  {
+
+        //mysql change user failed with some mysql server, so test with mariadb server only
+        if (mariadb_connection(mysql))
+        {
           if (reset_connection(mysql))
             return; /* default doesn't work anymore */
+        }
+        else
+        {
+          mysql_close(mysql_default);
+          mysql_default= test_connect(&test[i]);
+        }
       }
       else if (mysql && !(test[i].connection & TEST_CONNECTION_DONT_CLOSE))
       {

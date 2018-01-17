@@ -1,0 +1,14 @@
+version: '2'
+services:
+  cc:
+    depends_on:
+      - db
+    build:
+      context: ..
+      dockerfile: .docker/images/${OS}/Dockerfile
+  db:
+    image: ${DB}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --bind-address=0.0.0.0
+    environment:
+       MYSQL_ROOT_PASSWORD: pwd
+       MYSQL_DATABASE: test

@@ -662,11 +662,12 @@ static int test_fetch_date(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE test_bind_result(c1 date, c2 time, \
-                                                        c3 timestamp, \
+                                                        c3 timestamp DEFAULT NOW(), \
                                                         c4 year, \
                                                         c5 datetime, \
-                                                        c6 timestamp, \
-                                                        c7 timestamp)");
+                                                        c6 timestamp DEFAULT NOW(), \
+                                                        c7 timestamp DEFAULT NOW())");
+
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "SET SQL_MODE=''");
