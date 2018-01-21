@@ -1970,8 +1970,13 @@ mysql_close(MYSQL *mysql)
     if (mysql->extension && mysql->extension->conn_hdlr)
     {
       MA_CONNECTION_HANDLER *p= mysql->extension->conn_hdlr;
-      p->plugin->close(mysql);
+      if (p->plugin->close)
+        p->plugin->close(mysql);
       free(p);
+      /* Fix for CONC-294: Since we already called plugin->close function
+         we need to prevent that mysql_close_slow_part (which sends COM_QUIT
+         to the server) will be handled by plugin again. */
+      mysql->extension->conn_hdlr= NULL;
     }
 
     if (mysql->methods)
