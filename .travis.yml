@@ -1,0 +1,25 @@
+sudo: true
+language: c
+services: docker
+addons:
+  hosts:
+    - mariadb.example.com
+
+before_install:
+  - chmod +x .travis/script.sh
+  - chmod +x .travis/gen-ssl.sh
+  - export PROJ_PATH=`pwd`
+  - export ENTRYPOINT=$PROJ_PATH/.travis/sql
+  - mkdir tmp
+  - .travis/gen-ssl.sh mariadb.example.com tmp
+  - export SSLCERT=$PROJ_PATH/tmp
+
+env:
+  - DB=mysql:5.7
+  - DB=mariadb:5.5
+  - DB=mariadb:10.0
+  - DB=mariadb:10.1
+  - DB=mariadb:10.2
+  - DB=mariadb:10.3
+
+script: .travis/script.sh
