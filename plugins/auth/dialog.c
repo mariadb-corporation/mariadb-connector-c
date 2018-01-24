@@ -34,15 +34,15 @@
 /* function prototypes */
 extern char *get_tty_password(char *opt_message, char *buff, int bufflen);
 static int auth_dialog_open(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
-static int auth_dialog_init(char *unused1, 
-                            size_t unused2, 
-                            int unused3, 
+static int auth_dialog_init(char *unused1,
+                            size_t unused2,
+                            int unused3,
                             va_list);
 
 mysql_authentication_dialog_ask_t auth_dialog_func;
 
-#ifndef HAVE_DIALOG_DYNAMIC
-struct st_mysql_client_plugin_AUTHENTICATION auth_dialog_plugin=
+#ifndef PLUGIN_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION dialog_client_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 #endif

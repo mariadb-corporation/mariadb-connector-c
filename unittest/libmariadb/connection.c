@@ -1447,7 +1447,25 @@ static int test_mdev14647(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_dsn(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  char dsn[1024];
+  sprintf(dsn, "dsn://host=%s;user=%s;port=%d;database=%s",
+          "127.0.0.1", username, port, schema);
+  if (!mysql_real_connect(mysql, dsn, NULL, NULL, NULL, 0, NULL, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+  diag("Error: %s", mysql_error(mysql));
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_dsn", test_dsn, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev14647", test_mdev14647, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc297", test_conc297, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc277", test_conc277, TEST_CONNECTION_NONE, 0, NULL,  NULL},

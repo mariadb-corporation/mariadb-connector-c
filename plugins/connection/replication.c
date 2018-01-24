@@ -46,10 +46,10 @@ int repl_set_options(MYSQL *msql, enum mysql_option option, void *arg);
 #define MARIADB_MASTER 0
 #define MARIADB_SLAVE  1
 
-struct st_mariadb_api *mariadb_api= NULL;
+static struct st_mariadb_api *libmariadb_api= NULL;
 
-#ifndef HAVE_REPLICATION_DYNAMIC
-MARIADB_CONNECTION_PLUGIN connection_replication_plugin =
+#ifndef PLUGIN_DYNAMIC
+MARIADB_CONNECTION_PLUGIN replication_client_plugin =
 #else
 MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
@@ -185,8 +185,8 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
   REPL_DATA *data= NULL;
   MA_CONNECTION_HANDLER *hdlr= mysql->extension->conn_hdlr;
 
-  if (!mariadb_api)
-    mariadb_api= mysql->methods->api;
+  if (!libmariadb_api)
+    libmariadb_api= mysql->methods->api;
 
   if ((data= (REPL_DATA *)hdlr->data))
   {
@@ -206,7 +206,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
     goto error;
 
   /* try to connect to master */
-  if (!(mariadb_api->mysql_real_connect(mysql, data->host[MARIADB_MASTER], user, passwd, db, 
+  if (!(libmariadb_api->mysql_real_connect(mysql, data->host[MARIADB_MASTER], user, passwd, db, 
         data->port[MARIADB_MASTER] ? data->port[MARIADB_MASTER] : port, unix_socket, clientflag)))
     goto error;
 
@@ -218,12 +218,12 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
    * connecting to slave(s) in background */
 
   /* if slave connection will fail, we will not return error but use master instead */
-  if (!(data->slave_mysql= mariadb_api->mysql_init(NULL)) ||
+  if (!(data->slave_mysql= libmariadb_api->mysql_init(NULL)) ||
       !(mysql->methods->db_connect(data->slave_mysql, data->host[MARIADB_SLAVE], user, passwd, db, 
                                    data->port[MARIADB_SLAVE] ? data->port[MARIADB_SLAVE] : port, unix_socket, clientflag)))
   {
     if (data->slave_mysql)
-      mariadb_api->mysql_close(data->slave_mysql);
+      libmariadb_api->mysql_close(data->slave_mysql);
     data->pvio[MARIADB_SLAVE]= NULL;
   }
   else
@@ -255,7 +255,7 @@ void repl_close(MYSQL *mysql)
   {
     /* restore mysql */
     data->pvio[MARIADB_SLAVE]->mysql= data->slave_mysql;
-    mariadb_api->mysql_close(data->slave_mysql);
+    libmariadb_api->mysql_close(data->slave_mysql);
     data->pvio[MARIADB_SLAVE]= NULL;
     data->slave_mysql= NULL;
   }

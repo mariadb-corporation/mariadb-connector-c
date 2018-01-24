@@ -55,8 +55,10 @@ my_bool aurora_reconnect(MYSQL *mysql);
 #define AURORA_REPLICA 1
 #define AURORA_UNAVAILABLE 2
 
-#ifndef HAVE_AURORA_DYNAMIC
-MARIADB_CONNECTION_PLUGIN connection_aurora_plugin =
+static struct st_mariadb_api *libmariadb_api= NULL;
+
+#ifndef PLUGIN_DYNAMIC
+MARIADB_CONNECTION_PLUGIN aurora_client_plugin =
 #else
 MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
@@ -80,7 +82,6 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   NULL
 };
 
-struct st_mariadb_api *mariadb_api= NULL;
 
 typedef struct st_aurora_instance {
   char *host;
@@ -256,11 +257,11 @@ int aurora_get_instance_type(MYSQL *mysql)
     return -1;
 
   mysql->extension->conn_hdlr= 0;
-  if (!mariadb_api->mysql_query(mysql, query))
+  if (!libmariadb_api->mysql_query(mysql, query))
   {
-    MYSQL_RES *res= mariadb_api->mysql_store_result(mysql);
-    rc= mariadb_api->mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
-    mariadb_api->mysql_free_result(res);
+    MYSQL_RES *res= libmariadb_api->mysql_store_result(mysql);
+    rc= libmariadb_api->mysql_num_rows(res) ? AURORA_PRIMARY : AURORA_REPLICA;
+    libmariadb_api->mysql_free_result(res);
   }
   mysql->extension->conn_hdlr= save_hdlr;
   return rc;
@@ -286,15 +287,15 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
   MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
 
   mysql->extension->conn_hdlr= 0;
-  if (!mariadb_api->mysql_query(mysql, "select server_id from information_schema.replica_host_status "
+  if (!libmariadb_api->mysql_query(mysql, "select server_id from information_schema.replica_host_status "
         "where session_id = 'MASTER_SESSION_ID'"))
   {
     MYSQL_RES *res;
     MYSQL_ROW row;
 
-    if ((res= mariadb_api->mysql_store_result(mysql)))
+    if ((res= libmariadb_api->mysql_store_result(mysql)))
     {
-      if ((row= mariadb_api->mysql_fetch_row(res)))
+      if ((row= libmariadb_api->mysql_fetch_row(res)))
       {
         if (row[0])
         {
@@ -302,7 +303,7 @@ my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)
           rc= 1;
         }
       }
-      mariadb_api->mysql_free_result(res);
+      libmariadb_api->mysql_free_result(res);
     }
   }
   mysql->extension->conn_hdlr= save_hdlr;
@@ -354,7 +355,7 @@ void aurora_refresh_blacklist(AURORA *aurora)
 /* {{{ MYSQL *aurora_connect_instance() */
 MYSQL *aurora_connect_instance(AURORA *aurora, AURORA_INSTANCE *instance, MYSQL *mysql)
 {
-  if (!mariadb_api->mysql_real_connect(mysql,
+  if (!libmariadb_api->mysql_real_connect(mysql,
         instance->host,
         aurora->username,
         aurora->password,
@@ -398,7 +399,7 @@ void aurora_close_internal(MYSQL *mysql)
   {
     mysql->extension->conn_hdlr= 0;
     memset(&mysql->options, 0, sizeof(struct st_mysql_options));
-    mariadb_api->mysql_close(mysql);
+    libmariadb_api->mysql_close(mysql);
   }
 }
 /* }}} */
@@ -420,7 +421,7 @@ my_bool aurora_find_replica(AURORA *aurora)
   while (valid_instances && !replica_found)
   {
     int random_pick= rand() % valid_instances;
-    mysql= mariadb_api->mysql_init(NULL);
+    mysql= libmariadb_api->mysql_init(NULL);
     mysql->options= aurora->save_mysql.options;
 
     /* don't execute init_command on slave */
@@ -488,7 +489,7 @@ my_bool aurora_find_primary(AURORA *aurora)
 
   for (i=0; i < aurora->num_instances; i++)
   {
-    mysql= mariadb_api->mysql_init(NULL);
+    mysql= libmariadb_api->mysql_init(NULL);
     mysql->options= aurora->save_mysql.options;
 
     if (check_primary && aurora->primary_id[0])
@@ -527,8 +528,8 @@ MYSQL *aurora_connect(MYSQL *mysql, const char *host, const char *user, const ch
   AURORA *aurora= NULL;
   MA_CONNECTION_HANDLER *save_hdlr= mysql->extension->conn_hdlr;
 
-  if (!mariadb_api)
-    mariadb_api= mysql->methods->api;
+  if (!libmariadb_api)
+    libmariadb_api= mysql->methods->api;
 
   /* we call aurora_connect either from mysql_real_connect or from mysql_reconnect,
    * so make sure in case of reconnect we don't allocate aurora twice */
@@ -740,7 +741,7 @@ int aurora_command(MYSQL *mysql,enum enum_server_command command, const char *ar
       if (aurora->mysql[AURORA_REPLICA] && mysql->thread_id == aurora->mysql[AURORA_PRIMARY]->thread_id)
       {
         aurora->mysql[AURORA_REPLICA]->extension->conn_hdlr= 0;
-        mariadb_api->mysql_select_db(aurora->mysql[AURORA_REPLICA], arg);
+        libmariadb_api->mysql_select_db(aurora->mysql[AURORA_REPLICA], arg);
         aurora->mysql[AURORA_REPLICA]->extension->conn_hdlr= mysql->extension->conn_hdlr;
       }
       break;
