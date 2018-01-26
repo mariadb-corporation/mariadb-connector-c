@@ -242,7 +242,7 @@ static int test_parse_error_and_bad_length(MYSQL *mysql)
 
   rc= mysql_query(mysql, "SHOW DATABAAAA");
   FAIL_UNLESS(rc, "Error expected");
-  rc= mysql_real_query(mysql, "SHOW DATABASES", 100);
+  rc= mysql_real_query(mysql, "SHOW DATABASES\0AAA", 18);
   FAIL_UNLESS(rc, "Error expected");
 
   stmt= mysql_stmt_init(mysql);

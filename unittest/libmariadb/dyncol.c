@@ -153,10 +153,6 @@ static int create_dyncol_num(MYSQL *mysql)
   rc= mariadb_dyncol_unpack(&dyncol, &my_count, &my_keys, &my_vals);
   diag("unpack: %d %d", rc, my_count);
 
-  for(i=0; i < 5; i++)
-  {
-    diag("%s %lu", my_keys[i].str, (unsigned long)my_keys[i].length);
-  }
   free(my_keys);
   free(my_vals);
 
