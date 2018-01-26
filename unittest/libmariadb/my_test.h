@@ -138,6 +138,8 @@ static unsigned int port = 0;
 static char *socketname = 0;
 static char *username = 0;
 static int force_tls= 0;
+static char *this_host= 0;
+static uchar is_mariadb= 0;
 /*
 static struct my_option test_options[] =
 {
@@ -220,6 +222,22 @@ int do_verify_prepare_field(MYSQL_RES *result,
   return OK;
 }
 
+void get_this_host(MYSQL *mysql)
+{
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+
+  if (mysql_query(mysql, "select substr(current_user(), locate('@', current_user())+1)"))
+    return;
+
+  if ((res= mysql_store_result(mysql)))
+  {
+    if ((row= mysql_fetch_row(res)))
+      this_host= strdup(row[0]);
+    mysql_free_result(res);
+  }
+}
+
 /* Prepare statement, execute, and process result set for given query */
 
 int my_stmt_result(MYSQL *mysql, const char *buff)
@@ -250,7 +268,7 @@ get_one_option(int optid, const struct my_option *opt __attribute__((unused)),
 {
   switch (optid) {
   case '?':
-  case 'I':                           
+  case 'I':
     my_print_help(test_options);
     exit(0);
     break;
@@ -440,7 +458,10 @@ MYSQL *test_connect(struct my_tests_st *test)
 static int reset_connection(MYSQL *mysql) {
   int rc;
 
-  rc= mysql_change_user(mysql, username, password, schema);
+  if (mariadb_connection(mysql))
+    rc= mysql_change_user(mysql, username, password, schema);
+  else
+    rc= mysql_reset_connection(mysql);
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "SET sql_mode=''");
   check_mysql_rc(rc, mysql);
@@ -502,11 +523,15 @@ MYSQL *my_test_connect(MYSQL *mysql,
 {
   if (force_tls)
     mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
-  mysql= mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag);
-  if (mysql && force_tls && !mysql_get_ssl_cipher(mysql))
+  if ((mysql= mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag)))
   {
-    diag("Error: TLS connection not established");
-    return NULL;
+    if (force_tls && !mysql_get_ssl_cipher(mysql))
+    {
+      diag("Error: TLS connection not established");
+      return NULL;
+    }
+    if (!this_host)
+      get_this_host(mysql);
   }
   return mysql;
 }
@@ -526,6 +551,7 @@ void run_tests(struct my_tests_st *test) {
     diag("Testing against MySQL Server %s", mysql_get_server_info(mysql_default));
     diag("Host: %s", mysql_get_host_info(mysql_default));
     diag("Client library: %s", mysql_get_client_info());
+    is_mariadb= mariadb_connection(mysql_default);
   }
   else
   {
@@ -571,6 +597,9 @@ void run_tests(struct my_tests_st *test) {
       skip(1, "%s", test[i].skipmsg);
     }
   }
+  if (this_host)
+    free(this_host);
+
   if (mysql_default) {
     diag("close default");
     mysql_close(mysql_default);

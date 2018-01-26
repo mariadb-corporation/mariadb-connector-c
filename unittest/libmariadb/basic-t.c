@@ -751,6 +751,7 @@ static int test_reconnect_maxpackage(MYSQL *unused __attribute__((unused)))
   else
     diag("Error: %s", mysql_error(mysql));
 
+  sleep(5);
   rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "SELECT @@max_allowed_packet");

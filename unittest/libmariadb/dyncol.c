@@ -50,7 +50,7 @@ static int create_dyncol_named(MYSQL *mysql)
     vals[i].x.string.value.str= (char *)strval[i];
     vals[i].x.string.value.length= strlen(strval[i]);
     vals[i].x.string.charset= (MARIADB_CHARSET_INFO *)mysql->charset;
-    diag("%s", keys3[i].str);
+    diag("%.*s", (int)keys3[i].length, keys3[i].str);
   }
 
   mariadb_dyncol_init(&dyncol);
@@ -99,7 +99,7 @@ static int create_dyncol_named(MYSQL *mysql)
 
   keys3[0].str= (char *)"test";
   for (i=0; i < column_count; i++)
-    diag("%s", my_keys[i].str);
+    diag("%.*s", (int)my_keys[i].length, my_keys[i].str);
 
   free(vals);
   free(my_keys);
@@ -155,7 +155,7 @@ static int create_dyncol_num(MYSQL *mysql)
 
   for(i=0; i < 5; i++)
   {
-    diag("%s %lu", my_keys[i].str, (unsigned long)my_keys[i].length);
+    diag("%.*s %lu", (int)my_keys[i].length, my_keys[i].str, (unsigned long)my_keys[i].length);
   }
   free(my_keys);
   free(my_vals);
@@ -209,7 +209,7 @@ static int mdev_x1(MYSQL *mysql)
 
   for (i=0; i < unpack_columns; i++)
     if (memcmp(unpack_vals[i].x.string.value.str, vals[i].x.string.value.str, vals[i].x.string.value.length))
-      diag("Error1: key: %1s val: %s %s", unpack_keys[i].str, unpack_vals[i].x.string.value.str, vals[i].x.string.value.str);
+      diag("Error1");
 
   free(unpack_keys);
   free(unpack_vals);
@@ -233,7 +233,7 @@ static int mdev_x1(MYSQL *mysql)
   diag("Columns: %d", unpack_columns);
 
   for (i=0; i < unpack_columns; i++)
-    diag("Key: %s Len: %lu", unpack_keys[i].str, (unsigned long)unpack_keys[i].length);
+    diag("Key: %.*s Len: %lu", (int)unpack_keys[i].length, unpack_keys[i].str, (unsigned long)unpack_keys[i].length);
 
 
   free(unpack_keys);

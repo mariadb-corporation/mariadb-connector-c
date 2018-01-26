@@ -147,6 +147,11 @@ void ma_net_clear(NET *net)
 {
   if (net->extension->multi_status > COM_MULTI_OFF)
     return;
+  if (ma_pvio_is_alive(net->pvio))
+  {
+    net->error= 2;
+    return;
+  }
   net->compress_pkt_nr= net->pkt_nr=0;				/* Ready for new command */
   net->write_pos=net->buff;
   return;

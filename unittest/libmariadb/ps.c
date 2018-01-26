@@ -68,6 +68,12 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
   sleep(5);
 
   rc= mysql_ping(mysql);
+
+  if (rc)
+  {
+    diag("Error in mysql_ping: rc: %d Errno: %d Err: %s", rc, mysql_errno(mysql), mysql_error(mysql));
+  }
+
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, SL(query));
@@ -3256,7 +3262,9 @@ static int test_datetime_ranges(MYSQL *mysql)
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
-  FAIL_IF(mysql_warning_count(mysql) != 2, "warning_count != 2");
+
+  if (mariadb_connection(mysql))
+    FAIL_IF(mysql_warning_count(mysql) != 2, "warning_count != 2");
 
   if (verify_col_data(mysql, "t1", "day_ovfl", "838:59:59"))
     goto error;
@@ -4975,10 +4983,16 @@ static int test_bit2tiny(MYSQL *mysql)
 
 static int test_reexecute(MYSQL *mysql)
 {
-    MYSQL_STMT *stmt;
+  MYSQL_STMT *stmt;
   MYSQL_BIND ps_params[3];  /* input parameter buffers */
   int        int_data[3];   /* input/output values */
   int        rc;
+
+  if (!is_mariadb)
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
 
   /* set up stored procedure */
   rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");

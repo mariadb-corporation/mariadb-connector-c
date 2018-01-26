@@ -195,8 +195,11 @@ static int test_cuted_rows(MYSQL *mysql)
   rc= mysql_query(mysql, "INSERT INTO t2 SELECT * FROM t1");
   check_mysql_rc(rc, mysql);
 
-  count= mysql_warning_count(mysql);
-  FAIL_UNLESS(count == 2, "warnings != 2");
+  if (mariadb_connection(mysql))
+  {
+    count= mysql_warning_count(mysql);
+    FAIL_UNLESS(count == 2, "warnings != 2");
+  }
 
   rc= mysql_query(mysql, "SHOW WARNINGS");
   check_mysql_rc(rc, mysql);
@@ -207,8 +210,12 @@ static int test_cuted_rows(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 2, "rowcount != 2");
-  mysql_free_result(result);
+  
+  if (mariadb_connection(mysql))
+  {
+    FAIL_UNLESS(rc == 2, "rowcount != 2");
+    mysql_free_result(result);
+  }
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES('junk'), (876789)");
   check_mysql_rc(rc, mysql);
@@ -242,7 +249,7 @@ static int test_parse_error_and_bad_length(MYSQL *mysql)
 
   rc= mysql_query(mysql, "SHOW DATABAAAA");
   FAIL_UNLESS(rc, "Error expected");
-  rc= mysql_real_query(mysql, "SHOW DATABASES", 100);
+  rc= mysql_real_query(mysql, "SHOW DATABASES\0AAA", 18);
   FAIL_UNLESS(rc, "Error expected");
 
   stmt= mysql_stmt_init(mysql);

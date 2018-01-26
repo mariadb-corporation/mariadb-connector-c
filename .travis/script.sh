@@ -53,8 +53,9 @@ cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_OPENSSL=OFF
 make
 
 export MYSQL_TEST_HOST=mariadb.example.com
-export MYSQL_TEST_DB=test
+export MYSQL_TEST_DB=ctest
 export MYSQL_TEST_USER=bob
+export MYSQL_TEST_PORT=3305
 
 ###################################################################################################################
 # run test suite

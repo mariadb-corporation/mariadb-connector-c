@@ -31,6 +31,11 @@ static int test_multi_result(MYSQL *mysql)
   my_bool    is_null[3];    /* output value nullability */
   int        rc, i;
 
+  if (!is_mariadb)
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
   /* set up stored procedure */
   rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
@@ -223,6 +228,12 @@ int test_sp_reset(MYSQL *mysql)
   MYSQL_BIND bind[3];
   const char *stmtstr= "CALL P1(?,?,?)";
 
+  if (!is_mariadb)
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
+
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
 
@@ -278,6 +289,11 @@ int test_sp_reset1(MYSQL *mysql)
   char tmp[20];
   const char *stmtstr= "CALL P1(?)";
 
+  if (!is_mariadb)
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE PROCEDURE p1(OUT p_out VARCHAR(19))" 
@@ -336,6 +352,11 @@ int test_sp_reset2(MYSQL *mysql)
   long l[4];
   const char *stmtstr= "CALL P1()";
 
+  if (!is_mariadb)
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
   memset(l, 0, sizeof(l));
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");

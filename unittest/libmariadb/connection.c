@@ -34,6 +34,12 @@ static int test_conc66(MYSQL *my)
   FILE *fp;
   char query[1024];
 
+  if (!mariadb_connection(my))
+  {
+    diag("MySQL travis -> SKIP");
+    return SKIP;
+  }
+
   if (!(fp= fopen("./my-conc66-test.cnf", "w")))
     return FAIL;
 
@@ -41,8 +47,6 @@ static int test_conc66(MYSQL *my)
   fprintf(fp, "user=foo\n");
   fprintf(fp, "[conc-66]\n");
   fprintf(fp, "user=conc66\n");
-  fprintf(fp, "port=3306\n");
-  fprintf(fp, "enable-local-infile\n");
   fprintf(fp, "password='test\\\";#test'\n");
 
   fclose(fp);
@@ -52,7 +56,7 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my-conc66-test.cnf");
   check_mysql_rc(rc, mysql);
 
-  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname ? hostname : "localhost");
+  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, this_host);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
@@ -64,7 +68,7 @@ static int test_conc66(MYSQL *my)
     return FAIL;
   }
   
-  sprintf(query, "DROP user conc66@%s", hostname ? hostname : "localhost");
+  sprintf(query, "DROP user 'conc66'@'%s'", this_host);
   rc= mysql_query(my, query);
 
   check_mysql_rc(rc, my);
@@ -83,6 +87,11 @@ static int test_bug20023(MYSQL *mysql)
   int sql_big_selects_5;
   int rc;
 
+  if (!mariadb_connection(mysql))
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
   if (mysql_get_server_version(mysql) < 50100) {
     diag("Test requires MySQL Server version 5.1 or above");
     return SKIP;
@@ -789,13 +798,20 @@ static int test_bind_address(MYSQL *my)
   char query[128];
   int rc;
 
+  if (!bind_addr)
+  {
+    diag("No bind address specified");
+    return SKIP;
+  }
+
+
   if (!hostname || !strcmp(hostname, "localhost"))
   {
     diag("test doesn't work with unix sockets");
     return SKIP;
   }
 
-  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", username, bind_addr);
   rc= mysql_query(my, query);
 
   sprintf(query, "CREATE USER '%s'@'%s'", username, bind_addr);
@@ -805,12 +821,6 @@ static int test_bind_address(MYSQL *my)
   sprintf(query, "GRANT ALL ON %s.* TO '%s'@'%s'", schema, username, bind_addr);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
-
-  if (!bind_addr)
-  {
-    diag("No bind address specified");
-    return SKIP;
-  }
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_BIND, bind_addr);
@@ -1083,6 +1093,12 @@ static int test_auth256(MYSQL *my)
   if (!num_rows)
   {
     diag("server doesn't support sha256 authentication");
+    return SKIP;
+  }
+
+  if (!mysql_client_find_plugin(mysql, "sha256_password", 0))
+  {
+    diag("sha256_password not found");
     return SKIP;
   }
 

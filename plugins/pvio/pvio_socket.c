@@ -1000,13 +1000,10 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
 #ifndef _WIN32
   memset(&poll_fd, 0, sizeof(struct pollfd));
   poll_fd.events= POLLPRI | POLLIN;
-  poll_fd.revents= POLLERR;
   poll_fd.fd= csock->socket;
 
   res= poll(&poll_fd, 1, 0);
   if (res <= 0) /* timeout or error */
-    return FALSE;
-  if (!(poll_fd.revents & POLLERR))
     return FALSE;
   if (!(poll_fd.revents & (POLLIN | POLLPRI)))
     return FALSE;
@@ -1021,7 +1018,8 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
   FD_ZERO(&sfds);
   FD_SET(csock->socket, &sfds);
 
-  res= select((int)csock->socket + 1, &sfds, NULL, NULL, &tv);
+  if ((res= select((int)csock->socket + 1, &sfds, NULL, NULL, &tv)) < 0)
+    return 0;
   if (res > 0 && FD_ISSET(csock->socket, &sfds))
     return TRUE;
   return FALSE;

@@ -287,6 +287,13 @@ static int test_cursors_with_procedure(MYSQL *mysql)
   {
     "SELECT * FROM t1 procedure analyse()"
   };
+
+  if (!mariadb_connection(mysql))
+  {
+    diag("procedure analyse is deprecated/removed in MySQL");
+    return SKIP;
+  }
+
   FAIL_IF(fetch_n(mysql, queries, sizeof(queries)/sizeof(*queries), USE_ROW_BY_ROW_FETCH), "fetch_n failed");
   FAIL_IF(fetch_n(mysql, queries, sizeof(queries)/sizeof(*queries), USE_STORE_RESULT), "fetch_n failed");
 

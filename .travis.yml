@@ -5,6 +5,11 @@ addons:
   hosts:
     - mariadb.example.com
 
+before_script:
+  # Disable services enabled by default
+  - sudo /etc/init.d/mysql stop
+
+
 before_install:
   - chmod +x .travis/script.sh
   - chmod +x .travis/gen-ssl.sh

@@ -540,6 +540,12 @@ static int test_bug30472(MYSQL *mysql)
     diag("Test requires MySQL Server version 5.1 or above");
     return SKIP;
   }
+
+  if (!mariadb_connection(mysql))
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
   /* Retrieve character set information. */
 
   mysql_set_character_set(mysql, "latin1");

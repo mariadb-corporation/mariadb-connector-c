@@ -2087,17 +2087,23 @@ static int test_bug36004(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL("select 1"));
   check_stmt_rc(rc, stmt);
 
-  FAIL_UNLESS(mysql_warning_count(mysql) == 0, "No warning expected");
-  query_int_variable(mysql, "@@warning_count", &warning_count);
-  FAIL_UNLESS(warning_count, "warning expected");
+  if (mariadb_connection(mysql))
+  {
+    FAIL_UNLESS(mysql_warning_count(mysql) == 0, "No warning expected");
+    query_int_variable(mysql, "@@warning_count", &warning_count);
+    FAIL_UNLESS(warning_count, "warning expected");
+  }
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   FAIL_UNLESS(mysql_warning_count(mysql) == 0, "No warning expected");
   mysql_stmt_close(stmt);
 
-  query_int_variable(mysql, "@@warning_count", &warning_count);
-  FAIL_UNLESS(warning_count, "Warning expected");
+  if (mariadb_connection(mysql))
+  {
+    query_int_variable(mysql, "@@warning_count", &warning_count);
+    FAIL_UNLESS(warning_count, "Warning expected");
+  }
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
@@ -2731,6 +2737,11 @@ static int test_bug5315(MYSQL *mysql)
   const char *stmt_text;
   int rc;
 
+  if (!mariadb_connection(mysql))
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
 
   stmt_text= "SELECT 1";
   stmt= mysql_stmt_init(mysql);
@@ -3456,6 +3467,11 @@ static int test_explain_bug(MYSQL *mysql)
   MYSQL_RES  *result;
   int        rc;
 
+  if (!mariadb_connection(mysql))
+  {
+    diag("Explain output differs between MariaDB and MySQL");
+    return SKIP;
+  }
 
   mysql_autocommit(mysql, TRUE);
 
@@ -4286,8 +4302,11 @@ static int test_conc179(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(stmtstr));
   check_stmt_rc(rc, stmt);
 
-  FAIL_IF(mysql_warning_count(mysql) < 2, "expected 2 or more warnings");
-  FAIL_IF(mysql_stmt_warning_count(stmt) < 2, "expected 2 or more warnings");
+  if (mariadb_connection(mysql) &&
+      mysql_get_server_version(mysql) > 100100)
+  {
+    FAIL_IF(mysql_warning_count(mysql) < 2, "expected 2 or more warnings");
+  }
 
   mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");

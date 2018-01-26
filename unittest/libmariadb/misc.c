@@ -171,6 +171,11 @@ static int test_bug31418(MYSQL *unused __attribute__((unused)))
 {
  int i;
   /* Run test case for BUG#31418 for three different connections. */
+  if (!is_mariadb)
+  {
+    diag("Test fails with MySQL server");
+    return SKIP;
+  }
 
   for (i=0; i < 3; i++)
     if (bug31418_impl())
@@ -233,6 +238,12 @@ static int test_frm_bug(MYSQL *mysql)
   char       data_dir[FN_REFLEN];
   char       test_frm[FN_REFLEN];
   int        rc;
+
+  if (!is_mariadb)
+  {
+    diag("MariaDB server required");
+    return SKIP;
+  }
 
   mysql_autocommit(mysql, TRUE);
 
@@ -781,6 +792,13 @@ static int test_bug49694(MYSQL *mysql)
 
   rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE 'data.csv' INTO TABLE enclist "
                          "FIELDS TERMINATED BY '.' LINES TERMINATED BY '\r\n'");
+  if (mysql_errno(mysql) == ER_NOT_ALLOWED_COMMAND)
+  {
+    rc= mysql_query(mysql, "DROP TABLE IF EXISTS enclist");
+    check_mysql_rc(rc, mysql);
+    diag("Server doesn't support LOAD DATA LOCAL INFILE");
+    return SKIP;
+  }
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "DELETE FROM enclist");
@@ -807,6 +825,14 @@ static int test_conc49(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE conc49 (a int, b int, c int) Engine=InnoDB DEFAULT CHARSET=latin1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './sample.csv' INTO TABLE conc49 FIELDS ESCAPED BY ' ' TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\r\n'");
+
+  if (mysql_errno(mysql) == ER_NOT_ALLOWED_COMMAND)
+  {
+    rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc49");
+    check_mysql_rc(rc, mysql);
+    diag("Server doesn't support LOAD DATA LOCAL INFILE");
+    return SKIP;
+  }
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "SELECT a FROM conc49");
@@ -1063,6 +1089,9 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  diag("run this test manually, since it will not work if there is a my.cnf file already present");
+  return SKIP;
+
   if (!env)
     env= "/tmp";
 
@@ -1188,7 +1217,10 @@ static int test_server_status(MYSQL *mysql)
 {
   int rc;
   unsigned int server_status;
+  unsigned long server_capabilities;
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &server_capabilities);
 
   rc= mysql_autocommit(mysql, 1);
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);
@@ -1223,8 +1255,11 @@ static int test_server_status(MYSQL *mysql)
   FAIL_IF(!(server_status & SERVER_STATUS_DB_DROPPED),
           "DB_DROP flag not set");
 
-  FAIL_IF(!(server_status & SERVER_SESSION_STATE_CHANGED),
-          "SESSION_STATE_CHANGED flag not set");
+  if (server_capabilities & CLIENT_SESSION_TRACKING)
+  {
+    FAIL_IF(!(server_status & SERVER_SESSION_STATE_CHANGED),
+            "SESSION_STATE_CHANGED flag not set");
+  }
 
   rc= mysql_select_db(mysql, schema);
   check_mysql_rc(rc, mysql);
@@ -1242,7 +1277,7 @@ static int test_wl6797(MYSQL *mysql)
   my_ulonglong res;
 
   if (mysql_get_server_version(mysql) < 50703 ||
-      (mariadb_connection(mysql) && mysql_get_server_version(mysql) < 100203))
+      (is_mariadb && mysql_get_server_version(mysql) < 100203))
   {
     diag("Skipping test_wl6797: "
             "tested feature does not exist in versions before MySQL 5.7.3 and MariaDB 10.2\n");
