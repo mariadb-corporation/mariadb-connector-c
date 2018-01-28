@@ -46,16 +46,15 @@ ls -lrt ${SSLCERT}
 DEBIAN_FRONTEND=noninteractive sudo apt-get install --allow-unauthenticated -y --force-yes -m unixodbc-dev
 time git clone --depth 1 "https://github.com/MariaDB/mariadb-connector-c.git" build
 cd build
-#git fetch --all --tags --prune
-#git checkout tags/${CONNECTOR_C_VERSION} -b branch_odbc
 
-cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_OPENSSL=OFF 
+cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_SSL=OPENSSL
 make
 
 export MYSQL_TEST_HOST=mariadb.example.com
 export MYSQL_TEST_DB=ctest
 export MYSQL_TEST_USER=bob
 export MYSQL_TEST_PORT=3305
+# todo: plugin dir
 
 ###################################################################################################################
 # run test suite
