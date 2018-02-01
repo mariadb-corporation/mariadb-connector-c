@@ -29,10 +29,12 @@ main () {
   local caCertFile="${sslDir}/ca.crt"
   local caKeyFile="${sslDir}/ca.key"
   local certFile="${sslDir}/server.crt"
+  local certShaFile="${sslDir}/server-cert.sha1"
   local keyFile="${sslDir}/server.key"
   local csrFile=$(mktemp)
-  local clientCertFile="${sslDir}/client.crt"
-  local clientKeyFile="${sslDir}/client.key"
+  local clientCertFile="${sslDir}/client-cert.pem"
+  local clientKeyFile="${sslDir}/client-key.pem"
+  local clientEncryptedKeyFile="${sslDir}/client-key-enc.pem"
   local clientKeystoreFile="${sslDir}/client-keystore.jks"
   local fullClientKeystoreFile="${sslDir}/fullclient-keystore.jks"
   local tmpKeystoreFile=$(mktemp)
@@ -89,6 +91,26 @@ main () {
     -keyout "${clientKeyFile}" \
     -out "${clientReqFile}"
 
+  log "Generating password protected client key file"
+  openssl rsa \
+     -aes256 \
+     -in "${clientKeyFile}" \
+     -out "${clientEncryptedKeyFile}" \
+     -passout pass:qwerty
+
+   log "Generating finger print of server certificate"
+   openssl x509 \
+     -noout \
+     -fingerprint \
+     -sha1 \
+     -inform pem \
+     -in "${certFile}" | \
+     sed -e  "s/SHA1 Fingerprint=//g" \
+     > "${certShaFile}"
+
+  log "copy ca file"
+    cp "${caCertFile}" "${sslDir}/cacert.pem"
+
   openssl x509 \
     -req \
     -in "${clientReqFile}" \
@@ -118,7 +140,6 @@ main () {
     -out "${pcks12FullKeystoreFile}" \
     -name "mysqlAlias" \
     -passout pass:kspass
-
 
 
   # Clean up CSR file:

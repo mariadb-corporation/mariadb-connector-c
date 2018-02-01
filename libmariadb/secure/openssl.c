@@ -79,6 +79,7 @@ static long ma_tls_version_options(const char *version)
        disable_all_protocols;
 
   protocol_options= disable_all_protocols=
+    SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
     SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2;
 
   if (!version)
@@ -512,7 +513,7 @@ void *ma_tls_init(MYSQL *mysql)
 {
   SSL *ssl= NULL;
   SSL_CTX *ctx= NULL;
-  long options= SSL_OP_ALL;
+  long options= SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
 #ifdef HAVE_TLS_SESSION_CACHE
   MA_SSL_SESSION *session= ma_tls_get_session(mysql);
 #endif

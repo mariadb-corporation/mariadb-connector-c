@@ -140,6 +140,7 @@ static char *username = 0;
 static int force_tls= 0;
 static char *this_host= 0;
 static uchar is_mariadb= 0;
+static const char *travis_test;
 /*
 static struct my_option test_options[] =
 {
@@ -476,6 +477,8 @@ static int reset_connection(MYSQL *mysql) {
  */
 void get_envvars() {
   char  *envvar;
+
+  travis_test= getenv("MYSQL_TEST_TRAVIS");
 
   if (!hostname && (envvar= getenv("MYSQL_TEST_HOST")))
     hostname= envvar;
