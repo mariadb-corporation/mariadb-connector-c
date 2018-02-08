@@ -64,6 +64,10 @@
 #define SOCKET_ERROR -1
 #endif
 
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET -1
+#endif
+
 #define DNS_TIMEOUT 30
 
 #ifndef O_NONBLOCK
@@ -732,7 +736,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     return 1;
   }
   pvio->data= (void *)csock;
-  csock->socket= -1;
+  csock->socket= INVALID_SOCKET;
   mysql= pvio->mysql= cinfo->mysql;
   pvio->type= cinfo->type;
 
@@ -741,7 +745,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 #ifndef _WIN32
 #ifdef HAVE_SYS_UN_H
     struct sockaddr_un UNIXaddr;
-    if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == SOCKET_ERROR)
+    if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == INVALID_SOCKET)
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_SOCKET_CREATE_ERROR, unknown_sqlstate, 0, errno);
       goto error;
@@ -843,7 +847,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     {
       csock->socket= socket(save_res->ai_family, save_res->ai_socktype, 
                             save_res->ai_protocol);
-      if (csock->socket == SOCKET_ERROR)
+      if (csock->socket == INVALID_SOCKET)
         /* Errors will be handled after loop finished */
         continue;
 
@@ -881,7 +885,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     if (bind_res)
       freeaddrinfo(bind_res);
 
-    if (csock->socket == SOCKET_ERROR)
+    if (csock->socket == INVALID_SOCKET)
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_IPSOCK_ERROR, SQLSTATE_UNKNOWN, ER(CR_IPSOCK_ERROR),
                          socket_errno);
@@ -919,7 +923,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   return 0;
 error:
   /* close socket: MDEV-10891 */
-  if (csock->socket != -1)
+  if (csock->socket != INVALID_SOCKET)
     closesocket(csock->socket);
   if (pvio->data)
   {
@@ -941,11 +945,10 @@ my_bool pvio_socket_close(MARIADB_PVIO *pvio)
   if (pvio->data)
   {
     csock= (struct st_pvio_socket *)pvio->data;
-    if (csock && csock->socket != -1)
+    if (csock && csock->socket != INVALID_SOCKET)
     {
-      r= shutdown(csock->socket ,2);
       r= closesocket(csock->socket);
-      csock->socket= -1;
+      csock->socket= INVALID_SOCKET;
     }
     free((gptr)pvio->data);
     pvio->data= NULL;

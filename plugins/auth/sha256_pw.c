@@ -229,14 +229,14 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   der_buffer_len= packet_length;
   /* Load pem and convert it to binary object. New length will be returned
      in der_buffer_len */
-  if (!(der_buffer= ma_load_pem(filebuffer ? filebuffer : packet, &der_buffer_len)))
+  if (!(der_buffer= ma_load_pem(filebuffer ? filebuffer : (char *)packet, &der_buffer_len)))
     goto error;
 
   /* Create context and load public key */
   if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO,
                            der_buffer, der_buffer_len,
                            CRYPT_ENCODE_ALLOC_FLAG, NULL,
-                           &publicKeyInfo, &publicKeyInfoLen))
+                           &publicKeyInfo, (DWORD *)&publicKeyInfoLen))
     goto error;
   LocalFree(der_buffer);
 
@@ -268,7 +268,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (RSA_public_encrypt(pwlen, (unsigned char *)passwd, rsa_enc_pw, pubkey, RSA_PKCS1_OAEP_PADDING) < 0)
     goto error;
 #elif defined(HAVE_WINCRYPT)
-  if (!CryptEncrypt(pubkey, 0, TRUE, CRYPT_OAEP, passwd, &pwlen, MAX_PW_LEN))
+  if (!CryptEncrypt(pubkey, 0, TRUE, CRYPT_OAEP, passwd, (DWORD *)&pwlen, MAX_PW_LEN))
     goto error;
   /* Windows encrypts as little-endian, while server (openssl) expects
      big-endian, so we have to revert the string */

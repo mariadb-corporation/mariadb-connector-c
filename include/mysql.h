@@ -440,7 +440,7 @@ struct st_mysql_client_plugin
   MYSQL_CLIENT_PLUGIN_HEADER
 };
 
-struct st_mysql_client_plugin * STDCALL
+struct st_mysql_client_plugin *
 mysql_load_plugin(struct st_mysql *mysql, const char *name, int type,
                   int argc, ...);
 struct st_mysql_client_plugin * STDCALL
@@ -493,7 +493,7 @@ const char * STDCALL mysql_character_set_name(MYSQL *mysql);
 void STDCALL mysql_get_character_set_info(MYSQL *mysql, MY_CHARSET_INFO *cs);
 int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname);
 
-my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...);
+my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...);
 my_bool STDCALL mariadb_get_info(MYSQL *mysql, enum mariadb_value value, void *arg);
 MYSQL *		STDCALL mysql_init(MYSQL *mysql);
 int		STDCALL mysql_ssl_set(MYSQL *mysql, const char *key,
@@ -570,8 +570,8 @@ MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_name(const char *csname);
 MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr);
 size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs,
                                       char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode);
-int STDCALL mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...);
-int STDCALL mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...);
+int mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...);
+int mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...);
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg);
 unsigned long STDCALL mysql_hex_string(char *to, const char *from, unsigned long len);
 my_socket STDCALL mysql_get_socket(MYSQL *mysql);

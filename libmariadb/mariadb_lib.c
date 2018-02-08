@@ -526,13 +526,6 @@ void read_user_name(char *name)
 
 #endif
 
-#ifdef _WIN32
-static my_bool is_NT(void)
-{
-  char *os=getenv("OS");
-  return (os && !strcmp(os, "Windows_NT")) ? 1 : 0;
-}
-#endif
 
 /**************************************************************************
 ** Shut down connection
