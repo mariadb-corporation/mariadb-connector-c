@@ -45,10 +45,9 @@ Cambridge, MA 02139, USA.  */
 #define const
 #endif
 #endif
-
-#include <ma_global.h>				/* Changes for mysys */
-#include <ma_string.h>
-
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 /* Comment out all this code if we are using the GNU C Library, and are not
    actually compiling the library itself.  This code is part of the GNU C
    Library, but also included in many other GNU distributions.	Compiling

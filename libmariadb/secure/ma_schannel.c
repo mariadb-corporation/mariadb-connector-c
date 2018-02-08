@@ -501,7 +501,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
 
     if (rc == SEC_E_OK  ||
         rc == SEC_I_CONTINUE_NEEDED ||
-        FAILED(rc) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR))
+        (FAILED(rc) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR)))
     {
       if(OutBuffers.cbBuffer && OutBuffers.pvBuffer)
       {

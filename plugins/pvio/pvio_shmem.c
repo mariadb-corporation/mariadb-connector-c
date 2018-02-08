@@ -243,7 +243,7 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   char *shm_name, *shm_suffix, *shm_prefix;
   uchar i= 0;
   int len;
-  DWORD cid;
+  int cid;
   DWORD dwDesiredAccess= EVENT_MODIFY_STATE | SYNCHRONIZE;
   HANDLE hdlConnectRequest= NULL,
          hdlConnectRequestAnswer= NULL,

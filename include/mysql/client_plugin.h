@@ -176,7 +176,7 @@ typedef struct st_mysql_client_plugin_REMOTEIO
   @retval
   a pointer to the loaded plugin, or NULL in case of a failure
 */
-struct st_mysql_client_plugin * STDCALL
+struct st_mysql_client_plugin *
 mysql_load_plugin(struct st_mysql *mysql, const char *name, int type,
                   int argc, ...);
 

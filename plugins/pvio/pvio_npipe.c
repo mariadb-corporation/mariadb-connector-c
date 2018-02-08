@@ -162,7 +162,6 @@ end:
 
 int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
-  int r= -1;
   DWORD status;
   int save_error;
   struct st_pvio_npipe *cpipe= NULL;

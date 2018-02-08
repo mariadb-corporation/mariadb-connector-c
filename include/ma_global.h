@@ -303,7 +303,7 @@ typedef unsigned short ushort;
 #define my_reinterpret_cast(A) (A)
 #define my_const_cast(A) (A)
 #endif
-#if !defined(__attribute__) && (defined(__cplusplus) || !defined(__GNUC__)  || __GNUC__ == 2 && __GNUC_MINOR__ < 8)
+#if !defined(__GNUC__) && !defined(__clang__)
 #define __attribute__(A)
 #endif
 
