@@ -38,7 +38,7 @@ do {\
 } while (0);
 */
 
-auth_plugin_t native_password_client_plugin=
+auth_plugin_t mysql_native_password_client_plugin=
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
@@ -97,8 +97,6 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   return CR_OK;
 }
 
-
-
 static int send_change_user_packet(MCPVIO_EXT *mpvio,
                                    const uchar *data, int data_len)
 {
@@ -154,7 +152,7 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
     if (mysql->options.init_command)
     {
       end= (char *)mysql_net_store_length((uchar *)end, 1 + init_command_len);
-      *end++= COM_MULTI;
+      *end++= (char)COM_MULTI;
       end= ma_send_init_command(mysql, (unsigned char *)end);
     }
     else
@@ -326,7 +324,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     if (mysql->options.init_command)
     {
       end= (char *)mysql_net_store_length((uchar *)end, 1 + init_command_len);
-      *end++= COM_MULTI;
+      *end++= (char)COM_MULTI;
       end= ma_send_init_command(mysql, (unsigned char *)end);
     }
     else
@@ -343,7 +341,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   }
   free(buff);
   return 0;
-  
+
 error:
   free(buff);
   return 1;
@@ -546,11 +544,11 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   else
   {
     if (mysql->server_capabilities & CLIENT_PROTOCOL_41)
-      auth_plugin= &native_password_client_plugin;
+      auth_plugin= &mysql_native_password_client_plugin;
     else
     {
       if (!(auth_plugin= (auth_plugin_t*)mysql_client_find_plugin(mysql,
-                         "old_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
+                         "mysql_old_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
         return 1; /* not found */
     }
     auth_plugin_name= auth_plugin->name;

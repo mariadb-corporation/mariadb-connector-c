@@ -1383,7 +1383,7 @@ static int test_long_data_str1(MYSQL *mysql)
   int        rc, i, rowcount= 0;
   char       data[255];
   long       length;
-  size_t     max_blob_length, blob_length, length1;
+  unsigned long max_blob_length, blob_length, length1;
   my_bool    true_value;
   MYSQL_RES  *result;
   MYSQL_BIND my_bind[2];
@@ -1519,6 +1519,7 @@ static int test_long_data_str1(MYSQL *mysql)
   FAIL_UNLESS(rc == MYSQL_DATA_TRUNCATED, "truncation expected");
   FAIL_UNLESS(my_bind[0].error_value, "No error value");
   FAIL_UNLESS(strlen(data) == 16, "Invalid string length");
+  diag("blob_length: %lu  max_blob_length: %lu", (unsigned long)blob_length, (unsigned long)max_blob_length);
   FAIL_UNLESS(blob_length == max_blob_length, "blob_length != max_blob_length");
 
   /* Fetch all data */

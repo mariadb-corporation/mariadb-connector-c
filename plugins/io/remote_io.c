@@ -1,5 +1,5 @@
 /************************************************************************************
- * Copyright (C) 2015, 2016 Monty Program AB
+ * Copyright (C) 2015 - 2018 MariaDB Corporation AB
  * Copyright (c) 2003 Simtec Electronics
  *
  * Re-implemented by Vincent Sanders <vince@kyllikki.org> with extensive
@@ -91,7 +91,7 @@ typedef struct
  
 CURLM *multi_handle= NULL;
 
-#ifndef HAVE_REMOTEIO_DYNAMIC 
+#ifndef PLUGIN_DYNAMIC
 MARIADB_REMOTEIO_PLUGIN remote_io_plugin=
 #else
 MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declaration_ =

@@ -246,7 +246,7 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
               {
                 size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len);
                 if (len > stmt->fields[i].max_length)
-                  stmt->fields[i].max_length= len;
+                  stmt->fields[i].max_length= (unsigned long)len;
               }
               else if (!stmt->fields[i].max_length)
               {

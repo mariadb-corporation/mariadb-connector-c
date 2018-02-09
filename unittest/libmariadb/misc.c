@@ -713,6 +713,9 @@ static int test_wl4284_1(MYSQL *mysql)
   MYSQL_ROW row;
   MYSQL_RES *result;
 
+  diag("Test temporarily disabled");
+  return SKIP;
+
   if (mysql_get_server_version(mysql) < 60000) {
     diag("Test requires MySQL Server version 6.0 or above");
     return SKIP;

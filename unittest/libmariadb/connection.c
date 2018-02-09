@@ -666,7 +666,7 @@ int test_connection_timeout(MYSQL *unused __attribute__((unused)))
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
   mysql_close(mysql);
-  FAIL_IF(elapsed > 2 * timeout, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored")
   return OK;
 }
 
@@ -686,7 +686,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
   mysql_close(mysql);
-  FAIL_IF(elapsed > 2 * timeout, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored")
   return OK;
 }
 
@@ -711,7 +711,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   }
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
-  FAIL_IF(elapsed > timeout + 1, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > timeout + 1, "timeout ignored")
 
   mysql_close(mysql);
   mysql= mysql_init(NULL);
@@ -997,6 +997,11 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   FILE *fp;
   int i;
 
+#ifdef _WIN32
+  diag("Test doesn't work on Windows");
+  return SKIP;
+#endif
+
   if (!(fp= fopen("./dummy_sock", "w")))
   {
     diag("couldn't create dummy socket");
@@ -1043,7 +1048,9 @@ static int test_reset(MYSQL *mysql)
   }
   check_mysql_rc(rc, mysql);
 
-  FAIL_IF(mysql_affected_rows(mysql) != ~(unsigned long)0, "Expected 0 rows");
+  diag("affected_rows: %llu", mysql_affected_rows(mysql));
+
+  FAIL_IF(mysql_affected_rows(mysql) != ~(unsigned long long)0, "Expected 0 rows");
 
   rc= mysql_query(mysql, "SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
@@ -1361,7 +1368,6 @@ static int test_conc277(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql;
 
-
   mysql_library_end();
   mysql= mysql_init(NULL);
   my_test_connect(mysql, hostname, username, password, schema,
@@ -1466,12 +1472,11 @@ static int test_mdev14647(MYSQL *my __attribute__((unused)))
 struct my_tests_st my_tests[] = {
   {"test_mdev14647", test_mdev14647, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc297", test_conc297, TEST_CONNECTION_NONE, 0, NULL,  NULL},
-  {"test_conc277", test_conc277, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_1", test_mdev9059_1, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_2", test_mdev9059_2, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev9059_3", test_mdev9059_3, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
-  {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
+  {"test_mdev13100", test_mdev13100, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_auth256", test_auth256, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_reset", test_reset, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_unix_socket_close", test_unix_socket_close, TEST_CONNECTION_NONE, 0, NULL,  NULL},
@@ -1493,6 +1498,8 @@ struct my_tests_st my_tests[] = {
   {"test_connection_timeout", test_connection_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_connection_timeout2", test_connection_timeout2, TEST_CONNECTION_NONE, 0, NULL, NULL}, 
   {"test_connection_timeout3", test_connection_timeout3, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  /* this must be last test, since default connection will be dropped */
+  {"test_conc277", test_conc277, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

@@ -63,8 +63,8 @@ struct st_ma_pvio_methods pvio_shm_methods= {
   pvio_shm_shutdown
 };
 
-#ifndef HAVE_SHMEM_DYNAMIC
-MARIADB_PVIO_PLUGIN pvio_shmem_plugin=
+#ifndef PLUGIN_DYNAMIC
+MARIADB_PVIO_PLUGIN pvio_shmem_client_plugin=
 #else
 MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_=
 #endif
@@ -249,11 +249,11 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
          hdlConnectRequestAnswer= NULL,
          file_map= NULL;
   LPVOID map= NULL;
-  PVIO_SHM *pvio_shm= (PVIO_SHM*)LocalAlloc(LMEM_ZEROINIT, sizeof(PVIO_SHM));       
+  PVIO_SHM *pvio_shm= (PVIO_SHM*)LocalAlloc(LMEM_ZEROINIT, sizeof(PVIO_SHM)); 
 
   if (!pvio_shm)
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
+    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, "HY000", 0, "");
     return 0;
   }
 
@@ -267,7 +267,7 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 
   if (!(shm_name= (char *)LocalAlloc(LMEM_ZEROINIT, strlen(base_memory_name) + 40)))
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
+    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, "HY000", 0, "");
     goto error;
   }
 
@@ -287,14 +287,14 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   }
   if (!hdlConnectRequest)
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Opening CONNECT_REQUEST event failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Opening CONNECT_REQUEST event failed", GetLastError());
     goto error;
   }
 
   strcpy(shm_suffix, "CONNECT_ANSWER");
   if (!(hdlConnectRequestAnswer= OpenEvent(dwDesiredAccess, 0, shm_name)))
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Opening CONNECT_ANSWER event failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Opening CONNECT_ANSWER event failed", GetLastError());
     goto error;
   }
   
@@ -302,42 +302,42 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   strcpy(shm_suffix, "CONNECT_DATA");
   if (!(file_map= OpenFileMapping(FILE_MAP_WRITE, 0, shm_name)))
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "OpenFileMapping failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "OpenFileMapping failed", GetLastError());
     goto error;
   }
 
   /* try to get first 4 bytes, which represents connection_id */
   if (!(map= MapViewOfFile(file_map, FILE_MAP_WRITE, 0, 0, sizeof(cid))))
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Reading connection_id failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Reading connection_id failed", GetLastError());
     goto error;
   }
 
   /* notify server */
   if (!SetEvent(hdlConnectRequest))
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Failed sending connection request", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Failed sending connection request", GetLastError());
     goto error;
   }
 
   /* Wait for server answer */
   switch(WaitForSingleObject(hdlConnectRequestAnswer, pvio->timeout[PVIO_CONNECT_TIMEOUT])) {
   case WAIT_ABANDONED:
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Mutex was not released in time", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Mutex was not released in time", GetLastError());
     goto error;
     break;
   case WAIT_FAILED:
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Operation wait failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Operation wait failed", GetLastError());
     goto error;
     break;
   case WAIT_TIMEOUT:
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Operation timed out", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Operation timed out", GetLastError());
     goto error;
     break;
   case WAIT_OBJECT_0:
     break;
   default:
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Wait for server failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Wait for server failed", GetLastError());
     break;
   }
 
@@ -350,12 +350,12 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   pvio_shm->file_map= OpenFileMapping(FILE_MAP_WRITE, 0, shm_name);
   if (pvio_shm->file_map == NULL)
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "OpenFileMapping failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "OpenFileMapping failed", GetLastError());
     goto error;
   }
   if (!(pvio_shm->map= MapViewOfFile(pvio_shm->file_map, FILE_MAP_WRITE, 0, 0, PVIO_SHM_BUFFER_SIZE)))
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "MapViewOfFile failed", GetLastError());
+    PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "MapViewOfFile failed", GetLastError());
     goto error;
   }
 
@@ -364,7 +364,7 @@ my_bool pvio_shm_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     strcpy(shm_suffix, StrEvent[i]);
     if (!(pvio_shm->event[i]= OpenEvent(dwDesiredAccess, 0, shm_name)))
     {
-      PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, unknown_sqlstate, 0, "Couldn't create event", GetLastError());
+      PVIO_SET_ERROR(cinfo->mysql, CR_SHARED_MEMORY_CONNECT_ERROR, "HY000", 0, "Couldn't create event", GetLastError());
       goto error;
     }
   }

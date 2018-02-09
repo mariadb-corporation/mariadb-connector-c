@@ -60,7 +60,7 @@ static int auth_sha256_init(char *unused1,
     va_list);
 
 
-#ifndef HAVE_SHA256PW_DYNAMIC
+#ifndef PLUGIN_DYNAMIC
 struct st_mysql_client_plugin_AUTHENTICATION sha256_password_client_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =

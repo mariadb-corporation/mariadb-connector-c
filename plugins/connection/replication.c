@@ -1,5 +1,5 @@
 /************************************************************************************
-    Copyright (C) 2015 MariaDB Corporation AB
+    Copyright (C) 2015-2018 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -41,15 +41,15 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
 void repl_close(MYSQL *mysql);
 int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
                       size_t length, my_bool skipp_check, void *opt_arg);
-int repl_set_options(MYSQL *msql, enum mysql_option option, void *arg);
+int repl_set_optionsv(MYSQL *mysql, unsigned int option, ...);
 
 #define MARIADB_MASTER 0
 #define MARIADB_SLAVE  1
 
-struct st_mariadb_api *mariadb_api= NULL;
+static struct st_mariadb_api *libmariadb_api= NULL;
 
-#ifndef HAVE_REPLICATION_DYNAMIC
-MARIADB_CONNECTION_PLUGIN connection_replication_plugin =
+#ifndef PLUGIN_DYNAMIC
+MARIADB_CONNECTION_PLUGIN replication_client_plugin =
 #else
 MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
@@ -67,7 +67,7 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   NULL,
   repl_connect,
   repl_close,
-  repl_set_options,
+  repl_set_optionsv,
   repl_command,
   NULL,
   NULL
@@ -185,8 +185,8 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
   REPL_DATA *data= NULL;
   MA_CONNECTION_HANDLER *hdlr= mysql->extension->conn_hdlr;
 
-  if (!mariadb_api)
-    mariadb_api= mysql->methods->api;
+  if (!libmariadb_api)
+    libmariadb_api= mysql->methods->api;
 
   if ((data= (REPL_DATA *)hdlr->data))
   {
@@ -197,7 +197,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
 
   if (!(data= calloc(1, sizeof(REPL_DATA))))
   {
-    mysql->methods->set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+    mysql->methods->set_error(mysql, CR_OUT_OF_MEMORY, "HY000", 0);
     return NULL;
   }
   memset(data->pvio, 0, 2 * sizeof(MARIADB_PVIO *));
@@ -206,7 +206,7 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
     goto error;
 
   /* try to connect to master */
-  if (!(mariadb_api->mysql_real_connect(mysql, data->host[MARIADB_MASTER], user, passwd, db, 
+  if (!(libmariadb_api->mysql_real_connect(mysql, data->host[MARIADB_MASTER], user, passwd, db, 
         data->port[MARIADB_MASTER] ? data->port[MARIADB_MASTER] : port, unix_socket, clientflag)))
     goto error;
 
@@ -218,12 +218,12 @@ MYSQL *repl_connect(MYSQL *mysql, const char *host, const char *user, const char
    * connecting to slave(s) in background */
 
   /* if slave connection will fail, we will not return error but use master instead */
-  if (!(data->slave_mysql= mariadb_api->mysql_init(NULL)) ||
+  if (!(data->slave_mysql= libmariadb_api->mysql_init(NULL)) ||
       !(mysql->methods->db_connect(data->slave_mysql, data->host[MARIADB_SLAVE], user, passwd, db, 
                                    data->port[MARIADB_SLAVE] ? data->port[MARIADB_SLAVE] : port, unix_socket, clientflag)))
   {
     if (data->slave_mysql)
-      mariadb_api->mysql_close(data->slave_mysql);
+      libmariadb_api->mysql_close(data->slave_mysql);
     data->pvio[MARIADB_SLAVE]= NULL;
   }
   else
@@ -255,7 +255,7 @@ void repl_close(MYSQL *mysql)
   {
     /* restore mysql */
     data->pvio[MARIADB_SLAVE]->mysql= data->slave_mysql;
-    mariadb_api->mysql_close(data->slave_mysql);
+    libmariadb_api->mysql_close(data->slave_mysql);
     data->pvio[MARIADB_SLAVE]= NULL;
     data->slave_mysql= NULL;
   }
@@ -334,19 +334,24 @@ int repl_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
   return 0;
 }
 
-int repl_set_options(MYSQL *mysql, enum mysql_option option, void *arg)
+int repl_set_optionsv(MYSQL *mysql, unsigned int option, ...)
 {
-  REPL_DATA *data= (REPL_DATA *)mysql->extension->conn_hdlr->data; 
- 
+  REPL_DATA *data= (REPL_DATA *)mysql->extension->conn_hdlr->data;
+  va_list ap;
+  void *arg1;
+  int rc= 0;
+
+  va_start(ap, option);
+  arg1= va_arg(ap, void *);
+
   switch(option) {
   case MARIADB_OPT_CONNECTION_READ_ONLY:
-    data->read_only= *(my_bool *)arg;
-    return 0;
-/*
-  case MARIADB_OPT_CONNECTION_ROUND_ROBIN:
-    data->round_robin= *(my_bool *)arg;
-    return 0; */
+    data->read_only= *(my_bool *)arg1;
+    break;
   default:
-    return -1;
+    rc= -1;
+    break;
   }
+  va_end(ap);
+  return(rc);
 }

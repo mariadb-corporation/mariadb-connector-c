@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2013-2016 MariaDB Corporation AB
+#  Copyright (C) 2013-2018 MariaDB Corporation AB
 #
 #  Redistribution and use is allowed according to the terms of the New
 #  BSD license.
@@ -7,103 +7,85 @@
 #
 # plugin configuration
 
-MACRO(REGISTER_PLUGIN name source struct type target allow)
-  SET(PLUGIN_TYPE ${${name}})
-  IF(NOT PLUGIN_TYPE STREQUAL "OFF" AND NOT PLUGIN_TYPE)
-    SET(PLUGIN_TYPE ${type})
-  ENDIF()
-  IF(PLUGINS)
-    LIST(REMOVE_ITEM PLUGINS ${name})
-  ENDIF()
-  SET(${name}_PLUGIN_SOURCE ${source})
-  MARK_AS_ADVANCED(${name}_PLUGIN_SOURCE})
-  SET(${name}_PLUGIN_TYPE ${PLUGIN_TYPE})
-  IF(NOT ${target} STREQUAL "")
-    SET(${name}_PLUGIN_TARGET ${target})
-	MARK_AS_ADVANCED(${name}_PLUGIN_TARGET})
-  ENDIF()
-  SET(${name}_PLUGIN_STRUCT ${struct})
-  SET(${name}_PLUGIN_SOURCE ${source})
-  SET(${name}_PLUGIN_CHG ${allow})
-  SET(PLUGINS ${PLUGINS} "${name}")
-  ADD_DEFINITIONS(-DHAVE_${name}=1)
-ENDMACRO()
+include(${CC_SOURCE_DIR}/cmake/install_plugins.cmake)
+include(${CC_SOURCE_DIR}/cmake/sign.cmake)
 
-MARK_AS_ADVANCED(PLUGINS)
+FUNCTION(REGISTER_PLUGIN)
 
-# CIO
-REGISTER_PLUGIN("SOCKET" "${CC_SOURCE_DIR}/plugins/pvio/pvio_socket.c" "pvio_socket_plugin" "STATIC" pvio_socket 0)
-IF(WIN32)
-  REGISTER_PLUGIN("NPIPE" "${CC_SOURCE_DIR}/plugins/pvio/pvio_npipe.c" "pvio_npipe_plugin" "STATIC" pvio_npipe 1)
-  REGISTER_PLUGIN("SHMEM" "${CC_SOURCE_DIR}/plugins/pvio/pvio_shmem.c" "pvio_shmem_plugin" "STATIC" pvio_shmem 1)
-ENDIF()
+  SET(one_value_keywords TARGET DEFAULT TYPE)
+  SET(multi_value_keywords CONFIGURATIONS SOURCES LIBRARIES INCLUDES COMPILE_OPTIONS)
 
-# AUTHENTICATION
-IF(WIN32 OR WITH_SSL STREQUAL "OPENSSL")
-  REGISTER_PLUGIN("AUTH_SHA256PW" "${CC_SOURCE_DIR}/plugins/auth/sha256_pw.c" "sha256_password_client_plugin" "DYNAMIC" sha256_password 1)
-ENDIF()
-REGISTER_PLUGIN("AUTH_NATIVE" "${CC_SOURCE_DIR}/plugins/auth/my_auth.c" "native_password_client_plugin" "STATIC" "" 0)
-REGISTER_PLUGIN("AUTH_OLDPASSWORD" "${CC_SOURCE_DIR}/plugins/auth/old_password.c" "old_password_client_plugin" "STATIC" "" 1)
-SET(DIALOG_SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c ${CC_SOURCE_DIR}/libmariadb/get_password.c)
-REGISTER_PLUGIN("AUTH_DIALOG" "${DIALOG_SOURCES}" "auth_dialog_plugin" "DYNAMIC" dialog 1)
-REGISTER_PLUGIN("AUTH_CLEARTEXT" "${CC_SOURCE_DIR}/plugins/auth/mariadb_cleartext.c" "auth_cleartext_plugin" "DYNAMIC" "mysql_clear_password" 1)
-IF(WIN32)
-    SET(GSSAPI_SOURCES ${CC_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CC_SOURCE_DIR}/plugins/auth/sspi_client.c ${CC_SOURCE_DIR}/plugins/auth/sspi_errmsg.c)
-    REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
-ELSE()
-  IF(GSSAPI_FOUND)
-    SET(GSSAPI_SOURCES ${CC_SOURCE_DIR}/plugins/auth/auth_gssapi_client.c ${CC_SOURCE_DIR}/plugins/auth/gssapi_client.c ${CC_SOURCE_DIR}/plugins/auth/gssapi_errmsg.c)
-    REGISTER_PLUGIN("AUTH_GSSAPI" "${GSSAPI_SOURCES}" "auth_gssapi_plugin" "DYNAMIC" "auth_gssapi_client" 1)
-  ENDIF()
-ENDIF()
+  cmake_parse_arguments(CC_PLUGIN
+                        "${options}"
+                        "${one_value_keywords}"
+                        "${multi_value_keywords}"
+                        ${ARGN})
 
-#Remote_IO
-IF(CURL_FOUND)
-  IF(WIN32)
-    REGISTER_PLUGIN("REMOTEIO" "${CC_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
-  ELSE()
-    REGISTER_PLUGIN("REMOTEIO" "${CC_SOURCE_DIR}/plugins/io/remote_io.c" "remote_io_plugin" "DYNAMIC" "remote_io" 1)
-  ENDIF()
-ENDIF()
+  # overwrite default if it was specified with cmake option
+  string(TOUPPER ${CC_PLUGIN_TARGET} cc_plugin)
+  if(NOT "${CLIENT_PLUGIN_${cc_plugin}}" STREQUAL "")
+    SET(CC_PLUGIN_DEFAULT ${CLIENT_PLUGIN_${cc_plugin}})
+  endif()
 
-#Trace
-REGISTER_PLUGIN("TRACE_EXAMPLE" "${CC_SOURCE_DIR}/plugins/trace/trace_example.c" "trace_example_plugin" "OFF" "trace_example" 1)
+  # use uppercase
+  string(TOUPPER ${CC_PLUGIN_TARGET} target_name)
+  string(TOUPPER "${CC_PLUGIN_CONFIGURATIONS}" CC_PLUGIN_CONFIGURATIONS)
 
-#Connection
-REGISTER_PLUGIN("REPLICATION" "${CC_SOURCE_DIR}/plugins/connection/replication.c" "connection_replication_plugin" "OFF" "replication" 1)
-REGISTER_PLUGIN("AURORA" "${CC_SOURCE_DIR}/plugins/connection/aurora.c" "connection_aurora_plugin" "OFF" "aurora"  1)
+  if(NOT ${PLUGIN_${target_name}} STREQUAL "")
+    string(TOUPPER ${PLUGIN_${target_name}} PLUGIN_${target_name})
+    set(CC_PLUGIN_DEFAULT ${PLUGIN_${target_name}})
+  endif()
 
-# Allow registration of additional plugins
-IF(PLUGIN_CONF_FILE)
-  INCLUDE(${PLUGIN_CONF_FILE})
-ENDIF()
+# check if default value is valid
+  string(TOUPPER ${CC_PLUGIN_DEFAULT} CC_PLUGIN_DEFAULT)
+  list(FIND CC_PLUGIN_CONFIGURATIONS ${CC_PLUGIN_DEFAULT} configuration_found)
+  if(${configuration_found} EQUAL -1)
+    message(FATAL_ERROR "Invalid plugin type ${CC_PLUGIN_DEFAULT}. Allowed plugin types are ${CC_PLUGIN_CONFIGURATIONS}")
+  endif()
 
+  if(NOT ${CC_PLUGIN_DEFAULT} STREQUAL "OFF")
+    set(PLUGIN_${CC_PLUGIN_TARGET}_TYPE ${CC_PLUGIN_TYPE})
 
-SET(LIBMARIADB_SOURCES "")
+    if(${CC_PLUGIN_DEFAULT} STREQUAL "DYNAMIC")
+      set_source_files_properties(${CC_PLUGIN_SOURCES}
+                                 PROPERTIES COMPILE_FLAGS
+                                 "-DPLUGIN_DYNAMIC=1 ${CC_PLUGIN_COMPILE_OPTIONS}")
+      set(PLUGINS_DYNAMIC ${PLUGINS_DYNAMIC} ${CC_PLUGIN_TARGET} PARENT_SCOPE)
+      if(WIN32)
+        set(target ${CC_PLUGIN_TARGET})
+        set(FILE_TYPE "VFT_DLL")
+        set(FILE_DESCRIPTION "MariaDB client plugin")
+        set(FILE_VERSION ${CPACK_PACKAGE_VERSION})
+        set(ORIGINAL_FILE_NAME "${target}.dll")
+        configure_file(${CC_SOURCE_DIR}/win/resource.rc.in
+                       ${CC_BINARY_DIR}/win/${target}.rc
+                       @ONLY)
+        set(CC_PLUGIN_SOURCES ${CC_PLUGIN_SOURCES} ${CC_BINARY_DIR}/win/${target}.rc ${CC_SOURCE_DIR}/plugins/plugin.def)
+        MESSAGE(STATUS "PLugin sources: ${CC_PLUGIN_SOURCES}")
+      endif()
+      add_library(${CC_PLUGIN_TARGET} MODULE ${CC_PLUGIN_SOURCES})
+      target_link_libraries(${CC_PLUGIN_TARGET} ${CC_PLUGIN_LIBRARIES})
+      set_target_properties(${CC_PLUGIN_TARGET} PROPERTIES PREFIX "")
+      set_target_properties(${CC_PLUGIN_TARGET} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CC_BINARY_DIR}/plugins/lib")
+      if (NOT "${CC_PLUGIN_INCLUDES}" STREQUAL "")
+        target_include_directories(${CC_PLUGIN_TARGET} PRIVATE  ${CC_PLUGIN_INCLUDES})
+      endif()
+      if (${CC_TARGET_COMPILE_OPTIONS})
+        target_compile_options(${CC_PLUGIN_TARGET} ${CC_TARGET_COMPILE_OPTIONS})
+      endif()
 
-FOREACH(PLUGIN ${PLUGINS})
-  IF(${OPT}WITH_${PLUGIN}_PLUGIN AND ${${PLUGIN}_PLUGIN_CHG} GREATER 0)
-    SET(${PLUGIN}_PLUGIN_TYPE ${${OPT}WITH_${PLUGIN}_PLUGIN})
-  ENDIF()
-  IF(${PLUGIN}_PLUGIN_TYPE MATCHES "STATIC")
-    SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${${PLUGIN}_PLUGIN_SOURCE})
-    SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS}extern struct st_mysql_client_plugin ${${PLUGIN}_PLUGIN_STRUCT};\n")
-    SET(BUILTIN_PLUGINS "${BUILTIN_PLUGINS}(struct st_mysql_client_plugin *)&${${PLUGIN}_PLUGIN_STRUCT},\n")
-  ENDIF()
-  SET(plugin_config "${plugin_config}\n-- ${PLUGIN}: ${${PLUGIN}_PLUGIN_TYPE}")
-  MARK_AS_ADVANCED(${PLUGIN}_PLUGIN_TYPE)
-ENDFOREACH()
-MESSAGE1(plugin_config "Plugin configuration:${plugin_config}")
-MESSAGE1(LIBMARIADB_SOURCES "STATIC PLUGIN SOURCES: ${LIBMARIADB_SOURCES}")
-
-IF(NOT REMOTEIO_PLUGIN_TYPE MATCHES "NO")
-  FIND_PACKAGE(CURL)
-ENDIF()
-
-# since some files contain multiple plugins, remove duplicates from source files 
-LIST(REMOVE_DUPLICATES LIBMARIADB_SOURCES)
-
-CONFIGURE_FILE(${CC_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
-  ${CC_BINARY_DIR}/libmariadb/ma_client_plugin.c)
-
-MARK_AS_ADVANCED(LIBMARIADB_SOURCES)
+      if(WIN32)
+        SIGN_TARGET(${target})
+      endif()
+      INSTALL_PLUGIN(${CC_PLUGIN_TARGET} ${CMAKE_CURRENT_BINARY_DIR})
+    elseif(${CC_PLUGIN_DEFAULT} STREQUAL "STATIC")
+      set(PLUGINS_STATIC ${PLUGINS_STATIC} ${CC_PLUGIN_TARGET} PARENT_SCOPE)
+      set(LIBMARIADB_PLUGIN_CFLAGS ${LIBMARIADB_PLUGIN_CFLAGS} ${CC_PLUGIN_COMPILE_OPTIONS} PARENT_SCOPE)
+      set(LIBMARIADB_PLUGIN_INCLUDES ${LIBMARIADB_PLUGIN_INCLUDES} ${CC_PLUGIN_INCLUDES} PARENT_SCOPE)
+      set(LIBMARIADB_PLUGIN_SOURCES ${LIBMARIADB_PLUGIN_SOURCES} ${CC_PLUGIN_SOURCES} PARENT_SCOPE)
+      set(LIBMARIADB_PLUGIN_LIBS ${LIBMARIADB_PLUGIN_LIBS} ${CC_PLUGIN_LIBRARIES} PARENT_SCOPE)
+    endif()
+  else()
+    set(PLUGINS_OFF ${PLUGINS_OFF} ${CC_PLUGIN_TARGET})
+  endif()
+endfunction()

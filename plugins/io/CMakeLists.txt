@@ -1,27 +1,15 @@
-INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
-
-INCLUDE(${CC_SOURCE_DIR}/cmake/install_plugins.cmake)
-IF(WITH_SIGNCODE)
-  INCLUDE(${CC_SOURCE_DIR}/cmake/sign.cmake)
-ENDIF()
-
-IF(REMOTEIO_PLUGIN_TYPE MATCHES "DYNAMIC")
+IF (WITH_CURL)
+  INCLUDE(FindCURL)
   IF(CURL_FOUND)
-    IF(WIN32)
-      SET_VERSION_INFO("TARGET:remote_io"
-                       "FILE_TYPE:VFT_DLL"
-                       "SOURCE_FILE:plugins/io/remote_io.c"
-                       "ORIGINAL_FILE_NAME:remote_io.dll"
-                       "FILE_DESCRIPTION:Plugin for remote file access")
-    ENDIF()
-    # remote file plugin
-    INCLUDE_DIRECTORIES(${CURL_INCLUDE_DIR})
-    SET(REMOTE_IO_SOURCES ${remote_io_RC} remote_io.c)
-    ADD_DEFINITIONS(-DHAVE_REMOTEIO_DYNAMIC=1)
-    ADD_LIBRARY(remote_io MODULE ${REMOTE_IO_SOURCES} ${CC_SOURCE_DIR}/plugins/plugin.def)
-    TARGET_LINK_LIBRARIES(remote_io ${CURL_LIBRARIES})
-    SET_TARGET_PROPERTIES(remote_io PROPERTIES PREFIX "")
-    INSTALL_PLUGIN(remote_io ${CC_BINARY_DIR}/plugins/io)
-    SIGN_TARGET(remote_io)
+
+    ADD_DEFINITIONS(-DHAVE_REMOTEIO=1)
+    #remote io plugin
+    REGISTER_PLUGIN(TARGET remote_io
+                  TYPE MARIADB_CLIENT_PLUGIN_IO
+                  CONFIGURATIONS DYNAMIC STATIC OFF
+                  DEFAULT DYNAMIC
+                  SOURCES ${CC_SOURCE_DIR}/plugins/io/remote_io.c
+                  INCLUDES ${CURL_INCLUDE_DIR}
+                  LIBRARIES ${CURL_LIBRARIES})
   ENDIF()
 ENDIF()
