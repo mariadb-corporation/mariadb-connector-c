@@ -1452,7 +1452,7 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIAD
     *errorcode= errno;
     goto error;
   }
-  if ((rc= iconv(conv, (char **)&from, from_len, &to, to_len)) == (size_t)-1)
+  if ((rc= iconv(conv, IF_WIN(,(char **))&from, from_len, &to, to_len)) == (size_t)-1)
   {
     *errorcode= errno;
     goto error;

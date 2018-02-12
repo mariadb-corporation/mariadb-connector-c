@@ -268,7 +268,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (RSA_public_encrypt(pwlen, (unsigned char *)passwd, rsa_enc_pw, pubkey, RSA_PKCS1_OAEP_PADDING) < 0)
     goto error;
 #elif defined(HAVE_WINCRYPT)
-  if (!CryptEncrypt(pubkey, 0, TRUE, CRYPT_OAEP, passwd, (DWORD *)&pwlen, MAX_PW_LEN))
+  if (!CryptEncrypt(pubkey, 0, TRUE, CRYPT_OAEP, (BYTE *)passwd, (DWORD *)&pwlen, MAX_PW_LEN))
     goto error;
   /* Windows encrypts as little-endian, while server (openssl) expects
      big-endian, so we have to revert the string */
