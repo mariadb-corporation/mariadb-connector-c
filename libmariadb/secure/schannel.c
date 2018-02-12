@@ -271,7 +271,7 @@ static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t
 
     for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
     {
-      if(pos + 4 < arr_size && strcmp(cipher_map[i].openssl_name, token) == 0 ||
+      if((pos + 4 < arr_size && strcmp(cipher_map[i].openssl_name, token) == 0) ||
         (cipher_map[i].protocol <= protocol))
       {
         memcpy(arr + pos, cipher_map[i].algs, sizeof(ALG_ID)* 4);
@@ -293,7 +293,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   SC_CTX *sctx;
   SECURITY_STATUS sRet;
   ALG_ID AlgId[MAX_ALG_ID];
-  WORD validTokens = 0;
   
   if (!ctls || !ctls->pvio)
     return 1;;
@@ -311,7 +310,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
-    int i;
+    size_t i;
     DWORD protocol = 0;
 
     /* check if a protocol was specified as a cipher:
@@ -399,7 +398,6 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
-  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
   ssize_t rc, wlength= 0;
   ssize_t remain= length;
@@ -520,7 +518,7 @@ end:
 
 static const char *cipher_name(const SecPkgContext_CipherInfo *CipherInfo)
 {
-  int i;
+  size_t i;
 
   for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
   {
@@ -535,7 +533,6 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   SecPkgContext_CipherInfo CipherInfo = { SECPKGCONTEXT_CIPHERINFO_V1 };
   SECURITY_STATUS sRet;
   SC_CTX *sctx;
-  DWORD i= 0;
 
   if (!ctls || !ctls->ssl)
     return NULL;

@@ -61,7 +61,7 @@ static char *get_password(FILE *file, char *buffer, int length)
   do
   {
 #ifdef _WIN32
-    if (!ReadConsole(Hdl, &inChar, 1, &CharsProcessed, NULL) ||
+    if (!ReadConsole(Hdl, &inChar, 1, (DWORD *)&CharsProcessed, NULL) ||
         !CharsProcessed)
       break;
 #else
@@ -118,8 +118,6 @@ char* get_tty_password(char *prompt, char *buffer, int length)
 #ifdef _WIN32
   DWORD  SaveState;
   HANDLE Hdl;
-  int    Offset= 0;
-  DWORD  CharsProcessed=  0;
 
   if (prompt)
     fprintf(stderr, "%s", prompt);

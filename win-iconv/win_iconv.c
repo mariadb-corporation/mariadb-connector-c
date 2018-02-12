@@ -1774,8 +1774,8 @@ iso2022jp_mbtowc(csconv_t *cv, const uchar *buf, int bufsize, ushort *wbuf, int 
         return seterror(EILSEQ);
 
     /* reset the mode for informal sequence */
-    if (cv->mode != ISO2022_MODE(cs, shift))
-        cv->mode = ISO2022_MODE(cs, shift);
+    if (cv->mode != (DWORD)ISO2022_MODE(cs, shift))
+        cv->mode = (DWORD)ISO2022_MODE(cs, shift);
 
     return len;
 }
