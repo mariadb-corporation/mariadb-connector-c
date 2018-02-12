@@ -306,7 +306,7 @@ end:
     PCCRL_CONTEXT          A pointer to a certification context structure
 */
 
-my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char *key_file)
+my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, const CERT_CONTEXT *ctx, char *key_file)
 {
    DWORD der_buffer_len= 0;
    LPBYTE der_buffer= NULL;

@@ -2617,7 +2617,7 @@ void ma_hash_free(void *p)
   free(p);
 }
 
-int STDCALL
+int
 mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
 {
   va_list ap;
@@ -3010,7 +3010,7 @@ end:
   return(1);
 }
 
-int STDCALL
+int
 mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
 {
   va_list ap;
@@ -3650,7 +3650,7 @@ MARIADB_CHARSET_INFO * STDCALL mariadb_get_charset_by_nr(unsigned int csnr)
   return (MARIADB_CHARSET_INFO *)mysql_find_charset_nr(csnr);
 }
 
-my_bool STDCALL mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...)
+my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...)
 {
   va_list ap;
 

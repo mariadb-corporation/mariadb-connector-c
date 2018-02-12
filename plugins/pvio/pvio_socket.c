@@ -362,7 +362,7 @@ static ssize_t ma_send(my_socket socket, const uchar *buffer, size_t length, int
   sigaction(SIGPIPE, &act, &oldact);
 #endif
   do {
-    r = send(socket, buffer, IF_WIN((int)length,length), flags);
+    r = send(socket, (const char *)buffer, IF_WIN((int)length,length), flags);
   }
   while (r == -1 && IS_SOCKET_EINTR(socket_errno));
 #if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE) && !defined(_WIN32)
@@ -375,7 +375,7 @@ static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags
 {
   ssize_t r;
   do {
-   r = recv(socket, buffer, IF_WIN((int)length, length), flags);
+   r = recv(socket, (const char *)buffer, IF_WIN((int)length, length), flags);
   }
   while (r == -1 && IS_SOCKET_EINTR(socket_errno));
   return r;
@@ -423,7 +423,7 @@ ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t 
   /* Windows doesn't support MSG_DONTWAIT, so we need to set
      socket to non blocking */
   pvio_socket_blocking(pvio, 0, 0);
-  r= send(csock->socket, buffer, (int)length, 0);
+  r= send(csock->socket, (const char *)buffer, (int)length, 0);
 #endif
 
   return r;
