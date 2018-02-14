@@ -375,7 +375,7 @@ static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags
 {
   ssize_t r;
   do {
-   r = recv(socket, (const char *)buffer, IF_WIN((int)length, length), flags);
+   r = recv(socket, (char*) buffer, IF_WIN((int)length, length), flags);
   }
   while (r == -1 && IS_SOCKET_EINTR(socket_errno));
   return r;

@@ -981,8 +981,13 @@ static int test_sess_track_db(MYSQL *mysql)
   return OK;
 }
 
+
 static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
 {
+#ifdef _WIN32
+  diag("test does not run on Windows");
+  return SKIP;
+#else
   MYSQL *mysql= mysql_init(NULL);
   FILE *fp;
   int i;
@@ -1007,7 +1012,9 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   }
   mysql_close(mysql);
   return OK;
+#endif
 }
+
 
 static int test_reset(MYSQL *mysql)
 {
