@@ -1226,12 +1226,10 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     return FAIL;
 
   fprintf(fp, "[client]\n");
-  fprintf(fp, "default-character-set=latin1\n");
-  fprintf(fp, "[client-server]\n");
-  fprintf(fp, "default-character-set=latin1\n");
-  fprintf(fp, "[client-mariadb]\n");
   fprintf(fp, "default-character-set=utf8\n");
-  fprintf(fp, "[connection]\n");
+  fprintf(fp, "[client-server]\n");
+  fprintf(fp, "default-character-set=utf8\n");
+  fprintf(fp, "[client-mariadb]\n");
   fprintf(fp, "default-character-set=latin2\n");
 
   fclose(fp);
@@ -1247,12 +1245,13 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
+  diag("character set: %s", mysql_character_set_name(mysql));
   FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
   mysql_close(mysql);
 
   remove("./mdev13100.cnf");
 
-  return OK; 
+  return OK;
 }
 
 static int test_conc276(MYSQL *unused __attribute__((unused)))

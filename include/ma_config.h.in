@@ -84,7 +84,6 @@
 #cmakedefine HAVE_GETPAGESIZE 1
 #cmakedefine HAVE_GETPASS 1
 #cmakedefine HAVE_GETPASSPHRASE 1
-#cmakedefine HAVE_GETPROGNAME 1
 #cmakedefine HAVE_GETPWNAM 1
 #cmakedefine HAVE_GETPWUID 1
 #cmakedefine HAVE_GETRLIMIT 1
@@ -110,7 +109,6 @@
 #cmakedefine HAVE_PERROR 1
 #cmakedefine HAVE_POLL 1
 #cmakedefine HAVE_PREAD 1
-#cmakedefine HAVE_PROGRAM_INVOCATION_SHORT_NAME 1
 #cmakedefine HAVE_PTHREAD_ATTR_CREATE 1
 #cmakedefine HAVE_PTHREAD_ATTR_GETSTACKSIZE 1
 #cmakedefine HAVE_PTHREAD_ATTR_SETPRIO 1
