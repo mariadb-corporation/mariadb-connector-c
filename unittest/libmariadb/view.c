@@ -74,7 +74,7 @@ static int test_view(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   strcpy(str_data, "TEST");
@@ -132,7 +132,7 @@ static int test_view_where(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   for (i= 0; i < 3; i++)
@@ -217,7 +217,7 @@ static int test_view_2where(MYSQL *mysql)
     my_bind[i].length = &length[i];
   }
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_param(stmt, my_bind);
@@ -269,7 +269,7 @@ static int test_view_star(MYSQL *mysql)
   }
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_param(stmt, my_bind);
@@ -317,11 +317,11 @@ static int test_view_insert(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   insert_stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(insert_stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(insert_stmt, SL(query));
   check_stmt_rc(rc, insert_stmt);
   query= "select * from t1";
   select_stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(select_stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(select_stmt, SL(query));
   check_stmt_rc(rc, select_stmt);
 
   memset(my_bind, '\0', sizeof(MYSQL_BIND));
@@ -377,7 +377,7 @@ static int test_left_join_view(MYSQL *mysql)
   rc= mysql_query(mysql,"create view v1 (x) as select a from t1 where a > 1");
   check_mysql_rc(rc, mysql);
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   for (i= 0; i < 3; i++)
@@ -449,7 +449,7 @@ static int test_view_insert_fields(MYSQL *mysql)
     my_bind[i].length= &l[i];
   }
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
@@ -460,7 +460,7 @@ static int test_view_insert_fields(MYSQL *mysql)
 
   query= "select * from t1";
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -603,7 +603,7 @@ static int test_bug11111(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
 
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);

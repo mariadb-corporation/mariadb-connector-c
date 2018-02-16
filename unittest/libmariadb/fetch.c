@@ -46,7 +46,7 @@ static int bind_fetch(MYSQL *mysql, int row_count)
   FAIL_IF(!stmt, mysql_error(mysql));
 
   strcpy(query, "INSERT INTO test_bind_fetch VALUES (?, ?, ?, ?, ?, ?, ?)");
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   FAIL_UNLESS(mysql_stmt_param_count(stmt) == 7, "ParamCount != 7");
@@ -85,7 +85,7 @@ static int bind_fetch(MYSQL *mysql, int row_count)
   FAIL_IF(!stmt, mysql_error(mysql));
 
   strcpy(query, "SELECT * FROM test_bind_fetch");
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   for (i= 0; i < (int) array_elements(my_bind); i++)
@@ -199,7 +199,7 @@ static int test_fetch_seek(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -286,7 +286,7 @@ static int test_fetch_offset(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)(unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -408,7 +408,7 @@ static int test_fetch_column(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc,stmt);
 
   memset(my_bind, '\0', sizeof(my_bind));
@@ -521,7 +521,7 @@ static int test_fetch_nobuffs(MYSQL *mysql)
 
   stmt = mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -612,7 +612,7 @@ static int test_fetch_null(MYSQL *mysql)
   stmt = mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
 
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_result(stmt, my_bind);
@@ -728,7 +728,7 @@ static int test_fetch_date(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_result(stmt, my_bind);

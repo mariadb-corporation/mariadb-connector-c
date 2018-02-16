@@ -55,6 +55,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MAX_KEY MAX_INDEXES
 #define MAX_KEY_LENGTH_DECIMAL_WIDTH 4          /* strlen("4096") */
 
+#define SL(s) (s), (unsigned long)strlen((s))
+#define SL_BIN(s) (s), (unsigned long)sizeof((s))
+
 #define MAX_TEST_QUERY_LENGTH 300 /* MAX QUERY BUFFER LENGTH */
 
 /* prevent warnings on Win64 by using STMT_LEN instead of strlen */

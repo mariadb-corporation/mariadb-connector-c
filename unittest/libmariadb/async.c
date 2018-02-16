@@ -28,8 +28,6 @@
 #include <stdio.h>
 #include <mysql.h>
 
-#define SL(s) (s), sizeof(s)
-
 my_bool skip_async= 0;
 
 static int test_async(MYSQL *mysql)

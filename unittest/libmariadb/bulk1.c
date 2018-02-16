@@ -69,7 +69,7 @@ static int bulk1(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk1 (a int , b VARCHAR(255))");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmt_str, (unsigned long)strlen(stmt_str));
+  rc= mysql_stmt_prepare(stmt, SL(stmt_str));
   check_stmt_rc(rc, stmt);
 
   /* allocate memory */
@@ -155,7 +155,7 @@ static int bulk2(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4, b int default 2)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk2 VALUES (?,1)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk2 VALUES (?,1)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, 2 * sizeof(MYSQL_BIND));
@@ -211,7 +211,7 @@ static int bulk3(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk3 (name varchar(20), row int)");
   check_mysql_rc(rc,mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk3 VALUES (?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk3 VALUES (?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND)*2);
@@ -265,7 +265,7 @@ static int bulk4(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk4 (name varchar(20), row int not null default 3)");
   check_mysql_rc(rc,mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk4 VALUES (?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk4 VALUES (?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND)*2);
@@ -379,7 +379,7 @@ static int bulk5(MYSQL *mysql)
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
 
-  rc= mysql_stmt_prepare(stmt, "UPDATE bulk5 SET a=? WHERE a=?", -1);
+  rc= mysql_stmt_prepare(stmt, SL("UPDATE bulk5 SET a=? WHERE a=?"));
   check_stmt_rc(rc, stmt);
 
   bind[0].buffer_type= MYSQL_TYPE_LONG;
@@ -443,7 +443,7 @@ static int bulk6(MYSQL *mysql)
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
 
   /* 1st case: UPDATE */
-  rc= mysql_stmt_prepare(stmt, "UPDATE bulk6 SET a=?, b=? WHERE a=?", -1);
+  rc= mysql_stmt_prepare(stmt, SL("UPDATE bulk6 SET a=?, b=? WHERE a=?"));
   check_stmt_rc(rc, stmt);
 
   bind[0].buffer_type= MYSQL_TYPE_LONG;
@@ -479,7 +479,7 @@ static int bulk6(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk6 VALUES (?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk6 VALUES (?,?)"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
@@ -549,7 +549,7 @@ static int test_conc243(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk_example2 VALUES (?,?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk_example2 VALUES (?,?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
@@ -611,7 +611,7 @@ static int bulk7(MYSQL *mysql)
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "UPDATE t1 SET a=a+1", -1);
+  rc= mysql_stmt_prepare(stmt, SL("UPDATE t1 SET a=a+1"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
@@ -648,7 +648,7 @@ static int test_char_conv1(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE char_conv (a varchar(20)) CHARSET=latin1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO char_conv VALUES (?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO char_conv VALUES (?)"));
   check_stmt_rc(rc, stmt);
 
   memset(&bind_in, 0, sizeof(MYSQL_BIND));
@@ -666,7 +666,7 @@ static int test_char_conv1(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
 
-  rc= mysql_stmt_prepare(stmt, "SELECT a from char_conv", -1);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a from char_conv"));
   check_stmt_rc(rc, stmt);
 
   memset(&bind_out, 0, sizeof(MYSQL_BIND));
@@ -722,7 +722,7 @@ static int test_char_conv2(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE char_conv (a varchar(20)) CHARSET=latin1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO char_conv VALUES (?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO char_conv VALUES (?)"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
@@ -743,7 +743,7 @@ static int test_char_conv2(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
 
-  rc= mysql_stmt_prepare(stmt, "SELECT a from char_conv", -1);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a from char_conv"));
   check_stmt_rc(rc, stmt);
 
   memset(&bind_out, 0, sizeof(MYSQL_BIND));
@@ -813,7 +813,7 @@ static int bulk_skip_row(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk_example2 VALUES (?,?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk_example2 VALUES (?,?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);

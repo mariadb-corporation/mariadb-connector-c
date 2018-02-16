@@ -389,7 +389,7 @@ static int test_bad_union(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   FAIL_UNLESS(rc && mysql_errno(mysql) == 1222, "Error expected");
 
   mysql_stmt_close(stmt);
