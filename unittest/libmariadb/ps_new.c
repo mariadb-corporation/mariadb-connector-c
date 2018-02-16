@@ -104,7 +104,7 @@ static int test_multi_result(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
  
   FAIL_IF(int_data[0] != 10 || int_data[1] != 20 || int_data[2] != 30,
-          "expected 10 20 30"); 
+          "expected 10 20 30");
   rc= mysql_stmt_next_result(stmt);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_bind_result(stmt, rs_bind);
@@ -112,7 +112,7 @@ static int test_multi_result(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_IF(mysql_stmt_field_count(stmt) != 3, "expected 3 fields");
   FAIL_IF(int_data[0] != 100 || int_data[1] != 200 || int_data[2] != 300,
-          "expected 100 200 300"); 
+          "expected 100 200 300");
 
   FAIL_IF(mysql_stmt_next_result(stmt) != 0, "expected more results");
   rc= mysql_stmt_bind_result(stmt, rs_bind);
@@ -120,7 +120,7 @@ static int test_multi_result(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_IF(mysql_stmt_field_count(stmt) != 2, "expected 2 fields");
   FAIL_IF(int_data[0] != 200 || int_data[1] != 300,
-          "expected 100 200 300"); 
+          "expected 100 200 300");
   
   FAIL_IF(mysql_stmt_next_result(stmt) != 0, "expected more results");
   FAIL_IF(mysql_stmt_field_count(stmt) != 0, "expected 0 fields");

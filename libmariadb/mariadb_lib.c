@@ -2537,7 +2537,11 @@ mysql_stat(MYSQL *mysql)
 int STDCALL
 mysql_ping(MYSQL *mysql)
 {
-  return ma_simple_command(mysql, COM_PING,0,0,0,0);
+  int rc;
+  rc= ma_simple_command(mysql, COM_PING, 0, 0, 0, 0);
+  if (rc && mysql_errno(mysql) == CR_SERVER_LOST)
+    rc= ma_simple_command(mysql, COM_PING, 0, 0, 0, 0);
+  return rc;
 }
 
 char * STDCALL

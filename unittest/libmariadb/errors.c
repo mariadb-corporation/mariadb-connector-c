@@ -176,6 +176,8 @@ static int test_cuted_rows(MYSQL *mysql)
   int        rc, count;
   MYSQL_RES  *result;
 
+  if (!is_mariadb)
+    return SKIP;
 
   mysql_query(mysql, "DROP TABLE if exists t1");
   mysql_query(mysql, "DROP TABLE if exists t2");

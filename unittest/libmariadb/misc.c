@@ -98,6 +98,7 @@ static int bug31418_impl()
   MYSQL *mysql;
   int rc;
 
+
   /* Create a new connection. */
 
   mysql= test_connect(NULL);
@@ -169,7 +170,10 @@ static int bug31418_impl()
 
 static int test_bug31418(MYSQL *unused __attribute__((unused)))
 {
- int i;
+  int i;
+
+  if (!is_mariadb)
+    return SKIP;
   /* Run test case for BUG#31418 for three different connections. */
 
   for (i=0; i < 3; i++)
@@ -976,7 +980,6 @@ static int test_conc117(MYSQL *unused __attribute__((unused)))
                          port, socketname, 0), mysql_error(my));
   
   mysql_kill(my, mysql_thread_id(my));
-  sleep(5);
 
   mysql_options(my, MYSQL_OPT_RECONNECT, &reconnect);
 
@@ -1064,6 +1067,9 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  if (travis_test)
+    return SKIP;
+
   if (!env)
     env= "/tmp";
 
@@ -1082,7 +1088,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   fprintf(fp, "[client]\ndefault-character-set=latin2\nreconnect=1\n");
   fclose(fp);
 
-  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, NULL);
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "client");
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
@@ -1189,7 +1195,12 @@ static int test_server_status(MYSQL *mysql)
 {
   int rc;
   unsigned int server_status;
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
+
+  if (mysql_get_server_version(mysql) < 100200)
+    return SKIP;
+
+  stmt= mysql_stmt_init(mysql);
 
   rc= mysql_autocommit(mysql, 1);
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);

@@ -537,7 +537,6 @@ static int test_bug12744(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
 
-  sleep(4);
   rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
 
@@ -2731,6 +2730,8 @@ static int test_bug5315(MYSQL *mysql)
   const char *stmt_text;
   int rc;
 
+  if (!is_mariadb)
+    return SKIP;
 
   stmt_text= "SELECT 1";
   stmt= mysql_stmt_init(mysql);
@@ -3456,6 +3457,8 @@ static int test_explain_bug(MYSQL *mysql)
   MYSQL_RES  *result;
   int        rc;
 
+  if (!is_mariadb)
+    return SKIP;
 
   mysql_autocommit(mysql, TRUE);
 
@@ -3803,7 +3806,6 @@ static int test_bug53311(MYSQL *mysql)
 
   /* kill connection */
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  sleep(1);
 
   rc= mysql_stmt_execute(stmt);
   FAIL_IF(rc == 0, "Error expected");
@@ -4286,8 +4288,11 @@ static int test_conc179(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, stmtstr, (unsigned long)strlen(stmtstr));
   check_stmt_rc(rc, stmt);
 
-  FAIL_IF(mysql_warning_count(mysql) < 2, "expected 2 or more warnings");
-  FAIL_IF(mysql_stmt_warning_count(stmt) < 2, "expected 2 or more warnings");
+  if (mysql_get_server_version(mysql) >= 100100)
+  {
+    FAIL_IF(mysql_warning_count(mysql) < 2, "expected 2 or more warnings");
+    FAIL_IF(mysql_stmt_warning_count(stmt) < 2, "expected 2 or more warnings");
+  }
 
   mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");

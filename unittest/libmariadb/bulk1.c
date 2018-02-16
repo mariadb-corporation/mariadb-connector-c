@@ -539,6 +539,8 @@ static int test_conc243(MYSQL *mysql)
   size_t row_size= sizeof(struct st_data);
   int rc;
 
+  if (!bulk_enabled)
+    return SKIP;
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_example2");
   check_mysql_rc(rc, mysql);
 
@@ -628,12 +630,15 @@ static int bulk7(MYSQL *mysql)
 
 static int test_char_conv1(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   int rc;
   MYSQL_BIND bind_in, bind_out;
   char buffer[100];
   char outbuffer[100];
-  
+
+  if (!bulk_enabled)
+    return SKIP;
+  stmt= mysql_stmt_init(mysql);
   strcpy (buffer, "\xC3\x82\xC3\x83\xC3\x84\x00");
 
   rc= mysql_query(mysql, "SET NAMES UTF8");
@@ -696,13 +701,17 @@ static int test_char_conv1(MYSQL *mysql)
 
 static int test_char_conv2(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   int rc;
   int array_size= 1;
   MYSQL_BIND bind_in, bind_out;
   char *buffer[1];
   char outbuffer[100];
-  
+
+  if (!bulk_enabled)
+    return SKIP;
+
+  stmt= mysql_stmt_init(mysql);
   buffer[0]= calloc(1, 7);
   strcpy (buffer[0], "\xC3\x82\xC3\x83\xC3\x84\x00");
 
@@ -794,6 +803,8 @@ static int bulk_skip_row(MYSQL *mysql)
   size_t row_size= sizeof(struct st_data);
   int rc;
 
+  if (!bulk_enabled)
+    return SKIP;
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_example2");
   check_mysql_rc(rc, mysql);
 

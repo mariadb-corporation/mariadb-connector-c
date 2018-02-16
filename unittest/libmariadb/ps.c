@@ -65,7 +65,6 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
   /* 1. Status is inited, so prepare should work */
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  sleep(5);
 
   rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
@@ -76,7 +75,6 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
 
   /* 2. Status is prepared, execute should fail */
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  sleep(2);
 
   rc= mysql_stmt_execute(stmt);
   FAIL_IF(!rc, "Error expected"); 
@@ -1377,7 +1375,7 @@ static int test_long_data_str1(MYSQL *mysql)
   int        rc, i, rowcount= 0;
   char       data[255];
   long       length;
-  size_t     max_blob_length, blob_length, length1;
+  unsigned long max_blob_length, blob_length, length1;
   my_bool    true_value;
   MYSQL_RES  *result;
   MYSQL_BIND my_bind[2];
@@ -3137,6 +3135,8 @@ static int test_datetime_ranges(MYSQL *mysql)
   MYSQL_BIND my_bind[6];
   MYSQL_TIME tm[6];
 
+  if (!is_mariadb)
+    return SKIP;
 
   stmt_text= "drop table if exists t1";
   rc= mysql_real_query(mysql, stmt_text, (unsigned long)strlen(stmt_text));
@@ -4979,6 +4979,9 @@ static int test_reexecute(MYSQL *mysql)
   MYSQL_BIND ps_params[3];  /* input parameter buffers */
   int        int_data[3];   /* input/output values */
   int        rc;
+
+  if (!mariadb_connection(mysql))
+    return SKIP;
 
   /* set up stored procedure */
   rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
