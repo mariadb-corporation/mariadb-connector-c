@@ -39,7 +39,7 @@ static int perf1(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
 
   diag("prepare");
-  rc= mysql_stmt_prepare(stmt, stmtstr, (unsigned long)strlen(stmtstr));
+  rc= mysql_stmt_prepare(stmt, SL(stmtstr));
   check_stmt_rc(rc, stmt);
 
   diag("execute");

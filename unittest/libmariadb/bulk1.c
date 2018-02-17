@@ -69,7 +69,7 @@ static int bulk1(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk1 (a int , b VARCHAR(255))");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, stmt_str, (unsigned long)strlen(stmt_str));
+  rc= mysql_stmt_prepare(stmt, SL(stmt_str));
   check_stmt_rc(rc, stmt);
 
   /* allocate memory */
@@ -155,7 +155,7 @@ static int bulk2(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk2 (a int default 4, b int default 2)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk2 VALUES (?,1)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk2 VALUES (?,1)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, 2 * sizeof(MYSQL_BIND));
@@ -211,7 +211,7 @@ static int bulk3(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk3 (name varchar(20), row int)");
   check_mysql_rc(rc,mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk3 VALUES (?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk3 VALUES (?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND)*2);
@@ -265,7 +265,7 @@ static int bulk4(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE bulk4 (name varchar(20), row int not null default 3)");
   check_mysql_rc(rc,mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk4 VALUES (?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk4 VALUES (?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND)*2);
@@ -379,7 +379,7 @@ static int bulk5(MYSQL *mysql)
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
 
-  rc= mysql_stmt_prepare(stmt, "UPDATE bulk5 SET a=? WHERE a=?", -1);
+  rc= mysql_stmt_prepare(stmt, SL("UPDATE bulk5 SET a=? WHERE a=?"));
   check_stmt_rc(rc, stmt);
 
   bind[0].buffer_type= MYSQL_TYPE_LONG;
@@ -443,7 +443,7 @@ static int bulk6(MYSQL *mysql)
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
 
   /* 1st case: UPDATE */
-  rc= mysql_stmt_prepare(stmt, "UPDATE bulk6 SET a=?, b=? WHERE a=?", -1);
+  rc= mysql_stmt_prepare(stmt, SL("UPDATE bulk6 SET a=?, b=? WHERE a=?"));
   check_stmt_rc(rc, stmt);
 
   bind[0].buffer_type= MYSQL_TYPE_LONG;
@@ -479,7 +479,7 @@ static int bulk6(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk6 VALUES (?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk6 VALUES (?,?)"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
@@ -539,6 +539,8 @@ static int test_conc243(MYSQL *mysql)
   size_t row_size= sizeof(struct st_data);
   int rc;
 
+  if (!bulk_enabled)
+    return SKIP;
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_example2");
   check_mysql_rc(rc, mysql);
 
@@ -547,7 +549,7 @@ static int test_conc243(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk_example2 VALUES (?,?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk_example2 VALUES (?,?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
@@ -609,7 +611,7 @@ static int bulk7(MYSQL *mysql)
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "UPDATE t1 SET a=a+1", -1);
+  rc= mysql_stmt_prepare(stmt, SL("UPDATE t1 SET a=a+1"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
@@ -628,12 +630,15 @@ static int bulk7(MYSQL *mysql)
 
 static int test_char_conv1(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   int rc;
   MYSQL_BIND bind_in, bind_out;
   char buffer[100];
   char outbuffer[100];
-  
+
+  if (!bulk_enabled)
+    return SKIP;
+  stmt= mysql_stmt_init(mysql);
   strcpy (buffer, "\xC3\x82\xC3\x83\xC3\x84\x00");
 
   rc= mysql_query(mysql, "SET NAMES UTF8");
@@ -643,7 +648,7 @@ static int test_char_conv1(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE char_conv (a varchar(20)) CHARSET=latin1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO char_conv VALUES (?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO char_conv VALUES (?)"));
   check_stmt_rc(rc, stmt);
 
   memset(&bind_in, 0, sizeof(MYSQL_BIND));
@@ -661,7 +666,7 @@ static int test_char_conv1(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
 
-  rc= mysql_stmt_prepare(stmt, "SELECT a from char_conv", -1);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a from char_conv"));
   check_stmt_rc(rc, stmt);
 
   memset(&bind_out, 0, sizeof(MYSQL_BIND));
@@ -696,13 +701,17 @@ static int test_char_conv1(MYSQL *mysql)
 
 static int test_char_conv2(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   int rc;
   int array_size= 1;
   MYSQL_BIND bind_in, bind_out;
   char *buffer[1];
   char outbuffer[100];
-  
+
+  if (!bulk_enabled)
+    return SKIP;
+
+  stmt= mysql_stmt_init(mysql);
   buffer[0]= calloc(1, 7);
   strcpy (buffer[0], "\xC3\x82\xC3\x83\xC3\x84\x00");
 
@@ -713,7 +722,7 @@ static int test_char_conv2(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE char_conv (a varchar(20)) CHARSET=latin1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO char_conv VALUES (?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO char_conv VALUES (?)"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
@@ -734,7 +743,7 @@ static int test_char_conv2(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
 
-  rc= mysql_stmt_prepare(stmt, "SELECT a from char_conv", -1);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a from char_conv"));
   check_stmt_rc(rc, stmt);
 
   memset(&bind_out, 0, sizeof(MYSQL_BIND));
@@ -794,6 +803,8 @@ static int bulk_skip_row(MYSQL *mysql)
   size_t row_size= sizeof(struct st_data);
   int rc;
 
+  if (!bulk_enabled)
+    return SKIP;
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_example2");
   check_mysql_rc(rc, mysql);
 
@@ -802,7 +813,7 @@ static int bulk_skip_row(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk_example2 VALUES (?,?,?)", -1);
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk_example2 VALUES (?,?,?)"));
   check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND) * 3);
@@ -853,8 +864,141 @@ static int bulk_skip_row(MYSQL *mysql)
   return OK;
 }
 
+static int bulk_null_null(MYSQL *mysql)
+{
+  struct st_bulk4 {
+    char char_value[20];
+    char indicator1;
+    int  int_value;
+    char indicator2;
+    double double_value;
+    char indicator3;
+    char time_value[20];
+    char indicator4;
+    char decimal_value[4];
+    char indicator5;
+  };
+
+  struct st_bulk4 val[]= {{"3",      STMT_INDICATOR_NTS,
+                           3,        STMT_INDICATOR_NONE,
+                           3.0,      STMT_INDICATOR_NONE,
+                           "00:00:00",  STMT_INDICATOR_NTS,
+                           "3.0",    STMT_INDICATOR_NTS},
+                          {"3",      STMT_INDICATOR_NULL,
+                           3,        STMT_INDICATOR_NULL,
+                           3.0,      STMT_INDICATOR_NULL,
+                           "00:00:00",  STMT_INDICATOR_NULL,
+                           "3.0",    STMT_INDICATOR_NULL},
+                          {"3",      STMT_INDICATOR_NTS,
+                           3,        STMT_INDICATOR_NONE,
+                           3.0,      STMT_INDICATOR_NONE,
+                           "00:00:00",  STMT_INDICATOR_NTS,
+                           "3.0",    STMT_INDICATOR_NTS}};
+  int rc;
+  MYSQL_BIND bind[5];
+  MYSQL_RES *res;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  size_t row_size= sizeof(struct st_bulk4);
+  int array_size= 3;
+  unsigned long server_version= mysql_get_server_version(mysql);
+  unsigned long lengths[3]= {-1, -1, -1};
+
+  if (!bulk_enabled)
+    return SKIP;
+
+  if (server_version > 100300 &&
+      server_version < 100305)
+    return SKIP;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_null");
+  check_mysql_rc(rc,mysql);
+  rc= mysql_query(mysql, "CREATE TABLE bulk_null "
+                         "(s varchar(20), "
+                         " i int, "
+                         " d double, "
+                         " t time, "
+                         " c decimal(3,1))");
+  check_mysql_rc(rc,mysql);
+
+  rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk_null VALUES (?,?,?,?,?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND)*2);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+  check_stmt_rc(rc, stmt);
+
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].u.indicator= &val[0].indicator1;
+  bind[0].buffer= &val[0].char_value;
+  bind[0].length= lengths;
+  bind[1].buffer_type= MYSQL_TYPE_LONG;
+  bind[1].buffer= &val[0].int_value;
+  bind[1].u.indicator= &val[0].indicator2;
+  bind[2].buffer_type= MYSQL_TYPE_DOUBLE;
+  bind[2].buffer= &val[0].double_value;
+  bind[2].u.indicator= &val[0].indicator3;
+  bind[3].buffer_type= MYSQL_TYPE_STRING;
+  bind[3].u.indicator= &val[0].indicator4;
+  bind[3].buffer= &val[0].time_value;
+  bind[3].length= lengths;
+  bind[4].buffer_type= MYSQL_TYPE_NEWDECIMAL;
+  bind[4].u.indicator= &val[0].indicator5;
+  bind[4].buffer= &val[0].decimal_value;
+  bind[4].length= lengths;
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk_null WHERE s='3'");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  rc= (int)mysql_num_rows(res);
+  mysql_free_result(res);
+  FAIL_IF(rc != 2, "expected 2 rows");
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk_null WHERE i=3");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  rc= (int)mysql_num_rows(res);
+  mysql_free_result(res);
+  FAIL_IF(rc != 2, "expected 2 rows");
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk_null WHERE d=3.0");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  rc= (int)mysql_num_rows(res);
+  mysql_free_result(res);
+  FAIL_IF(rc != 2, "expected 2 rows");
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk_null WHERE t='00:00:00'");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  rc= (int)mysql_num_rows(res);
+  mysql_free_result(res);
+  FAIL_IF(rc != 2, "expected 2 rows");
+
+  rc= mysql_query(mysql, "SELECT * FROM bulk_null WHERE c=3.0");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  rc= (int)mysql_num_rows(res);
+  mysql_free_result(res);
+  FAIL_IF(rc != 2, "expected 2 rows");
+
+  rc= mysql_query(mysql, "DROP TABLE bulk_null");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk_null_null", bulk_null_null, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_char_conv1", test_char_conv1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_char_conv2", test_char_conv2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc243", test_conc243, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
@@ -869,7 +1013,6 @@ struct my_tests_st my_tests[] = {
   {"bulk_skip_row", bulk_skip_row, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
-
 
 int main(int argc, char **argv)
 {

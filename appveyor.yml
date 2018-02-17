@@ -1,29 +1,53 @@
-version: 3.0.0.{build}
+version: 3.0.4;{build}
 branches:
   only:
   - master
-os: Visual Studio 2015
-configuration: RelWithDebInfo
-platform: x64
-clone_folder: c:\projects\mariadb-connector-c
 environment:
-  MYSQL_TEST_USER: root
-  MYSQL_TEST_HOST: 127.0.0.1
-  MYSQL_TEST_PASSWD: Password12!
-services: mysql56
+  matrix:
+    - DB: '10.2.12'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+    - DB: '10.2.12'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      CMAKE_PARAM: 'Visual Studio 14 2015 Win64'
+    - DB: '10.2.12'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017'
+    - DB: '10.2.12'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      CMAKE_PARAM: 'Visual Studio 14 2015'
+    - DB: '10.3.4'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+    - DB: '10.1.30'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+    - DB: '10.0.33'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+    - DB: '5.5.59'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+
+
+configuration: RelWithDebInfo
+clone_folder: c:\projects\mariadb-connector-c
 before_build:
-- ps: >-
-    cd c:\projects\mariadb-connector-c
-
-    echo running cmake
-
-    cmake -G "Visual Studio 14 2015 Win64" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  - cmd: set MYSQL_TEST_USER=root
+  - cmd: set MYSQL_TEST_HOST=127.0.0.1
+  - cmd: set MYSQL_TEST_PASSWD=
+  - cmd: set MYSQL_TEST_PORT=3306
+  - cmd: set MYSQL_TEST_DB=testc
+  -  cmd: set FILE=http://mariadb.mirrors.ovh.net/MariaDB/mariadb-%DB%/winx64-packages/mariadb-%DB%-winx64.msi
+  - ps: Start-FileDownload $Env:FILE -FileName server.msi
+  - cmd: msiexec /i server.msi INSTALLDIR=c:\projects\server SERVICENAME=mariadb ALLOWREMOTEROOTACCESS=true /qn
+  - cmd: "\"c:\\projects\\server\\bin\\mysql.exe\" -e \"create database testc\" --user=root"
+  - cmd: cmake -G "%CMAKE_PARAM%" -DCMAKE_BUILD_TYPE=RelWithDebInfo
 build:
   project: mariadb-connector-c.sln
   parallel: true
   verbosity: minimal
 test_script:
-- cmd: >-
-    cd c:\projects\mariadb-connector-c\unittest\libmariadb
-
-    ctest -V
+  - cmd: cd c:\projects\mariadb-connector-c\unittest\libmariadb
+  - cmd: set MARIADB_PLUGIN_DIR=cd c:\projects\mariadb-connector-c\plugins\lib\RelWithDebInfo
+  - cmd: ctest -V

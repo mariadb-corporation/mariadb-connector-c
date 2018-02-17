@@ -58,7 +58,6 @@ static int test_conc75(MYSQL *my)
     mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
     diag("killing connection");
     mysql_kill(my, thread_id);
-    sleep(2);
     mysql_ping(mysql);
     rc= mysql_query(mysql, "load data local infile './nonexistingfile.csv' into table a (`a`)");
     FAIL_IF(!test(mysql->options.client_flag | CLIENT_LOCAL_FILES), "client_flags not correct");
@@ -128,7 +127,6 @@ static int test_conc71(MYSQL *my)
                          port, socketname, 0), mysql_error(my));
 
   diag("kill server");
-  sleep(20);
 
   rc= mysql_query(mysql, "SELECT 'foo' FROM DUAL");
   check_mysql_rc(rc, mysql);
@@ -173,7 +171,6 @@ static int test_conc70(MYSQL *my)
     return SKIP;
   }
 
-  sleep(20);
 
   rc= mysql_query(mysql, "SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
@@ -392,7 +389,7 @@ static int test_bad_union(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   FAIL_UNLESS(rc && mysql_errno(mysql) == 1222, "Error expected");
 
   mysql_stmt_close(stmt);
@@ -717,6 +714,7 @@ static int test_reconnect_maxpackage(MYSQL *unused __attribute__((unused)))
   my_bool reconnect= 1;
 
   SKIP_CONNECTION_HANDLER;
+
   mysql= mysql_init(NULL);
 
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
@@ -748,9 +746,13 @@ static int test_reconnect_maxpackage(MYSQL *unused __attribute__((unused)))
     return FAIL;
   }
   else
-    diag("Error: %s", mysql_error(mysql));
+    diag("Error (expected): %s", mysql_error(mysql));
 
   rc= mysql_ping(mysql);
+  /* if the server is under load, poll might not report closed
+     socket since FIN packet came too late */
+  if (rc)
+    rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "SELECT @@max_allowed_packet");
   check_mysql_rc(rc, mysql);

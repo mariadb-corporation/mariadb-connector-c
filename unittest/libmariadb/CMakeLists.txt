@@ -26,7 +26,7 @@ INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${CC_SOURCE_DIR}/unittest/libmariadb)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
-SET(API_TESTS "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "sqlite3" "thread" "features-10_2" "bulk1")
+SET(API_TESTS "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2" "bulk1")
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()
@@ -64,7 +64,7 @@ FOREACH(API_TEST ${API_TESTS})
   ENDIF()
   TARGET_LINK_LIBRARIES(${API_TEST} cctap ma_getopt mariadbclient)
   ADD_TEST(${API_TEST} ${EXECUTABLE_OUTPUT_PATH}/${API_TEST})
-  SET_TESTS_PROPERTIES(${API_TEST} PROPERTIES TIMEOUT 120)
+  SET_TESTS_PROPERTIES(${API_TEST} PROPERTIES TIMEOUT 180)
 ENDFOREACH(API_TEST)
 
 FOREACH(API_TEST ${MANUAL_TESTS})

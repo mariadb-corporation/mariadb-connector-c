@@ -86,15 +86,14 @@ static int create_ssl_user(const char *ssluser, my_bool is_X509)
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(mysql));
 
-  sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", ssluser, sslhost);
+  sprintf(query, "DROP USER '%s'@'%s'", ssluser, this_host);
+  rc= mysql_query(mysql, query);
+
+  sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", ssluser, this_host, sslpw);
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc,mysql);
 
-  sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", ssluser, sslhost, sslpw);
-  rc= mysql_query(mysql, query);
-  check_mysql_rc(rc,mysql);
-
-  sprintf(query, "GRANT ALL ON %s.* TO  '%s'@'%s' REQUIRE %s", schema, ssluser, sslhost, is_X509 ? "X509" : "SSL");
+  sprintf(query, "GRANT ALL ON %s.* TO  '%s'@'%s' REQUIRE %s", schema, ssluser, this_host, is_X509 ? "X509" : "SSL");
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc,mysql);
   rc= mysql_query(mysql, "FLUSH PRIVILEGES");
@@ -127,6 +126,24 @@ static int test_ssl(MYSQL *mysql)
     diag("SSL: %s", row[0]);
   }
   mysql_free_result(res);
+
+  /* In MySQL we need to check tls_version */
+  if (!mariadb_connection(mysql))
+  {
+    rc= mysql_query(mysql, "select locate('v1.2', @@tls_version) > 0");
+    check_mysql_rc(rc, mysql);
+
+    res= mysql_store_result(mysql);
+    FAIL_IF(!res, mysql_error(mysql));
+
+    if ((row= mysql_fetch_row(res)))
+    {
+      if (row[0] && row[0][0] == '0')
+        have_openssl= 0;
+    }
+    mysql_free_result(res);
+  }
+  diag("OpenSSL: %d", have_openssl);
 
   mariadb_get_infov(NULL, MARIADB_TLS_LIBRARY, &tls_library);
   diag("SSL library: %s", tls_library);
@@ -450,6 +467,8 @@ static int test_conc50_1(MYSQL *unused __attribute__((unused)))
     return SKIP;
   }
 
+  create_ssl_user(ssluser, 0);
+
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
@@ -460,6 +479,7 @@ static int test_conc50_1(MYSQL *unused __attribute__((unused)))
   if (mysql_errno(mysql))
     diag("Error: %d %s", mysql_errno(mysql), mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql), "No error expected");
+
   mysql_close(mysql);
 
   return OK;
@@ -957,19 +977,23 @@ static int test_openssl_1(MYSQL *mysql)
   if (check_skip_ssl())
     return SKIP;
 
+  if (!mariadb_connection(mysql))
+    return SKIP;
+
   for (i=1; i < 6; i++)
   {
-    sprintf(query, "DROP USER IF EXISTS 'ssluser%d'@'%s'", i, sslhost);
+    sprintf(query, "DROP USER 'ssluser%d'@'%s'", i, this_host);
     rc= mysql_query(mysql, query);
-    check_mysql_rc(rc, mysql);
-    sprintf(query, "CREATE USER 'ssluser%d'@'%s'", i, sslhost);
+    sprintf(query, "CREATE USER 'ssluser%d'@'%s'", i, this_host);
     rc= mysql_query(mysql, query);
     check_mysql_rc(rc, mysql);
   }
   rc= mysql_query(mysql, "FLUSH PRIVILEGES");
   check_mysql_rc(rc, mysql);
+  diag("sslusers created");
 
-  sprintf(query, "grant select on %s.* to 'ssluser1'@'%s' require ssl", schema, sslhost);
+  diag("ssluser1");
+  sprintf(query, "grant select on %s.* to 'ssluser1'@'%s' require ssl", schema, this_host);
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
@@ -988,11 +1012,12 @@ static int test_openssl_1(MYSQL *mysql)
   FAIL_IF(!mysql_get_ssl_cipher(my), "No TLS connection");
   mysql_close(my);
 
-  sprintf(query, "grant select on %s.* to 'ssluser2'@'%s' require cipher 'AES256-SHA'", schema, sslhost);
+  diag("ssluser2");
+  sprintf(query, "grant select on %s.* to 'ssluser2'@'%s' require cipher 'AES256-SHA'", schema, this_host);
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
-
+#ifdef TEST_RANDOM_RESULT
 /* ssl_user2: connect with enforce should work */
   my= mysql_init(NULL);
   mysql_options(my, MYSQL_OPT_SSL_ENFORCE, &val);
@@ -1005,8 +1030,21 @@ static int test_openssl_1(MYSQL *mysql)
     return FAIL;
   }
   mysql_close(my);
+#endif
+  /* ssl_user2: connect with correct cipher */
+  diag("ssluser2");
+  if (mysql_get_server_version(mysql) >= 100100)
+  {
+    my= mysql_init(NULL);
+    mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
+    FAIL_IF(!mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
+                           port, socketname, 0), mysql_error(my));
+    FAIL_IF(strcmp("AES256-SHA", mysql_get_ssl_cipher(my)) != 0, "expected cipher AES256-SHA");
+    mysql_close(my);
+  }
 
-  /* ssl_user2: connect with cipher should work */
+  /* ssl_user2: connect with wrong cipher should not work */
+  diag("ssluser2");
   my= mysql_init(NULL);
   mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES128-SHA");
   FAIL_IF(mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
@@ -1014,68 +1052,61 @@ static int test_openssl_1(MYSQL *mysql)
   mysql_close(my);
 
 
-  /* ssl_user2: connect with correct cipher */
-  my= mysql_init(NULL);
-  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
-  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
-                         port, socketname, 0), mysql_error(my));
-  FAIL_IF(strcmp("AES256-SHA", mysql_get_ssl_cipher(my)) != 0, "expected cipher AES256-SHA");
-  mysql_close(my);
-
-
-  sprintf(query, "grant select on %s.* to 'ssluser3'@'%s' require cipher 'AES256-SHA' AND "
-                 " SUBJECT '/C=FI/ST=Helsinki/L=Helsinki/O=MariaDB/CN=client'", schema, sslhost);
-  rc= mysql_query(mysql, query);
-  check_mysql_rc(rc, mysql);
-
-  /* ssluser3: connect with cipher only */
-  my= mysql_init(NULL);
-  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
-  FAIL_IF(mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
-                         port, socketname, 0), "Error expected");
-  mysql_close(my);
-
-  /* ssluser3 connect with cipher and certs */
-  my= mysql_init(NULL);
-  mysql_ssl_set(my, sslkey, 
-                sslcert, 
-                sslca, 
-                NULL, 
-                "AES256-SHA");
-  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
-                         port, socketname, 0), mysql_error(my));
-
-  mysql_close(my);
-
-  sprintf(query, "grant select on %s.* to 'ssluser4'@'%s' require cipher 'AES256-SHA' AND "
-                 " ISSUER '/CN=cacert/C=FI/ST=Helsinki/L=Helsinki/O=MariaDB'", schema, sslhost);
-  rc= mysql_query(mysql, query);
-  check_mysql_rc(rc, mysql);
-
-  /* ssluser4: connect with cipher only */
-  my= mysql_init(NULL);
-  mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
-  FAIL_IF(mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
-                         port, socketname, 0), "Error expected");
-  mysql_close(my);
-
-  /* ssluser4 connect with cipher and certs */
-  my= mysql_init(NULL);
-  mysql_ssl_set(my, sslkey,
-                sslcert,
-                sslca,
-                NULL,
-                "AES256-SHA");
-  FAIL_IF(!mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
-                         port, socketname, 0), mysql_error(my));
-
-  for (i=1; i < 6; i++)
+  if (!travis_test)
   {
-    sprintf(query, "DROP USER IF EXISTS 'ssluser%d'@'%s'", i, sslhost);
+    sprintf(query, "grant select on %s.* to 'ssluser3'@'%s' require cipher 'AES256-SHA' AND "
+                 " SUBJECT '/C=FI/ST=Helsinki/L=Helsinki/O=MariaDB/CN=client'", schema, this_host);
     rc= mysql_query(mysql, query);
     check_mysql_rc(rc, mysql);
+
+    /* ssluser3: connect with cipher only */
+    my= mysql_init(NULL);
+    mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
+    FAIL_IF(mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
+                               port, socketname, 0), "Error expected");
+    mysql_close(my);
+
+    /* ssluser3 connect with cipher and certs */
+    my= mysql_init(NULL);
+    mysql_ssl_set(my, sslkey, 
+                  sslcert, 
+                  sslca, 
+                  NULL, 
+                  "AES256-SHA");
+    FAIL_IF(!mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
+                           port, socketname, 0), mysql_error(my));
+
+    mysql_close(my);
+
+    sprintf(query, "grant select on %s.* to 'ssluser4'@'%s' require cipher 'AES256-SHA' AND "
+                   " ISSUER '/CN=cacert/C=FI/ST=Helsinki/L=Helsinki/O=MariaDB'", schema, this_host);
+    rc= mysql_query(mysql, query);
+    check_mysql_rc(rc, mysql);
+
+    /* ssluser4: connect with cipher only */
+    my= mysql_init(NULL);
+    mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
+    FAIL_IF(mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
+                           port, socketname, 0), "Error expected");
+    mysql_close(my);
+
+    /* ssluser4 connect with cipher and certs */
+    my= mysql_init(NULL);
+    mysql_ssl_set(my, sslkey,
+                  sslcert,
+                  sslca,
+                  NULL,
+                  "AES256-SHA");
+    FAIL_IF(!mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
+                           port, socketname, 0), mysql_error(my));
+    mysql_close(my);
   }
-  mysql_close(my);
+  diag("drop users");
+  for (i=1; i < 6; i++)
+  {
+    sprintf(query, "DROP USER 'ssluser%d'@'%s'", i, this_host);
+    rc= mysql_query(mysql, query);
+  }
 
   return OK;
 }
@@ -1195,8 +1226,6 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
   bool skip_tlsv12= !have_openssl;
 #endif
 
-  diag("%d %d", skip_tlsv12, have_openssl);
-
   for (i=0; combinations[i].expected; i++)
   {
     MYSQL *mysql;
@@ -1205,7 +1234,9 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
 
     if (!combinations[i].do_yassl && skip_tlsv12)
       break;
-    
+
+    diag("combination: %s", combinations[i].opt_tls_version);
+
     mysql= mysql_init(NULL);
     mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &val);
     mysql_options(mysql, MARIADB_OPT_TLS_VERSION, combinations[i].opt_tls_version);

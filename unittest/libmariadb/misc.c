@@ -98,6 +98,7 @@ static int bug31418_impl()
   MYSQL *mysql;
   int rc;
 
+
   /* Create a new connection. */
 
   mysql= test_connect(NULL);
@@ -169,7 +170,10 @@ static int bug31418_impl()
 
 static int test_bug31418(MYSQL *unused __attribute__((unused)))
 {
- int i;
+  int i;
+
+  if (!is_mariadb)
+    return SKIP;
   /* Run test case for BUG#31418 for three different connections. */
 
   for (i=0; i < 3; i++)
@@ -244,7 +248,7 @@ static int test_frm_bug(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "show variables like 'datadir'", (unsigned long)strlen("show variables like 'datadir'"));
+  rc= mysql_stmt_prepare(stmt, SL("show variables like 'datadir'"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -337,7 +341,7 @@ static int test_wl4166_1(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   query= "INSERT INTO table_4166(col1, col2, col3, col4, col5, col6, col7) "
           "VALUES(?, ?, ?, ?, ?, ?, ?)";
-  rc= mysql_stmt_prepare(stmt, query, (unsigned long)strlen(query));
+  rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 7, "param_count != 7");
@@ -449,7 +453,7 @@ static int test_wl4166_2(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "select * from t1", (unsigned long)strlen("select * from t1"));
+  rc= mysql_stmt_prepare(stmt, SL("select * from t1"));
   check_stmt_rc(rc, stmt);
 
   memset(bind_out, '\0', sizeof(bind_out));
@@ -548,7 +552,7 @@ static int test_wl4166_3(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-  rc= mysql_stmt_prepare(stmt, "insert into t1 (year) values (?)", (unsigned long)strlen("insert into t1 (year) values (?)"));
+  rc= mysql_stmt_prepare(stmt, SL("insert into t1 (year) values (?)"));
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 1, "param_count != 1");
@@ -640,7 +644,7 @@ static int test_wl4166_4(MYSQL *mysql)
 
   stmt_text= "insert into t1 (c1, c2) values (?, ?)";
 
-  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_bind_param(stmt, bind_array);
@@ -657,7 +661,7 @@ static int test_wl4166_4(MYSQL *mysql)
   stmt_text= "select c1, c2 from t1";
 
   /* c1 and c2 are binary so no conversion will be done on select */
-  rc= mysql_stmt_prepare(stmt, stmt_text, (unsigned long)strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -976,7 +980,6 @@ static int test_conc117(MYSQL *unused __attribute__((unused)))
                          port, socketname, 0), mysql_error(my));
   
   mysql_kill(my, mysql_thread_id(my));
-  sleep(5);
 
   mysql_options(my, MYSQL_OPT_RECONNECT, &reconnect);
 
@@ -1064,6 +1067,9 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  if (travis_test)
+    return SKIP;
+
   if (!env)
     env= "/tmp";
 
@@ -1079,10 +1085,10 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   fp= fopen(cnf_file1, "w");
   FAIL_IF(!fp, "fopen");
 
-  fprintf(fp, "[misc]\ndefault-character-set=latin2\n[client]\nreconnect=1\n");
+  fprintf(fp, "[client]\ndefault-character-set=latin2\nreconnect=1\n");
   fclose(fp);
 
-  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, NULL);
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "client");
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
@@ -1189,7 +1195,12 @@ static int test_server_status(MYSQL *mysql)
 {
   int rc;
   unsigned int server_status;
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
+
+  if (mysql_get_server_version(mysql) < 100200)
+    return SKIP;
+
+  stmt= mysql_stmt_init(mysql);
 
   rc= mysql_autocommit(mysql, 1);
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);
@@ -1261,7 +1272,7 @@ static int test_wl6797(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   stmt_text= "INSERT INTO t1 VALUES (1), (2)";
 
-  rc= mysql_stmt_prepare(stmt, stmt_text, (ulong)strlen(stmt_text));
+  rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_mysql_rc(rc, mysql);
 
   /* Execute the insert statement */

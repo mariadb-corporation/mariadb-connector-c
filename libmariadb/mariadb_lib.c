@@ -2537,7 +2537,11 @@ mysql_stat(MYSQL *mysql)
 int STDCALL
 mysql_ping(MYSQL *mysql)
 {
-  return ma_simple_command(mysql, COM_PING,0,0,0,0);
+  int rc;
+  rc= ma_simple_command(mysql, COM_PING, 0, 0, 0, 0);
+  if (rc && mysql->options.reconnect)
+    rc= ma_simple_command(mysql, COM_PING, 0, 0, 0, 0);
+  return rc;
 }
 
 char * STDCALL
@@ -2653,26 +2657,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_VALUE_STR(&mysql->options, my_cnf_file, (char *)arg1);
     break;
   case MYSQL_READ_DEFAULT_GROUP:
-    if (!arg1 || !((char *)arg1)[0])
-    {
-#if defined(HAVE_PROGRAM_INVOCATION_SHORT_NAME)
-      const char * appname = program_invocation_short_name;
-#elif defined(HAVE_GETPROGNAME)
-      const char * appname = getprogname();
-#elif defined(WIN32)
-      char module_filename[MAX_PATH];
-      char appname[MAX_PATH]="";
-      if (GetModuleFileName(NULL, module_filename, MAX_PATH))
-      {
-        _splitpath(module_filename,NULL, NULL, appname, NULL);
-      }
-#else
-      const char * appname = "";
-#endif
-      OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, appname);
-      break;
-    }
-    OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, (char *)arg1);
+    OPT_SET_VALUE_STR(&mysql->options, my_cnf_group, arg1 ? (char *)arg1 : "");
     break;
   case MYSQL_SET_CHARSET_DIR:
     OPT_SET_VALUE_STR(&mysql->options, charset_dir, arg1);

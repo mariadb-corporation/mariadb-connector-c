@@ -340,10 +340,15 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
     }
     if (packet_len < 8 && *pos == 254) /* EOF */
     {
-      stmt->mysql->server_status= uint2korr(pos + 3);
-      if (in_resultset)
+      if (mariadb_connection(stmt->mysql))
+      {
+        stmt->mysql->server_status= uint2korr(pos + 3);
+        if (in_resultset)
+          goto end;
+        in_resultset= 1;
+      }
+      else
         goto end;
-      in_resultset= 1;
     }
   }
 end:
@@ -2279,7 +2284,7 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
   }
 
   if (stmt->mysql->status == MYSQL_STATUS_GET_RESULT)
-    stmt->mysql->status= MYSQL_STATUS_STMT_RESULT;
+    stmt->mysql->status= MYSQL_STATUS_STMT_RESULT; 
 
   if (stmt->mysql->field_count)
     rc= madb_alloc_stmt_fields(stmt);

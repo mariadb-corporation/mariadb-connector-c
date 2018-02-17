@@ -52,7 +52,7 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my-conc66-test.cnf");
   check_mysql_rc(rc, mysql);
 
-  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, hostname ? hostname : "localhost");
+  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, this_host ? this_host : "localhost");
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
@@ -60,11 +60,13 @@ static int test_conc66(MYSQL *my)
   if (!my_test_connect(mysql, hostname, NULL,
                              NULL, schema, port, socketname, 0))
   {
+    diag("user: %s", mysql->options.user);
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
+    diag("user: %s", mysql->options.user);
   
-  sprintf(query, "DROP user conc66@%s", hostname ? hostname : "localhost");
+  sprintf(query, "DROP user 'conc66'@'%s'", this_host ? this_host : "localhost");
   rc= mysql_query(my, query);
 
   check_mysql_rc(rc, my);
@@ -82,6 +84,9 @@ static int test_bug20023(MYSQL *mysql)
   int sql_big_selects_4;
   int sql_big_selects_5;
   int rc;
+
+  if (!is_mariadb)
+    return SKIP;
 
   if (mysql_get_server_version(mysql) < 50100) {
     diag("Test requires MySQL Server version 5.1 or above");
@@ -579,7 +584,6 @@ static int test_reconnect(MYSQL *mysql)
 
   diag("Thread_id before kill: %lu", mysql_thread_id(mysql1));
   mysql_kill(mysql, mysql_thread_id(mysql1));
-  sleep(4);
 
   mysql_ping(mysql1);
 
@@ -657,7 +661,7 @@ int test_connection_timeout(MYSQL *unused __attribute__((unused)))
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
   mysql_close(mysql);
-  FAIL_IF(elapsed > 2 * timeout, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored")
   return OK;
 }
 
@@ -677,7 +681,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
   mysql_close(mysql);
-  FAIL_IF(elapsed > 2 * timeout, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored")
   return OK;
 }
 
@@ -702,7 +706,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   }
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
-  FAIL_IF(elapsed > timeout + 1, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > timeout + 1, "timeout ignored")
 
   mysql_close(mysql);
   mysql= mysql_init(NULL);
@@ -737,7 +741,6 @@ static int test_conc118(MYSQL *mysql)
   mysql->options.unused_1= 1;
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  sleep(2);
 
   mysql_ping(mysql);
 
@@ -747,7 +750,6 @@ static int test_conc118(MYSQL *mysql)
   FAIL_IF(mysql->options.unused_1 != 1, "options got lost");
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
-  sleep(2);
 
   mysql_ping(mysql);
   rc= mysql_query(mysql, "SET @a:=1");
@@ -1021,6 +1023,9 @@ static int test_reset(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
 
+  if (mysql_get_server_version(mysql) < 100200)
+    return SKIP;
+
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
   check_mysql_rc(rc, mysql);
 
@@ -1071,6 +1076,13 @@ static int test_auth256(MYSQL *my)
   int rc;
   MYSQL_RES *res;
   my_ulonglong num_rows= 0;
+  char query[1024];
+
+  if (!mysql_client_find_plugin(mysql, "sha256_password", 3))
+  {
+    diag("sha256_password plugin not available");
+    return SKIP;
+  }
 
   rc= mysql_query(my, "SELECT * FROM information_schema.plugins where plugin_name='sha256_password'");
   check_mysql_rc(rc, mysql);
@@ -1088,8 +1100,10 @@ static int test_auth256(MYSQL *my)
   rc= mysql_query(my, "DROP USER IF EXISTS sha256user@localhost");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(my, "CREATE user sha256user@localhost identified with sha256_password by 'foo'");
+  sprintf(query, "CREATE user 'sha256user'@'%s' identified with sha256_password by 'foo'", this_host);
+  rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
+
   if (!mysql_real_connect(mysql, hostname, "sha256user", "foo", NULL, port, socketname, 0))
   {
     diag("error: %s", mysql_error(mysql));
@@ -1107,7 +1121,8 @@ static int test_auth256(MYSQL *my)
     return FAIL;
   }
   mysql_close(mysql);
-  rc= mysql_query(my, "DROP USER sha256user@localhost");
+  sprintf(query, "DROP USER 'sha256user'@'%s'", this_host);
+  rc= mysql_query(my, query);
   check_mysql_rc(rc, mysql);
   return OK;
 }
@@ -1226,12 +1241,10 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     return FAIL;
 
   fprintf(fp, "[client]\n");
-  fprintf(fp, "default-character-set=latin1\n");
-  fprintf(fp, "[client-server]\n");
-  fprintf(fp, "default-character-set=latin1\n");
-  fprintf(fp, "[client-mariadb]\n");
   fprintf(fp, "default-character-set=utf8\n");
-  fprintf(fp, "[connection]\n");
+  fprintf(fp, "[client-server]\n");
+  fprintf(fp, "default-character-set=utf8\n");
+  fprintf(fp, "[client-mariadb]\n");
   fprintf(fp, "default-character-set=latin2\n");
 
   fclose(fp);
@@ -1247,12 +1260,13 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
+  diag("character set: %s", mysql_character_set_name(mysql));
   FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
   mysql_close(mysql);
 
   remove("./mdev13100.cnf");
 
-  return OK; 
+  return OK;
 }
 
 static int test_conc276(MYSQL *unused __attribute__((unused)))
