@@ -326,6 +326,14 @@ my_stmt_codec.c
 client_plugin.c
 my_auth.c
 )
+
+# some gcc versions fail to compile asm parts of my_context.c,
+# if build type is "Release" (see CONC-133), so we need to add -g flag
+IF(CMAKE_COMPILER_IS_GNUCC AND CMAKE_BUILD_TYPE MATCHES "Release")
+  SET_SOURCE_FILES_PROPERTIES(my_context.c PROPERTIES COMPILE_FLAGS -g)
+ENDIF()
+
+
 IF(WITH_OPENSSL)
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ma_secure.c)
 ENDIF()
