@@ -60,7 +60,7 @@ static int auth_sha256_init(char *unused1,
     va_list);
 
 
-#ifndef HAVE_SHA256PW_DYNAMIC
+#ifndef PLUGIN_DYNAMIC
 struct st_mysql_client_plugin_AUTHENTICATION sha256_password_client_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
@@ -235,7 +235,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   /* Create context and load public key */
   if (!CryptDecodeObjectEx(X509_ASN_ENCODING, X509_PUBLIC_KEY_INFO,
                            der_buffer, der_buffer_len,
-                           CRYPT_ENCODE_ALLOC_FLAG, NULL,
+                           CRYPT_DECODE_ALLOC_FLAG, NULL,
                            &publicKeyInfo, (DWORD *)&publicKeyInfoLen))
     goto error;
   LocalFree(der_buffer);
@@ -288,6 +288,8 @@ error:
     RSA_free(pubkey);
 #elif defined(HAVE_WINCRYPT)
   CryptReleaseContext(hProv, 0);
+  if (publicKeyInfo)
+    LocalFree(publicKeyInfo);
 #endif
   free(filebuffer);
   return rc;

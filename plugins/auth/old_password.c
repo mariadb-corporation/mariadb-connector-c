@@ -1,5 +1,5 @@
 /************************************************************************************
-   Copyright (C) 2014,2015 MariaDB Corporation AB
+   Copyright (C) 2014,2015,2018 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -46,8 +46,8 @@ typedef struct {
   int last_read_packet_len;           /**< the length of the last *read* packet */
 } MCPVIO_EXT;
 
-#ifndef HAVE_OLDPASSWORD_DYNAMIC
-struct st_mysql_client_plugin_AUTHENTICATION old_password_client_plugin=
+#ifndef PLUGIN_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION mysql_old_password_client_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 #endif

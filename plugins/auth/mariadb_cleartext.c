@@ -1,5 +1,5 @@
 /************************************************************************************
-   Copyright (C) 2014 MariaDB Corporation AB
+   Copyright (C) 2014-2018 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -53,8 +53,8 @@ static int clear_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 }
 /* }}} */
 
-#ifndef HAVE_DIALOG_DYNAMIC
-struct st_mysql_client_plugin_AUTHENTICATION auth_cleartext_plugin=
+#ifndef PLUGIN_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION mysql_clear_password_client_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 #endif

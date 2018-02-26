@@ -19,7 +19,7 @@
 #define _ma_io_h_
 
 
-#ifdef HAVE_CURL
+#ifdef HAVE_REMOTEIO
 #include <curl/curl.h>
 #endif
 
@@ -29,7 +29,7 @@ enum enum_file_type {
   MA_FILE_REMOTE=2
 };
 
-typedef struct 
+typedef struct
 {
   enum enum_file_type type;
   void *ptr;

@@ -68,13 +68,6 @@ ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/misc.cmake)
 
-IF (WITH_CURL)
-  INCLUDE(FindCURL)
-  IF(CURL_FOUND)
-    ADD_DEFINITIONS(-DHAVE_CURL=1)
-  ENDIF()
-ENDIF()
-
 IF(WITH_SIGNCODE)
   IF(WIN32 AND NOT SIGN_OPTIONS)
     SET(SIGN_OPTIONS /a /t http://timestamp.verisign.com/scripts/timstamp.dll)
@@ -313,7 +306,8 @@ IF(NOT WITH_SSL STREQUAL "OFF")
   IF(WIN32)
     IF(WITH_SSL STREQUAL "SCHANNEL")
       ADD_DEFINITIONS(-DHAVE_SCHANNEL -DHAVE_TLS)
-      SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/schannel.c" "${CC_SOURCE_DIR}/libmariadb/secure/ma_schannel.c")
+      SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/schannel.c"
+                      "${CC_SOURCE_DIR}/libmariadb/secure/ma_schannel.c")
       INCLUDE_DIRECTORIES("${CC_SOURCE_DIR}/plugins/pvio/")
       SET(SSL_LIBRARIES secur32)
       SET(TLS_LIBRARY_VERSION "Schannel ${CMAKE_SYSTEM_VERSION}")
@@ -371,9 +365,9 @@ IF(NOT WIN32)
     ENDIF()
   ENDIF()
 ENDIF()
+INCLUDE(${CMAKE_SOURCE_DIR}/plugins/CMakeLists.txt)
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(libmariadb)
-ADD_SUBDIRECTORY(plugins)
 IF(NOT WIN32)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
@@ -475,6 +469,8 @@ ELSE()
 ENDIF()
 
 MESSAGE1(STATUS "MariaDB Connector/c configuration:
+-- Static PLUGINS ${PLUGINS_STATIC}
+-- Dynamic PLUGINS ${PLUGINS_DYNAMIC}
 -- CPack generation: ${CPACK_GENERATOR}
 -- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
 -- Zlib support: ${zlib_status}

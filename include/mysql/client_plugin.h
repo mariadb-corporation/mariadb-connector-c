@@ -48,7 +48,7 @@
 
 /* Connector/C specific plugin types */
 #define MARIADB_CLIENT_REMOTEIO_PLUGIN       100 /* communication IO */
-#define MARIADB_CLIENT_PVIO_PLUGIN            101
+#define MARIADB_CLIENT_PVIO_PLUGIN           101
 #define MARIADB_CLIENT_TRACE_PLUGIN          102
 #define MARIADB_CLIENT_CONNECTION_PLUGIN     103
 
@@ -89,15 +89,19 @@ struct st_mysql_client_plugin
 struct st_mysql;
 
 /********* connection handler plugin specific declarations **********/
+
 typedef struct st_ma_connection_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER
   /* functions */
-  MYSQL *(*connect)(MYSQL *mysql, const char *host, const char *user, const char *passwd,
-		    const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
+  MYSQL *(*connect)(MYSQL *mysql, const char *host,
+                    const char *user, const char *passwd,
+		                const char *db, unsigned int port,
+                    const char *unix_socket, unsigned long clientflag);
   void (*close)(MYSQL *mysql);
-  int (*set_options)(MYSQL *mysql, enum mysql_option, void *arg);
-  int (*set_connection)(MYSQL *mysql,enum enum_server_command command, const char *arg,
+  int (*set_optionsv)(MYSQL *mysql, unsigned int option, ...);
+  int (*set_connection)(MYSQL *mysql,enum enum_server_command command,
+                        const char *arg,
                         size_t length, my_bool skipp_check, void *opt_arg);
   my_bool (*reconnect)(MYSQL *mysql);
   int (*reset)(MYSQL *mysql);

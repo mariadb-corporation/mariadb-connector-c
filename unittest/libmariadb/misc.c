@@ -707,6 +707,9 @@ static int test_wl4284_1(MYSQL *mysql)
   MYSQL_ROW row;
   MYSQL_RES *result;
 
+  diag("Test temporarily disabled");
+  return SKIP;
+
   if (mysql_get_server_version(mysql) < 60000) {
     diag("Test requires MySQL Server version 6.0 or above");
     return SKIP;
@@ -1088,7 +1091,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   fprintf(fp, "[client]\ndefault-character-set=latin2\nreconnect=1\n");
   fclose(fp);
 
-  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "client");
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 

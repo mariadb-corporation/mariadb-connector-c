@@ -2616,7 +2616,7 @@ uchar *ma_get_hash_keyval(const uchar *hash_entry,
   return p;
 }
 
-void ma_hash_free(void *p)
+void ma_int_hash_free(void *p)
 {
   free(p);
 }
@@ -2855,7 +2855,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if (!hash_inited(&mysql->options.extension->userdata))
       {
         if (_hash_init(&mysql->options.extension->userdata,
-                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0))
+                       0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
           goto end;
@@ -2917,7 +2917,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if (!hash_inited(&mysql->options.extension->connect_attrs))
       {
         if (_hash_init(&mysql->options.extension->connect_attrs,
-                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0))
+                       0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
           goto end;
@@ -4113,5 +4113,6 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS = {
   my_set_error,
   /* invalidate statements */
   ma_invalidate_stmts,
+  /* API functions */
   &MARIADB_API
 };

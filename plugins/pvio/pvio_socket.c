@@ -80,7 +80,6 @@
 #endif
 #endif
 
-
 /* Function prototypes */
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
@@ -128,8 +127,8 @@ struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_shutdown
 };
 
-#ifndef HAVE_SOCKET_DYNAMIC
-MARIADB_PVIO_PLUGIN pvio_socket_plugin=
+#ifndef PLUGIN_DYNAMIC
+MARIADB_PVIO_PLUGIN pvio_socket_client_plugin=
 #else
 MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_
 #endif
