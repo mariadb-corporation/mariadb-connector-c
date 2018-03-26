@@ -362,7 +362,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
 {
   const char *errmsg;
 #ifdef _WIN32
-  char errbuf[255];
+  char errbuf[1024];
 #endif
   char dlpath[FN_REFLEN+1];
   void *sym, *dlhandle;
@@ -392,11 +392,20 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   if (!(dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))
   {
 #ifdef _WIN32
+   char winmsg[255];
+   size_t len;
+   winmsg[0] = 0;
    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
                  NULL,
                  GetLastError(),
                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                 (LPTSTR)&errbuf, 255, NULL);
+                 winmsg, 255, NULL);
+   len= strlen(winmsg);
+   while (len > 0 && (winmsg[len - 1] == '\n' || winmsg[len - 1] == '\r'))
+     len--;
+   if (len)
+     winmsg[len] = 0;
+   snprintf(errbuf, sizeof(errbuf), "%s Library path is '%s'", winmsg, dlpath);
    errmsg= errbuf;
 #else
     errmsg= dlerror();
