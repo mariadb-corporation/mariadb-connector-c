@@ -1318,7 +1318,7 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
     gnutls_certificate_credentials_t ctx;
     struct st_gnutls_data *data=
       (struct st_gnutls_data *)gnutls_session_get_ptr(ctls->ssl);
-    /* this would be the correct way, however can't dectect afterwards
+    /* this would be the correct way, however can't detect afterwards
        if the socket is closed or not, so we don't send encrypted 
        finish alert.
     rc= gnutls_bye((gnutls_session_t )ctls->ssl, GNUTLS_SHUT_WR);

@@ -7,7 +7,7 @@
 	Free Software Foundation, Inc.
 
 Changes by monty:
-- Added include of string.h when nessessary.
+- Added include of string.h when necessary.
 - Removed two warnings from gcc.
 
 This file is part of the GNU C Library.  Its master source is NOT part of

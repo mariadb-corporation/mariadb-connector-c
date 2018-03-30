@@ -374,7 +374,7 @@ my_bool pvio_npipe_is_alive(MARIADB_PVIO *pvio)
   if (!pvio || !pvio->data)
     return FALSE;
     handle= ((struct st_pvio_npipe *)pvio->data)->pipe;
-  /* Copy data fron named pipe without removing it */
+  /* Copy data from named pipe without removing it */
   if (PeekNamedPipe(handle, NULL, 0, NULL, NULL, NULL))
     return TRUE;
   return test(GetLastError() != ERROR_BROKEN_PIPE);

@@ -25,7 +25,7 @@ static struct option long_options[]=
 static char *values[] =
 {
   "show information for all plugins",
-  "show informaion for builtin plugins",
+  "show information for builtin plugins",
   "show information for dynamic plugins",
   "show information for dynamic plugins in specified directory",
   "show information for specified plugin",

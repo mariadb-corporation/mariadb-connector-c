@@ -247,7 +247,7 @@ enum enum_server_command
 struct st_ma_pvio;
 typedef struct st_ma_pvio MARIADB_PVIO;
 
-#define MAX_CHAR_WIDTH		255	/* Max length for a CHAR colum */
+#define MAX_CHAR_WIDTH		255	/* Max length for a CHAR column */
 #define MAX_BLOB_WIDTH		8192	/* Default width for blob */
 
 /* the following defines were added for PHP's mysqli and pdo extensions: 
@@ -345,8 +345,8 @@ enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
                         MYSQL_TYPE_GEOMETRY=255,
                         MAX_NO_FIELD_TYPES };
 
-#define FIELD_TYPE_CHAR FIELD_TYPE_TINY		/* For compability */
-#define FIELD_TYPE_INTERVAL FIELD_TYPE_ENUM	/* For compability */
+#define FIELD_TYPE_CHAR FIELD_TYPE_TINY		/* For compatibility */
+#define FIELD_TYPE_INTERVAL FIELD_TYPE_ENUM	/* For compatibility */
 #define FIELD_TYPE_DECIMAL MYSQL_TYPE_DECIMAL
 #define FIELD_TYPE_NEWDECIMAL MYSQL_TYPE_NEWDECIMAL
 #define FIELD_TYPE_TINY MYSQL_TYPE_TINY

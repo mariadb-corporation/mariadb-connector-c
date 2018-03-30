@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
          (unsigned long) mysql_affected_rows(mysql));
   mysql_free_result(result);
 
-  /* Affected rows with DELETE statment */
+  /* Affected rows with DELETE statement */
   query= "DELETE FROM affected_rows";
   if (mysql_real_query(mysql, query, strlen(query)))
     show_error(mysql);

@@ -1185,7 +1185,7 @@ dynamic_column_decimal_store(DYNAMIC_COLUMN *str,
 /**
   Prepare the value to be used as decimal.
 
-  @param value           The value structure which sould be setup.
+  @param value           The value structure which should be setup.
 */
 
 void mariadb_dyncol_prepare_decimal(DYNAMIC_COLUMN_VALUE *value)
@@ -2093,7 +2093,7 @@ static uchar *find_entry_named(DYN_HEADER *hdr, LEX_STRING *key)
 /**
   Write number in the buffer (backward direction - starts from the buffer end)
 
-  @return pointer on the number begining
+  @return pointer on the number beginning
 */
 
 static char *backwritenum(char *chr, uint numkey)
@@ -2163,7 +2163,7 @@ find_column(DYN_HEADER *hdr, uint numkey, LEX_STRING *strkey)
   hdr->length= hdr_interval_length(hdr, hdr->entry + hdr->entry_size);
   hdr->data= hdr->dtpool + hdr->offset;
   /*
-    Check that the found data is withing the ranges. This can happen if
+    Check that the found data is within the ranges. This can happen if
     we get data with wrong offsets.
   */
   if (hdr->length == DYNCOL_OFFSET_ERROR ||
@@ -3502,7 +3502,7 @@ dynamic_column_update_many_fmt(DYNAMIC_COLUMN *str,
 
       if (plan[i].val->type == DYN_COL_NULL)
       {
-        plan[i].act= PLAN_NOP;                  /* Mark entry to be skiped */
+        plan[i].act= PLAN_NOP;                  /* Mark entry to be skipped */
       }
       else
       {
@@ -4144,7 +4144,7 @@ mariadb_dyncol_json_internal(DYNAMIC_COLUMN *str, DYNAMIC_STRING *json,
       hdr_interval_length(&header, header.entry + header.entry_size);
     header.data= header.dtpool + header.offset;
     /*
-      Check that the found data is withing the ranges. This can happen if
+      Check that the found data is within the ranges. This can happen if
       we get data with wrong offsets.
     */
     if (header.length == DYNCOL_OFFSET_ERROR ||
@@ -4283,7 +4283,7 @@ mariadb_dyncol_unpack(DYNAMIC_COLUMN *str,
       hdr_interval_length(&header, header.entry + header.entry_size);
     header.data= header.dtpool + header.offset;
     /*
-      Check that the found data is withing the ranges. This can happen if
+      Check that the found data is within the ranges. This can happen if
       we get data with wrong offsets.
     */
     if (header.length == DYNCOL_OFFSET_ERROR ||

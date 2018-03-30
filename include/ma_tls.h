@@ -36,7 +36,7 @@ typedef struct st_ma_pvio_tls {
      errmsg_len  length of error message buffer
    Returns:
      0           success
-     1           if an error occured
+     1           if an error occurred
    Notes:
      On success the global variable ma_tls_initialized will be set to 1
 */
@@ -77,7 +77,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls);
      length       buffer length
    Returns:
      0-n          bytes read
-     -1           if an error occured
+     -1           if an error occurred
 */
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length);
 
@@ -89,7 +89,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length);
      length       buffer length
    Returns:
      0-n          bytes written
-     -1           if an error occured
+     -1           if an error occurred
 */
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length);
 

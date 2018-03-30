@@ -21,7 +21,7 @@
    is freely available from http://www.php.net
 *************************************************************************************/
 
-/* The hash functions used for saveing keys */
+/* The hash functions used for saving keys */
 /* One of key_length or key_length_offset must be given */
 /* Key length of 0 isn't allowed */
 
@@ -131,7 +131,7 @@ static uint calc_hashnr(const uchar *key,uint length)
   return((uint) nr);
 }
 
-	/* Calc hashvalue for a key, case indepenently */
+	/* Calc hashvalue for a key, case independently */
 
 static uint calc_hashnr_caseup(const uchar *key,uint length)
 {
@@ -505,7 +505,7 @@ exit:
 
 	/*
 	  Update keys when record has changed.
-	  This is much more efficent than using a delete & insert.
+	  This is much more efficient than using a delete & insert.
 	  */
 
 my_bool hash_update(HASH *hash,uchar *record,uchar *old_key,uint old_key_length)
