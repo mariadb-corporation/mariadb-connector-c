@@ -17,7 +17,7 @@
    MA 02111-1301, USA */
 
 /*
-  Code for handling strings with can grow dynamicly.
+  Code for handling strings which can grow dynamically.
   Copyright Monty Program KB.
   By monty.
 */

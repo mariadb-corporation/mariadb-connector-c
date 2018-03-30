@@ -272,7 +272,7 @@ extern int my_pthread_cond_init(pthread_cond_t *mp,
 #endif
 
 #if !defined(HAVE_SIGWAIT) && !defined(HAVE_mit_thread) && !defined(HAVE_rts_threads) && !defined(sigwait) && !defined(alpha_linux_port) && !defined(HAVE_NONPOSIX_SIGWAIT) && !defined(HAVE_DEC_3_2_THREADS) && !defined(_AIX)
-int sigwait(sigset_t *setp, int *sigp);		/* Use our implemention */
+int sigwait(sigset_t *setp, int *sigp);		/* Use our implementation */
 #endif
 #if !defined(HAVE_SIGSET) && !defined(my_sigset)
 #define my_sigset(A,B) do { struct sigaction s; sigset_t set;           \

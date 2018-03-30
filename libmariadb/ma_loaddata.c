@@ -242,7 +242,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
     goto infile_error;
   }
 
-  /* error during read occured */
+  /* error during read occurred */
   if (bufread < 0)
   {
     char tmp_buf[MYSQL_ERRMSG_SIZE];

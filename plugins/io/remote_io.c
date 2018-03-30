@@ -183,7 +183,7 @@ static int fill_buffer(MA_FILE *file, size_t want)
   MA_REMOTE_FILE *rf= (MA_REMOTE_FILE *)file->ptr;
  
   /* only attempt to fill buffer if transactions still running and buffer
-     doesnt exceed required size already */ 
+     doesn't exceed required size already */ 
   if (!rf->in_progress || (rf->offset > want))
     return 0;
  
@@ -273,7 +273,7 @@ static int use_buffer(MA_FILE *file,int want)
 MA_FILE *ma_rio_open(const char *url,const char *operation)
 {
   /* this code could check for URLs or types in the 'url' and
-     basicly use the real fopen() for standard files */ 
+     basically use the real fopen() for standard files */ 
  
   MA_FILE *file;
   MA_REMOTE_FILE *rf;
@@ -374,7 +374,7 @@ size_t ma_rio_read(void *ptr, size_t size, size_t nmemb, MA_FILE *file)
 
     fill_buffer(file,want);
  
-    /* check if theres data in the buffer - if not fill_buffer()
+    /* check if there's data in the buffer - if not fill_buffer()
      * either errored or EOF */ 
     if(!rf->offset)
       return 0;
@@ -411,7 +411,7 @@ char *ma_rio_gets(char *ptr, size_t size, MA_FILE *file)
     MA_REMOTE_FILE *rf= (MA_REMOTE_FILE *)file->ptr;
     fill_buffer(file,want);
  
-    /* check if theres data in the buffer - if not fill either errored or
+    /* check if there's data in the buffer - if not fill either errored or
      * EOF */ 
     if(!rf->offset)
       return NULL;
@@ -431,7 +431,7 @@ char *ma_rio_gets(char *ptr, size_t size, MA_FILE *file)
  
     /* xfer data to caller */ 
     memcpy(ptr, rf->buffer, want);
-    ptr[want]=0;/* allways null terminate */ 
+    ptr[want]=0;/* always null terminate */ 
  
     use_buffer(file,want);
  
