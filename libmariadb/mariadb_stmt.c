@@ -727,7 +727,7 @@ unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size
       }
       for (i = 0; i < stmt->param_count; i++)
       {
-        /* this differs from mysqlnd, c api supports unsinged !! */
+        /* this differs from mysqlnd, c api supports unsigned !! */
         uint buffer_type= stmt->params[i].buffer_type | (stmt->params[i].is_unsigned ? 32768 : 0);
         /* check if parameter requires indicator variable */
         int2store(p, buffer_type);
@@ -912,7 +912,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
       }
       for (i = 0; i < stmt->param_count; i++)
       {
-        /* this differs from mysqlnd, c api supports unsinged !! */
+        /* this differs from mysqlnd, c api supports unsigned !! */
         uint buffer_type= stmt->params[i].buffer_type | (stmt->params[i].is_unsigned ? 32768 : 0);
         int2store(p, buffer_type);
         p+= 2;
@@ -1504,7 +1504,7 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
 
   p= (uchar *)stmt->mysql->net.read_pos;
 
-  if (0xFF == p[0])  /* Error occured */
+  if (0xFF == p[0])  /* Error occurred */
   {
     return(1);
   }
@@ -1581,7 +1581,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
     is_multi= (mysql->net.extension->multi_status > COM_MULTI_OFF);
     /* We need to semi-close the prepared statement:
        reset stmt and free all buffers and close the statement
-       on server side. Statment handle will get a new stmt_id */
+       on server side. Statement handle will get a new stmt_id */
 
     if (!is_multi)
       ma_multi_command(mysql, COM_MULTI_ENABLED);
@@ -1805,11 +1805,11 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
 
   ret= test((mysql->methods->db_read_stmt_result &&
                  mysql->methods->db_read_stmt_result(mysql)));
-  /* if a reconnect occured, our connection handle is invalid */
+  /* if a reconnect occurred, our connection handle is invalid */
   if (!stmt->mysql)
     return(1);
 
-  /* update affected rows, also if an error occured */
+  /* update affected rows, also if an error occurred */
   stmt->upsert_status.affected_rows= stmt->mysql->affected_rows;
 
   if (ret)
@@ -2354,7 +2354,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   {
     /* We need to semi-close the prepared statement:
        reset stmt and free all buffers and close the statement
-       on server side. Statment handle will get a new stmt_id */
+       on server side. Statement handle will get a new stmt_id */
     char stmt_id[STMT_ID_LENGTH];
 
     if (mysql_stmt_internal_reset(stmt, 1))

@@ -40,7 +40,7 @@
 
    RETURN
      CR_OK
-     CR_ERROR        if an error occured
+     CR_ERROR        if an error occurred
 */
 static int clear_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {

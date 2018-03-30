@@ -47,15 +47,15 @@ typedef struct my_aio_result {
 
 	/* General bitmaps for my_func's */
 #define MY_FFNF		1	/* Fatal if file not found */
-#define MY_FNABP	2	/* Fatal if not all bytes read/writen */
-#define MY_NABP		4	/* Error if not all bytes read/writen */
+#define MY_FNABP	2	/* Fatal if not all bytes read/written */
+#define MY_NABP		4	/* Error if not all bytes read/written */
 #define MY_FAE		8	/* Fatal if any error */
 #define MY_WME		16	/* Write message on error */
 #define MY_WAIT_IF_FULL 32	/* Wait and try again if disk full error */
 #define MY_RAID         64      /* Support for RAID (not the "Johnson&Johnson"-s one ;) */
 #define MY_DONT_CHECK_FILESIZE 128	/* Option to init_io_cache() */
 #define MY_LINK_WARNING 32	/* my_redel() gives warning if links */
-#define MY_COPYTIME	64	/* my_redel() copys time */
+#define MY_COPYTIME	64	/* my_redel() copies time */
 #define MY_DELETE_OLD	256	/* my_create_with_symlink() */
 #define MY_RESOLVE_LINK 128	/* my_realpath(); Only resolve links */
 #define MY_HOLD_ORIGINAL_MODES 128  /* my_copy() holds to file modes */
@@ -79,8 +79,8 @@ typedef struct my_aio_result {
 #define ME_HOLDTANG	8	/* Don't delete last keys */
 #define ME_WAITTOT	16	/* Wait for errtime secs of for a action */
 #define ME_WAITTANG	32	/* Wait for a user action  */
-#define ME_NOREFRESH	64	/* Dont refresh screen */
-#define ME_NOINPUT	128	/* Dont use the input libary */
+#define ME_NOREFRESH	64	/* Don't refresh screen */
+#define ME_NOINPUT	128	/* Don't use the input library */
 #define ME_COLOUR1	((1 << ME_HIGHBYTE))	/* Possibly error-colours */
 #define ME_COLOUR2	((2 << ME_HIGHBYTE))
 #define ME_COLOUR3	((3 << ME_HIGHBYTE))
@@ -195,7 +195,7 @@ extern void (*my_sigtstp_cleanup)(void),
 					/* Executed before jump to shell */
 	    (*my_sigtstp_restart)(void),
 	    (*my_abort_hook)(int);
-					/* Executed when comming from shell */
+					/* Executed when coming from shell */
 extern int NEAR ma_umask,		/* Default creation mask  */
 	   NEAR ma_umask_dir,
 	   NEAR my_recived_signals,	/* Signals we have got */
@@ -233,7 +233,7 @@ enum cache_type {READ_CACHE,WRITE_CACHE,READ_FIFO,READ_NET,WRITE_NET};
 enum flush_type { FLUSH_KEEP, FLUSH_RELEASE, FLUSH_IGNORE_CHANGED,
 		  FLUSH_FORCE_WRITE};
 
-typedef struct st_record_cache	/* Used when cacheing records */
+typedef struct st_record_cache	/* Used when caching records */
 {
   File file;
   int	rc_seek,error,inited;
@@ -274,7 +274,7 @@ typedef struct st_dynamic_string {
 } DYNAMIC_STRING;
 
 
-typedef struct st_io_cache		/* Used when cacheing files */
+typedef struct st_io_cache		/* Used when caching files */
 {
   my_off_t pos_in_file,end_of_file;
   unsigned char	*rc_pos,*rc_end,*buffer,*rc_request_pos;
@@ -319,7 +319,7 @@ typedef int (*qsort2_cmp)(const void *, const void *, const void *);
     ((info)->rc_pos+=(Count)),0) :\
    _my_b_write(info,Buffer,Count))
 
-	/* my_b_write_byte dosn't have any err-check */
+	/* my_b_write_byte doesn't have any err-check */
 #define my_b_write_byte(info,chr) \
   (((info)->rc_pos < (info)->rc_end) ?\
    ((*(info)->rc_pos++)=(chr)) :\

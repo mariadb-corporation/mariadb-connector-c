@@ -485,9 +485,9 @@ int exit_status() {
 
    At the end, a complete test report should be written, with some
    statistics. If the test returns EXIT_SUCCESS, all tests were
-   successfull, otherwise at least one test failed.
+   successful, otherwise at least one test failed.
 
-   To get a TAP complient output and exit status, report the exit
+   To get a TAP compliant output and exit status, report the exit
    status in the following manner:
 
    @code
@@ -525,7 +525,7 @@ int exit_status() {
    @subsection JustToBeSafeTest Writing unnecessarily large tests
 
    Don't write tests that use parameters in the range 1-1024 unless
-   you have a very good reason to belive that the component will
+   you have a very good reason to believe that the component will
    succeed for 562 but fail for 564 (the numbers picked are just
    examples).
 

@@ -383,7 +383,7 @@ static int client_mpvio_read_packet(struct st_plugin_vio *mpv, uchar **buf)
   to send data to the server.
 
   It transparently wraps the data into a change user or authentication
-  handshake packet, if neccessary.
+  handshake packet, if necessary.
 */
 
 static int client_mpvio_write_packet(struct st_plugin_vio *mpv,

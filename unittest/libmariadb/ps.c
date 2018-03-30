@@ -4018,7 +4018,7 @@ static int test_rewind(MYSQL *mysql)
   rc= mysql_stmt_bind_result(stmt, &my_bind);
   check_stmt_rc(rc, stmt);
 
-  /* retreive all result sets till we are at the end */
+  /* retrieve all result sets till we are at the end */
   while(!(rc=mysql_stmt_fetch(stmt)));
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 

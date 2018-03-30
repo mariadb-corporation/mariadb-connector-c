@@ -23,7 +23,7 @@
    component of the client library.
 
    PVIO support various protcols like sockets, pipes and shared memory, which are 
-   implemented as plugins and can be extended therfore easily.
+   implemented as plugins and can be extended therefore easily.
 
    Interface function description:
 
@@ -114,7 +114,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
   pvio->set_error= my_set_error;
   pvio->type= cinfo->type;
 
-  /* set timeout to connect timeout - after successfull connect we will set 
+  /* set timeout to connect timeout - after successful connect we will set 
    * correct values for read and write */
   if (pvio->methods->set_timeout)
   {

@@ -17,7 +17,7 @@
 
 /* Write and read of logical packets to/from socket
  ** Writes are cached into net_buffer_length big packets.
- ** Read packets are reallocated dynamicly when reading big packets.
+ ** Read packets are reallocated dynamically when reading big packets.
  ** Each logical packet has the following pre-info:
  ** 3 byte length & 1 byte package-number.
  */

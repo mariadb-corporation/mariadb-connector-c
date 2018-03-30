@@ -52,13 +52,13 @@ void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid message sequence");
     break;
   case SEC_E_DECRYPT_FAILURE:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: An error occured during decrypting data");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: An error occurred during decrypting data");
     break;
   case SEC_I_INCOMPLETE_CREDENTIALS:
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Incomplete credentials");
     break;
   case SEC_E_ENCRYPT_FAILURE:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: An error occured during encrypting data");
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: An error occurred during encrypting data");
     break;
   case SEC_I_CONTEXT_EXPIRED:
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Context expired ");
@@ -95,7 +95,7 @@ void ma_schannel_set_win_error(MARIADB_PVIO *pvio)
     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
     return;
   }
-  /* todo: obtain error messge */
+  /* todo: obtain error message */
   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, ssl_errno, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR) &ssl_error_reason, 0, NULL );
@@ -288,7 +288,7 @@ end:
 
 /* {{{ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char *key_file) */
 /*
-  Load privte key into context
+  Load private key into context
 
   SYNOPSIS
     ma_schannel_load_private_key()
@@ -661,7 +661,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   sRet= ma_schannel_handshake_loop(pvio, TRUE, &ExtraData);
 
   /* allocate IO-Buffer for write operations: After handshake
-  was successfull, we are able now to calculate payload */
+  was successful, we are able now to calculate payload */
   if ((sRet = QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes )))
     goto end;
 
@@ -701,7 +701,7 @@ end:
 
   RETURN
     SEC_E_OK         on success
-    SEC_E_*          if an error occured
+    SEC_E_*          if an error occurred
 */  
 
 SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
@@ -913,7 +913,7 @@ end:
 
   RETURN
     SEC_E_OK         on success
-    SEC_E_*          if an error occured
+    SEC_E_*          if an error occurred
 */ 
 ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
