@@ -1298,7 +1298,68 @@ static int test_conc276(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_expired_pw(MYSQL *my)
+{
+  MYSQL *mysql;
+  int rc;
+  char query[512];
+  unsigned char expire= 1;
+
+  if (mariadb_connection(my) ||
+     !(my->server_capabilities & CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS))
+  {
+    diag("Server doesn't support password expiration");
+    return SKIP;
+  }
+  sprintf(query, "DROP USER 'foo'@'%s'", this_host);
+  rc= mysql_query(my, query);
+
+  sprintf(query, "CREATE USER 'foo'@'%s' IDENTIFIED BY 'foo'", this_host);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  sprintf(query, "GRANT ALL ON *.* TO 'foo'@'%s'", this_host);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  sprintf(query, "ALTER USER 'foo'@'%s' PASSWORD EXPIRE", this_host);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  mysql= mysql_init(NULL);
+
+  my_test_connect(mysql, hostname, "foo", "foo", schema,
+                  port, socketname, 0);
+
+  FAIL_IF(!mysql_errno(mysql), "Error expected");
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  mysql_optionsv(mysql, MYSQL_OPT_CAN_HANDLE_EXPIRED_PASSWORDS, &expire);
+
+  my_test_connect(mysql, hostname, "foo", "foo", schema,
+                  port, socketname, 0);
+
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
+
+  diag("error: %d %s", mysql_errno(mysql), mysql_error(mysql));
+  FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD, "Error 1820 expected");
+
+  rc= mysql_query(mysql, "SET PASSWORD=PASSWORD('foobar')");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  sprintf(query, "DROP USER 'foo'@'%s'", this_host);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_expired_pw", test_expired_pw, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_auth256", test_auth256, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
