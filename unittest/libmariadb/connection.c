@@ -792,7 +792,24 @@ static int test_read_timeout(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_conc315(MYSQL *mysql)
+{
+  int rc;
+  const char *csname;
+
+  csname= mysql_character_set_name(mysql);
+  FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
+
+  rc= mysql_change_user(mysql, username, password, schema);
+  check_mysql_rc(rc, mysql);
+  csname= mysql_character_set_name(mysql);
+  FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_conc315", test_conc315, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_read_timeout", test_read_timeout, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_conc_163", test_conc_163, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
