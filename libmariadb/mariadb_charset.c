@@ -22,7 +22,7 @@
 #include <mariadb_ctype.h>
 #include <ma_string.h>
 
-MARIADB_CHARSET_INFO *ma_default_charset_info = (MARIADB_CHARSET_INFO *)&mariadb_compiled_charsets[5];
+MARIADB_CHARSET_INFO *ma_default_charset_info = (MARIADB_CHARSET_INFO *)&mariadb_compiled_charsets[21];
 MARIADB_CHARSET_INFO *ma_charset_bin= (MARIADB_CHARSET_INFO *)&mariadb_compiled_charsets[32];
 MARIADB_CHARSET_INFO *ma_charset_latin1= (MARIADB_CHARSET_INFO *)&mariadb_compiled_charsets[5];
 MARIADB_CHARSET_INFO *ma_charset_utf8_general_ci= (MARIADB_CHARSET_INFO *)&mariadb_compiled_charsets[21];

@@ -1471,8 +1471,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   /* Set character set */
   if (mysql->options.charset_name)
     mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
-  else if (mysql->server_language)
-    mysql->charset= mysql_find_charset_nr(mysql->server_language);
   else
     mysql->charset=ma_default_charset_info;
 
@@ -1721,8 +1719,6 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
 
   if (mysql->options.charset_name)
     mysql->charset =mysql_find_charset_name(mysql->options.charset_name);
-  else if (mysql->server_language)
-    mysql->charset=mysql_find_charset_nr(mysql->server_language);
   else
     mysql->charset=ma_default_charset_info;
 
