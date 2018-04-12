@@ -2308,7 +2308,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   MYSQL *mysql= stmt->mysql;
   my_bool emulate_cmd= !(!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
       (stmt->mysql->extension->mariadb_server_capabilities &
-      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32)));
+      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))) || mysql->net.compress;
 
   if (!mysql)
   {

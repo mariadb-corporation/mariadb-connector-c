@@ -4638,7 +4638,21 @@ static int test_mdev14165(MYSQL *mysql)
   return OK;
 }
 
+static int test_compress(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  rc= mariadb_stmt_execute_direct(stmt, SL("SELECT 1 FROM DUAL"));
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_compress", test_compress, TEST_CONNECTION_NEW, CLIENT_COMPRESS, NULL, NULL},
   {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev14165", test_mdev14165, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
