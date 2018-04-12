@@ -611,11 +611,10 @@ static int pvio_socket_internal_connect(MARIADB_PVIO *pvio,
 #ifndef _WIN32
   do {
     rc= connect(csock->socket, (struct sockaddr*) name, (int)namelen);
-  } while (rc == -1 && errno == EINTR);
+  } while (rc == -1 && (errno == EINTR || errno == EAGAIN));
   /* in case a timeout values was set we need to check error values
-     EINPROGRESS and EAGAIN */
-  if (timeout != 0 && rc == -1 && 
-     (errno == EINPROGRESS || errno == EAGAIN))
+     EINPROGRESS */
+  if (timeout != 0 && rc == -1 && errno == EINPROGRESS)
   {
     rc= pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout);
     if (rc < 1)
