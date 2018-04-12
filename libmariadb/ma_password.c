@@ -69,7 +69,7 @@ void ma_hash_password(ulong *result, const char *password, size_t len)
   for (; password < password_end; password++)
   {
     if (*password == ' ' || *password == '\t')
-      continue;			/* skipp space in password */
+      continue;			/* skip space in password */
     tmp= (ulong) (uchar) *password;
     nr^= (((nr & 63)+add)*tmp)+ (nr << 8);
     nr2+=(nr2 << 8) ^ nr;

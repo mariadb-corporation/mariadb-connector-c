@@ -278,7 +278,7 @@ int aurora_get_instance_type(MYSQL *mysql)
  *
  *   Returns:
  *     1 on success
- *     0 if an error occured or primary_id couldn't be 
+ *     0 if an error occurred or primary_id couldn't be 
  *       found
  */
 my_bool aurora_get_primary_id(MYSQL *mysql, AURORA *aurora)

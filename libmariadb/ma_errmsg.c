@@ -117,7 +117,7 @@ const char *client_errors[]=
 /* 2032 */  "Data truncated",
 /* 2033 */  "",
 /* 2034 */  "Invalid parameter number",
-/* 2035 */  "Invalid buffer type: %d (paraneter: %d)",
+/* 2035 */  "Invalid buffer type: %d (parameter: %d)",
 /* 2036 */  "Buffer type is not supported",
 /* 2037 */  "Shared memory: %-.64s",
 /* 2038 */  "Shared memory connection failed during %s. (%lu)",

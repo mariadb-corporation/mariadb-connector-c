@@ -7,7 +7,7 @@
 #
 # This file is included by CMakeLists.txt and
 # checks for various header files.
-# You will find the appropiate defines in 
+# You will find the appropriate defines in 
 # include/my_config.h.in
 
 INCLUDE(CheckIncludeFiles)

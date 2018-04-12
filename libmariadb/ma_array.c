@@ -16,7 +16,7 @@
    Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
    MA 02111-1301, USA */
 
-/* Handling of arrays that can grow dynamicly. */
+/* Handling of arrays that can grow dynamically. */
 
 #undef SAFEMALLOC /* Problems with threads */
 
@@ -59,7 +59,7 @@ my_bool ma_insert_dynamic(DYNAMIC_ARRAY *array, void *element)
 {
   void *buffer;
   if (array->elements == array->max_element)
-  {						/* Call only when nessesary */
+  {						/* Call only when necessary */
     if (!(buffer=ma_alloc_dynamic(array)))
       return TRUE;
   }

@@ -721,7 +721,7 @@ static int test_bug15518(MYSQL *mysql)
 
   /*
     Use the same stmt and reprepare with another query that
-    suceeds
+    succeeds
   */
   rc= mysql_stmt_prepare(stmt, SL("SHOW STATUS"));
   FAIL_UNLESS(!rc || mysql_stmt_errno(stmt) || mysql_errno(mysql), "Error expected");
@@ -741,7 +741,7 @@ static int test_bug15518(MYSQL *mysql)
 
   /*
     Use the same stmt and reprepare with another query that
-    suceeds. The prepare should fail with error 2013 since
+    succeeds. The prepare should fail with error 2013 since
     connection to server has been closed.
   */
   rc= mysql_stmt_prepare(stmt, SL("SHOW STATUS"));
@@ -2665,7 +2665,7 @@ static int test_bug5194(MYSQL *mysql)
                         MAX_PARAM_COUNT * CHARS_PER_PARAM + 1);
   param_str= (char*) malloc(COLUMN_COUNT * CHARS_PER_PARAM);
 
-  FAIL_IF(my_bind == 0 || query == 0 || param_str == 0, "Not enought memory")
+  FAIL_IF(my_bind == 0 || query == 0 || param_str == 0, "Not enough memory")
 
   stmt= mysql_stmt_init(mysql);
 
@@ -2986,7 +2986,7 @@ static int test_bug6096(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   query_result= mysql_store_result(mysql);
   query_field_list= mysql_fetch_fields(query_result);
-  FAIL_IF(!query_field_list, "fetch_fields faild");
+  FAIL_IF(!query_field_list, "fetch_fields failed");
   query_field_count= mysql_num_fields(query_result);
 
   stmt= mysql_stmt_init(mysql);

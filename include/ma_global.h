@@ -366,7 +366,7 @@ typedef int	(*qsort_cmp)(const void *,const void *);
 #undef QSORT_TYPE_IS_VOID
 #define QSORT_TYPE_IS_VOID
 #else
-#define qsort_t RETQSORTTYPE	/* Broken GCC cant handle typedef !!!! */
+#define qsort_t RETQSORTTYPE	/* Broken GCC can't handle typedef !!!! */
 #endif
 
 #ifdef HAVE_SYS_SOCKET_H
@@ -457,7 +457,7 @@ typedef SOCKET_SIZE_TYPE size_socket;
 #define NO_MISAM		/* Not needed anymore */
 #define NO_HASH			/* Not needed anymore */
 #ifdef _WIN32
-#define NO_DIR_LIBRARY		/* Not standar dir-library */
+#define NO_DIR_LIBRARY		/* Not standard dir-library */
 #define USE_MY_STAT_STRUCT	/* For my_lib */
 #ifdef _MSC_VER
 typedef SSIZE_T ssize_t;
@@ -580,12 +580,12 @@ extern double		my_atof(const char*);
 
 /*
   Max size that must be added to a so that we know Size to make
-  adressable obj.
+  addressable obj.
 */
 typedef long my_ptrdiff_t;
 #define MY_ALIGN(A,L)	(((A) + (L) - 1) & ~((L) - 1))
 #define ALIGN_SIZE(A)	MY_ALIGN((A),sizeof(double))
-/* Size to make adressable obj. */
+/* Size to make addressable obj. */
 #define ALIGN_PTR(A, t) ((t*) MY_ALIGN((A),sizeof(t)))
 			 /* Offset of filed f in structure t */
 #define OFFSET(t, f)	((size_t)(char *)&((t *)0)->f)
@@ -593,7 +593,7 @@ typedef long my_ptrdiff_t;
 #define PTR_BYTE_DIFF(A,B) (my_ptrdiff_t) ((unsigned char*) (A) - (unsigned char*) (B))
 
 #define NullS		(char *) 0
-/* Nowdays we do not support MessyDos */
+/* Nowadays we do not support MessyDos */
 #ifndef NEAR
 #define NEAR				/* Who needs segments ? */
 #define FAR				/* On a good machine */
