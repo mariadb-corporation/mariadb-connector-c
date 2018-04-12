@@ -4639,6 +4639,7 @@ static int test_mdev14165(MYSQL *mysql)
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev14165", test_mdev14165, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc217", test_conc217, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

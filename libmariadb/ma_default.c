@@ -206,7 +206,7 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
     if (!key)
       key= ptr;
     for ( ; isspace(end[-1]) ; end--) ;
-
+    *end= 0;
     if (!value)
     {
       if (!key)
@@ -220,8 +220,9 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
       value++;
       ptr= value;
       for ( ; isspace(*value); value++) ;
-      optval= value;
       value_end=strchr(value, '\0');
+      *value_end= 0;
+      optval= ptr;
       for ( ; isspace(value_end[-1]) ; value_end--) ;
       /* remove possible quotes */
       if (*value == '\'' || *value == '\"')

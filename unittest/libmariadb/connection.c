@@ -1376,8 +1376,48 @@ static int test_conc315(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc317(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql;
+  my_bool reconnect = 0;
+  FILE *fp= NULL;
+  const char *env= getenv("MYSQL_TMP_DIR");
+  char cnf_file1[FN_REFLEN + 1];
+
+  if (travis_test)
+    return SKIP;
+
+  if (!env)
+    env= "/tmp";
+
+  setenv("HOME", env, 1);
+
+  snprintf(cnf_file1, FN_REFLEN, "%s%c.my.cnf", env, FN_LIBCHAR);
+
+  FAIL_IF(!access(cnf_file1, R_OK), "access");
+
+  mysql= mysql_init(NULL);
+  fp= fopen(cnf_file1, "w");
+  FAIL_IF(!fp, "fopen");
+
+  fprintf(fp, "[client]\ndefault-character-set = latin2\nreconnect= 1\n");
+  fclose(fp);
+
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
+  my_test_connect(mysql, hostname, username, password,
+                  schema, 0, socketname, 0);
+
+  remove(cnf_file1);
+
+  FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
+  mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_IF(reconnect != 1, "expected reconnect=1");
+  mysql_close(mysql);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_conc317", test_conc317, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc315", test_conc315, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_expired_pw", test_expired_pw, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
