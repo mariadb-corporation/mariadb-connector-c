@@ -1366,16 +1366,16 @@ static int test_conc315(MYSQL *mysql)
   if (!is_mariadb)
     return SKIP;
 
-  mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, &csname);
+  mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, (void *)&csname);
   FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
 
   rc= mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);
-  mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, &csname);
+  mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, (void *)&csname);
   FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
   return OK;
 }
-
+#ifndef WIN32
 static int test_conc317(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql;
@@ -1415,9 +1415,12 @@ static int test_conc317(MYSQL *unused __attribute__((unused)))
   mysql_close(mysql);
   return OK;
 }
+#endif
 
 struct my_tests_st my_tests[] = {
+#ifndef WIN32
   {"test_conc317", test_conc317, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+#endif
   {"test_conc315", test_conc315, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_expired_pw", test_expired_pw, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
