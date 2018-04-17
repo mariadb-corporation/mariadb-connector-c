@@ -56,6 +56,9 @@
 #endif
 #include <ma_pthread.h>
 
+#include <mariadb_async.h>
+#include <ma_context.h>
+
 extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
 
@@ -639,13 +642,68 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   return 0;
 }
 
+static my_bool
+ma_tls_async_check_result(int res, struct mysql_async_context *b, SSL *ssl)
+{
+  int ssl_err;
+  b->events_to_wait_for= 0;
+  if (res >= 0)
+    return 1;
+  ssl_err= SSL_get_error(ssl, res);
+  if (ssl_err == SSL_ERROR_WANT_READ)
+    b->events_to_wait_for|= MYSQL_WAIT_READ;
+  else if (ssl_err == SSL_ERROR_WANT_WRITE)
+    b->events_to_wait_for|= MYSQL_WAIT_WRITE;
+  else
+    return 1;
+  if (b->suspend_resume_hook)
+    (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+  my_context_yield(&b->async_context);
+  if (b->suspend_resume_hook)
+    (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+  return 0;
+}
+
+ssize_t ma_tls_read_async(MARIADB_PVIO *pvio,
+                          const unsigned char *buffer,
+                          size_t length)
+{
+  int res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  MARIADB_TLS *ctls= pvio->ctls;
+
+  for (;;)
+  {
+    res= SSL_read((SSL *)ctls->ssl, (void *)buffer, length);
+    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
+      return res;
+  }
+}
+
+ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
+                           const unsigned char *buffer,
+                           size_t length)
+{
+  int res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  MARIADB_TLS *ctls= pvio->ctls;
+
+  for (;;)
+  {
+    res= SSL_write((SSL *)ctls->ssl, (void *)buffer, length);
+    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
+      return res;
+  }
+}
+
+
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   return SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
-{ 
+{
   return SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
 }
 

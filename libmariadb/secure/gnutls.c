@@ -31,6 +31,8 @@
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <ma_tls.h>
+#include <mariadb_async.h>
+#include <ma_context.h>
 
 pthread_mutex_t LOCK_gnutls_config;
 
@@ -1299,6 +1301,55 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   }
   ctls->ssl= (void *)ssl;
   return 0;
+}
+
+ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  ssize_t res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  MARIADB_TLS *ctls= pvio->ctls;
+
+  for (;;)
+  {
+    b->events_to_wait_for= 0;
+    res= gnutls_record_send((gnutls_session_t)ctls->ssl, (void *)buffer, length);
+    if (res > 0)
+      return res;
+    if (res == GNUTLS_E_AGAIN)
+      b->events_to_wait_for|= MYSQL_WAIT_WRITE;
+    else
+      return res;
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+    my_context_yield(&b->async_context);
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+  }
+}
+
+
+ssize_t ma_tls_read_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  ssize_t res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  MARIADB_TLS *ctls= pvio->ctls;
+
+  for (;;)
+  {
+    b->events_to_wait_for= 0;
+    res= gnutls_record_recv((gnutls_session_t)ctls->ssl, (void *)buffer, length);
+    if (res > 0)
+      return res;
+    if (res == GNUTLS_E_AGAIN)
+      b->events_to_wait_for|= MYSQL_WAIT_READ;
+    else
+      return res;
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+    my_context_yield(&b->async_context);
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+  }
 }
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
