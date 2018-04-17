@@ -743,14 +743,25 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 #ifndef _WIN32
 #ifdef HAVE_SYS_UN_H
     struct sockaddr_un UNIXaddr;
-    if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == INVALID_SOCKET)
+    if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == INVALID_SOCKET ||
+        strlen(cinfo->unix_socket) >= (sizeof(UNIXaddr.sun_path)))
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_SOCKET_CREATE_ERROR, unknown_sqlstate, 0, errno);
       goto error;
     }
     memset((char*) &UNIXaddr, 0, sizeof(UNIXaddr));
     UNIXaddr.sun_family = AF_UNIX;
-    strcpy(UNIXaddr.sun_path, cinfo->unix_socket);
+#if defined(__linux__)
+    /* Abstract socket */
+    if (cinfo->unix_socket[0] == '@')
+    {
+      strcpy(UNIXaddr.sun_path + 1, cinfo->unix_socket + 1);
+    }
+    else
+#endif
+    {
+      strcpy(UNIXaddr.sun_path, cinfo->unix_socket);
+    }
     if (pvio_socket_connect_sync_or_async(pvio, (struct sockaddr *) &UNIXaddr, 
                                     sizeof(UNIXaddr)))
     {
