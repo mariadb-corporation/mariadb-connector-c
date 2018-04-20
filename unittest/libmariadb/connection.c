@@ -1341,7 +1341,8 @@ static int test_expired_pw(MYSQL *my)
                   port, socketname, 0);
 
   diag("error: %d %s", mysql_errno(mysql), mysql_error(mysql));
-  FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD, "Error 1820 expected");
+  FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD &&
+          mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD_LOGIN, "Error 1820/1862 expected");
 
   mysql_close(mysql);
 
