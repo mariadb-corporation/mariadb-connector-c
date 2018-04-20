@@ -1340,21 +1340,15 @@ static int test_expired_pw(MYSQL *my)
   my_test_connect(mysql, hostname, "foo", "foo", schema,
                   port, socketname, 0);
 
-  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
-
   diag("error: %d %s", mysql_errno(mysql), mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD, "Error 1820 expected");
 
-  rc= mysql_query(mysql, "SET PASSWORD=PASSWORD('foobar')");
-  check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
-  check_mysql_rc(rc, mysql);
+  mysql_close(mysql);
 
   sprintf(query, "DROP USER 'foo'@'%s'", this_host);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
-  mysql_close(mysql);
   return OK;
 }
 
