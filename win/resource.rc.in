@@ -20,7 +20,7 @@ BEGIN
             VALUE "CompanyName", "MariaDB Corporation AB"
             VALUE "FileDescription", "@FILE_DESCRIPTION@"
             VALUE "FileVersion", "@CPACK_PACKAGE_VERSION_MAJOR@.@CPACK_PACKAGE_VERSION_MINOR@.@CPACK_PACKAGE_VERSION_PATCH@.@FILE_VERSION@"
-            VALUE "LegalCopyright", "2013-2015 MariaDB Corporation Ab"
+            VALUE "LegalCopyright", "2013-2018 MariaDB Corporation Ab"
             VALUE "ProductName", "MariaDB Connector/C"
             VALUE "ProductVersion", "@CPACK_PACKAGE_VERSION_MAJOR@.@CPACK_PACKAGE_VERSION_MINOR@.@CPACK_PACKAGE_VERSION_PATCH@"
             VALUE "OriginalFilename", "@ORIGINAL_FILE_NAME@"
