@@ -26,17 +26,15 @@ ENDIF()
 #
 # process dynamic plugins
 #
-FOREACH(plugin ${PLUGINS})
-  IF(${${plugin}_PLUGIN_TYPE} STREQUAL "DYNAMIC")
-    SET(TARGET ${${plugin}_PLUGIN_TARGET})
-    # Get dependencies
-    SET(DYNAMIC_TARGETS ${DYNAMIC_TARGETS} ${TARGET})
-    GET_PROPERTY(FILE TARGET ${TARGET} PROPERTY LOCATION)
-    #MESSAGE(STATUS "Location for ${TARGET}: ${DIRECTORY}")
-    # build file list
-    STRING(REPLACE "$(Configuration)" "RelWithDebInfo" FILE ${FILE})
-    SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"${TARGET}.dll\" Name=\"${TARGET}.dll\" DiskId=\"1\" Source=\"${FILE}\"/>\n")
-  ENDIF()
+FOREACH(plugin ${PLUGINS_DYNAMIC})
+  SET(TARGET ${plugin})
+  # Get dependencies
+  SET(DYNAMIC_TARGETS ${DYNAMIC_TARGETS} ${TARGET})
+  GET_PROPERTY(FILE TARGET ${TARGET} PROPERTY LOCATION)
+  MESSAGE(STATUS "Location for ${TARGET}: ${FILE}")
+  # build file list
+  STRING(REPLACE "$(Configuration)" "RelWithDebInfo" FILE ${FILE})
+  SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"${TARGET}.dll\" Name=\"${TARGET}.dll\" DiskId=\"1\" Source=\"${FILE}\"/>\n")
 ENDFOREACH()
 
 FOREACH(src ${WIX_INCLUDES})
