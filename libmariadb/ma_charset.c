@@ -259,7 +259,7 @@ static unsigned int mysql_mbcharlen_utf8(unsigned int utf8)
 
 static unsigned int check_mb_big5(const char *start, const char *end)
 {
-  return (valid_big5head(*(start)) && (end - start) > 1 && valid_big5tail(*(start + 1)) ? 2 : 0);
+  return (valid_big5head(*((const uchar*) start)) && (end - start) > 1 && valid_big5tail(*((const uchar*) start + 1)) ? 2 : 0);
 }
 
 

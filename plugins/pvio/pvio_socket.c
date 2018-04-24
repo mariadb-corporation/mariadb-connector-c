@@ -80,6 +80,10 @@
 #endif
 #endif
 
+#if SOCKET_EAGAIN != SOCKET_EWOULDBLOCK
+#define HAVE_SOCKET_EWOULDBLOCK 1
+#endif
+
 /* Function prototypes */
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
@@ -297,7 +301,11 @@ ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   while ((r = ma_recv(csock->socket, (void *)buffer, length, read_flags)) == -1)
   {
     int err = socket_errno;
-    if ((err != SOCKET_EAGAIN && err != SOCKET_EWOULDBLOCK) || timeout == 0)
+    if ((err != SOCKET_EAGAIN
+#ifdef HAVE_SOCKET_EWOULDBLOCK
+      && err != SOCKET_EWOULDBLOCK
+#endif
+      ) || timeout == 0)
       return r;
 
     if (pvio_socket_wait_io_or_timeout(pvio, TRUE, timeout) < 1)
@@ -467,7 +475,11 @@ ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length
   while ((r = ma_send(csock->socket, (void *)buffer, length,send_flags)) == -1)
   {
     int err = socket_errno;
-    if ((err != SOCKET_EAGAIN && err != SOCKET_EWOULDBLOCK)|| timeout == 0)
+    if ((err != SOCKET_EAGAIN
+#ifdef HAVE_SOCKET_EWOULDBLOCK
+      && err != SOCKET_EWOULDBLOCK
+#endif
+       )|| timeout == 0)
       return r;
     if (pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout) < 1)
       return -1;
@@ -497,6 +509,9 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
     memset(&p_fd, 0, sizeof(p_fd));
     p_fd.fd= csock->socket;
     p_fd.events= (is_read) ? POLLIN : POLLOUT;
+
+    if (!timeout)
+      timeout= -1;
 
     do {
       rc= poll(&p_fd, 1, timeout);
