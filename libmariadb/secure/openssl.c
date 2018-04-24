@@ -259,7 +259,11 @@ static void my_cb_locking(int mode, int n,
 
 static int ssl_thread_init()
 {
-  if (!CRYPTO_get_id_callback())
+  if (!CRYPTO_THREADID_get_callback()
+#ifndef OPENSSL_NO_DEPRECATED
+      && !CRYPTO_get_id_callback()
+#endif
+      )
   {
     int i, max= CRYPTO_num_locks();
 
@@ -386,7 +390,8 @@ void ma_tls_end()
     {
       int i;
       CRYPTO_set_locking_callback(NULL);
-      CRYPTO_set_id_callback(NULL);
+      CRYPTO_THREADID_set_callback(NULL);
+
       for (i=0; i < CRYPTO_num_locks(); i++)
         pthread_mutex_destroy(&LOCK_crypto[i]);
       ma_free((gptr)LOCK_crypto);
