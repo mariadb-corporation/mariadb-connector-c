@@ -21,12 +21,14 @@
 #include <ma_pthread.h>
 #ifdef HAVE_OPENSSL
 #include <openssl/opensslv.h>
+#include <openssl/ssl.h>
 #endif
 
 #define FNLEN 4096
 
 static int skip_ssl= 1;
 static uchar have_openssl= 1;
+static unsigned char have_tls13= 0;
 
 const char *ssluser= "ssluser";
 const char *sslpw= "sslpw";
@@ -107,9 +109,23 @@ static int create_ssl_user(const char *ssluser, my_bool is_X509)
 static int test_ssl(MYSQL *mysql)
 {
   int rc;
+  unsigned int iversion;
   MYSQL_RES *res;
   MYSQL_ROW row;
   char *tls_library;
+  MYSQL *my= mysql_init(NULL);
+
+  mysql_ssl_set(my,0, 0, 0, 0, 0);
+
+  FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
+                         port, socketname, 0), mysql_error(my));
+
+  mariadb_get_infov(my, MARIADB_CONNECTION_TLS_VERSION_ID, &iversion);
+  diag("iversion: %d", iversion);
+  if (iversion == 4)
+    have_tls13= 1;
+
+  mysql_close(my);
 
   rc= mysql_query(mysql, "SELECT @@have_ssl, @@have_openssl");
   check_mysql_rc(rc, mysql);
@@ -904,12 +920,18 @@ static int test_cipher_mapping(MYSQL *unused __attribute__((unused)))
 {
   unsigned int i=0;
   const char *ciphers[]= { "DHE-RSA-AES256-GCM-SHA384", "DHE-RSA-AES256-SHA256", "DHE-RSA-AES256-SHA",
-                           "DHE-RSA-CAMELLIA256-SHA", "AES256-GCM-SHA384", "AES256-SHA256",
-                           "AES256-SHA", "CAMELLIA256-SHA", "DHE-RSA-AES128-GCM-SHA256",
-                           "DHE-RSA-AES128-SHA256", "DHE-RSA-AES128-SHA", "DHE-RSA-CAMELLIA128-SHA",
-                           "AES128-GCM-SHA256", "AES128-SHA256", "AES128-SHA", "CAMELLIA128-SHA",
-                           "EDH-RSA-DES-CBC3-SHA", "DES-CBC3-SHA", "DHE-RSA-AES256-SHA",
-                           "DHE-RSA-CAMELLIA256-SHA", "AES256-SHA", "CAMELLIA256-SHA",
+#ifdef TEST_CAMELLIA_CIPHER
+                           "DHE-RSA-CAMELLIA256-SHA", "CAMELLIA256-SHA",
+                           "DHE-RSA-CAMELLIA128-SHA", "CAMELLIA128-SHA",
+#endif
+#ifdef TEST_DES_CIPHER
+                           "EDH-RSA-DES-CBC3-SHA",
+                           "DES-CBC3-SHA",
+#endif
+                           "AES256-GCM-SHA384", "AES256-SHA256", "AES256-SHA",
+                           "DHE-RSA-AES128-GCM-SHA256", "DHE-RSA-AES128-SHA256", "DHE-RSA-AES128-SHA",
+                           "AES128-GCM-SHA256", "AES128-SHA256", "AES128-SHA",
+                           "DHE-RSA-AES256-SHA", "AES256-SHA",
                            NULL };
 
   diag("This test depends on OpenSSL version - since several ciphers might not be available");
@@ -933,6 +955,7 @@ static int test_cipher_mapping(MYSQL *unused __attribute__((unused)))
     int rc;
     const char *cipher;
 
+    mysql_options(mysql, MYSQL_OPT_TLS_VERSION, "TLSv1.0,TLSv1.1,TLSv1.2");
     mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, ciphers[i]);
     diag("%s", ciphers[i]);
     
@@ -978,6 +1001,9 @@ static int test_openssl_1(MYSQL *mysql)
   int i;
 
   if (check_skip_ssl())
+    return SKIP;
+
+  if (have_tls13)
     return SKIP;
 
   if (!mariadb_connection(mysql))
@@ -1238,7 +1264,7 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
     if (!combinations[i].do_yassl && skip_tlsv12)
       break;
 
-    diag("combination: %s", combinations[i].opt_tls_version);
+    diag("combination %d: %s", i, combinations[i].opt_tls_version);
 
     mysql= mysql_init(NULL);
     mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &val);
@@ -1247,7 +1273,7 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
                          port, socketname, 0), mysql_error(mysql));
     mariadb_get_infov(mysql, MARIADB_CONNECTION_TLS_VERSION, &tls_version);
     diag("options: %s", combinations[i].opt_tls_version);
-    diag("protocol: %s", tls_version);
+    diag("protocol: %s expected: %s", tls_version, combinations[i].expected);
     FAIL_IF(strcmp(combinations[i].expected, tls_version), "Wrong tls_version");
     mysql_close(mysql);
   }
