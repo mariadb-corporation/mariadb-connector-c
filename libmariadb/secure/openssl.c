@@ -42,7 +42,7 @@
 #ifdef HAVE_TLS_SESSION_CACHE
 #undef HAVE_TLS_SESSION_CACHE
 #endif
-#if OPENSSL_USE_BIOMETHOD
+#if defined(OPENSSL_USE_BIOMETHOD)
 #undef OPENSSL_USE_BIOMETHOD
 #endif
 #ifndef HAVE_OPENSSL_DEFAULT
@@ -69,7 +69,7 @@ static pthread_mutex_t LOCK_openssl_config;
 #ifndef HAVE_OPENSSL_1_1_API
 static pthread_mutex_t *LOCK_crypto= NULL;
 #endif
-#if OPENSSL_USE_BIOMETHOD
+#if defined(OPENSSL_USE_BIOMETHOD)
 static int ma_bio_read(BIO *h, char *buf, int size);
 static int ma_bio_write(BIO *h, const char *buf, int size);
 static BIO_METHOD ma_BIO_method;
@@ -350,7 +350,7 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   OpenSSL_add_all_algorithms();
 #endif
   disable_sigpipe();
-#if OPENSSL_USE_BIOMETHOD
+#ifdef OPENSSL_USE_BIOMETHOD
   memcpy(&ma_BIO_method, BIO_s_socket(), sizeof(BIO_METHOD));
   ma_BIO_method.bread= ma_bio_read;
   ma_BIO_method.bwrite= ma_bio_write;
@@ -582,7 +582,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
-#if OPENSSL_USE_BIOMETHOD
+#ifdef OPENSSL_USE_BIOMETHOD
   BIO_METHOD *bio_method= NULL;
   BIO *bio;
 #endif
@@ -596,7 +596,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   SSL_clear(ssl);
 
-#if OPENSSL_USE_BIOMETHOD
+#ifdef OPENSSL_USE_BIOMETHOD
   bio= BIO_new(&ma_BIO_method);
   bio->ptr= pvio;
   SSL_set_bio(ssl, bio, bio);
