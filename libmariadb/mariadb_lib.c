@@ -507,7 +507,7 @@ void read_user_name(char *name)
 	str="UNKNOWN_USER";
     }
     ma_strmake(name,str,USERNAME_LENGTH);
-#elif HAVE_CUSERID
+#elif defined(HAVE_CUSERID)
     (void) cuserid(name);
 #else
     ma_strmake(name,"UNKNOWN_USER", USERNAME_LENGTH);
