@@ -180,6 +180,13 @@ SET(MARIADB_DYNCOL_SYMBOLS
  mariadb_dyncol_val_long
  mariadb_dyncol_val_str)
 
+SET(MARIADB_RPL_SYMBOLS
+mariadb_rpl_init
+mariadb_rpl_open
+mariadb_rpl_fetch
+mariadb_rpl_optionv
+mariadb_rpl_close)
+
 SET(MARIADB_NONBLOCK_SYMBOLS
  mysql_autocommit_cont
  mysql_autocommit_start
@@ -292,6 +299,7 @@ ma_dtoa.c
 ${CC_BINARY_DIR}/libmariadb/ma_client_plugin.c
 ma_io.c
 ${SSL_SOURCES}
+mariadb_rpl.c
 )
 
 IF(WIN32)
@@ -337,7 +345,7 @@ IF(WITH_DYNCOL)
 ENDIF()
 
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
-SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
+SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_RPL_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
 IF(NOT WIN32)

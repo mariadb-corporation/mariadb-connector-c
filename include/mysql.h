@@ -421,6 +421,7 @@ typedef struct character_set
 #define LOCAL_INFILE_ERROR_LEN 512
 
 #include "mariadb_stmt.h"
+#include "mariadb_rpl.h"
 
 #ifndef MYSQL_CLIENT_PLUGIN_HEADER
 #define MYSQL_CLIENT_PLUGIN_HEADER                      \
