@@ -184,7 +184,7 @@ SET(MARIADB_RPL_SYMBOLS
 mariadb_rpl_init
 mariadb_rpl_open
 mariadb_rpl_fetch
-mariadb_rpl_optionv
+mariadb_rpl_optionsv
 mariadb_rpl_close)
 
 SET(MARIADB_NONBLOCK_SYMBOLS
