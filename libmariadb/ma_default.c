@@ -39,6 +39,12 @@ static const char *ini_exts[]= {"cnf", 0};
 char **configuration_dirs= NULL;
 #define MAX_CONFIG_DIRS 6
 
+my_bool _mariadb_read_options(MYSQL *mysql,
+                              const char *config_dir,
+                              const char *config_file,
+                              const char *group,
+                              unsigned int recursion);
+
 static int add_cfg_dir(char **cfg_dirs, const char *directory)
 {
   int i;
@@ -139,7 +145,8 @@ static my_bool is_group(char *ptr, const char **groups)
 
 static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
                                                const char *config_file,
-                                               const char *group)
+                                               const char *group,
+                                               unsigned int recursion)
 {
   uint line=0;
   my_bool read_values= 0, found_group= 0, is_escaped= 0, is_quoted= 0;
@@ -173,6 +180,23 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
     if (!is_escaped && (*ptr == '\"' || *ptr== '\''))
     {
       is_quoted= !is_quoted;
+      continue;
+    }
+    /* CONC- 327: !includedir and !include */
+    if (*ptr == '!')
+    {
+      char *val;
+      ptr++;
+      if (!(val= strchr(ptr, ' ')))
+        continue;
+      *val++= 0;
+      end= strchr(val, 0);
+      for ( ; isspace(end[-1]) ; end--) ;	/* Remove end space */
+      *end= 0;
+      if (!strcmp(ptr, "includedir"))
+        _mariadb_read_options(mysql, (const char *)val, NULL, group, recursion + 1);
+      else if (!strcmp(ptr, "include"))
+        _mariadb_read_options(mysql, NULL, (const char *)val, group, recursion + 1);
       continue;
     }
     if (*ptr == '#' || *ptr == ';' || !*ptr)
@@ -286,19 +310,37 @@ err:
 
 
 my_bool _mariadb_read_options(MYSQL *mysql,
+                              const char *config_dir,
                               const char *config_file,
-                              const char *group)
+                              const char *group,
+                              unsigned int recursion)
 {
   int i= 0,
       exts,
       errors= 0;
   char filename[FN_REFLEN + 1];
+  unsigned int recursion_stop= 64;
 #ifndef _WIN32
   char *env;
 #endif
 
-  if (config_file)
-    return _mariadb_read_options_from_file(mysql, config_file, group);
+  if (recursion >= recursion_stop)
+    return 1;
+
+  if (config_file && config_file[0])
+    return _mariadb_read_options_from_file(mysql, config_file, group, recursion);
+
+  if (config_dir && config_dir[0])
+  {
+    for (exts= 0; ini_exts[exts]; exts++)
+    {
+      snprintf(filename, FN_REFLEN,
+               "%s%cmy.%s", config_dir, FN_LIBCHAR, ini_exts[exts]);
+      if (!access(filename, R_OK))
+        errors+= _mariadb_read_options_from_file(mysql, filename, group, recursion);
+    }
+    return errors;
+  }
 
   for (i=0; i < MAX_CONFIG_DIRS && configuration_dirs[i]; i++)
   {
@@ -307,7 +349,7 @@ my_bool _mariadb_read_options(MYSQL *mysql,
       snprintf(filename, FN_REFLEN,
                "%s%cmy.%s", configuration_dirs[i], FN_LIBCHAR, ini_exts[exts]);
       if (!access(filename, R_OK))
-        errors+= _mariadb_read_options_from_file(mysql, filename, group);
+        errors+= _mariadb_read_options_from_file(mysql, filename, group, recursion);
     }
   }
 #ifndef _WIN32
@@ -319,7 +361,7 @@ my_bool _mariadb_read_options(MYSQL *mysql,
       snprintf(filename, FN_REFLEN,
                "%s%c.my.%s", env, FN_LIBCHAR, ini_exts[exts]);
       if (!access(filename, R_OK))
-        errors+= _mariadb_read_options_from_file(mysql, filename, group);
+        errors+= _mariadb_read_options_from_file(mysql, filename, group, recursion);
     }
   }
 #endif
