@@ -106,8 +106,7 @@ extern int mthd_stmt_fetch_row(MYSQL_STMT *stmt, unsigned char **row);
 extern int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row);
 extern int mthd_stmt_read_all_rows(MYSQL_STMT *stmt);
 extern void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt);
-extern my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
-                                     char *group);
+extern my_bool _mariadb_read_options(MYSQL *mysql, const char *dir, const char *config_file, char *group, unsigned int recursion);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
 
 extern void
@@ -1203,10 +1202,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   /* use default options */
   if (mysql->options.my_cnf_file || mysql->options.my_cnf_group)
   {
-    _mariadb_read_options(mysql,
+    _mariadb_read_options(mysql, NULL,
 			  (mysql->options.my_cnf_file ?
 			   mysql->options.my_cnf_file : NULL),
-			   mysql->options.my_cnf_group);
+			   mysql->options.my_cnf_group, 0);
     free(mysql->options.my_cnf_file);
     free(mysql->options.my_cnf_group);
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
