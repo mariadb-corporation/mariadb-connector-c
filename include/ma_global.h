@@ -714,7 +714,7 @@ typedef short		int15;	/* Most effective integer 0 <= x <= 32767 */
 typedef char		*my_string; /* String of characters */
 typedef unsigned long	size_s; /* Size of strings (In string-funcs) */
 typedef int		myf;	/* Type of MyFlags in my_funcs */
-typedef char		my_bool; /* Small bool */
+typedef signed char	my_bool; /* Small bool */
 typedef unsigned long long my_ulonglong;
 #if !defined(bool) && !defined(bool_defined) && (!defined(HAVE_BOOL) || !defined(__cplusplus))
 typedef char		bool;	/* Ordinary boolean values 0 1 */
