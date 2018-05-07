@@ -189,26 +189,27 @@ double my_atod(const char *number, const char *end, int *error)
 my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
 {
   my_bool is_time=0, is_date=0, has_time_frac=0;
-  char *p= (char *)str;
+  char *p, *str_copy= my_strndup((char *)str, length, MYF(0));
 
-  if ((p= strchr(str, '-')) && p <= str + length)
+  if ((p= strchr(str_copy, '-')) && p <= str_copy + length)
     is_date= 1;
-  if ((p= strchr(str, ':')) && p <= str + length)
+  if ((p= strchr(str_copy, ':')) && p <= str_copy + length)
     is_time= 1;
-  if ((p= strchr(str, '.')) && p <= str + length)
+  if ((p= strchr(str_copy, '.')) && p <= str_copy + length)
     has_time_frac= 1;
 
-  p= (char *)str;
+  p= str_copy;
  
   memset(tm, 0, sizeof(MYSQL_TIME));
 
   if (is_date)
   {
-    sscanf(str, "%d-%d-%d", &tm->year, &tm->month, &tm->day);
-    p= strchr(str, ' ');
+    sscanf(str_copy, "%d-%d-%d", &tm->year, &tm->month, &tm->day);
+    p= strchr(str_copy, ' ');
     if (!p)
     {
       tm->time_type= MYSQL_TIMESTAMP_DATE;
+      my_free(str_copy);
       return 0;
     }
   }
@@ -216,14 +217,17 @@ my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
   {
     sscanf(p, "%d:%d:%d.%ld", &tm->hour, &tm->minute, &tm->second, &tm->second_part);
     tm->time_type= (is_date) ? MYSQL_TIMESTAMP_DATETIME : MYSQL_TIMESTAMP_TIME;
+    my_free(str_copy);
     return 0;
   }
   if (is_time)
   {
     sscanf(p, "%d:%d:%d", &tm->hour, &tm->minute, &tm->second);
     tm->time_type= (is_date) ? MYSQL_TIMESTAMP_DATETIME : MYSQL_TIMESTAMP_TIME;
+    my_free(str_copy);
     return 0;
   }
+  my_free(str_copy);
   return 1;
 }
 
