@@ -4654,39 +4654,36 @@ static int test_compress(MYSQL *mysql)
 static int test_codbc138(MYSQL *mysql)
 {
   int rc;
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   MYSQL_BIND bind[1];
   MYSQL_TIME tm;
+  char buffer[20];
+  int i;
 
-  rc= mysql_stmt_prepare(stmt, SL("SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)"));
-  check_stmt_rc(rc, stmt);
-
-  rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);
-
-  memset(bind, 0, sizeof(MYSQL_BIND));
-  bind[0].buffer_type= MYSQL_TYPE_DATETIME;
-  bind[0].buffer= &tm;
-  bind[0].buffer_length= sizeof(MYSQL_TIME);
-
-  rc= mysql_stmt_bind_result(stmt, bind);
-  check_stmt_rc(rc, stmt);
-
-  rc= mysql_stmt_fetch(stmt);
-  check_stmt_rc(rc, stmt);
-
-  if (tm.year != 2017 && tm.day != 28 && tm.month != 7)
+  for (i=0; i < 10000; i++)
   {
-    diag("Error: Expected 2017-07-02");
-    return FAIL;
-  }
-  if (tm.minute | tm.second || tm.second_part)
-  {
-    diag("Error: minute, second or second_part is not zero");
-    return FAIL;
-  }
+    stmt= mysql_stmt_init(mysql);
+    rc= mysql_stmt_prepare(stmt, SL("SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)"));
+    check_stmt_rc(rc, stmt);
 
-  mysql_stmt_close(stmt);
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+
+    memset(bind, 0, sizeof(MYSQL_BIND));
+    bind[0].buffer_type= MYSQL_TYPE_TIMESTAMP;
+    bind[0].buffer= &tm;
+    bind[0].buffer_length= sizeof(MYSQL_TIME);
+
+    rc= mysql_stmt_bind_result(stmt, bind);
+    check_stmt_rc(rc, stmt);
+
+    rc= mysql_stmt_fetch(stmt);
+    check_stmt_rc(rc, stmt);
+
+    FAIL_IF(tm.hour != 0, "expected hour = 0");
+
+    mysql_stmt_close(stmt);
+  }
   return OK;
 }
 

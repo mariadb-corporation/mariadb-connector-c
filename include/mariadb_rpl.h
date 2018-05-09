@@ -18,6 +18,8 @@
 #define _mariadb_rpl_h_
 
 /* Protocol flags */
+#define MARIADB_RPL_BINLOG_DUMP_NON_BLOCK 1
+#define MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS 2
 #define MARIADB_RPL_DUMP_GTID   (1 << 16)
 #define MARIADB_RPL_IGNORE_HEARTBEAT (1 << 17)
 
