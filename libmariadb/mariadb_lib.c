@@ -804,9 +804,7 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
       field->flags|= NUM_FLAG;
 
     if (default_value && row->data[7])
-    {
       field->def=ma_strdup_root(alloc,(char*) row->data[7]);
-    }
     else
       field->def=0;
     field->max_length= 0;
@@ -940,9 +938,9 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
     {
       if (len > (ulong) (end_pos - pos))
       {
-  mysql->net.last_errno=CR_UNKNOWN_ERROR;
-  strcpy(mysql->net.last_error,ER(mysql->net.last_errno));
-  return -1;
+        mysql->net.last_errno=CR_UNKNOWN_ERROR;
+        strcpy(mysql->net.last_error,ER(mysql->net.last_errno));
+        return -1;
       }
       row[field] = (char*) pos;
       pos+=len;
@@ -2468,7 +2466,7 @@ mysql_list_processes(MYSQL *mysql)
 
   LINT_INIT(fields);
   if (ma_simple_command(mysql, COM_PROCESS_INFO,0,0,0,0))
-    return(0);
+    return(NULL);
   free_old_query(mysql);
   pos=(uchar*) mysql->net.read_pos;
   field_count=(uint) net_field_length(&pos);
@@ -2477,7 +2475,7 @@ mysql_list_processes(MYSQL *mysql)
   if (!(mysql->fields=unpack_fields(fields,&mysql->field_alloc,field_count,0,
 				    (my_bool) test(mysql->server_capabilities &
 						   CLIENT_LONG_FLAG))))
-    return(0);
+    return(NULL);
   mysql->status=MYSQL_STATUS_GET_RESULT;
   mysql->field_count=field_count;
   return(mysql_store_result(mysql));
