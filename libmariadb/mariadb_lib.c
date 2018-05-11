@@ -1088,7 +1088,7 @@ ma_set_connect_attrs(MYSQL *mysql)
   rc= mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_client_name") +
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_client_version") +
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_os") +
-      mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_host_name") +
+      mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_server_host") +
 #ifdef _WIN32
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_thread") +
 #endif
@@ -1098,7 +1098,7 @@ ma_set_connect_attrs(MYSQL *mysql)
   rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb")
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE)
-       + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_host_name", mysql->host);
+       + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", mysql->host);
 
 #ifdef _WIN32
   snprintf(buffer, 255, "%lu", (ulong) GetCurrentThreadId());
