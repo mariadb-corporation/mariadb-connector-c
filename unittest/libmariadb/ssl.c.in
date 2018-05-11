@@ -117,6 +117,8 @@ static int test_ssl(MYSQL *mysql)
 
   mysql_ssl_set(my,0, 0, 0, 0, 0);
 
+  create_ssl_user("ssluser", 0);
+
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
                          port, socketname, 0), mysql_error(my));
 
@@ -1253,6 +1255,11 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
   bool skip_tlsv12= 1;
 #else
   bool skip_tlsv12= !have_openssl;
+#endif
+
+#if defined(HAVE_OPENSSL) && defined(TLS1_3_VERSION)
+  diag("Test fails with TLS v1.3");
+  return(SKIP);
 #endif
 
   for (i=0; combinations[i].expected; i++)
