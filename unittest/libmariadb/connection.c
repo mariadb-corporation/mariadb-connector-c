@@ -1486,7 +1486,45 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
 }
 #endif
 
+static int test_conc332(MYSQL *unused __attribute__((unused)))
+{
+  int rc;
+  MYSQL *mysql= mysql_init(NULL);
+  int server_status1, server_status2;
+
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname, 0);
+
+  FAIL_IF(mysql_errno(mysql), "Error during connect");
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status1);
+  diag("server_status: %d", server_status1);
+
+  if (server_status1 & SERVER_STATUS_AUTOCOMMIT)
+    rc= mysql_query(mysql, "SET autocommit= 0");
+  else
+    rc= mysql_query(mysql, "SET autocommit= 1");
+  check_mysql_rc(rc, mysql);
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status2);
+  diag("server_status after changing autocommit: %d", server_status2);
+
+  rc= mysql_change_user(mysql, username, password, schema);
+  check_mysql_rc(rc, mysql);
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status2);
+  diag("server_status after mysql_change_user: %d", server_status2);
+  if (server_status1 != server_status2)
+  {
+    diag("Expected server_status %d instead of %d", server_status1, server_status2);
+    mysql_close(mysql);
+    return FAIL;
+  }
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc332", test_conc332, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef WIN32
   {"test_conc327", test_conc327, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc317", test_conc317, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
