@@ -1500,7 +1500,8 @@ ma_set_connect_attrs(MYSQL *mysql)
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_thread") +
 #endif
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_pid") +
-      mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_platform");
+      mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_platform") + 
+      mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_server_host");
 
   rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb")
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
@@ -1516,6 +1517,8 @@ ma_set_connect_attrs(MYSQL *mysql)
   rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_pid", buffer);
 
   rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_platform", MARIADB_MACHINE_TYPE);
+  rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", mysql->host);
+
   return(test(rc>0));
 }
 
