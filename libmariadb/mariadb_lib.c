@@ -1080,7 +1080,7 @@ char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer)
 
 /** set some default attributes */
 static my_bool
-ma_set_connect_attrs(MYSQL *mysql)
+ma_set_connect_attrs(MYSQL *mysql, const char *host)
 {
   char buffer[255];
   int rc= 0;
@@ -1097,8 +1097,10 @@ ma_set_connect_attrs(MYSQL *mysql)
 
   rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb")
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
-       + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE)
-       + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", mysql->host);
+       + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE);
+
+  if (host && *host)
+    rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", host);
 
 #ifdef _WIN32
   snprintf(buffer, 255, "%lu", (ulong) GetCurrentThreadId());
@@ -1193,7 +1195,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
 
-  ma_set_connect_attrs(mysql);
+  if (!host || !host[0])
+    host = mysql->options.host;
+
+  ma_set_connect_attrs(mysql, host);
 
   if (net->pvio)  /* check if we are already connected */
   {
@@ -1222,8 +1227,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 #endif
 
   /* Some empty-string-tests are done because of ODBC */
-  if (!host || !host[0])
-    host=mysql->options.host;
   if (!user || !user[0])
     user=mysql->options.user;
   if (!passwd)
@@ -2897,6 +2900,11 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       void *arg2= va_arg(ap, void *);
       size_t key_len= arg1 ? strlen((char *)arg1) : 0,
              value_len= arg2 ? strlen((char *)arg2) : 0;
+      if (!key_len || !value_len)
+      {
+        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        goto end;
+      }
       size_t storage_len= key_len + value_len +
                           get_store_length(key_len) +
                           get_store_length(value_len);
