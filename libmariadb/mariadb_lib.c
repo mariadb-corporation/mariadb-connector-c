@@ -767,6 +767,9 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
 
   for (row=data->data; row ; row = row->next,field++)
   {
+    if (field >= result + fields)
+      goto error;
+
     for (i=0; i < field_count; i++)
     {
       switch(row->data[i][0]) {
@@ -803,15 +806,19 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
       field->flags|= NUM_FLAG;
 
     if (default_value && row->data[7])
-    {
       field->def=ma_strdup_root(alloc,(char*) row->data[7]);
-    }
     else
       field->def=0;
     field->max_length= 0;
   }
+  if (field < result + fields)
+    goto error;
   free_rows(data);				/* Free old data */
   return(result);
+error:
+  free_rows(data);
+  ma_free_root(alloc, MYF(0));
+  return(0);
 }
 
 
@@ -868,7 +875,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
       else
       {
         cur->data[field] = to;
-        if (len > (ulong) (end_to - to))
+        if (len > (ulong)(end_to - to) || to > end_to)
         {
           free_rows(result);
           SET_CLIENT_ERROR(mysql, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, 0);
@@ -937,11 +944,11 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
     }
     else
     {
-      if (len > (ulong) (end_pos - pos))
+      if (len > (ulong) (end_pos - pos) || pos > end_pos)
       {
-  mysql->net.last_errno=CR_UNKNOWN_ERROR;
-  strcpy(mysql->net.last_error,ER(mysql->net.last_errno));
-  return -1;
+        mysql->net.last_errno=CR_UNKNOWN_ERROR;
+        strcpy(mysql->net.last_error,ER(mysql->net.last_errno));
+        return -1;
       }
       row[field] = (char*) pos;
       pos+=len;
@@ -2452,13 +2459,17 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
   }
   result->field_alloc=mysql->field_alloc;
   mysql->fields=0;
+  result->eof=1;
   result->field_count = (uint) query->rows;
   result->fields= unpack_fields(query,&result->field_alloc,
 				result->field_count,1,
 				(my_bool) test(mysql->server_capabilities &
 					       CLIENT_LONG_FLAG));
-  result->eof=1;
-  return(result);
+  if (result->fields)
+    return(result);
+
+  free(result);
+  return(NULL);
 }
 
 /* List all running processes (threads) in server */
@@ -2472,7 +2483,7 @@ mysql_list_processes(MYSQL *mysql)
 
   LINT_INIT(fields);
   if (ma_simple_command(mysql, COM_PROCESS_INFO,0,0,0,0))
-    return(0);
+    return(NULL);
   free_old_query(mysql);
   pos=(uchar*) mysql->net.read_pos;
   field_count=(uint) net_field_length(&pos);
@@ -2481,7 +2492,7 @@ mysql_list_processes(MYSQL *mysql)
   if (!(mysql->fields=unpack_fields(fields,&mysql->field_alloc,field_count,0,
 				    (my_bool) test(mysql->server_capabilities &
 						   CLIENT_LONG_FLAG))))
-    return(0);
+    return(NULL);
   mysql->status=MYSQL_STATUS_GET_RESULT;
   mysql->field_count=field_count;
   return(mysql_store_result(mysql));
