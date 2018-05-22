@@ -4492,7 +4492,49 @@ static int test_conc205(MYSQL *mysql)
   return OK;
 }
 
+static int test_codbc138(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[1];
+  MYSQL_TIME tm;
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_store_result(stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer_type= MYSQL_TYPE_DATETIME;
+  bind[0].buffer= &tm;
+  bind[0].buffer_length= sizeof(MYSQL_TIME);
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  if (tm.year != 2017 && tm.day != 28 && tm.month != 7)
+  {
+    diag("Error: Expected 2017-07-02");
+    return FAIL;
+  }
+  if (tm.minute | tm.second || tm.second_part)
+  {
+    diag("Error: minute, second or second_part is not zero");
+    return FAIL;
+  }
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_codbc138", test_codbc138, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc205", test_conc205, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc198", test_conc198, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc194", test_conc194, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

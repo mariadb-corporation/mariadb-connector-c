@@ -186,47 +186,62 @@ double my_atod(const char *number, const char *end, int *error)
   return val;
 }
 
-my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
+static int ma_atoi(char *buffer, int length)
 {
-  my_bool is_time=0, is_date=0, has_time_frac=0;
-  char *p= (char *)str;
-
-  if ((p= strchr(str, '-')) && p <= str + length)
-    is_date= 1;
-  if ((p= strchr(str, ':')) && p <= str + length)
-    is_time= 1;
-  if ((p= strchr(str, '.')) && p <= str + length)
-    has_time_frac= 1;
-
-  p= (char *)str;
- 
-  memset(tm, 0, sizeof(MYSQL_TIME));
-
-  if (is_date)
-  {
-    sscanf(str, "%d-%d-%d", &tm->year, &tm->month, &tm->day);
-    p= strchr(str, ' ');
-    if (!p)
-    {
-      tm->time_type= MYSQL_TIMESTAMP_DATE;
-      return 0;
-    }
-  }
-  if (has_time_frac)
-  {
-    sscanf(p, "%d:%d:%d.%ld", &tm->hour, &tm->minute, &tm->second, &tm->second_part);
-    tm->time_type= (is_date) ? MYSQL_TIMESTAMP_DATETIME : MYSQL_TIMESTAMP_TIME;
+  char digits[MAX_INT_WIDTH + 1];
+  if (length > MAX_INT_WIDTH)
     return 0;
-  }
-  if (is_time)
-  {
-    sscanf(p, "%d:%d:%d", &tm->hour, &tm->minute, &tm->second);
-    tm->time_type= (is_date) ? MYSQL_TIMESTAMP_DATETIME : MYSQL_TIMESTAMP_TIME;
-    return 0;
-  }
-  return 1;
+  strncpy(digits, buffer, length);
+  digits[length]= 0;
+  return atoi(digits);
 }
 
+my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
+{
+  my_bool is_date= 0, is_time= 0;
+  char *p= (char *)str;
+
+  memset(tm, 0, sizeof(MYSQL_TIME));
+
+  /* date: YYYY-MM-DD */
+  if (memchr(p, '-', length))
+  {
+    if (length < 10)
+      return 1;
+    tm->year= ma_atoi(p, 4);
+    tm->month= ma_atoi(p + 5, 2);
+    tm->day= ma_atoi(p + 8, 2);
+    tm->time_type= MYSQL_TIMESTAMP_DATE;
+    is_date= 1;
+    p+= 10;
+  }
+
+  /* time: HH:MM:SS */
+  if (memchr(p, ':', length - (p - str)))
+  {
+    if (is_date)
+    {
+      p++;
+      tm->time_type= MYSQL_TIMESTAMP_DATETIME;
+    }
+    else
+      tm->time_type= MYSQL_TIMESTAMP_TIME;
+    is_time= 1;
+
+    if (length - (p - str) < 8)
+      return 1;
+
+    tm->hour= ma_atoi(p,2);
+    tm->minute= ma_atoi(p + 3, 2);
+    tm->second= ma_atoi(p + 6, 2);
+
+    if (!(p= memchr(p, '.', length - (p - str))))
+      return 0;
+    p++;
+    tm->second_part= ma_atoi(p, length - (p - str));
+  }
+  return test(!is_date && !is_time);
+}
 
 static void convert_from_string(MYSQL_BIND *r_param, char *buffer, size_t len)
 {

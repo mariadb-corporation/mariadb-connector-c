@@ -50,6 +50,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #define MAX_TEST_QUERY_LENGTH 300 /* MAX QUERY BUFFER LENGTH */
 
+#define SL(a)  (a), strlen(a)
+
 #define check_mysql_rc(rc, mysql) \
 if (rc)\
 {\
