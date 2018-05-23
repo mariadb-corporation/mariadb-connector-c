@@ -4,6 +4,12 @@
 # This is the LGPL libmariadb project.
 PROJECT(mariadb-connector-c C)
 
+# Is C/C built as subproject?
+get_directory_property(IS_SUBPROJECT PARENT_DIRECTORY)
+
+SET(CC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+SET(CC_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+
 SET(CPACK_PACKAGE_VERSION_MAJOR 2)
 SET(CPACK_PACKAGE_VERSION_MINOR 3)
 SET(CPACK_PACKAGE_VERSION_PATCH 6)
@@ -45,9 +51,10 @@ IF(WITH_RTC)
   SET(RTC_OPTIONS "/RTC1 /RTCc")
 ENDIF()
 
+IF(NOT IS_SUBPROJECT)
 IF(MSVC)
   # Speedup system tests
-  INCLUDE(${CMAKE_SOURCE_DIR}/cmake/WindowsCache.cmake)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/WindowsCache.cmake)
   IF (MSVC)
     SET(CONFIG_TYPES "DEBUG" "RELEASE" "RELWITHDEBINFO")
     FOREACH(BUILD_TYPE ${CONFIG_TYPES})
@@ -67,6 +74,7 @@ IF(MSVC)
     ENDFOREACH()
   ENDIF()
 ENDIF()
+ENDIF(NOT IS_SUBPROJECT)
 
 # Disable dbug information for release builds 
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DDBUG_OFF")
@@ -101,14 +109,14 @@ IF(NOT MYSQL_UNIX_ADDR)
   SET(MYSQL_UNIX_ADDR "/tmp/mysql.sock")
 ENDIF()
 
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/version_info.cmake)
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/sign.cmake)
-INCLUDE("${CMAKE_SOURCE_DIR}/cmake/install.cmake")
+INCLUDE(${CC_SOURCE_DIR}/cmake/version_info.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/sign.cmake)
+INCLUDE("${CC_SOURCE_DIR}/cmake/install.cmake")
 
 SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
 SET(PLUGINDIR "${CMAKE_INSTALL_PREFIX}/lib/plugin")
 
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/SearchLibrary.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/SearchLibrary.cmake)
 
 IF(WITH_EXTERNAL_ZLIB)
   FIND_PACKAGE(ZLIB QUIET)
@@ -163,11 +171,11 @@ ELSEIF()
 ENDIF()
 
 # check for various include files
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
 # check for various functions
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckFunctions.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 # check for various types
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckTypes.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
 # Check for OpenSSL
 IF(WITH_OPENSSL)
@@ -189,7 +197,7 @@ IF(WITH_SQLITE)
 ENDIF()
 
 IF(NOT WIN32)
-  INCLUDE(${CMAKE_SOURCE_DIR}/cmake/FindIconv.cmake)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/FindIconv.cmake)
 ENDIF()
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/mysql_version.h.in

@@ -16,9 +16,9 @@
 ENABLE_TESTING()
 
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
-                    ${CMAKE_BINARY_DIR}/include
-                    ${CMAKE_SOURCE_DIR}/unittest/mytap)
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
+                    ${CC_BINARY_DIR}/include
+                    ${CC_SOURCE_DIR}/unittest/mytap)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
 SET(API_TESTS "performance" "async" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" 
@@ -28,36 +28,36 @@ SET(API_TESTS "performance" "async" "basic-t" "fetch" "charset" "logs" "cursor" 
 IF(WITH_OPENSSL)
 
   #create certificates
-  IF(EXISTS "${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
+  IF(EXISTS "${CC_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem")
     MESSAGE(STATUS "certificates already exist")
   ELSE()
     MESSAGE(STATUS "cerating certificates")
     EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout server-key-enc.pem -out server-cert.pem -subj "/DC=com/DC=example/CN=server" -passout pass:qwerty
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+                    WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs)
     EXECUTE_PROCESS(COMMAND openssl rsa -in server-key-enc.pem -out server-key.pem -passin pass:qwerty -passout pass:
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+                    WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs)
     EXECUTE_PROCESS(COMMAND openssl req -x509 -newkey rsa:1024 -keyout client-key-enc.pem -out client-cert.pem -subj "/DC=com/DC=example/CN=client" -passout pass:qwerty
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
+                    WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs)
     EXECUTE_PROCESS(COMMAND openssl rsa -in client-key-enc.pem -out client-key.pem -passin pass:qwerty -passout pass:
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs)
-    FILE(REMOVE ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem)
-    FILE(READ ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem SERVER_CERT)
-    FILE(WRITE ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem ${SERVER_CERT})
-    FILE(READ ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/client-cert.pem CLIENT_CERT)
-    FILE(APPEND ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem ${CLIENT_CERT})
+                    WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs)
+    FILE(REMOVE ${CC_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem)
+    FILE(READ ${CC_SOURCE_DIR}/unittest/libmariadb/certs/server-cert.pem SERVER_CERT)
+    FILE(WRITE ${CC_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem ${SERVER_CERT})
+    FILE(READ ${CC_SOURCE_DIR}/unittest/libmariadb/certs/client-cert.pem CLIENT_CERT)
+    FILE(APPEND ${CC_SOURCE_DIR}/unittest/libmariadb/certs/ca-cert.pem ${CLIENT_CERT})
   ENDIF()
 
   EXECUTE_PROCESS(COMMAND openssl x509 -in server-cert.pem -sha1 -fingerprint -noout
-                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/unittest/libmariadb/certs
+                  WORKING_DIRECTORY ${CC_SOURCE_DIR}/unittest/libmariadb/certs
                   OUTPUT_VARIABLE FINGER_PRINT)
   STRING(REPLACE "SHA1 Fingerprint=" "" FINGER_PRINT "${FINGER_PRINT}")
   STRING(REPLACE "\n" "" FINGER_PRINT "${FINGER_PRINT}")
   STRING(REPLACE ":" "" SSL_CERT_FINGER_PRINT "${FINGER_PRINT}")
 
-  CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
-                 ${CMAKE_SOURCE_DIR}/unittest/libmariadb/ssl.c)
-  CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
-                 ${CMAKE_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
+  CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/ssl.c.in
+                 ${CC_SOURCE_DIR}/unittest/libmariadb/ssl.c)
+  CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/fingerprint.list.in
+                 ${CC_SOURCE_DIR}/unittest/libmariadb/fingerprint.list)
   SET(API_TESTS ${API_TESTS} "ssl")
 ENDIF()
 

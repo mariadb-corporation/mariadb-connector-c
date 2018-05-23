@@ -1,6 +1,6 @@
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include 
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include 
                     ${ZLIB_INC}
-                    ${CMAKE_SOURCE_DIR}/libmariadb)
+                    ${CC_SOURCE_DIR}/libmariadb)
 					
 ADD_DEFINITIONS(-D ENABLED_LOCAL_INFILE)
 ADD_DEFINITIONS(-D HAVE_COMPRESS)
@@ -229,14 +229,14 @@ IF(WIN32)
   FOREACH(SYMBOL ${EXPORT_SYMBOLS})
     SET(EXPORT_CONTENT "${EXPORT_CONTENT}  ${SYMBOL}\n")
   ENDFOREACH()
-  SET(EXPORT_FILE "${CMAKE_BINARY_DIR}/libmariadb/exports.def")
+  SET(EXPORT_FILE "${CC_BINARY_DIR}/libmariadb/exports.def")
   SET(EXPORT_LINK ${EXPORT_FILE})
 ELSE()
   SET(EXPORT_CONTENT "{\nglobal:\n")
   FOREACH(SYMBOL ${EXPORT_SYMBOLS})
     SET(EXPORT_CONTENT "${EXPORT_CONTENT} ${SYMBOL}\\;\n")
   ENDFOREACH()
-  SET(EXPORT_FILE "${CMAKE_BINARY_DIR}/libmariadb/exports.txt")
+  SET(EXPORT_FILE "${CC_BINARY_DIR}/libmariadb/exports.txt")
   SET(EXPORT_CONTENT "${EXPORT_CONTENT}local:\n *\\;\n}\\;")
 ENDIF()
 
@@ -339,9 +339,9 @@ IF(WITH_OPENSSL)
 ENDIF()
 
 IF(WIN32)
-  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/win-iconv)
+  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/win-iconv)
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
-                         ${CMAKE_SOURCE_DIR}/win-iconv/win_iconv.c)
+                        ${CC_SOURCE_DIR}/win-iconv/win_iconv.c)
 ENDIF()
 
 IF(ZLIB_FOUND)
@@ -366,7 +366,7 @@ ELSE()
     ../zlib/zutil.c
   )
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
-  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/zlib)
+  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/zlib)
 ENDIF()
 
 IF(WIN32)
@@ -391,8 +391,8 @@ ENDIF()
 # Xcode doesn't support targets that have only object files,
 # so let's add an empty file to keep Xcode happy
 IF(CMAKE_GENERATOR MATCHES Xcode)
-  FILE(WRITE ${CMAKE_SOURCE_DIR}/libmariadb/empty.c "")
-  SET(EMPTY_FILE ${CMAKE_SOURCE_DIR}/libmariadb/empty.c)
+  FILE(WRITE ${CC_SOURCE_DIR}/libmariadb/empty.c "")
+  SET(EMPTY_FILE ${CC_SOURCE_DIR}/libmariadb/empty.c)
 ENDIF()
 
 ADD_LIBRARY(mariadbclient STATIC ${mariadbclient_RC} $<TARGET_OBJECTS:mariadb_obj> ${EMPTY_FILE} ${EXPORT_LINK})
@@ -426,7 +426,7 @@ ENDIF()
 #
 # Installation
 #
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/symlink.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/symlink.cmake)
 
 
 # There are still several projects which don't make use
@@ -447,14 +447,14 @@ INSTALL(TARGETS
           LIBRARY DESTINATION "${LIB_INSTALL_DIR}/${LIBSUFFIX_INSTALL_DIR}"
           ARCHIVE DESTINATION "${LIB_INSTALL_DIR}/${LIBSUFFIX_INSTALL_DIR}")
 
-INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+INSTALL(DIRECTORY ${CC_SOURCE_DIR}/include/
         DESTINATION ${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR}
         PATTERN "*.h.in" EXCLUDE
         PATTERN "CMakeLists.txt" EXCLUDE
         PATTERN "Makefile.am" EXCLUDE)
 INSTALL(FILES 
-   ${CMAKE_BINARY_DIR}/include/my_config.h
-   ${CMAKE_BINARY_DIR}/include/mysql_version.h
+   ${CC_BINARY_DIR}/include/my_config.h
+   ${CC_BINARY_DIR}/include/mysql_version.h
    DESTINATION ${INCLUDE_INSTALL_DIR}/${SUFFIX_INSTALL_DIR})
 
 

@@ -14,9 +14,9 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/zlib
-                    ${CMAKE_SOURCE_DIR}/sql
-                    ${CMAKE_BINARY_DIR}/include
-                    ${CMAKE_SOURCE_DIR}/regex
-                    ${CMAKE_SOURCE_DIR}/extra/yassl/include)
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include ${CC_SOURCE_DIR}/zlib
+                    ${CC_SOURCE_DIR}/sql
+                    ${CC_BINARY_DIR}/include
+                    ${CC_SOURCE_DIR}/regex
+                    ${CC_SOURCE_DIR}/extra/yassl/include)
 ADD_LIBRARY(mytap tap.c)
