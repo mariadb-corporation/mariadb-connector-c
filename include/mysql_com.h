@@ -203,6 +203,8 @@ enum enum_server_command
 #define SERVER_STATUS_METADATA_CHANGED    1024
 #define SERVER_QUERY_WAS_SLOW             2048
 #define SERVER_PS_OUT_PARAMS              4096
+#define SERVER_STATUS_IN_TRANS_READONLY   8192
+#define SERVER_STATUS_ANSI_QUOTES        32768
 
 #define MYSQL_ERRMSG_SIZE	512
 #define NET_READ_TIMEOUT	30		/* Timeout on read */
