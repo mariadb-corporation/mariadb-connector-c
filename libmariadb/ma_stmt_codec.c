@@ -442,7 +442,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
           len < field->length && len < r_param->buffer_length)
       {
         ma_bmove_upp(buffer + field->length, buffer + len, len);
-        memset((char*) buffer, '0', field->length - len);
+        memset((void*) buffer, (int) '0', field->length - len);
         len= field->length;
       }
       convert_froma_string(r_param, buffer, len);
@@ -660,7 +660,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
         if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
           break;
         ma_bmove_upp(buff + field->length, buff + length, length);
-        memset((char*) buff, '0', field->length - length);
+        memset((void*) buff, (int) '0', field->length - length);
         length= field->length;
       }
 
@@ -759,7 +759,7 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
        if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
          break;
        ma_bmove_upp(buff + field->length, buff + length, length);
-       memset((char*) buff, '0', field->length - length);
+       memset((void*) buff, (int) '0', field->length - length);
        length= field->length;
      }
      convert_froma_string(r_param, buff, length);
