@@ -47,6 +47,15 @@ ENDIF()
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 
+IF(WITH_SIGNCODE)
+  IF(WIN32 AND NOT SIGN_OPTIONS)
+    SET(SIGN_OPTIONS /a /t http://timestamp.verisign.com/scripts/timstamp.dll)
+  ELSE()
+    SEPARATE_ARGUMENTS(SIGN_OPTIONS)
+  ENDIF()
+  MARK_AS_ADVANCED(SIGN_OPTIONS)
+ENDIF()
+
 IF(WITH_RTC)
   SET(RTC_OPTIONS "/RTC1 /RTCc")
 ENDIF()
