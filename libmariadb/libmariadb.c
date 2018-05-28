@@ -3191,7 +3191,6 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         mysql->options.extension->connect_attrs_len-= get_store_length(key_len);
         hash_delete(&mysql->options.extension->connect_attrs, p);
       }
-          
     }
     break;
   case MYSQL_OPT_CONNECT_ATTR_RESET:
@@ -3208,17 +3207,17 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       void *arg2= va_arg(ap, void *);
       size_t key_len= arg1 ? strlen((char *)arg1) : 0,
              value_len= arg2 ? strlen((char *)arg2) : 0;
-      size_t storage_len= key_len + value_len + 
-                          get_store_length(key_len) +
-                          get_store_length(value_len);
+      size_t storage_len;
       
       CHECK_OPT_EXTENSION_SET(&mysql->options);
-      if (!key_len ||
-          storage_len + mysql->options.extension->connect_attrs_len > 0xFFFF)
+      if (!key_len || !value_len)
       {
         SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, unknown_sqlstate, 0);
         goto end;
       }
+      storage_len= key_len + value_len +
+                   get_store_length(key_len) +
+                   get_store_length(value_len);
 
       if (!hash_inited(&mysql->options.extension->connect_attrs))
       {
