@@ -33,6 +33,7 @@ matrix:
     - env: DB=mariadb:10.1
     - env: DB=mariadb:10.2
     - env: DB=mariadb:10.3
+    - env: DB=libmariadb
 
 script:
   - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
