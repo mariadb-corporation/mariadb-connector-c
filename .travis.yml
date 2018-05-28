@@ -38,4 +38,4 @@ matrix:
 script:
   - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
   - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
-  - if [ "$DB" != "libmariadb" ] ; then .travis/libmariadb.sh; else .travis/script.sh; fi
+  - if [ "$DB" = "libmariadb" ] ; then .travis/libmariadb.sh; else .travis/script.sh; fi
