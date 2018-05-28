@@ -186,61 +186,93 @@ double my_atod(const char *number, const char *end, int *error)
   return val;
 }
 
-static int ma_atoi(char *buffer, int length)
-{
-  char digits[MAX_INT_WIDTH + 1];
-  if (length > MAX_INT_WIDTH)
-    return 0;
-  strncpy(digits, buffer, length);
-  digits[length]= 0;
-  return atoi(digits);
-}
-
 my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
 {
+  char *start= alloca(length + 1);
   my_bool is_date= 0, is_time= 0;
-  char *p= (char *)str;
 
   memset(tm, 0, sizeof(MYSQL_TIME));
+  if (!start)
+    goto error;
+  tm->time_type= MYSQL_TIMESTAMP_NONE;
 
-  /* date: YYYY-MM-DD */
-  if (memchr(p, '-', length))
+  memcpy(start, str, length);
+  start[length]= '\0';
+
+  while (length && isspace(*start)) start++, length--;
+
+  if (!length)
+    goto error;
+
+  /*  negativ value? */
+  if (*start == '-')
   {
-    if (length < 10)
-      return 1;
-    tm->year= ma_atoi(p, 4);
-    tm->month= ma_atoi(p + 5, 2);
-    tm->day= ma_atoi(p + 8, 2);
+    tm->neg= 1;
+    start++;
+    length--;
+  }
+
+  if (!length)
+    return 1;
+
+  /* Determine time type:
+     MYSQL_TIMESTAMP_DATE: [-]YY[YY].MM.DD
+     MYSQL_TIMESTAMP_DATETIME: [-]YY[YY].MM.DD hh:mm:ss.mmmmmm
+     MYSQL_TIMESTAMP_TIME: [-]hh:mm:ss.mmmmmm
+   */
+  if (strchr(start, '-'))
+  {
+    if (tm->neg)
+      goto error;
     tm->time_type= MYSQL_TIMESTAMP_DATE;
+    if (sscanf(start, "%d-%d-%d", &tm->year, &tm->month, &tm->day) < 3)
+      goto error;
     is_date= 1;
-    p+= 10;
+    if (!(start= strchr(start, ' ')))
+      goto check;
   }
+  if (!strchr(start, ':'))
+    goto check;
 
-  /* time: HH:MM:SS */
-  if (memchr(p, ':', length - (p - str)))
+  is_time= 1;
+  if (tm->time_type== MYSQL_TIMESTAMP_DATE)
+    tm->time_type= MYSQL_TIMESTAMP_DATETIME;
+  else
+    tm->time_type= MYSQL_TIMESTAMP_TIME;
+
+  if (strchr(start, '.')) /* fractional seconds */
   {
-    if (is_date)
-    {
-      p++;
-      tm->time_type= MYSQL_TIMESTAMP_DATETIME;
-    }
-    else
-      tm->time_type= MYSQL_TIMESTAMP_TIME;
-    is_time= 1;
-
-    if (length - (p - str) < 8)
-      return 1;
-
-    tm->hour= ma_atoi(p,2);
-    tm->minute= ma_atoi(p + 3, 2);
-    tm->second= ma_atoi(p + 6, 2);
-
-    if (!(p= memchr(p, '.', length - (p - str))))
-      return 0;
-    p++;
-    tm->second_part= ma_atoi(p, length - (p - str));
+    if (sscanf(start, "%d:%d:%d.%ld", &tm->hour, &tm->minute,
+                                 &tm->second,&tm->second_part) < 4)
+      goto error;
+  } else {
+    if (sscanf(start, "%d:%d:%d", &tm->hour, &tm->minute,
+                                 &tm->second) < 3)
+      goto error;
   }
-  return test(!is_date && !is_time);
+
+check:
+  if (tm->time_type == MYSQL_TIMESTAMP_NONE)
+    goto error;
+
+  if (is_date)
+  {
+    if (tm->year < 69)
+      tm->year+= 2000;
+    else if (tm->year < 100)
+      tm->year+= 1900;
+    if (tm->day > 31 || tm->month > 12)
+      goto error;
+  }
+  if (is_time)
+  {
+    if (tm->minute > 59 || tm->second > 59)
+      goto error;
+  }
+  return 0;
+error:
+  tm->time_type= MYSQL_TIMESTAMP_ERROR;
+  return 1;
 }
 
 static void convert_from_string(MYSQL_BIND *r_param, char *buffer, size_t len)
