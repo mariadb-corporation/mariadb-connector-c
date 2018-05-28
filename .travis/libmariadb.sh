@@ -8,7 +8,7 @@ git clone -b 10.3 https://github.com/mariadb/server ../workdir-server
 
 # copy C/C into libmariadb in server
 ls -l ../workdir-server/libmariadb
-cp -r . workdir-server/libmariadb
+cp -r . ../workdir-server/libmariadb
 
 # build latest server with latest C/C as libmariadb
 # skip to build some storage engines to speed up the build
