@@ -14,3 +14,6 @@ git config cmake.update-submodules no
 # skip to build some storage engines to speed up the build
 cmake -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
 make -j9
+# test it out
+cd mysql-test
+./mysql-test-run.pl --suite=main --parallel=4
