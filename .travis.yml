@@ -13,6 +13,7 @@ before_script:
 before_install:
   - chmod +x .travis/script.sh
   - chmod +x .travis/gen-ssl.sh
+  - chmod +x .travis/libmariadb.sh
   - chmod +x .travis/build/build.sh
   - chmod +x .travis/build/docker-entrypoint.sh
   - chmod 777 .travis/build/
@@ -36,4 +37,5 @@ matrix:
 script:
   - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
   - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
-  - .travis/script.sh
+  - if [ "$DB" != "libmariadb" ] ; then .travis/script.sh; fi
+  - if [ "$DB" = "libmariadb" ] ; then .travis/libmariadb.sh; fi
