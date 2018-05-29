@@ -1,5 +1,8 @@
 sudo: true
 language: c
+cache:
+  apt: true
+  ccache: true
 services: docker
 addons:
   hosts:
