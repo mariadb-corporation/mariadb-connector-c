@@ -1544,6 +1544,12 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
 
       for (i=0; i < stmt->field_count; i++)
       {
+        memcpy(&stmt->fields[i], &mysql->fields[i], sizeof(MYSQL_FIELD));
+
+        /* since  all pointers will be incorrect if another statement will
+           be executed, so we need to allocate memory and copy the
+           information */
+        stmt->fields[i].extension= 0; /* not in use yet */
         if (mysql->fields[i].db)
           stmt->fields[i].db= strdup_root(fields_alloc_root, mysql->fields[i].db);
         if (mysql->fields[i].table)
@@ -1555,8 +1561,9 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
         if (mysql->fields[i].org_name)
           stmt->fields[i].org_name= strdup_root(fields_alloc_root, mysql->fields[i].org_name);
         if (mysql->fields[i].catalog)
-          stmt->fields[i].catalog= strdup_root(fields_alloc_root, mysql->fields[i].catalog);
-        stmt->fields[i].def= mysql->fields[i].def ? strdup_root(fields_alloc_root, mysql->fields[i].def) : NULL;
+          stmt->fields[i].catalog= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].catalog);
+        if (mysql->fields[i].def)
+          stmt->fields[i].def= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].def);
       }
     }
 
