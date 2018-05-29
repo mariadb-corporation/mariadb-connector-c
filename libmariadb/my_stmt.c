@@ -1561,9 +1561,9 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
         if (mysql->fields[i].org_name)
           stmt->fields[i].org_name= strdup_root(fields_alloc_root, mysql->fields[i].org_name);
         if (mysql->fields[i].catalog)
-          stmt->fields[i].catalog= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].catalog);
+          stmt->fields[i].catalog= strdup_root(fields_alloc_root, mysql->fields[i].catalog);
         if (mysql->fields[i].def)
-          stmt->fields[i].def= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].def);
+          stmt->fields[i].def= strdup_root(fields_alloc_root, mysql->fields[i].def);
       }
     }
 
