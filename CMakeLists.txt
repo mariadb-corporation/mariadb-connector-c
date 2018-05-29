@@ -256,6 +256,11 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 # check for various types
 INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
+IF(NOT DEFAULT_CHARSET)
+  SET(DEFAULT_CHARSET "latin1")
+ENDIF()
+
+
 # convert SSL options to uppercase
 IF(WITH_SSL)
   STRING(TOUPPER ${WITH_SSL} WITH_SSL)
