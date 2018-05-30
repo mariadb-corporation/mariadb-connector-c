@@ -4637,7 +4637,6 @@ static int test_stmt_close(MYSQL *mysql)
   FAIL_IF(mysql_stmt_param_count(stmt2) != 1, "param_count != 1");
 
   rc= mysql_stmt_close(stmt1);
-  check_stmt_rc(rc, stmt1);
 
   /*
     Originally we were going to close all statements automatically in
