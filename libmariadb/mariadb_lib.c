@@ -3532,7 +3532,7 @@ static void mysql_once_init()
 }
 
 #ifdef _WIN32
-static INIT_ONCE init_once = (INIT_ONCE)INIT_ONCE_STATIC_INIT;
+static INIT_ONCE init_once= INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK win_init_once(
   PINIT_ONCE InitOnce,
   PVOID Parameter,
