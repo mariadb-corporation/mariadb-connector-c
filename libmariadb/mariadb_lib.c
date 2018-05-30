@@ -3145,9 +3145,6 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
       if (!(elements= va_arg(ap, unsigned int *)))
         goto error;
 
-      if (!elements)
-        goto error;
-
       *elements= 0;
 
       if (!mysql->options.extension ||
