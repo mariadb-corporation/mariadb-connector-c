@@ -224,7 +224,7 @@ ssize_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r=
-#if !defined(HAVE_SCHANNEL)
+#if defined(HAVE_TLS) && !defined(HAVE_SCHANNEL)
       (pvio->ctls) ? ma_tls_read_async(pvio, buffer, length) :
 #endif
                     (ssize_t)ma_pvio_read_async(pvio, buffer, length);
@@ -350,7 +350,7 @@ ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
     r=
-#if !defined(HAVE_SCHANNEL)
+#if defined(HAVE_TLS) && !defined(HAVE_SCHANNEL)
        (pvio->ctls) ? ma_tls_write_async(pvio, buffer, length) :
 #endif
                       ma_pvio_write_async(pvio, buffer, length);

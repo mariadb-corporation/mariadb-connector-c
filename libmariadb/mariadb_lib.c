@@ -90,6 +90,7 @@ extern my_bool  mysql_ps_subsystem_initialized;
 extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_nr(uint charsetnr);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_name(const char * const name);
+extern my_bool set_default_charset_by_name(const char *cs_name, myf flags __attribute__((unused)));
 extern int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                            const char *data_plugin, const char *db);
 extern int net_add_multi_command(NET *net, uchar command, const uchar *packet,
@@ -106,8 +107,7 @@ extern int mthd_stmt_fetch_row(MYSQL_STMT *stmt, unsigned char **row);
 extern int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row);
 extern int mthd_stmt_read_all_rows(MYSQL_STMT *stmt);
 extern void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt);
-extern my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
-                                     char *group);
+extern my_bool _mariadb_read_options(MYSQL *mysql, const char *dir, const char *config_file, char *group, unsigned int recursion);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
 
 extern void
@@ -507,7 +507,7 @@ void read_user_name(char *name)
 	str="UNKNOWN_USER";
     }
     ma_strmake(name,str,USERNAME_LENGTH);
-#elif HAVE_CUSERID
+#elif defined(HAVE_CUSERID)
     (void) cuserid(name);
 #else
     ma_strmake(name,"UNKNOWN_USER", USERNAME_LENGTH);
@@ -768,6 +768,9 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
 
   for (row=data->data; row ; row = row->next,field++)
   {
+    if (field >= result + fields)
+      goto error;
+
     for (i=0; i < field_count; i++)
     {
       switch(row->data[i][0]) {
@@ -804,15 +807,19 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
       field->flags|= NUM_FLAG;
 
     if (default_value && row->data[7])
-    {
       field->def=ma_strdup_root(alloc,(char*) row->data[7]);
-    }
     else
       field->def=0;
     field->max_length= 0;
   }
+  if (field < result + fields)
+    goto error;
   free_rows(data);				/* Free old data */
   return(result);
+error:
+  free_rows(data);
+  ma_free_root(alloc, MYF(0));
+  return(0);
 }
 
 
@@ -869,7 +876,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
       else
       {
         cur->data[field] = to;
-        if (len > (ulong) (end_to - to))
+        if (len > (ulong)(end_to - to) || to > end_to)
         {
           free_rows(result);
           SET_CLIENT_ERROR(mysql, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, 0);
@@ -938,11 +945,11 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
     }
     else
     {
-      if (len > (ulong) (end_pos - pos))
+      if (len > (ulong) (end_pos - pos) || pos > end_pos)
       {
-  mysql->net.last_errno=CR_UNKNOWN_ERROR;
-  strcpy(mysql->net.last_error,ER(mysql->net.last_errno));
-  return -1;
+        mysql->net.last_errno=CR_UNKNOWN_ERROR;
+        strcpy(mysql->net.last_error,ER(mysql->net.last_errno));
+        return -1;
       }
       row[field] = (char*) pos;
       pos+=len;
@@ -988,7 +995,7 @@ mysql_init(MYSQL *mysql)
     goto error;
   mysql->options.report_data_truncation= 1;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
-  mysql->charset= ma_default_charset_info;
+  mysql->charset= mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
   mysql->methods= &MARIADB_DEFAULT_METHODS;
   strcpy(mysql->net.sqlstate, "00000");
   mysql->net.last_error[0]= mysql->net.last_errno= 0;
@@ -1081,7 +1088,7 @@ char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer)
 
 /** set some default attributes */
 static my_bool
-ma_set_connect_attrs(MYSQL *mysql)
+ma_set_connect_attrs(MYSQL *mysql, const char *host)
 {
   char buffer[255];
   int rc= 0;
@@ -1089,6 +1096,7 @@ ma_set_connect_attrs(MYSQL *mysql)
   rc= mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_client_name") +
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_client_version") +
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_os") +
+      mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_server_host") +
 #ifdef _WIN32
       mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_thread") +
 #endif
@@ -1098,6 +1106,9 @@ ma_set_connect_attrs(MYSQL *mysql)
   rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_name", "libmariadb")
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE);
+
+  if (host && *host)
+    rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", host);
 
 #ifdef _WIN32
   snprintf(buffer, 255, "%lu", (ulong) GetCurrentThreadId());
@@ -1192,7 +1203,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
 
-  ma_set_connect_attrs(mysql);
+  if (!host || !host[0])
+    host = mysql->options.host;
+
+  ma_set_connect_attrs(mysql, host);
 
   if (net->pvio)  /* check if we are already connected */
   {
@@ -1203,10 +1217,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   /* use default options */
   if (mysql->options.my_cnf_file || mysql->options.my_cnf_group)
   {
-    _mariadb_read_options(mysql,
+    _mariadb_read_options(mysql, NULL,
 			  (mysql->options.my_cnf_file ?
 			   mysql->options.my_cnf_file : NULL),
-			   mysql->options.my_cnf_group);
+			   mysql->options.my_cnf_group, 0);
     free(mysql->options.my_cnf_file);
     free(mysql->options.my_cnf_group);
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
@@ -1221,8 +1235,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 #endif
 
   /* Some empty-string-tests are done because of ODBC */
-  if (!host || !host[0])
-    host=mysql->options.host;
   if (!user || !user[0])
     user=mysql->options.user;
   if (!passwd)
@@ -1472,7 +1484,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (mysql->options.charset_name)
     mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
   else
-    mysql->charset=ma_default_charset_info;
+    mysql->charset=mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
 
   if (!mysql->charset)
   {
@@ -1718,9 +1730,9 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
     db="";
 
   if (mysql->options.charset_name)
-    mysql->charset =mysql_find_charset_name(mysql->options.charset_name);
+    mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
   else
-    mysql->charset=ma_default_charset_info;
+    mysql->charset=mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
 
   mysql->user= strdup(user ? user : "");
   mysql->passwd= strdup(passwd ? passwd : "");
@@ -2448,13 +2460,17 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
   }
   result->field_alloc=mysql->field_alloc;
   mysql->fields=0;
+  result->eof=1;
   result->field_count = (uint) query->rows;
   result->fields= unpack_fields(query,&result->field_alloc,
 				result->field_count,1,
 				(my_bool) test(mysql->server_capabilities &
 					       CLIENT_LONG_FLAG));
-  result->eof=1;
-  return(result);
+  if (result->fields)
+    return(result);
+
+  free(result);
+  return(NULL);
 }
 
 /* List all running processes (threads) in server */
@@ -2468,7 +2484,7 @@ mysql_list_processes(MYSQL *mysql)
 
   LINT_INIT(fields);
   if (ma_simple_command(mysql, COM_PROCESS_INFO,0,0,0,0))
-    return(0);
+    return(NULL);
   free_old_query(mysql);
   pos=(uchar*) mysql->net.read_pos;
   field_count=(uint) net_field_length(&pos);
@@ -2477,7 +2493,7 @@ mysql_list_processes(MYSQL *mysql)
   if (!(mysql->fields=unpack_fields(fields,&mysql->field_alloc,field_count,0,
 				    (my_bool) test(mysql->server_capabilities &
 						   CLIENT_LONG_FLAG))))
-    return(0);
+    return(NULL);
   mysql->status=MYSQL_STATUS_GET_RESULT;
   mysql->field_count=field_count;
   return(mysql_store_result(mysql));
@@ -2894,11 +2910,16 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     {
       uchar *buffer;
       void *arg2= va_arg(ap, void *);
-      size_t key_len= arg1 ? strlen((char *)arg1) : 0,
+      size_t storage_len, key_len= arg1 ? strlen((char *)arg1) : 0,
              value_len= arg2 ? strlen((char *)arg2) : 0;
-      size_t storage_len= key_len + value_len +
-                          get_store_length(key_len) +
-                          get_store_length(value_len);
+      if (!key_len || !value_len)
+      {
+        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        goto end;
+      }
+      storage_len= key_len + value_len +
+                   get_store_length(key_len) +
+                   get_store_length(value_len);
 
       /* since we store terminating zero character in hash, we need
        * to increase lengths */
@@ -3466,6 +3487,7 @@ static void mysql_once_init()
   ma_init();					/* Will init threads */
   init_client_errs();
   get_default_configuration_dirs();
+  set_default_charset_by_name(MARIADB_DEFAULT_CHARSET, 0);
   if (mysql_client_plugin_init())
   {
 #ifdef _WIN32

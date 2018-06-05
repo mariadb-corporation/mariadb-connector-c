@@ -42,7 +42,7 @@
 #ifdef HAVE_TLS_SESSION_CACHE
 #undef HAVE_TLS_SESSION_CACHE
 #endif
-#if OPENSSL_USE_BIOMETHOD
+#if defined(OPENSSL_USE_BIOMETHOD)
 #undef OPENSSL_USE_BIOMETHOD
 #endif
 #ifndef HAVE_OPENSSL_DEFAULT
@@ -69,7 +69,7 @@ static pthread_mutex_t LOCK_openssl_config;
 #ifndef HAVE_OPENSSL_1_1_API
 static pthread_mutex_t *LOCK_crypto= NULL;
 #endif
-#if OPENSSL_USE_BIOMETHOD
+#if defined(OPENSSL_USE_BIOMETHOD)
 static int ma_bio_read(BIO *h, char *buf, int size);
 static int ma_bio_write(BIO *h, const char *buf, int size);
 static BIO_METHOD ma_BIO_method;
@@ -86,7 +86,11 @@ static long ma_tls_version_options(const char *version)
     SSL_OP_NO_SSLv3 |
     SSL_OP_NO_TLSv1 |
     SSL_OP_NO_TLSv1_1 |
-    SSL_OP_NO_TLSv1_2;
+    SSL_OP_NO_TLSv1_2
+#ifdef TLS1_3_VERSION
+    | SSL_OP_NO_TLSv1_3
+#endif
+    ;
 
   if (!version)
     return 0;
@@ -97,6 +101,10 @@ static long ma_tls_version_options(const char *version)
     protocol_options&= ~SSL_OP_NO_TLSv1_1;
   if (strstr(version, "TLSv1.2"))
     protocol_options&= ~SSL_OP_NO_TLSv1_2;
+#ifdef TLS1_3_VERSION
+  if (strstr(version, "TLSv1.3"))
+    protocol_options&= ~SSL_OP_NO_TLSv1_3;
+#endif
 
   if (protocol_options != disable_all_protocols)
     return protocol_options;
@@ -262,7 +270,11 @@ static void my_cb_locking(int mode, int n,
 
 static int ssl_thread_init()
 {
-  if (!CRYPTO_get_id_callback())
+  if (!CRYPTO_THREADID_get_callback()
+#ifndef OPENSSL_NO_DEPRECATED
+      && !CRYPTO_get_id_callback()
+#endif
+      )
   {
     int i, max= CRYPTO_num_locks();
 
@@ -346,7 +358,7 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   OpenSSL_add_all_algorithms();
 #endif
   disable_sigpipe();
-#if OPENSSL_USE_BIOMETHOD
+#ifdef OPENSSL_USE_BIOMETHOD
   memcpy(&ma_BIO_method, BIO_s_socket(), sizeof(BIO_METHOD));
   ma_BIO_method.bread= ma_bio_read;
   ma_BIO_method.bwrite= ma_bio_write;
@@ -389,7 +401,8 @@ void ma_tls_end()
     {
       int i;
       CRYPTO_set_locking_callback(NULL);
-      CRYPTO_set_id_callback(NULL);
+      CRYPTO_THREADID_set_callback(NULL);
+
       for (i=0; i < CRYPTO_num_locks(); i++)
         pthread_mutex_destroy(&LOCK_crypto[i]);
       ma_free((gptr)LOCK_crypto);
@@ -438,9 +451,15 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   
   /* add cipher */
   if ((mysql->options.ssl_cipher &&
-        mysql->options.ssl_cipher[0] != 0) &&
+        mysql->options.ssl_cipher[0] != 0))
+   {
+     if(
+#ifdef TLS1_3_VERSION
+      SSL_set_ciphersuites(ssl, mysql->options.ssl_cipher) == 0 &&
+#endif
       SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
     goto error;
+   }
 
   /* ca_file and ca_path */
   if (!SSL_CTX_load_verify_locations(ctx,
@@ -577,7 +596,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
-#if OPENSSL_USE_BIOMETHOD
+#ifdef OPENSSL_USE_BIOMETHOD
   BIO_METHOD *bio_method= NULL;
   BIO *bio;
 #endif
@@ -591,7 +610,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   SSL_clear(ssl);
 
-#if OPENSSL_USE_BIOMETHOD
+#ifdef OPENSSL_USE_BIOMETHOD
   bio= BIO_new(&ma_BIO_method);
   bio->ptr= pvio;
   SSL_set_bio(ssl, bio, bio);
@@ -699,12 +718,36 @@ ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
+  ssize_t rc;
+  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ctls->ssl);
+  MARIADB_PVIO *pvio= mysql->net.pvio;
+
+  while ((rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length)) < 0)
+  {
+    int error= SSL_get_error((SSL *)ctls->ssl, rc);
+    if (error != SSL_ERROR_WANT_READ)
+      return rc;
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.read_timeout) < 1)
+      return rc;
+  }
+  return rc;
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
+  ssize_t rc;
+  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ctls->ssl);
+  MARIADB_PVIO *pvio= mysql->net.pvio;
+
+  while ((rc= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length)) <= 0)
+  {
+    int error= SSL_get_error((SSL *)ctls->ssl, rc);
+    if (error != SSL_ERROR_WANT_WRITE)
+      return rc;
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.write_timeout) < 1)
+      return rc;
+  }
+  return rc;
 }
 
 my_bool ma_tls_close(MARIADB_TLS *ctls)

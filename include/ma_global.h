@@ -185,11 +185,11 @@ double my_ulonglong2double(unsigned long long A);
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
-#if TIME_WITH_SYS_TIME
+#if defined(TIME_WITH_SYS_TIME)
 # include <sys/time.h>
 # include <time.h>
 #else
-# if HAVE_SYS_TIME_H
+# if defined(HAVE_SYS_TIME_H)
 #  include <sys/time.h>
 # else
 #  include <time.h>
@@ -671,7 +671,7 @@ typedef ulonglong uint64;
   The following is done with a if to not get problems with pre-processors
   with late define evaluation
 */
-#if SIZEOF_OFF_T == 4
+#if defined(SIZEOF_OFF_T) && SIZEOF_OFF_T == 4
 #define SYSTEM_SIZEOF_OFF_T 4
 #else
 #define SYSTEM_SIZEOF_OFF_T 8
@@ -682,7 +682,7 @@ typedef ulonglong uint64;
 #define SYSTEM_SIZEOF_OFF_T SIZEOF_OFF_T
 #endif /* USE_RAID */
 
-#if SIZEOF_OFF_T > 4
+#if defined(SIZEOF_OFF_T) && SIZEOF_OFF_T > 4
 typedef ulonglong my_off_t;
 #else
 typedef unsigned long my_off_t;

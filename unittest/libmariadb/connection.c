@@ -1026,6 +1026,9 @@ static int test_reset(MYSQL *mysql)
   if (mysql_get_server_version(mysql) < 100200)
     return SKIP;
 
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
   check_mysql_rc(rc, mysql);
 
@@ -1340,21 +1343,16 @@ static int test_expired_pw(MYSQL *my)
   my_test_connect(mysql, hostname, "foo", "foo", schema,
                   port, socketname, 0);
 
-  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
-
   diag("error: %d %s", mysql_errno(mysql), mysql_error(mysql));
-  FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD, "Error 1820 expected");
+  FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD &&
+          mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD_LOGIN, "Error 1820/1862 expected");
 
-  rc= mysql_query(mysql, "SET PASSWORD=PASSWORD('foobar')");
-  check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
-  check_mysql_rc(rc, mysql);
+  mysql_close(mysql);
 
   sprintf(query, "DROP USER 'foo'@'%s'", this_host);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
-  mysql_close(mysql);
   return OK;
 }
 
@@ -1367,12 +1365,13 @@ static int test_conc315(MYSQL *mysql)
     return SKIP;
 
   mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, (void *)&csname);
-  FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
+  diag("csname=%s", csname);
+  FAIL_UNLESS(strcmp(csname, MARIADB_DEFAULT_CHARSET) == 0, "Wrong default character set");
 
   rc= mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);
   mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, (void *)&csname);
-  FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
+  FAIL_UNLESS(strcmp(csname, MARIADB_DEFAULT_CHARSET) == 0, "Wrong default character set");
   return OK;
 }
 #ifndef WIN32
@@ -1415,13 +1414,85 @@ static int test_conc317(MYSQL *unused __attribute__((unused)))
   mysql_close(mysql);
   return OK;
 }
+
+static int test_conc327(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql;
+  my_bool reconnect = 0;
+  FILE *fp1= NULL, *fp2= NULL;
+  const char *env= getenv("MYSQL_TMP_DIR");
+  char cnf_file1[FN_REFLEN + 1];
+  char cnf_file2[FN_REFLEN + 1];
+
+  if (travis_test)
+    return SKIP;
+
+  if (!env)
+    env= "/tmp";
+
+  setenv("HOME", env, 1);
+
+  snprintf(cnf_file1, FN_REFLEN, "%s%c.my.cnf", env, FN_LIBCHAR);
+  snprintf(cnf_file2, FN_REFLEN, "%s%c.my.tmp", env, FN_LIBCHAR);
+
+  FAIL_IF(!access(cnf_file1, R_OK), "access");
+
+  fp1= fopen(cnf_file1, "w");
+  fp2= fopen(cnf_file2, "w");
+  FAIL_IF(!fp1 || !fp2, "fopen failed");
+
+  fprintf(fp1, "!include %s\n", cnf_file2);
+  
+  fprintf(fp2, "[client]\ndefault-character-set = latin2\nreconnect= 1\n");
+  fclose(fp1);
+  fclose(fp2);
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
+  my_test_connect(mysql, hostname, username, password,
+                  schema, 0, socketname, 0);
+
+  remove(cnf_file1);
+  remove(cnf_file2);
+
+  FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
+  mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_IF(reconnect != 1, "expected reconnect=1");
+  mysql_close(mysql);
+
+  snprintf(cnf_file1, FN_REFLEN, "%s%cmy.cnf", env, FN_LIBCHAR);
+  fp1= fopen(cnf_file1, "w");
+  fp2= fopen(cnf_file2, "w");
+  FAIL_IF(!fp1 || !fp2, "fopen failed");
+
+  fprintf(fp2, "!includedir %s\n", env);
+  
+  fprintf(fp1, "[client]\ndefault-character-set = latin2\nreconnect= 1\n");
+  fclose(fp1);
+  fclose(fp2);
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, cnf_file2);
+  my_test_connect(mysql, hostname, username, password,
+                  schema, 0, socketname, 0);
+
+  remove(cnf_file1);
+  remove(cnf_file2);
+
+  FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
+  mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+  FAIL_IF(reconnect != 1, "expected reconnect=1");
+  mysql_close(mysql);
+
+  return OK;
+}
 #endif
 
 struct my_tests_st my_tests[] = {
 #ifndef WIN32
+  {"test_conc327", test_conc327, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc317", test_conc317, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #endif
-  {"test_conc315", test_conc315, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
+  {"test_conc315", test_conc315, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_expired_pw", test_expired_pw, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},

@@ -163,105 +163,107 @@
  */
 /* Types we may use */
 #cmakedefine SIZEOF_CHAR @SIZEOF_CHAR@
-#if SIZEOF_CHAR
+#if defined(SIZEOF_CHAR)
 # define HAVE_CHAR 1
 #endif
 
 #cmakedefine SIZEOF_CHARP @SIZEOF_CHARP@
-#if SIZEOF_CHARP
+#if defined(SIZEOF_CHARP)
 # define HAVE_CHARP 1
 #endif
 
 #cmakedefine SIZEOF_SHORT @SIZEOF_SHORT@
-#if SIZEOF_SHORT
+#if defined(SIZEOF_SHORT)
 # define HAVE_SHORT 1
 #endif
 
 #cmakedefine SIZEOF_INT @SIZEOF_INT@
-#if SIZEOF_INT
+#if defined(SIZEOF_INT)
 # define HAVE_INT 1
 #endif
 
 #cmakedefine SIZEOF_LONG @SIZEOF_LONG@
-#if SIZEOF_LONG
+#if defined(SIZEOF_LONG)
 # define HAVE_LONG 1
 #endif
 
 #cmakedefine SIZEOF_LONG_LONG @SIZEOF_LONG_LONG@
-#if SIZEOF_LONG_LONG
+#if defined(SIZEOF_LONG_LONG)
 # define HAVE_LONG_LONG 1
 #endif
 
 
 #cmakedefine SIZEOF_SIGSET_T @SIZEOF_SIGSET_T@
-#if SIZEOF_SIGSET_T
+#if defined(SIZEOF_SIGSET_T)
 # define HAVE_SIGSET_T 1
 #endif
 
 #cmakedefine SIZEOF_SIZE_T @SIZEOF_SIZE_T@
-#if SIZEOF_SIZE_T
+#if defined(SIZEOF_SIZE_T)
 # define HAVE_SIZE_T 1
 #endif
 
 #cmakedefine SIZEOF_UCHAR @SIZEOF_UCHAR@
-#if SIZEOF_UCHAR
+#if defined(SIZEOF_UCHAR)
 # define HAVE_UCHAR 1
 #endif
 
 #cmakedefine SIZEOF_UINT @SIZEOF_UINT@
-#if SIZEOF_UINT
+#if defined(SIZEOF_UINT)
 # define HAVE_UINT 1
 #endif
 
 #cmakedefine SIZEOF_ULONG @SIZEOF_ULONG@
-#if SIZEOF_ULONG
+#if defined(SIZEOF_ULONG)
 # define HAVE_ULONG 1
 #endif
 
 #cmakedefine SIZEOF_INT8 @SIZEOF_INT8@
-#if SIZEOF_INT8
+#if defined(SIZEOF_INT8)
 # define HAVE_INT8 1
 #endif
 #cmakedefine SIZEOF_UINT8 @SIZEOF_UINT8@
-#if SIZEOF_UINT8
+#if defined(SIZEOF_UINT8)
 # define HAVE_UINT8 1
 #endif
 
 #cmakedefine SIZEOF_INT16 @SIZEOF_INT16@
-#if SIZEOF_INT16
+#if defined(SIZEOF_INT16)
 # define HAVE_INT16 1
 #endif
 #cmakedefine SIZEOF_UINT16 @SIZEOF_UINT16@
-#if SIZEOF_UINT16
+#if defined(SIZEOF_UINT16)
 # define HAVE_UINT16 1
 #endif
 
 #cmakedefine SIZEOF_INT32 @SIZEOF_INT32@
-#if SIZEOF_INT32
+#if defined(SIZEOF_INT32)
 # define HAVE_INT32 1
 #endif
 #cmakedefine SIZEOF_UINT32 @SIZEOF_UINT32@
-#if SIZEOF_UINT32
+#if defined(SIZEOF_UINT32)
 # define HAVE_UINT32 1
 #endif
 #cmakedefine SIZEOF_U_INT32_T @SIZEOF_U_INT32_T@
-#if SIZEOF_U_INT32_T
+#if defined(SIZEOF_U_INT32_T)
 # define HAVE_U_INT32_T 1
 #endif
 
 #cmakedefine SIZEOF_INT64 @SIZEOF_INT64@
-#if SIZEOF_INT64
+#if defined(SIZEOF_INT64)
 # define HAVE_INT64 1
 #endif
 #cmakedefine SIZEOF_UINT64 @SIZEOF_UINT64@
-#if SIZEOF_UINT64
+#if defined(SIZEOF_UINT64)
 # define HAVE_UINT64 1
 #endif
 
 #cmakedefine SIZEOF_SOCKLEN_T @SIZEOF_SOCKLEN_T@
-#if SIZEOF_SOCKLEN_T
+#if defined(SIZEOF_SOCKLEN_T)
 # define HAVE_SOCKLEN_T 1
 #endif
 
 #cmakedefine SOCKET_SIZE_TYPE @SOCKET_SIZE_TYPE@
+
+#define MARIADB_DEFAULT_CHARSET "@DEFAULT_CHARSET@"
 
