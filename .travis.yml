@@ -14,13 +14,7 @@ before_script:
 
 
 before_install:
-  - chmod +x .travis/script.sh
-  - chmod +x .travis/gen-ssl.sh
-  - chmod +x .travis/libmariadb.sh
-  - chmod +x .travis/libmariadb_mtr_main.sh
-  - chmod +x .travis/libmariadb_mtr_protocol.sh
-  - chmod +x .travis/build/build.sh
-  - chmod +x .travis/build/docker-entrypoint.sh
+  - chmod -R +x .travis/*
   - chmod 777 .travis/build/
   - export PROJ_PATH=`pwd`
   - export ENTRYPOINT=$PROJ_PATH/.travis/sql
@@ -30,6 +24,8 @@ before_install:
 matrix:
   allow_failures:
     - env: DB=build
+    - env: SERVER_BRANCH=10.4
+    - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
   include:
     - env: DB=build
     - env: DB=mysql:5.7
@@ -38,18 +34,14 @@ matrix:
     - env: DB=mariadb:10.1
     - env: DB=mariadb:10.2
     - env: DB=mariadb:10.3
-    - env: DB=libmariadb_main
-    - env: DB=libmariadb_protocol
+    - env: SERVER_BRANCH=10.3
+    - env: SERVER_BRANCH=10.3 TEST_OPTION=--ps-protocol
+    - env: SERVER_BRANCH=10.4
+    - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
 
 script:
   - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
   - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
-  - if [ "$DB" = "libmariadb_main" ] ; then
-        .travis/libmariadb.sh;
-        .travis/libmariadb_mtr_main.sh;
-    elif [ "$DB" = "libmariadb_protocol" ] ; then
-        .travis/libmariadb.sh;
-        .travis/libmariadb_mtr_protocol.sh;
-    else
-        .travis/script.sh;
-    fi
+  - if [ -z "$DB" ] ; then .travis/server-replace-submodule.sh; fi
+  - if [ -n "$DB" ] ; then .travis/script.sh; fi
+

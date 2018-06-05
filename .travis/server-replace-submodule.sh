@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # get latest server
-git clone -b 10.3 https://github.com/mariadb/server ../workdir-server
+git clone -b ${SERVER_BRANCH} https://github.com/mariadb/server ../workdir-server
 
 # copy C/C into libmariadb in server
 ls -l ../workdir-server/libmariadb
@@ -14,3 +14,6 @@ git config cmake.update-submodules no
 # skip to build some storage engines to speed up the build
 cmake -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
 make -j9
+
+cd mysql-test/
+./mysql-test-run.pl --suite=main ${TEST_OPTION} --parallel=auto
