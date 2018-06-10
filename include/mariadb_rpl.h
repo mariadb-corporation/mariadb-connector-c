@@ -17,6 +17,8 @@
 #ifndef _mariadb_rpl_h_
 #define _mariadb_rpl_h_
 
+#include <ma_global.h>
+
 #define MARIADB_RPL_VERSION 0x0001
 #define MARIADB_RPL_REQUIRED_VERSION 0x0001
 
@@ -115,8 +117,8 @@ enum mariadb_rpl_event {
 enum mariadb_row_event_type {
   WRITE_ROWS= 0,
   UPDATE_ROWS= 1,
-  DELETE_ROWS= 2;
-}
+  DELETE_ROWS= 2
+};
 
 /* Global transaction id */
 typedef struct st_mariadb_gtid {
