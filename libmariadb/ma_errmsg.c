@@ -157,6 +157,7 @@ const char *mariadb_client_errors[] =
   /* 5004 */ "File '%s' not found (Errcode: %d)",
   /* 5005 */ "Error reading file '%s' (Errcode: %d)",
   /* 5006 */ "Bulk operation without parameters is not supported",
+  /* 5007 */ "Unsupported version %d. Supported versions are in the range %d - %d",
   ""
 };
 

@@ -96,5 +96,6 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_FILE_NOT_FOUND 5004
 #define CR_FILE_READ 5005
 #define CR_BULK_WITHOUT_PARAMETERS 5006
+#define CR_VERSION_MISMATCH 5007
 
 #endif

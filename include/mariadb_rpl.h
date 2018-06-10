@@ -17,11 +17,18 @@
 #ifndef _mariadb_rpl_h_
 #define _mariadb_rpl_h_
 
+#define MARIADB_RPL_VERSION 0x0001
+#define MARIADB_RPL_REQUIRED_VERSION 0x0001
+
 /* Protocol flags */
 #define MARIADB_RPL_BINLOG_DUMP_NON_BLOCK 1
 #define MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS 2
 #define MARIADB_RPL_DUMP_GTID   (1 << 16)
 #define MARIADB_RPL_IGNORE_HEARTBEAT (1 << 17)
+
+#define EVENT_HEADER_OFS 20
+
+#define FL_GROUP_COMMIT_ID 2
 
 /* Options */
 enum mariadb_rpl_option {
@@ -105,32 +112,181 @@ enum mariadb_rpl_event {
   ENUM_END_EVENT /* end marker */
 };
 
-struct st_mariadb_rpl_rotate_log_hdr {
-  unsigned long long position;
-  size_t filename_length;
-  const char *filename;
-};
+enum mariadb_row_event_type {
+  WRITE_ROWS= 0,
+  UPDATE_ROWS= 1,
+  DELETE_ROWS= 2;
+}
 
-typedef struct st_mariadb_rpl {
-  MYSQL *mysql;
-  const char *filename;
-  size_t filename_length;
-  const unsigned char *buffer;
-  unsigned long buffer_size;
+/* Global transaction id */
+typedef struct st_mariadb_gtid {
+  unsigned int domain_id;
   unsigned int server_id;
+  unsigned long long sequence_nr;
+} MARIADB_GTID;
+
+/* Generic replication handle */
+typedef struct st_mariadb_rpl {
+  unsigned int version;
+  MYSQL *mysql;
+  char *filename;
+  uint32 filename_length;
+  unsigned char *buffer;
+  unsigned long buffer_size;
+  uint32 server_id;
   unsigned long start_position;
-  unsigned int flags;
-  union {
-    struct st_mariadb_rpl_rotate_log_hdr rotate_log;
-  } event_hdr;
+  uint32 flags;
 } MARIADB_RPL;
 
+/* Event header */
+struct st_mariadb_rpl_rotate_event {
+  unsigned long long position;
+  char *filename;
+  uint32 filename_len;
+};
+
+struct st_mariadb_rpl_query_event {
+  uint32 thread_id;
+  uint32 seconds;
+  uint32 database_len;
+  uint32 errornr;
+  uint16 status_len;
+  char *status;
+  char *statement;
+  uint32 statement_len;
+  char *database;
+};
+
+struct st_mariadb_rpl_gtid_list_event {
+  uint32 gtid_cnt;
+  MARIADB_GTID *gtid;
+};
+
+struct st_mariadb_rpl_format_description_event
+{
+  uint16 format;
+  char *server_version;
+  uint32 timestamp;
+  uint8 header_len;
+};
+
+struct st_mariadb_rpl_checkpoint_event {
+  uint32 filename_len;
+  char *filename;
+};
+
+struct st_mariadb_rpl_xid_event {
+  uint64 transaction_nr;
+};
+
+struct st_mariadb_rpl_gtid_event {
+  uint64 sequence_nr;
+  uint32 domain_id;
+  uint8 flags;
+  uint64 commit_id;
+};
+
+struct st_mariadb_rpl_annotate_rows_event {
+  uint32 statement_len;
+  char *statement;
+};
+
+struct st_mariadb_rpl_table_map_event {
+  unsigned long long table_id;
+  uint8 database_len;
+  char *database;
+  uint8 table_len;
+  char *table;
+  unsigned int column_count;
+  char *column_types;
+  uint32 metadata_len;
+  char *metadata;
+  char *null_indicator;
+};
+
+struct st_mariadb_rpl_rand_event {
+  unsigned long long first_seed;
+  unsigned long long second_seed;
+};
+
+struct st_mariadb_rpl_encryption_event {
+  char scheme;
+  unsigned int key_version;
+  char *nonce;
+};
+
+struct st_mariadb_rpl_intvar_event {
+  char type;
+  unsigned long long value;
+};
+
+struct st_mariadb_rpl_uservar_event {
+  unsigned int name_len;
+  char *name;
+  uint8 is_null;
+  uint8 type;
+  uint32 charset_nr;
+  uint32 value_len;
+  char *value;
+  uint8 flags;
+};
+
+struct st_mariadb_rpl_rows_event {
+  enum mariadb_row_event_type type;
+  uint8 version;
+  uint64 table_id;
+  uint32 flags;
+  uint8 schema_length;
+  char *schema;
+  uint8 table_length;
+  char *table;
+  uint32 column_count;
+  char *column_definition;
+  uint64 metadata_len;
+  char *metadata;
+  uint8 *bitmask;
+};
+
+typedef struct st_mariadb_rpl_event
+{
+  /* common header */
+  unsigned int checksum;
+  char ok;
+  enum mariadb_rpl_event event_type;
+  unsigned int timestamp;
+  unsigned int server_id;
+  unsigned int event_length;
+  unsigned int next_event_pos;
+  unsigned short flags;
+  /****************/
+  union {
+    struct st_mariadb_rpl_rotate_event rotate;
+    struct st_mariadb_rpl_query_event query;
+    struct st_mariadb_rpl_format_description_event format_description;
+    struct st_mariadb_rpl_gtid_list_event gtid_list;
+    struct st_mariadb_rpl_checkpoint_event checkpoint;
+    struct st_mariadb_rpl_xid_event xid;
+    struct st_mariadb_rpl_gtid_event gtid;
+    struct st_mariadb_rpl_annotate_rows_event annotate_rows;
+    struct st_mariadb_rpl_table_map_event table_map;
+    struct st_mariadb_rpl_rand_event rand;
+    struct st_mariadb_rpl_encryption_event encryption;
+    struct st_mariadb_rpl_intvar_event intvar;
+    struct st_mariadb_rpl_uservar_event uservar;
+    struct st_mariadb_rpl_rows_event rows;
+  } event;
+} MARIADB_RPL_EVENT;
+
+#define mariadb_rpl_init(a) mariadb_rpl_init_ex((a), MARIADB_RPL_VERSION)
+
 /* Function prototypes */
-MARIADB_RPL STDCALL *mariadb_rpl_init(MYSQL *mysql);
+MARIADB_RPL STDCALL *mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version);
+
 int mariadb_rpl_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
 int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
+
 int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl);
 int STDCALL mariadb_rpl_close(MARIADB_RPL *rpl);
-int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl);
+int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *event);
 
 #endif

@@ -1381,7 +1381,7 @@ static int test_conc317(MYSQL *unused __attribute__((unused)))
 
   if (travis_test)
     return SKIP;
-
+/*
   if (!env)
     env= "/tmp";
 
@@ -1391,16 +1391,18 @@ static int test_conc317(MYSQL *unused __attribute__((unused)))
 
   FAIL_IF(!access(cnf_file1, R_OK), "access");
 
-  mysql= mysql_init(NULL);
   fp= fopen(cnf_file1, "w");
   FAIL_IF(!fp, "fopen");
 
   fprintf(fp, "[client]\ndefault-character-set = latin2\nreconnect= 1\n");
   fclose(fp);
-
+*/
+  mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
+  diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+  exit(1);
 
   remove(cnf_file1);
 
