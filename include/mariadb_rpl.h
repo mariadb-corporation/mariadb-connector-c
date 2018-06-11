@@ -17,8 +17,8 @@
 #ifndef _mariadb_rpl_h_
 #define _mariadb_rpl_h_
 
-#include <ma_global.h>
-#include <ma_sys.h>
+#include "ma_global.h"
+#include "ma_sys.h"
 
 #define MARIADB_RPL_VERSION 0x0001
 #define MARIADB_RPL_REQUIRED_VERSION 0x0001
