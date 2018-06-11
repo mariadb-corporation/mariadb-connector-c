@@ -281,7 +281,6 @@ int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
 int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl);
 void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl);
 MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *event);
-void STDCALL mariadb_rpl_free_event(MARIADB_RPL_EVENT *event);
 void STDCALL mariadb_free_rpl_event(MARIADB_RPL_EVENT *event);
 
 #endif

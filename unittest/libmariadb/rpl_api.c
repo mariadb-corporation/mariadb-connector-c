@@ -45,13 +45,11 @@ static int test_rpl_01(MYSQL *mysql)
   if (mariadb_rpl_open(rpl))
     return FAIL;
 
-  for (i=0; i < 20; i++)
+  while((event= mariadb_rpl_fetch(rpl, event)))
   {
-    event= mariadb_rpl_fetch(rpl, event);
-    printf("event: %d\n", event->event_type);
+  //  printf("event: %d\n", event->event_type);
   }
   mariadb_free_rpl_event(event);
-  mariadb_rpl_close(rpl);
   return OK;
 }
 

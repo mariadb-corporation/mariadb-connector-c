@@ -219,7 +219,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
       /* calculate statement size: buffer + buffer_size - current_ofs (ev) - crc_size */
       len= (size_t)(rpl->buffer + rpl->buffer_size - ev - 4);
-      if (rpl_alloc_string(rpl_event, &rpl_event->event.query.statement, ev, db_len))
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.query.statement, ev, len))
         goto mem_error;
       break;
     }
