@@ -39,6 +39,7 @@ extern "C" {
 typedef char my_bool;
 typedef unsigned long long my_ulonglong;
 
+
 #if !defined(_WIN32)
 #define STDCALL
 #else

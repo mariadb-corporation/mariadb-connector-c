@@ -26,6 +26,18 @@
 #include <stdarg.h>
 #include <zlib.h>
 
+static int rpl_alloc_string(MARIADB_RPL_EVENT *event,
+                            MARIADB_STRING *s,
+                            unsigned char *buffer,
+                            size_t len)
+{
+  if (!(s->str= ma_alloc_root(&event->memroot, len)))
+    return 1;
+  memcpy(s->str, buffer, len);
+  s->length= len;
+  return 0;
+}
+
 MARIADB_RPL STDCALL *mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version)
 {
   MARIADB_RPL *rpl;
@@ -49,6 +61,15 @@ MARIADB_RPL STDCALL *mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version)
   rpl->version= version;
   rpl->mysql= mysql;
   return rpl;
+}
+
+void STDCALL mariadb_free_rpl_event(MARIADB_RPL_EVENT *event)
+{
+  if (event)
+  {
+    ma_free_root(&event->memroot, MYF(0));
+    free(event);
+  }
 }
 
 int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
@@ -89,12 +110,14 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   return 0;
 }
 
-int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
+MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *event)
 {
   unsigned char *ev;
+  size_t len;
+  MARIADB_RPL_EVENT *rpl_event= 0;
 
   if (!rpl || !rpl->mysql)
-    return 1;
+    return 0;
 
   while (1) {
     unsigned long pkt_len= ma_net_safe_read(rpl->mysql);
@@ -102,7 +125,7 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
     if (pkt_len == packet_error)
     {
       rpl->buffer_size= 0;
-      return -1;
+      return 0;
     }
 
     /* EOF packet:
@@ -130,10 +153,19 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
     rpl->buffer_size= pkt_len;
     rpl->buffer= rpl->mysql->net.read_pos;
 
-    if (!rpl_event)
-      return 0;
-
-    memset(rpl_event, 0, sizeof(MARIADB_RPL_EVENT));
+    if (event)
+    {
+      MA_MEM_ROOT memroot= event->memroot;
+      rpl_event= event;
+      ma_free_root(&memroot, MYF(MY_KEEP_PREALLOC));
+      memset(rpl_event, 0, sizeof(MARIADB_RPL_EVENT));
+      rpl_event->memroot= memroot;
+    } else {
+      if (!(rpl_event = (MARIADB_RPL_EVENT *)malloc(sizeof(MARIADB_RPL_EVENT))))
+        goto mem_error;
+      bzero(rpl_event, sizeof(MARIADB_RPL_EVENT));
+      ma_init_alloc_root(&rpl_event->memroot, 8192, 0);
+    }
     rpl_event->checksum= uint4korr(rpl->buffer + rpl->buffer_size - 4);
 
     rpl_event->ok= rpl->buffer[0];
@@ -148,9 +180,10 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
 
     switch(rpl_event->event_type) {
     case BINLOG_CHECKPOINT_EVENT:
-      rpl_event->event.checkpoint.filename_len= uint4korr(ev);
+      len= uint4korr(ev);
       ev+= 4;
-      rpl_event->event.checkpoint.filename= (char *)ev;
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.checkpoint.filename, ev, len))
+        goto mem_error;
       break;
     case FORMAT_DESCRIPTION_EVENT:
       rpl_event->event.format_description.format = uint2korr(ev);
@@ -159,45 +192,55 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
       ev+= 50;
       rpl_event->event.format_description.timestamp= uint4korr(ev);
       ev+= 2;
-      rpl_event->event.format_description.header_len= *ev;
+      rpl->fd_header_len= rpl_event->event.format_description.header_len= *ev;
       break;
     case QUERY_EVENT:
+    {
+      size_t db_len, status_len;
       rpl_event->event.query.thread_id= uint4korr(ev);
       ev+= 4;
       rpl_event->event.query.seconds= uint4korr(ev);
       ev+= 4;
-      rpl_event->event.query.database_len= *ev;
+      db_len= *ev;
       ev++;
       rpl_event->event.query.errornr= uint2korr(ev);
       ev+= 2;
-      rpl_event->event.query.status_len= uint2korr(ev);
+      status_len= uint2korr(ev);
       ev+= 2;
-      rpl_event->event.query.status= (char *)ev;
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.query.status, ev, status_len))
+        goto mem_error;
+      ev+= status_len;
       /* todo: status variables */
-      ev+= rpl_event->event.query.status_len;
-      rpl_event->event.query.database= (char *)ev;
-      ev+= (rpl_event->event.query.database_len + 1); /* zero terminated */
-      rpl_event->event.query.statement= (char *)ev;
+
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.query.database, ev, db_len))
+        goto mem_error;
+      ev+= db_len + 1; /* zero terminated */
+
       /* calculate statement size: buffer + buffer_size - current_ofs (ev) - crc_size */
-      rpl_event->event.query.statement_len= (uint)(rpl->buffer + rpl->buffer_size - ev - 4);
-      //printf("%s\n", rpl_event->event.query.statement);
+      len= (size_t)(rpl->buffer + rpl->buffer_size - ev - 4);
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.query.statement, ev, db_len))
+        goto mem_error;
       break;
+    }
     case TABLE_MAP_EVENT:
       rpl_event->event.table_map.table_id= uint6korr(ev);
       ev+= 8;
-      rpl_event->event.table_map.database_len= *ev;
+      len= *ev;
       ev++;
-      rpl_event->event.table_map.database= (char *)ev;
-      ev+= rpl_event->event.table_map.database_len + 1;
-      rpl_event->event.table_map.table_len= *ev;
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.table_map.database, ev, len))
+        goto mem_error;
+      ev+= len + 1;
+      len= *ev;
       ev++;
-      rpl_event->event.table_map.table= (char *)ev;
-      ev+= rpl_event->event.table_map.table_len + 1;
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.table_map.table, ev, len))
+        goto mem_error;
+      ev+= len;
       rpl_event->event.table_map.column_count= mysql_net_field_length(&ev);
       rpl_event->event.table_map.column_types= (char *)ev;
       ev+= rpl_event->event.table_map.column_count;
-      rpl_event->event.table_map.metadata_len= mysql_net_field_length(&ev);
-      rpl_event->event.table_map.metadata= (char *)ev;
+      len= mysql_net_field_length(&ev);
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.table_map.metadata, ev, len))
+        goto mem_error;
       break;
     case RAND_EVENT:
       rpl_event->event.rand.first_seed= uint8korr(ev);
@@ -210,11 +253,11 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
       rpl_event->event.intvar.value= uint8korr(ev);
       break;
     case USER_VAR_EVENT:
-      rpl_event->event.uservar.name_len= uint4korr(ev);
+      len= uint4korr(ev);
       ev+= 4;
-      rpl_event->event.uservar.name= (char *)ev;
-      printf("uservar: %s", rpl_event->event.uservar.name);
-      ev+= rpl_event->event.uservar.name_len;
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.uservar.name, ev, len))
+        goto mem_error;
+      ev+= len;
       if (!(rpl_event->event.uservar.is_null= (uint8)*ev)) 
       {
         ev++;
@@ -222,11 +265,11 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
         ev++;
         rpl_event->event.uservar.charset_nr= uint4korr(ev);
         ev+= 4;
-        rpl_event->event.uservar.value_len= uint4korr(ev);
+        len= uint4korr(ev);
         ev+= 4;
-        rpl_event->event.uservar.value= (char *)ev;
-        printf(" value=%s\n", rpl_event->event.uservar.value);
-        ev+= rpl_event->event.uservar.value_len;
+        if (rpl_alloc_string(rpl_event, &rpl_event->event.uservar.value, ev, len))
+          goto mem_error;
+        ev+= len;
         if ((unsigned long)(ev - rpl->buffer) < rpl->buffer_size)
           rpl_event->event.uservar.flags= *ev;
       }
@@ -239,14 +282,16 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
       rpl_event->event.encryption.nonce= (char *)ev;
       break;
     case ANNOTATE_ROWS_EVENT:
-      rpl_event->event.annotate_rows.statement_len= (uint32)(rpl->buffer + rpl->buffer_size - (unsigned char *)ev - 4);
-      rpl_event->event.annotate_rows.statement= (char *)ev;
+      len= (uint32)(rpl->buffer + rpl->buffer_size - (unsigned char *)ev - 4);
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.annotate_rows.statement, ev, len))
+        goto mem_error;
       break;
     case ROTATE_EVENT:
       rpl_event->event.rotate.position= uint8korr(ev);
       ev+= 8;
-      rpl_event->event.rotate.filename= (char *)ev;
-      rpl_event->event.rotate.filename_len= rpl->buffer + rpl->buffer_size - ev;
+      len= rpl->buffer + rpl->buffer_size - ev;
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.rotate.filename, ev, len))
+        goto mem_error;
       break;
     case XID_EVENT:
       rpl_event->event.xid.transaction_nr= uint8korr(ev);
@@ -265,47 +310,80 @@ int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *rpl_event)
         rpl_event->event.gtid.commit_id= uint8korr(ev);
       break;
     case GTID_LIST_EVENT:
+    {
+      uint32 i;
       rpl_event->event.gtid_list.gtid_cnt= uint4korr(ev);
       ev++;
-      if (!(rpl_event->event.gtid_list.gtid= (MARIADB_GTID *)malloc(sizeof(MARIADB_GTID) * rpl_event->event.gtid_list.gtid_cnt)))
+      if (!(rpl_event->event.gtid_list.gtid= (MARIADB_GTID *)ma_alloc_root(&rpl_event->memroot, sizeof(MARIADB_GTID) * rpl_event->event.gtid_list.gtid_cnt)))
+        goto mem_error;
+      for (i=0; i < rpl_event->event.gtid_list.gtid_cnt; i++)
       {
-        SET_CLIENT_ERROR(rpl->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-        return 1;
-      } else {
-        unsigned int i;
-        for (i=0; i < rpl_event->event.gtid_list.gtid_cnt; i++)
-        {
-          rpl_event->event.gtid_list.gtid[i].domain_id= uint4korr(ev);
-          ev+= 4;
-          rpl_event->event.gtid_list.gtid[i].server_id= uint4korr(ev);
-          ev+= 4;
-          rpl_event->event.gtid_list.gtid[i].sequence_nr= uint8korr(ev);
-          ev+= 8;
-        }
+        rpl_event->event.gtid_list.gtid[i].domain_id= uint4korr(ev);
+        ev+= 4;
+        rpl_event->event.gtid_list.gtid[i].server_id= uint4korr(ev);
+        ev+= 4;
+        rpl_event->event.gtid_list.gtid[i].sequence_nr= uint8korr(ev);
+        ev+= 8;
       }
       break;
+    }
     case WRITE_ROWS_EVENT_V1:
     case UPDATE_ROWS_EVENT_V1:
     case DELETE_ROWS_EVENT_V1:
       rpl_event->event.rows.type= rpl_event->event_type - WRITE_ROWS_EVENT_V1;
+      if (rpl->fd_header_len == 6)
+      {
+        rpl_event->event.rows.table_id= uint4korr(ev);
+        ev+= 4;
+      } else {
+        rpl_event->event.rows.table_id= uint6korr(ev);
+        ev+= 6;
+      }
+      rpl_event->event.rows.flags= uint2korr(ev);
+      ev+= 2;
+      len= rpl_event->event.rows.column_count= mysql_net_field_length(&ev);
+      if (!len)
+        break;
+      if (!(rpl_event->event.rows.column_bitmap =
+            (char *)ma_alloc_root(&rpl_event->memroot, (len + 7) / 8)))
+        goto mem_error;
+      memcpy(rpl_event->event.rows.column_bitmap, ev, (len + 7) / 8);
+      ev+= (len + 7) / 8;
+      if (rpl_event->event_type == UPDATE_ROWS_EVENT_V1)
+      {
+        if (!(rpl_event->event.rows.column_update_bitmap =
+            (char *)ma_alloc_root(&rpl_event->memroot, (len + 7) / 8)))
+          goto mem_error;
+        memcpy(rpl_event->event.rows.column_update_bitmap, ev, (len + 7) / 8);
+        ev+= (len + 7) / 8;
+      }
+      if ((rpl_event->event.rows.row_data_size= rpl->buffer + rpl->buffer_size - ev))
+      {
+        if (!(rpl_event->event.rows.row_data =
+            (char *)ma_alloc_root(&rpl_event->memroot, rpl_event->event.rows.row_data_size)))
+        goto mem_error;
+        memcpy(rpl_event->event.rows.row_data, ev, rpl_event->event.rows.row_data_size);
+      }
+      break;
     default:
-      //printf("event not handled: %d\n", rpl_event->event_type);
+      printf("event not handled: %d\n", rpl_event->event_type);
       break;
     }
-    return 0;
+    return rpl_event;
   }
+mem_error:
+  SET_CLIENT_ERROR(rpl->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+  return 0;
 }
 
-int STDCALL mariadb_rpl_close(MARIADB_RPL *rpl)
+void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl)
 {
   if (!rpl)
-    return 1;
-  if (rpl->buffer)
-    free((void *)rpl->buffer);
+    return;
   if (rpl->filename)
     free((void *)rpl->filename);
   free(rpl);
-  return 0;
+  return;
 }
 
 int mariadb_rpl_optionsv(MARIADB_RPL *rpl,

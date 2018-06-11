@@ -29,8 +29,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 static int test_rpl_01(MYSQL *mysql)
 {
+  int i;
   unsigned int server_id= 0;
-  MARIADB_RPL_EVENT event;
+  MARIADB_RPL_EVENT *event= NULL;
   MARIADB_RPL *rpl= mariadb_rpl_init(mysql);
   mysql_query(mysql, "SET @mariadb_slave_capability=4");
   mysql_query(mysql, "SET NAMES latin1");
@@ -44,10 +45,13 @@ static int test_rpl_01(MYSQL *mysql)
   if (mariadb_rpl_open(rpl))
     return FAIL;
 
-  while(!mariadb_rpl_fetch(rpl, &event))
+  for (i=0; i < 20; i++)
   {
-    enum mariadb_rpl_event event= rpl->buffer[5];
+    event= mariadb_rpl_fetch(rpl, event);
+    printf("event: %d\n", event->event_type);
   }
+  mariadb_free_rpl_event(event);
+  mariadb_rpl_close(rpl);
   return OK;
 }
 

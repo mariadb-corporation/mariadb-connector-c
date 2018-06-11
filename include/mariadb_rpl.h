@@ -18,6 +18,7 @@
 #define _mariadb_rpl_h_
 
 #include <ma_global.h>
+#include <ma_sys.h>
 
 #define MARIADB_RPL_VERSION 0x0001
 #define MARIADB_RPL_REQUIRED_VERSION 0x0001
@@ -114,6 +115,11 @@ enum mariadb_rpl_event {
   ENUM_END_EVENT /* end marker */
 };
 
+typedef struct {
+  char *str;
+  size_t length;
+} MARIADB_STRING;
+
 enum mariadb_row_event_type {
   WRITE_ROWS= 0,
   UPDATE_ROWS= 1,
@@ -138,25 +144,22 @@ typedef struct st_mariadb_rpl {
   uint32 server_id;
   unsigned long start_position;
   uint32 flags;
+  uint8 fd_header_len; /* header len from last format description event */
 } MARIADB_RPL;
 
 /* Event header */
 struct st_mariadb_rpl_rotate_event {
   unsigned long long position;
-  char *filename;
-  uint32 filename_len;
+  MARIADB_STRING filename;
 };
 
 struct st_mariadb_rpl_query_event {
   uint32 thread_id;
   uint32 seconds;
-  uint32 database_len;
+  MARIADB_STRING database;
   uint32 errornr;
-  uint16 status_len;
-  char *status;
-  char *statement;
-  uint32 statement_len;
-  char *database;
+  MARIADB_STRING status;
+  MARIADB_STRING statement;
 };
 
 struct st_mariadb_rpl_gtid_list_event {
@@ -173,8 +176,7 @@ struct st_mariadb_rpl_format_description_event
 };
 
 struct st_mariadb_rpl_checkpoint_event {
-  uint32 filename_len;
-  char *filename;
+  MARIADB_STRING filename;
 };
 
 struct st_mariadb_rpl_xid_event {
@@ -189,20 +191,16 @@ struct st_mariadb_rpl_gtid_event {
 };
 
 struct st_mariadb_rpl_annotate_rows_event {
-  uint32 statement_len;
-  char *statement;
+  MARIADB_STRING statement;
 };
 
 struct st_mariadb_rpl_table_map_event {
   unsigned long long table_id;
-  uint8 database_len;
-  char *database;
-  uint8 table_len;
-  char *table;
+  MARIADB_STRING database;
+  MARIADB_STRING table;
   unsigned int column_count;
   char *column_types;
-  uint32 metadata_len;
-  char *metadata;
+  MARIADB_STRING metadata;
   char *null_indicator;
 };
 
@@ -223,35 +221,29 @@ struct st_mariadb_rpl_intvar_event {
 };
 
 struct st_mariadb_rpl_uservar_event {
-  unsigned int name_len;
-  char *name;
+  MARIADB_STRING name;
   uint8 is_null;
   uint8 type;
   uint32 charset_nr;
-  uint32 value_len;
-  char *value;
+  MARIADB_STRING value;
   uint8 flags;
 };
 
 struct st_mariadb_rpl_rows_event {
   enum mariadb_row_event_type type;
-  uint8 version;
   uint64 table_id;
-  uint32 flags;
-  uint8 schema_length;
-  char *schema;
-  uint8 table_length;
-  char *table;
+  uint16 flags;
   uint32 column_count;
-  char *column_definition;
-  uint64 metadata_len;
-  char *metadata;
-  uint8 *bitmask;
+  char *column_bitmap;
+  char *column_update_bitmap;
+  size_t row_data_size;
+  void *row_data;
 };
 
 typedef struct st_mariadb_rpl_event
 {
   /* common header */
+  MA_MEM_ROOT memroot;
   unsigned int checksum;
   char ok;
   enum mariadb_rpl_event event_type;
@@ -288,7 +280,9 @@ int mariadb_rpl_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
 int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
 
 int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl);
-int STDCALL mariadb_rpl_close(MARIADB_RPL *rpl);
-int STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *event);
+void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl);
+MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *event);
+void STDCALL mariadb_rpl_free_event(MARIADB_RPL_EVENT *event);
+void STDCALL mariadb_free_rpl_event(MARIADB_RPL_EVENT *event);
 
 #endif
