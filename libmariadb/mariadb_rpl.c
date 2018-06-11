@@ -19,6 +19,7 @@
 *************************************************************************************/
 
 #include <ma_global.h>
+#include <ma_sys.h>
 #include <mysql.h>
 #include <errmsg.h>
 #include <stdlib.h>
