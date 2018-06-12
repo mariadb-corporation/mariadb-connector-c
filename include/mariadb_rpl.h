@@ -25,12 +25,15 @@
 /* Protocol flags */
 #define MARIADB_RPL_BINLOG_DUMP_NON_BLOCK 1
 #define MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS 2
-#define MARIADB_RPL_DUMP_GTID   (1 << 16)
 #define MARIADB_RPL_IGNORE_HEARTBEAT (1 << 17)
 
 #define EVENT_HEADER_OFS 20
 
 #define FL_GROUP_COMMIT_ID 2
+#define FL_STMT_END 1
+
+#define LOG_EVENT_ARTIFICIAL_F 0x20
+
 
 /* Options */
 enum mariadb_rpl_option {
@@ -239,6 +242,13 @@ struct st_mariadb_rpl_rows_event {
   void *row_data;
 };
 
+struct st_mariadb_rpl_heartbeat_event {
+  uint32_t timestamp;
+  uint32_t next_position;
+  uint8_t type;
+  uint16_t flags;
+};
+
 typedef struct st_mariadb_rpl_event
 {
   /* common header */
@@ -267,6 +277,7 @@ typedef struct st_mariadb_rpl_event
     struct st_mariadb_rpl_intvar_event intvar;
     struct st_mariadb_rpl_uservar_event uservar;
     struct st_mariadb_rpl_rows_event rows;
+    struct st_mariadb_rpl_heartbeat_event heartbeat;
   } event;
 } MARIADB_RPL_EVENT;
 

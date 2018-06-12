@@ -41,6 +41,7 @@ static int test_rpl_01(MYSQL *mysql)
   mysql_query(mysql, "SET @master_binlog_checksum= @@global.binlog_checksum");
   rpl->server_id= 12;
   rpl->start_position= 4;
+  rpl->flags= MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS;
 
   if (mariadb_rpl_open(rpl))
     return FAIL;

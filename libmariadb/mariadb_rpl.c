@@ -79,33 +79,28 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   if (!rpl || !rpl->mysql)
     return 1;
 
-  if (!(rpl->flags & MARIADB_RPL_DUMP_GTID))
-  {
-    /* COM_BINLOG_DUMP:
-       Ofs  Len Data
-       0      1 COM_BINLOG_DUMP
-       1      4 position
-       5      2 flags
-       7      4 server id
-       11     * filename
+  /* COM_BINLOG_DUMP:
+     Ofs  Len Data
+     0      1 COM_BINLOG_DUMP
+     1      4 position
+     5      2 flags
+     7      4 server id
+     11     * filename
 
-       * = filename length
+     * = filename length
 
-     */
-    ptr= buf= (unsigned char *)alloca(rpl->filename_length + 11);
+  */
+  ptr= buf= (unsigned char *)alloca(rpl->filename_length + 11);
 
-    int4store(ptr, (unsigned int)rpl->start_position);
-    ptr+= 4;
-    int2store(ptr, rpl->flags);
-    ptr+= 2;
-    int4store(ptr, rpl->server_id);
-    ptr+= 4;
-    memcpy(ptr, rpl->filename, rpl->filename_length);
-    ptr+= rpl->filename_length;
-  } else
-  {
-    /* COM_BINLOG_GTID: */
-  }
+  int4store(ptr, (unsigned int)rpl->start_position);
+  ptr+= 4;
+  int2store(ptr, rpl->flags);
+  ptr+= 2;
+  int4store(ptr, rpl->server_id);
+  ptr+= 4;
+  memcpy(ptr, rpl->filename, rpl->filename_length);
+  ptr+= rpl->filename_length;
+
   if (ma_simple_command(rpl->mysql, COM_BINLOG_DUMP, (const char *)buf, ptr - buf, 1, 0))
     return 1;
   return 0;
@@ -180,6 +175,15 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     ev= rpl->buffer + EVENT_HEADER_OFS;
 
     switch(rpl_event->event_type) {
+    case HEARTBEAT_LOG_EVENT:
+      rpl_event->event.heartbeat.timestamp= uint4korr(ev);
+      ev+= 4;
+      rpl_event->event.heartbeat.next_position= uint4korr(ev);
+      ev+= 4;
+      rpl_event->event.heartbeat.type= (uint8_t)*ev;
+      ev+= 1;
+      rpl_event->event.heartbeat.flags= uint2korr(ev);
+      break;
     case BINLOG_CHECKPOINT_EVENT:
       len= uint4korr(ev);
       ev+= 4;
@@ -193,7 +197,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= 50;
       rpl_event->event.format_description.timestamp= uint4korr(ev);
       ev+= 2;
-      rpl->fd_header_len= rpl_event->event.format_description.header_len= *ev;
+      rpl->fd_header_len= rpl_event->event.format_description.header_len= (uint8_t)*ev;
       break;
     case QUERY_EVENT:
     {
@@ -211,7 +215,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       if (rpl_alloc_string(rpl_event, &rpl_event->event.query.status, ev, status_len))
         goto mem_error;
       ev+= status_len;
-      /* todo: status variables */
 
       if (rpl_alloc_string(rpl_event, &rpl_event->event.query.database, ev, db_len))
         goto mem_error;
@@ -367,7 +370,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       }
       break;
     default:
-      printf("event not handled: %d\n", rpl_event->event_type);
+      return NULL;
       break;
     }
     return rpl_event;
