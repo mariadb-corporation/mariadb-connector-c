@@ -128,6 +128,8 @@ char *load_pub_key_file(const char *filename, int *pub_key_size)
     goto end;
 
   *pub_key_size= ftell(fp);
+  if(*pub_key_size ==0)
+    goto end;
   rewind(fp);
 
   if (!(buffer= malloc(*pub_key_size + 1)))
