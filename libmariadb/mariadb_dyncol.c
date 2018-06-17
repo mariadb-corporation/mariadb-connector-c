@@ -3886,7 +3886,7 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
             return ER_DYNCOL_RESOURCE;
         }
         if (quote)
-          rc= ma_dynstr_append_mem(str, &quote, 1);
+          ma_dynstr_append_mem(str, &quote, 1);
         rc= ma_dynstr_append_mem(str, from, len);
         if (quote)
           rc= ma_dynstr_append_mem(str, &quote, 1);
