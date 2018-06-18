@@ -1,6 +1,6 @@
-SET(CLIENT_LIB_DIR ${CMAKE_BINARY_DIR}/libmariadb/${CMAKE_BUILD_TYPE})
-SET(CLIENT_DBG_DIR ${CMAKE_BINARY_DIR}/libmariadb/Debug)
-SET(CLIENT_INC_DIR ${CMAKE_SOURCE_DIR}/include)
+SET(CLIENT_LIB_DIR ${CC_BINARY_DIR}/libmariadb/${CMAKE_BUILD_TYPE})
+SET(CLIENT_DBG_DIR ${CC_BINARY_DIR}/libmariadb/Debug)
+SET(CLIENT_INC_DIR ${CC_SOURCE_DIR}/include)
 
 SET(PRODUCT_NAME "MariaDB Connector C")
 SET(PRODUCT_INSTALL_DIR "MariaDB")
@@ -24,8 +24,8 @@ ELSE()
   SET(FOLDER "ProgramFilesFolder")
 ENDIF()
 
-SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"dialog.dll\" Name=\"dialog.dll\" DiskId=\"1\" Source=\"${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll\"/>\n")
-SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"mysql_clear_password.dll\" Name=\"mysqlclearpassword.dll\" DiskId=\"1\" Source=\"${CMAKE_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll\"/>\n")
+SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"dialog.dll\" Name=\"dialog.dll\" DiskId=\"1\" Source=\"${CC_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/dialog.dll\"/>\n")
+SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"mysql_clear_password.dll\" Name=\"mysqlclearpassword.dll\" DiskId=\"1\" Source=\"${CC_BINARY_DIR}/plugins/auth/${CMAKE_BUILD_TYPE}/mysql_clear_password.dll\"/>\n")
 
 
 FOREACH(src ${MARIADB_CLIENT_INCLUDES})
@@ -33,9 +33,9 @@ FOREACH(src ${MARIADB_CLIENT_INCLUDES})
   STRING(REPLACE "mysql/" "" src_id ${src_id})
   STRING(REPLACE "mysql/" "" src_name ${src})
   IF(${src} MATCHES "mysql/")
-    SET(MARIADB_INCLUDEMYSQL_FILES "${MARIADB_INCLUDEMYSQL_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
+    SET(MARIADB_INCLUDEMYSQL_FILES "${MARIADB_INCLUDEMYSQL_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CC_SOURCE_DIR}/include/${src}\"/>\n")
   ELSE()
-    SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CMAKE_SOURCE_DIR}/include/${src}\"/>\n")
+    SET(MARIADB_INCLUDE_FILES "${MARIADB_INCLUDE_FILES} <File Id=\"${src_id}\" Name=\"${src_name}\"  DiskId=\"1\"  Source=\"${CC_SOURCE_DIR}/include/${src}\"/>\n")
   ENDIF()
 ENDFOREACH()
 
@@ -44,8 +44,8 @@ IF(NOT WIX_DIR)
   SET(WIX_DIR $ENV{WIX}/bin)
 ENDIF()
 
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
-  ${CMAKE_BINARY_DIR}/win/packaging/mariadb-connector-c.xml)
+CONFIGURE_FILE(${CC_SOURCE_DIR}/win/packaging/mariadb-connector-c.xml.in
+  ${CC_BINARY_DIR}/win/packaging/mariadb-connector-c.xml)
 SET(MSI_PACKAGE "mariadb-connector-c-${PRODUCT_VERSION}-${PLATFORM}.msi")
 
 IF(WITH_SIGNCODE)
