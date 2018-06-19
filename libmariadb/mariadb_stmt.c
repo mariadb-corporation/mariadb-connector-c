@@ -381,14 +381,18 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
       {
         unsigned long length;
 
-        if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
-          length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
-        else
-          length= net_field_length(&row);
-        row+= length;
-        if (!stmt->bind[i].length)
-          stmt->bind[i].length= &stmt->bind[i].length_value;
-        *stmt->bind[i].length= stmt->bind[i].length_value= length;
+        if (stmt->field_fetch_callback)
+          stmt->field_fetch_callback(stmt, i, &row);
+        else {
+          if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
+            length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
+          else
+            length= net_field_length(&row);
+          row+= length;
+          if (!stmt->bind[i].length)
+            stmt->bind[i].length= &stmt->bind[i].length_value;
+          *stmt->bind[i].length= stmt->bind[i].length_value= length;
+        }
       }
       else
       {
@@ -1022,6 +1026,9 @@ unsigned long long STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt)
 my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type attr_type, void *value)
 {
   switch (attr_type) {
+    case STMT_ATTR_USER_DATA:
+      *((void **)value) = stmt->user_data;
+      break;
     case STMT_ATTR_UPDATE_MAX_LENGTH:
       *(my_bool *)value= stmt->update_max_length;
       break;
@@ -1049,6 +1056,12 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
 my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type attr_type, const void *value)
 {
   switch (attr_type) {
+  case STMT_ATTR_FIELD_FETCH_CALLBACK:
+    stmt->field_fetch_callback= (ps_field_fetch_callback)value;
+    break;
+  case STMT_ATTR_USER_DATA:
+    stmt->user_data= (void *)value;
+    break;
   case STMT_ATTR_UPDATE_MAX_LENGTH:
     stmt->update_max_length= *(my_bool *)value;
     break;

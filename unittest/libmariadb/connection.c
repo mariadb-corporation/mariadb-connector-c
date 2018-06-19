@@ -26,6 +26,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include "my_test.h"
+#include "mysql/client_plugin.h"
 
 static int test_conc66(MYSQL *my)
 {

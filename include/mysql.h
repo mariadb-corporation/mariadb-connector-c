@@ -422,38 +422,6 @@ typedef struct character_set
 
 #include "mariadb_stmt.h"
 
-#ifndef MYSQL_CLIENT_PLUGIN_HEADER
-#define MYSQL_CLIENT_PLUGIN_HEADER                      \
-  int type;                                             \
-  unsigned int interface_version;                       \
-  const char *name;                                     \
-  const char *author;                                   \
-  const char *desc;                                     \
-  unsigned int version[3];                              \
-  const char *license;                                  \
-  void *mariadb_api;                                    \
-  int (*init)(char *, size_t, int, va_list);            \
-  int (*deinit)();                                      \
-  int (*options)(const char *option, const void *);
-struct st_mysql_client_plugin
-{
-  MYSQL_CLIENT_PLUGIN_HEADER
-};
-
-struct st_mysql_client_plugin *
-mysql_load_plugin(struct st_mysql *mysql, const char *name, int type,
-                  int argc, ...);
-struct st_mysql_client_plugin * STDCALL
-mysql_load_plugin_v(struct st_mysql *mysql, const char *name, int type,
-                    int argc, va_list args);
-struct st_mysql_client_plugin * STDCALL
-mysql_client_find_plugin(struct st_mysql *mysql, const char *name, int type);
-struct st_mysql_client_plugin * STDCALL
-mysql_client_register_plugin(struct st_mysql *mysql,
-                             struct st_mysql_client_plugin *plugin);
-#endif
-
-
 void STDCALL mysql_set_local_infile_handler(MYSQL *mysql,
         int (*local_infile_init)(void **, const char *, void *),
         int (*local_infile_read)(void *, char *, unsigned int),
