@@ -2910,16 +2910,16 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     {
       uchar *buffer;
       void *arg2= va_arg(ap, void *);
-      size_t key_len= arg1 ? strlen((char *)arg1) : 0,
+      size_t storage_len, key_len= arg1 ? strlen((char *)arg1) : 0,
              value_len= arg2 ? strlen((char *)arg2) : 0;
       if (!key_len || !value_len)
       {
         SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
         goto end;
       }
-      size_t storage_len= key_len + value_len +
-                          get_store_length(key_len) +
-                          get_store_length(value_len);
+      storage_len= key_len + value_len +
+                   get_store_length(key_len) +
+                   get_store_length(value_len);
 
       /* since we store terminating zero character in hash, we need
        * to increase lengths */
