@@ -197,7 +197,7 @@ struct st_mysqlnd_stmt_methods
 
 typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row);
 
-typedef void (*ps_field_fetch_callback)(MYSQL_STMT *stmt, unsigned int column, unsigned char **row);
+typedef void (*ps_field_fetch_callback)(void *data, unsigned int column, unsigned char **row);
 struct st_mysql_stmt
 {
   MA_MEM_ROOT              mem_root;

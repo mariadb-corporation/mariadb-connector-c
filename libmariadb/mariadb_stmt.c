@@ -382,7 +382,7 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
         unsigned long length;
 
         if (stmt->field_fetch_callback)
-          stmt->field_fetch_callback(stmt, i, &row);
+          stmt->field_fetch_callback(stmt->user_data, i, &row);
         else {
           if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
             length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
