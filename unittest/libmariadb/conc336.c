@@ -1,6 +1,6 @@
 #include "my_test.h"
 
-#define MAX_COUNT 4000
+#define MAX_COUNT 2000
 
 int main(int argc, char *argv[]) {
 
@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 
-		if (!mysql_real_connect(mysql, hostname, username, password, NULL, port, NULL, 0)) {
+		if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0)) {
 			diag("mysql_real_connect failed: %s", mysql_error(mysql));
 			return 1;
 		}
