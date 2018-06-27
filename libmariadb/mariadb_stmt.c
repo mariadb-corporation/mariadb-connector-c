@@ -466,6 +466,8 @@ static long ma_get_length(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long
 {
   if (!stmt->params[param_nr].length)
     return 0;
+  if (stmt->param_callback)
+    return (long)*stmt->params[param_nr].length;
   if (stmt->row_size)
     return *(long *)((char *)stmt->params[param_nr].length + row_nr * stmt->row_size);
   else
@@ -478,6 +480,8 @@ static signed char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, uns
       !stmt->array_size ||
       !stmt->params[param_nr].u.indicator)
     return 0;
+  if (stmt->param_callback)
+    return *stmt->params[param_nr].u.indicator;
   if (stmt->row_size)
     return *((char *)stmt->params[param_nr].u.indicator + (row_nr * stmt->row_size));
   return stmt->params[param_nr].u.indicator[row_nr];
@@ -486,6 +490,9 @@ static signed char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, uns
 static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
                                   void *buffer, unsigned long row_nr)
 {
+  if (stmt->param_callback)
+    return buffer;
+
   if (stmt->array_size)
   {
     int len;
@@ -501,9 +508,12 @@ static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
 
 int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long row_nr)
 {
-  void *buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
+  void *buf;
+  char indicator;
+
+  buf= ma_get_buffer_offset(stmt, stmt->params[column].buffer_type,
                                   stmt->params[column].buffer, row_nr);
-  signed char indicator= ma_get_indicator(stmt, column, row_nr);
+  indicator= ma_get_indicator(stmt, column, row_nr);
 
   switch (stmt->params[column].buffer_type) {
   case MYSQL_TYPE_TINY:
@@ -929,6 +939,11 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
       if (mysql_stmt_skip_paramset(stmt, j))
         continue;
 
+      /* If callback for parameters was specified, we need to
+         update bind information for new row */
+      if (stmt->param_callback)
+        stmt->param_callback(stmt->user_data, stmt->params, j);
+
       for (i=0; i < stmt->param_count; i++)
       {
         size_t size= 0;
@@ -965,15 +980,21 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
           case MYSQL_TYPE_BIT:
           case MYSQL_TYPE_SET:
             size+= 5; /* max 8 bytes for size */
-            if (indicator == STMT_INDICATOR_NTS ||
-              (!stmt->row_size && ma_get_length(stmt,i,j) == -1))
+            if (!stmt->param_callback)
             {
-                size+= strlen(ma_get_buffer_offset(stmt,
-                                                   stmt->params[i].buffer_type,
-                                                   stmt->params[i].buffer,j));
+              if (indicator == STMT_INDICATOR_NTS ||
+                (!stmt->row_size && ma_get_length(stmt,i,j) == -1))
+              {
+                  size+= strlen(ma_get_buffer_offset(stmt,
+                                                     stmt->params[i].buffer_type,
+                                                     stmt->params[i].buffer,j));
+              }
+              else
+                size+= (size_t)ma_get_length(stmt, i, j);
             }
-            else
-              size+= (size_t)ma_get_length(stmt, i, j);
+            else {
+              size+= stmt->params[i].buffer_length;
+            }
             break;
           default:
             size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
@@ -992,8 +1013,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
 
         int1store(p, indicator > 0 ? indicator : 0);
         p++;
-        if (has_data)
-          store_param(stmt, i, &p, j);
+        if (has_data) {
+          store_param(stmt, i, &p, (stmt->param_callback) ? 0 : j);
+        }
       }
     }
 
@@ -1026,6 +1048,9 @@ unsigned long long STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt)
 my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type attr_type, void *value)
 {
   switch (attr_type) {
+    case STMT_ATTR_STATE:
+      *((enum mysql_stmt_state *)value)= stmt->state;
+      break;
     case STMT_ATTR_USER_DATA:
       *((void **)value) = stmt->user_data;
       break;
@@ -1058,6 +1083,9 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
   switch (attr_type) {
   case STMT_ATTR_FIELD_FETCH_CALLBACK:
     stmt->field_fetch_callback= (ps_field_fetch_callback)value;
+    break;
+  case STMT_ATTR_PARAM_READ:
+    stmt->param_callback= (ps_update_param_callback)value;
     break;
   case STMT_ATTR_USER_DATA:
     stmt->user_data= (void *)value;
