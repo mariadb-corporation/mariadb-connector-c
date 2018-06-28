@@ -106,8 +106,7 @@ extern int mthd_stmt_fetch_row(MYSQL_STMT *stmt, unsigned char **row);
 extern int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row);
 extern int mthd_stmt_read_all_rows(MYSQL_STMT *stmt);
 extern void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt);
-extern my_bool _mariadb_read_options(MYSQL *mysql, const char *config_file,
-                                     char *group);
+extern my_bool _mariadb_read_options(MYSQL *mysql, const char *dir, const char *config_file, char *group, unsigned int recursion);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
 
 extern void
@@ -1088,7 +1087,7 @@ char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer)
 
 /** set some default attributes */
 static my_bool
-ma_set_connect_attrs(MYSQL *mysql)
+ma_set_connect_attrs(MYSQL *mysql, const char *host)
 {
   char buffer[255];
   int rc= 0;
@@ -1107,6 +1106,9 @@ ma_set_connect_attrs(MYSQL *mysql)
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_client_version", MARIADB_PACKAGE_VERSION)
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_os", MARIADB_SYSTEM_TYPE)
        + mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", mysql->host);
+
+  if (host && *host)
+    rc+= mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", host);
 
 #ifdef _WIN32
   snprintf(buffer, 255, "%lu", (ulong) GetCurrentThreadId());
@@ -1201,7 +1203,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
 
-  ma_set_connect_attrs(mysql);
+  if (!host || !host[0])
+    host = mysql->options.host;
+
+  ma_set_connect_attrs(mysql, host);
 
   if (net->pvio)  /* check if we are already connected */
   {
@@ -1212,10 +1217,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   /* use default options */
   if (mysql->options.my_cnf_file || mysql->options.my_cnf_group)
   {
-    _mariadb_read_options(mysql,
+    _mariadb_read_options(mysql, NULL,
 			  (mysql->options.my_cnf_file ?
 			   mysql->options.my_cnf_file : NULL),
-			   mysql->options.my_cnf_group);
+			   mysql->options.my_cnf_group, 0);
     free(mysql->options.my_cnf_file);
     free(mysql->options.my_cnf_group);
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
@@ -1230,8 +1235,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 #endif
 
   /* Some empty-string-tests are done because of ODBC */
-  if (!host || !host[0])
-    host=mysql->options.host;
   if (!user || !user[0])
     user=mysql->options.user;
   if (!passwd)
@@ -1776,7 +1779,8 @@ mysql_select_db(MYSQL *mysql, const char *db)
 {
   int error;
 
-  if ((error=ma_simple_command(mysql, COM_INIT_DB,db,(uint) strlen(db),0,0)))
+  if ((error=ma_simple_command(mysql, COM_INIT_DB, db,
+                               db ? (uint) strlen(db) : 0,0,0)))
     return(error);
   free(mysql->db);
   mysql->db=strdup(db);
@@ -2625,7 +2629,7 @@ uchar *ma_get_hash_keyval(const uchar *hash_entry,
   return p;
 }
 
-void ma_hash_free(void *p)
+void ma_int_hash_free(void *p)
 {
   free(p);
 }
@@ -2867,7 +2871,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if (!hash_inited(&mysql->options.extension->userdata))
       {
         if (_hash_init(&mysql->options.extension->userdata,
-                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0))
+                       0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
           goto end;
@@ -2907,11 +2911,16 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     {
       uchar *buffer;
       void *arg2= va_arg(ap, void *);
-      size_t key_len= arg1 ? strlen((char *)arg1) : 0,
+      size_t storage_len, key_len= arg1 ? strlen((char *)arg1) : 0,
              value_len= arg2 ? strlen((char *)arg2) : 0;
-      size_t storage_len= key_len + value_len +
-                          get_store_length(key_len) +
-                          get_store_length(value_len);
+      if (!key_len || !value_len)
+      {
+        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        goto end;
+      }
+      storage_len= key_len + value_len +
+                   get_store_length(key_len) +
+                   get_store_length(value_len);
 
       /* since we store terminating zero character in hash, we need
        * to increase lengths */
@@ -2929,7 +2938,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if (!hash_inited(&mysql->options.extension->connect_attrs))
       {
         if (_hash_init(&mysql->options.extension->connect_attrs,
-                       0, 0, 0, ma_get_hash_keyval, ma_hash_free, 0))
+                       0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
           goto end;
@@ -4131,5 +4140,6 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS = {
   my_set_error,
   /* invalidate statements */
   ma_invalidate_stmts,
+  /* API functions */
   &MARIADB_API
 };

@@ -549,8 +549,8 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   {   3, 1, "dec8", "dec8_swedisch_ci", "", 0, "DEC", 1, 1, NULL, NULL},
   {   4, 1, "cp850", "cp850_general_ci", "", 850, "CP850", 1, 1, NULL, NULL},
   {   6, 1, "hp8", "hp8_english_ci", "", 0, "HP-ROMAN8", 1, 1, NULL, NULL},
-  {   7, 1, "koi8r", "koi8r_general_ci", "", 878, "KOI8R", 1, 1, NULL, NULL},
-  {   8, 1, "latin1", "latin1_swedish_ci", "", 850, "LATIN1", 1, 1, NULL, NULL},
+  {   7, 1, "koi8r", "koi8r_general_ci", "", 20866, "KOI8R", 1, 1, NULL, NULL},
+  {   8, 1, "latin1", "latin1_swedish_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
   {   9, 1, "latin2", "latin2_general_ci", "", 852, "LATIN2", 1, 1, NULL, NULL},
   {  10, 1, "swe7", "swe7_swedish_ci", "", 20107, "", 1, 1, NULL, NULL},
   {  11, 1, "ascii", "ascii_general_ci", "", 1252, "ASCII", 1, 1, NULL, NULL},
@@ -559,7 +559,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   {  16, 1, "hebrew", "hebrew_general_ci", "", 1255, "HEBREW", 1, 1, NULL, NULL},
   {  18, 1, "tis620", "tis620_thai_ci", "", 874, "TIS620", 1, 1, NULL, NULL},
   {  19, 1, "euckr", "euckr_korean_ci", "", 51949, "EUCKR", 1, 2, mysql_mbcharlen_euckr, check_mb_euckr},
-  {  22, 1, "koi8u", "koi8u_general_ci", "", 20866, "KOI8U", 1, 1, NULL, NULL},
+  {  22, 1, "koi8u", "koi8u_general_ci", "", 21866, "KOI8U", 1, 1, NULL, NULL},
   {  24, 1, "gb2312", "gb2312_chinese_ci", "", 936, "GB2312", 1, 2, mysql_mbcharlen_gb2312, check_mb_gb2312},
   {  25, 1, "greek", "greek_general_ci", "", 28597, "GREEK", 1, 1, NULL, NULL},
   {  26, 1, "cp1250", "cp1250_general_ci", "", 1250, "CP1250", 1, 1, NULL, NULL},
@@ -583,16 +583,16 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   {  95, 1, "cp932", "cp932_japanese_ci", "", 932, "CP932", 1, 2, mysql_mbcharlen_cp932, check_mb_cp932},
   {  97, 1, "eucjpms", "eucjpms_japanese_ci", "", 932, "EUC-JP-MS", 1, 3, mysql_mbcharlen_eucjpms, check_mb_eucjpms},
   {   2, 1, "latin2", "latin2_czech_cs", "", 852, "LATIN2", 1, 1, NULL, NULL},
-  {   5, 1, "latin1", "latin1_german_ci", "", 850, "LATIN1", 1, 1, NULL, NULL},
+  {   5, 1, "latin1", "latin1_german_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
   {  14, 1, "cp1251", "cp1251_bulgarian_ci", "", 1251, "CP1251", 1, 1, NULL, NULL},
-  {  15, 1, "latin1", "latin1_danish_ci", "", 850, "LATIN1", 1, 1, NULL, NULL},
+  {  15, 1, "latin1", "latin1_danish_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
   {  17, 1, "filename", "filename", "", 0, "", 1, 5, NULL, NULL},
   {  20, 1, "latin7", "latin7_estonian_cs", "", 28603, "LATIN7", 1, 1, NULL, NULL},
   {  21, 1, "latin2", "latin2_hungarian_ci", "", 852, "LATIN2", 1, 1, NULL, NULL},
   {  23, 1, "cp1251", "cp1251_ukrainian_ci", "", 1251, "CP1251", 1, 1, NULL, NULL},
   {  27, 1, "latin2", "latin2_croatian_ci", "", 852, "LATIN2", 1, 1, NULL, NULL},
   {  29, 1, "cp1257", "cp1257_lithunian_ci", "", 1257, "CP1257", 1, 1, NULL, NULL},
-  {  31, 1, "latin1", "latin1_german2_ci", "", 850, "LATIN1", 1, 1, NULL, NULL},
+  {  31, 1, "latin1", "latin1_german2_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
   {  34, 1, "cp1250", "cp1250_czech_cs", "", 1250, "CP1250", 1, 1, NULL, NULL},
   {  42, 1, "latin7", "latin7_general_cs", "", 28603, "LATIN7", 1, 1, NULL, NULL},
   {  43, 1, "macce", "macce_bin", "", 10029, "CP1282", 1, 1, NULL, NULL},
@@ -1349,8 +1349,7 @@ const char *madb_get_os_character_set()
   char *p= NULL;
 #ifdef _WIN32
   char codepage[FN_REFLEN];
-  snprintf(codepage, FN_REFLEN, "%u", GetConsoleWindow() ?
-           GetConsoleCP() : GetACP());
+  snprintf(codepage, FN_REFLEN, "%u", GetACP());
   p= codepage;
 #elif defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)
   if (setlocale(LC_CTYPE, ""))

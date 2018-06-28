@@ -253,7 +253,19 @@ SET(MARIADB_NONBLOCK_SYMBOLS
  mysql_store_result_start
 )
 
+# handle static plugins
+SET(LIBMARIADB_SOURCES ${LIBMARIADB_PLUGIN_SOURCES})
+SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBMARIADB_PLUGIN_LIBS})
+ADD_DEFINITIONS(${LIBMARIADB_PLUGIN_DEFS})
+FOREACH(plugin ${PLUGINS_STATIC})
+  SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin ${plugin}_client_plugin;\n")
+  SET(BUILTIN_PLUGINS "${BUILTIN_PLUGINS}   (struct st_mysql_client_plugin *)&${plugin}_client_plugin,\n")
+ENDFOREACH()
+CONFIGURE_FILE(${CC_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
+               ${CC_BINARY_DIR}/libmariadb/ma_client_plugin.c)
+
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
+${CC_SOURCE_DIR}/plugins/auth/my_auth.c
 ma_array.c
 ma_charset.c
 ma_hash.c

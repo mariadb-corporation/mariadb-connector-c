@@ -56,6 +56,9 @@
 #endif
 #include <ma_pthread.h>
 
+#include <mariadb_async.h>
+#include <ma_context.h>
+
 extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
 
@@ -83,7 +86,11 @@ static long ma_tls_version_options(const char *version)
     SSL_OP_NO_SSLv3 |
     SSL_OP_NO_TLSv1 |
     SSL_OP_NO_TLSv1_1 |
-    SSL_OP_NO_TLSv1_2;
+    SSL_OP_NO_TLSv1_2
+#ifdef TLS1_3_VERSION
+    | SSL_OP_NO_TLSv1_3
+#endif
+    ;
 
   if (!version)
     return 0;
@@ -94,6 +101,10 @@ static long ma_tls_version_options(const char *version)
     protocol_options&= ~SSL_OP_NO_TLSv1_1;
   if (strstr(version, "TLSv1.2"))
     protocol_options&= ~SSL_OP_NO_TLSv1_2;
+#ifdef TLS1_3_VERSION
+  if (strstr(version, "TLSv1.3"))
+    protocol_options&= ~SSL_OP_NO_TLSv1_3;
+#endif
 
   if (protocol_options != disable_all_protocols)
     return protocol_options;
@@ -440,9 +451,15 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   
   /* add cipher */
   if ((mysql->options.ssl_cipher &&
-        mysql->options.ssl_cipher[0] != 0) &&
+        mysql->options.ssl_cipher[0] != 0))
+   {
+     if(
+#ifdef TLS1_3_VERSION
+      SSL_set_ciphersuites(ssl, mysql->options.ssl_cipher) == 0 &&
+#endif
       SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
     goto error;
+   }
 
   /* ca_file and ca_path */
   if (!SSL_CTX_load_verify_locations(ctx,
@@ -644,14 +661,93 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   return 0;
 }
 
+static my_bool
+ma_tls_async_check_result(int res, struct mysql_async_context *b, SSL *ssl)
+{
+  int ssl_err;
+  b->events_to_wait_for= 0;
+  if (res >= 0)
+    return 1;
+  ssl_err= SSL_get_error(ssl, res);
+  if (ssl_err == SSL_ERROR_WANT_READ)
+    b->events_to_wait_for|= MYSQL_WAIT_READ;
+  else if (ssl_err == SSL_ERROR_WANT_WRITE)
+    b->events_to_wait_for|= MYSQL_WAIT_WRITE;
+  else
+    return 1;
+  if (b->suspend_resume_hook)
+    (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+  my_context_yield(&b->async_context);
+  if (b->suspend_resume_hook)
+    (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+  return 0;
+}
+
+ssize_t ma_tls_read_async(MARIADB_PVIO *pvio,
+                          const unsigned char *buffer,
+                          size_t length)
+{
+  int res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  MARIADB_TLS *ctls= pvio->ctls;
+
+  for (;;)
+  {
+    res= SSL_read((SSL *)ctls->ssl, (void *)buffer, length);
+    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
+      return res;
+  }
+}
+
+ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
+                           const unsigned char *buffer,
+                           size_t length)
+{
+  int res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  MARIADB_TLS *ctls= pvio->ctls;
+
+  for (;;)
+  {
+    res= SSL_write((SSL *)ctls->ssl, (void *)buffer, length);
+    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
+      return res;
+  }
+}
+
+
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
+  ssize_t rc;
+  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ctls->ssl);
+  MARIADB_PVIO *pvio= mysql->net.pvio;
+
+  while ((rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length)) < 0)
+  {
+    int error= SSL_get_error((SSL *)ctls->ssl, rc);
+    if (error != SSL_ERROR_WANT_READ)
+      return rc;
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.read_timeout) < 1)
+      return rc;
+  }
+  return rc;
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
-{ 
-  return SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
+{
+  ssize_t rc;
+  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ctls->ssl);
+  MARIADB_PVIO *pvio= mysql->net.pvio;
+
+  while ((rc= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length)) <= 0)
+  {
+    int error= SSL_get_error((SSL *)ctls->ssl, rc);
+    if (error != SSL_ERROR_WANT_WRITE)
+      return rc;
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.write_timeout) < 1)
+      return rc;
+  }
+  return rc;
 }
 
 my_bool ma_tls_close(MARIADB_TLS *ctls)

@@ -131,8 +131,8 @@ struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_shutdown
 };
 
-#ifndef HAVE_SOCKET_DYNAMIC
-MARIADB_PVIO_PLUGIN pvio_socket_plugin=
+#ifndef PLUGIN_DYNAMIC
+MARIADB_PVIO_PLUGIN pvio_socket_client_plugin=
 #else
 MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_
 #endif
@@ -757,17 +757,30 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   {
 #ifndef _WIN32
 #ifdef HAVE_SYS_UN_H
+    size_t port_length;
     struct sockaddr_un UNIXaddr;
-    if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == INVALID_SOCKET)
+    if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == INVALID_SOCKET ||
+        (port_length=strlen(cinfo->unix_socket)) >= (sizeof(UNIXaddr.sun_path)))
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_SOCKET_CREATE_ERROR, unknown_sqlstate, 0, errno);
       goto error;
     }
     memset((char*) &UNIXaddr, 0, sizeof(UNIXaddr));
     UNIXaddr.sun_family = AF_UNIX;
-    strcpy(UNIXaddr.sun_path, cinfo->unix_socket);
-    if (pvio_socket_connect_sync_or_async(pvio, (struct sockaddr *) &UNIXaddr, 
-                                    sizeof(UNIXaddr)))
+#if defined(__linux__)
+    /* Abstract socket */
+    if (cinfo->unix_socket[0] == '@')
+    {
+      strcpy(UNIXaddr.sun_path + 1, cinfo->unix_socket + 1);
+      port_length+= offsetof(struct sockaddr_un, sun_path);
+    }
+    else
+#endif
+    {
+      strcpy(UNIXaddr.sun_path, cinfo->unix_socket);
+      port_length= sizeof(UNIXaddr);
+    }
+    if (pvio_socket_connect_sync_or_async(pvio, (struct sockaddr *) &UNIXaddr, port_length))
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                     ER(CR_CONNECTION_ERROR), cinfo->unix_socket, socket_errno);

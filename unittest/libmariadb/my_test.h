@@ -525,8 +525,13 @@ MYSQL *my_test_connect(MYSQL *mysql,
                        unsigned long clientflag)
 {
   if (force_tls)
-    mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
-  mysql= mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag);
+    mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls); 
+  if (!mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag))
+  {
+    diag("error: %s", mysql_error(mysql));
+    return NULL;
+  }
+
   if (mysql && force_tls && !mysql_get_ssl_cipher(mysql))
   {
     diag("Error: TLS connection not established");

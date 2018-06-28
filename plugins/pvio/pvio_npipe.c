@@ -68,8 +68,8 @@ struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_shutdown
 };
 
-#ifndef HAVE_NPIPE_DYNAMIC
-MARIADB_PVIO_PLUGIN pvio_npipe_plugin =
+#ifndef PLUGIN_DYNAMIC
+MARIADB_PVIO_PLUGIN pvio_npipe_client_plugin =
 #else
 MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
@@ -234,7 +234,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 
   if (!(cpipe= (struct st_pvio_npipe *)LocalAlloc(LMEM_ZEROINIT, sizeof(struct st_pvio_npipe))))
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0, "");
+    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, "HY000", 0, "");
     return 1;
   }
   memset(cpipe, 0, sizeof(struct st_pvio_npipe));
@@ -271,14 +271,14 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 
       if (GetLastError() != ERROR_PIPE_BUSY)
       {
-        pvio->set_error(pvio->mysql, CR_NAMEDPIPEOPEN_ERROR, SQLSTATE_UNKNOWN, 0,
+        pvio->set_error(pvio->mysql, CR_NAMEDPIPEOPEN_ERROR, "HY000", 0,
                        cinfo->host, cinfo->unix_socket, GetLastError());
         goto end;
       }
 
       if (has_timedout || !WaitNamedPipe(szPipeName, pvio->timeout[PVIO_CONNECT_TIMEOUT]))
       {
-        pvio->set_error(pvio->mysql, CR_NAMEDPIPEWAIT_ERROR, SQLSTATE_UNKNOWN, 0,
+        pvio->set_error(pvio->mysql, CR_NAMEDPIPEWAIT_ERROR, "HY000", 0,
                        cinfo->host, cinfo->unix_socket, GetLastError());
         goto end;
       }
@@ -288,7 +288,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     dwMode = PIPE_READMODE_BYTE | PIPE_WAIT;
     if (!SetNamedPipeHandleState(cpipe->pipe, &dwMode, NULL, NULL))
     {
-      pvio->set_error(pvio->mysql, CR_NAMEDPIPESETSTATE_ERROR, SQLSTATE_UNKNOWN, 0,
+      pvio->set_error(pvio->mysql, CR_NAMEDPIPESETSTATE_ERROR, "HY000", 0,
                      cinfo->host, cinfo->unix_socket, (ulong) GetLastError());
       goto end;
     }
@@ -296,7 +296,7 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     /* Register event handler for overlapped IO */
     if (!(cpipe->overlapped.hEvent= CreateEvent(NULL, FALSE, FALSE, NULL)))
     {
-      pvio->set_error(pvio->mysql, CR_EVENT_CREATE_FAILED, SQLSTATE_UNKNOWN, 0,
+      pvio->set_error(pvio->mysql, CR_EVENT_CREATE_FAILED, "HY000", 0,
                      GetLastError());
       goto end;
     }

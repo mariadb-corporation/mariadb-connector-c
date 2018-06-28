@@ -223,7 +223,11 @@ ssize_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
     return -1;
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
-    r= ma_pvio_read_async(pvio, buffer, length);
+    r=
+#if defined(HAVE_TLS) && !defined(HAVE_SCHANNEL)
+      (pvio->ctls) ? ma_tls_read_async(pvio, buffer, length) :
+#endif
+                    (ssize_t)ma_pvio_read_async(pvio, buffer, length);
     goto end;
   }
   else
@@ -343,18 +347,13 @@ ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   if (!pvio)
    return -1;
 
-  /* secure connection */
-#ifdef HAVE_TLS
-  if (pvio->ctls)
-  {
-    r= ma_pvio_tls_write(pvio->ctls, buffer, length);
-    goto end;
-  }
-  else
-#endif
   if (IS_PVIO_ASYNC_ACTIVE(pvio))
   {
-    r= ma_pvio_write_async(pvio, buffer, length);
+    r=
+#if defined(HAVE_TLS) && !defined(HAVE_SCHANNEL)
+       (pvio->ctls) ? ma_tls_write_async(pvio, buffer, length) :
+#endif
+                      ma_pvio_write_async(pvio, buffer, length);
     goto end;
   }
   else
@@ -369,6 +368,14 @@ ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
       ma_pvio_blocking(pvio, TRUE, &old_mode);
     }
   }
+  /* secure connection */
+#ifdef HAVE_TLS
+  if (pvio->ctls)
+  {
+    r= ma_pvio_tls_write(pvio->ctls, buffer, length);
+    goto end;
+  }
+#endif
 
   if (pvio->methods->write)
     r= pvio->methods->write(pvio, buffer, length);
