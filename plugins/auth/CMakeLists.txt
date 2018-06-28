@@ -18,14 +18,15 @@ REGISTER_PLUGIN(TARGET dialog
                 SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c
                         ${CC_SOURCE_DIR}/libmariadb/get_password.c)
 
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CC_SOURCE_DIR}/cmake)
 #GSSAPI client authentication plugin
 IF(NOT WIN32)
-  INCLUDE(${CC_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
+  FIND_PACKAGE(GSSAPI)
   IF(GSSAPI_FOUND)
     SET(GSSAPI_SOURCES ${AUTH_DIR}/auth_gssapi_client.c ${AUTH_DIR}/gssapi_client.c ${AUTH_DIR}/gssapi_errmsg.c)
   ENDIF()
 ELSE()
-  SET(GSSAPI_LIBS secur32)
+  SET(GSSAPI_LIBRARIES secur32)
   SET(GSSAPI_SOURCES ${AUTH_DIR}/auth_gssapi_client.c ${AUTH_DIR}/sspi_client.c ${AUTH_DIR}/sspi_errmsg.c)
 ENDIF()
 IF(GSSAPI_SOURCES)
@@ -34,8 +35,8 @@ IF(GSSAPI_SOURCES)
                   CONFIGURATIONS DYNAMIC STATIC OFF
                   DEFAULT DYNAMIC
                   SOURCES ${GSSAPI_SOURCES}
-                  INCLUDES ${CC_SOURCE_DIR}/plugins/auth ${GSSAPI_INCS}
-                  LIBRARIES ${GSSAPI_LIBS})
+                  INCLUDES ${CC_SOURCE_DIR}/plugins/auth ${GSSAPI_INCLUDE_DIR}
+                  LIBRARIES ${GSSAPI_LIBRARIES})
 ENDIF()
 
 IF(${WITH_SSL} STREQUAL "OPENSSL" OR ${WITH_SSL} STREQUAL "SCHANNEL")
