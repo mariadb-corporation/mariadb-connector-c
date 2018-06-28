@@ -4660,7 +4660,7 @@ static int test_codbc138(MYSQL *mysql)
   int i= 0;
 
   struct st_time_test {
-    char *statement;
+    const char *statement;
     MYSQL_TIME tm;
   } time_test[]= {
     {"SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)",
@@ -4752,9 +4752,36 @@ static int test_conc334(MYSQL *mysql)
 
   return OK;
 }
+static int test_conc344(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
 
+  rc= mysql_query(mysql, "CREATE OR REPLACE TABLE t1 (a int, b int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1,1), (2,2),(3,3),(4,4),(5,5)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT * FROM t1 ORDER BY a"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  while (!mysql_stmt_fetch(stmt));
+  FAIL_IF(mysql_stmt_num_rows(stmt) != 5, "expected 5 rows");
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_fetch(stmt);
+  diag("num_rows: %lld", mysql_stmt_num_rows(stmt));
+  FAIL_IF(mysql_stmt_num_rows(stmt) != 1, "expected 1 row");
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc334", test_conc334, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NEW, CLIENT_COMPRESS, NULL, NULL},
   {"test_codbc138", test_codbc138, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

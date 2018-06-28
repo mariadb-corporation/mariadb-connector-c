@@ -2018,8 +2018,9 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   {
     ma_free_root(&stmt->result.alloc, MYF(MY_KEEP_PREALLOC));
     stmt->result_cursor= stmt->result.data= 0;
-    stmt->result.rows= 0;
   }
+  /* CONC-344: set row count to zero */
+  stmt->result.rows= 0;
   if (stmt->array_size > 0)
     request= (char *)mysql_stmt_execute_generate_bulk_request(stmt, &request_len);
   else
