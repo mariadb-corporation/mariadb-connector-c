@@ -357,7 +357,7 @@ static int client_mpvio_read_packet(struct st_plugin_vio *mpv, uchar **buf)
   *buf= mysql->net.read_pos;
 
   /* was it a request to change plugins ? */
-  if (**buf == 254)
+  if (pkt_len && **buf == 254)
     return (int)packet_error; /* if yes, this plugin shan't continue */
 
   /*

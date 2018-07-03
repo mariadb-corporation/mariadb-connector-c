@@ -43,6 +43,49 @@ static int check_bulk(MYSQL *mysql)
   return OK;
 }
 
+static int bulk_insert_id(MYSQL *mysql)
+{
+  int i;
+  int rc;
+  MYSQL_BIND bind[1];
+  unsigned int array_size= 2;
+  int val_a[2]= {0,1};
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_query(mysql, "CREATE OR REPLACE TABLE t1 (a int not null auto_increment primary key)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES(0),(1)");
+  check_mysql_rc(rc, mysql);
+
+  diag("Insert via mysql_query ok");
+
+  rc= mysql_query(mysql, "CREATE OR REPLACE TABLE t1 (a int not null auto_increment primary key)");
+  check_mysql_rc(rc, mysql);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer_type= MYSQL_TYPE_LONG;
+  bind[0].buffer= val_a;
+
+  rc= mysql_stmt_prepare(stmt, SL("insert into t1 values(?)"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  diag("Insert via bulk insert (binary protocol) ok");
+
+  mysql_stmt_close(stmt);
+exit(1);
+  return OK;
+}
+
 static int bulk1(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
@@ -998,6 +1041,7 @@ static int bulk_null_null(MYSQL *mysql)
 
 struct my_tests_st my_tests[] = {
   {"check_bulk", check_bulk, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
+  {"bulk_insert_id", bulk_insert_id, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"bulk_null_null", bulk_null_null, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_char_conv1", test_char_conv1, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_char_conv2", test_char_conv2, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
