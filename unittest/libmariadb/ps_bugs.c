@@ -4757,7 +4757,10 @@ static int test_conc344(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
 
-  rc= mysql_query(mysql, "CREATE OR REPLACE TABLE t1 (a int, b int)");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+ 
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int, b int)");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1,1), (2,2),(3,3),(4,4),(5,5)");
   check_mysql_rc(rc, mysql);
