@@ -1003,9 +1003,8 @@ static int test_mdev16593(MYSQL *mysql)
   MYSQL_BIND bind[2];
   unsigned int array_size= 2;
   int val_a[2]= {1,2};
-  int val_b[2]= {3,4};
   char indicators[2]= {STMT_INDICATOR_NULL, STMT_INDICATOR_NULL};
-  char *testcase[]= {"MYSQL_TYPE_LONG", "MYSQL_TYPE_NULL", "STMT_INDICATOR_NULL"};
+  const char *testcase[]= {"MYSQL_TYPE_LONG", "MYSQL_TYPE_NULL", "STMT_INDICATOR_NULL"};
 
   diag("waiting for server fix");
   return SKIP;
