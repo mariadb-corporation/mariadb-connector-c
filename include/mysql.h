@@ -409,8 +409,8 @@ typedef struct character_set
 {
   unsigned int      number;     /* character set number              */
   unsigned int      state;      /* character set state               */
-  const char        *csname;    /* collation name                    */
-  const char        *name;      /* character set name                */
+  const char        *csname;    /* character set name                */
+  const char        *name;      /* collation name                    */
   const char        *comment;   /* comment                           */
   const char        *dir;       /* character set directory           */
   unsigned int      mbminlen;   /* min. length for multibyte strings */
