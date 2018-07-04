@@ -30,7 +30,7 @@ FOREACH(plugin ${PLUGINS_DYNAMIC})
   SET(TARGET ${plugin})
   # Get dependencies
   SET(DYNAMIC_TARGETS ${DYNAMIC_TARGETS} ${TARGET})
-  GET_PROPERTY(FILE TARGET ${TARGET} PROPERTY LOCATION)
+  SET(FILE ${CC_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET}.dll)
   MESSAGE(STATUS "Location for ${TARGET}: ${FILE}")
   # build file list
   STRING(REPLACE "$(Configuration)" "RelWithDebInfo" FILE ${FILE})
