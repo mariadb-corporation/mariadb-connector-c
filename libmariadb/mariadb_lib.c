@@ -1606,7 +1606,8 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
     return(1);
   }
 
-  mysql_init(&tmp_mysql);
+  if(mysql_init(&tmp_mysql) == 0)
+    return(1);
   tmp_mysql.options=mysql->options;
   if (mysql->extension->conn_hdlr)
   {
