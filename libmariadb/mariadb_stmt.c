@@ -369,10 +369,16 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
     /* save row position for fetching values in pieces */
     if (*null_ptr & bit_offset)
     {
-      if (!stmt->bind[i].is_null)
-        stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
-      *stmt->bind[i].is_null= 1;
-      stmt->bind[i].u.row_ptr= NULL;
+      if (stmt->field_fetch_callback)
+      {
+        stmt->field_fetch_callback(stmt->user_data, i, &row, 1);
+      }
+      else {
+        if (!stmt->bind[i].is_null)
+          stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
+        *stmt->bind[i].is_null= 1;
+        stmt->bind[i].u.row_ptr= NULL;
+      }
     } else
     {
       stmt->bind[i].u.row_ptr= row;
@@ -382,7 +388,7 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
         unsigned long length;
 
         if (stmt->field_fetch_callback)
-          stmt->field_fetch_callback(stmt->user_data, i, &row);
+          stmt->field_fetch_callback(stmt->user_data, i, &row, 0);
         else {
           if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
             length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;

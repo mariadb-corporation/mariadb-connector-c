@@ -199,7 +199,7 @@ struct st_mysqlnd_stmt_methods
 
 typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row);
 
-typedef void (*ps_field_fetch_callback)(void *data, unsigned int column, unsigned char **row);
+typedef void (*ps_field_fetch_callback)(void *data, unsigned int column, unsigned char **row, my_bool is_null);
 
 typedef my_bool *(*ps_update_param_callback)(void *data, MYSQL_BIND *bind, unsigned int row_nr);
 
