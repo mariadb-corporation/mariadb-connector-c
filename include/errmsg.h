@@ -85,6 +85,9 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_AUTH_PLUGIN_CANNOT_LOAD 2059
 #define CR_DUPLICATE_CONNECTION_ATTR 2060
 #define CR_AUTH_PLUGIN_ERR 2061
+/* Always last, if you add new error codes please update the
+   value for CR_MYSQL_LAST_ERROR */
+#define CR_MYSQL_LAST_ERROR CR_AUTH_PLUGIN_ERR
 
 /* 
  * MariaDB Connector/C errors: 
@@ -96,5 +99,8 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_FILE_NOT_FOUND 5004
 #define CR_FILE_READ 5005
 #define CR_BULK_WITHOUT_PARAMETERS 5006
-
+#define CR_INVALID_STMT 5007
+/* Always last, if you add new error codes please update the
+   value for CR_MARIADB_LAST_ERROR */
+#define CR_MARIADB_LAST_ERROR CR_INVALID_STMT
 #endif

@@ -102,7 +102,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
     return NULL;
   }
 
-
+/* coverity[var_deref_op] */
   if (!(pvio= (MARIADB_PVIO *)calloc(1, sizeof(MARIADB_PVIO)))) 
   {
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
@@ -392,20 +392,23 @@ end:
 void ma_pvio_close(MARIADB_PVIO *pvio)
 {
   /* free internal structures and close connection */
-#ifdef HAVE_TLS
-  if (pvio && pvio->ctls)
+  if (pvio)
   {
-    ma_pvio_tls_close(pvio->ctls);
-    free(pvio->ctls);
-  }
+#ifdef HAVE_TLS
+    if (pvio->ctls)
+    {
+      ma_pvio_tls_close(pvio->ctls);
+      free(pvio->ctls);
+    }
 #endif
-  if (pvio && pvio->methods->close)
-    pvio->methods->close(pvio);
+    if (pvio && pvio->methods->close)
+      pvio->methods->close(pvio);
 
-  if (pvio->cache)
-    free(pvio->cache);
+    if (pvio->cache)
+      free(pvio->cache);
 
-  free(pvio);
+    free(pvio);
+  }
 }
 /* }}} */
 
@@ -453,13 +456,16 @@ ma_pvio_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
 /* {{{ ma_pvio_wait_io_or_timeout */
 int ma_pvio_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
 {
-  if (IS_PVIO_ASYNC_ACTIVE(pvio))
-    return ma_pvio_wait_async(pvio->mysql->options.extension->async_context, 
-                             (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
-                              timeout);
+  if (pvio)
+  {
+    if (IS_PVIO_ASYNC_ACTIVE(pvio))
+      return ma_pvio_wait_async(pvio->mysql->options.extension->async_context, 
+                               (is_read) ? VIO_IO_EVENT_READ : VIO_IO_EVENT_WRITE,
+                                timeout);
 
-  if (pvio && pvio->methods->wait_io_or_timeout)
-    return pvio->methods->wait_io_or_timeout(pvio, is_read, timeout);
+    if (pvio && pvio->methods->wait_io_or_timeout)
+      return pvio->methods->wait_io_or_timeout(pvio, is_read, timeout);
+  }
   return 1;
 }
 /* }}} */

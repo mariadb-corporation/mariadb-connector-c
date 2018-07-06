@@ -229,7 +229,7 @@ restart:
       }
       else
       {
-        strcpy(net->sqlstate, SQLSTATE_UNKNOWN);
+        strncpy(net->sqlstate, SQLSTATE_UNKNOWN, SQLSTATE_LENGTH);
       }
       ma_strmake(net->last_error,(char*) pos,
               min(len,sizeof(net->last_error)-1));
@@ -947,7 +947,8 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
       if (len > (ulong) (end_pos - pos) || pos > end_pos)
       {
         mysql->net.last_errno=CR_UNKNOWN_ERROR;
-        strcpy(mysql->net.last_error,ER(mysql->net.last_errno));
+        strncpy(mysql->net.last_error,ER(mysql->net.last_errno),
+                MYSQL_ERRMSG_SIZE - 1);
         return -1;
       }
       row[field] = (char*) pos;
@@ -984,6 +985,7 @@ mysql_init(MYSQL *mysql)
   {
     memset((char*) (mysql), 0, sizeof(*(mysql)));
     mysql->net.pvio= 0;
+    mysql->free_me= 0;
     mysql->net.extension= 0;
   }
 
@@ -1185,8 +1187,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   uint port, const char *unix_socket, unsigned long client_flag)
 {
   char		buff[NAME_LEN+USERNAME_LENGTH+100];
-  char		*end, *end_pkt, *host_info,
-                *charset_name= NULL;
+  char		*end, *end_pkt, *host_info;
   MA_PVIO_CINFO  cinfo= {NULL, NULL, 0, -1, NULL};
   MARIADB_PVIO   *pvio= NULL;
   char    *scramble_data;
@@ -1380,9 +1381,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   }
   /* Save connection information */
   if (!user) user="";
-  if (!passwd) passwd="";
 
-  if (!(mysql->host_info= strdup(host_info ? host_info : "")) ||
+  if (!(mysql->host_info= strdup(host_info)) ||
       !(mysql->host= strdup(cinfo.host ? cinfo.host : "")) ||
       !(mysql->user=strdup(user)) ||
       !(mysql->passwd=strdup(passwd)))
@@ -1484,7 +1484,8 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     net->last_errno=CR_CANT_READ_CHARSET;
     sprintf(net->last_error,ER(net->last_errno),
-      charset_name ? charset_name : "unknown",
+      mysql->options.charset_name ? mysql->options.charset_name : 
+                                    "unknown",
       "compiled_in");
     goto error;
   }
@@ -1601,6 +1602,7 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   }
 
   mysql_init(&tmp_mysql);
+  tmp_mysql.free_me= 0;
   tmp_mysql.options=mysql->options;
   if (mysql->extension->conn_hdlr)
   {
@@ -1716,13 +1718,6 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
        *s_db= mysql->db;
   int rc;
 
-  if (!user)
-    user="";
-  if (!passwd)
-    passwd="";
-  if (!db)
-    db="";
-
   if (mysql->options.charset_name)
     mysql->charset =mysql_find_charset_name(mysql->options.charset_name);
   else
@@ -1773,8 +1768,11 @@ mysql_select_db(MYSQL *mysql, const char *db)
 {
   int error;
 
+  if (!db)
+    return 1;
+
   if ((error=ma_simple_command(mysql, COM_INIT_DB, db,
-                               db ? (uint) strlen(db) : 0,0,0)))
+                               (uint) strlen(db),0,0)))
     return(error);
   free(mysql->db);
   mysql->db=strdup(db);
@@ -2287,12 +2285,14 @@ mysql_fetch_row(MYSQL_RES *res)
   if (!res)
     return 0;
   if (res->handle)
+  {
     if (res->handle->status != MYSQL_STATUS_USE_RESULT &&
         res->handle->status != MYSQL_STATUS_GET_RESULT)
       return 0;
+  }
   if (!res->data)
   {						/* Unbufferred fetch */
-    if (!res->eof)
+    if (!res->eof && res->handle)
     {
       if (!(res->handle->methods->db_read_one_row(res->handle,res->field_count,res->row, res->lengths)))
       {
@@ -2740,6 +2740,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if(!(mysql->options.extension= (struct st_mysql_options_extension *)
         calloc(1, sizeof(struct st_mysql_options_extension))))
       {
+        free(ctxt);
         SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
         goto end;
       }
@@ -3133,9 +3134,6 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
         val= *(char ***)arg1;
 
       if (!(elements= va_arg(ap, unsigned int *)))
-        goto error;
-
-      if (!elements)
         goto error;
 
       *elements= 0;

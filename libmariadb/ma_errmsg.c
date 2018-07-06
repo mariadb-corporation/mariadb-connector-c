@@ -142,7 +142,7 @@ const char *client_errors[]=
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
 /* 2059 */  "Can't connect twice. Already connected",
 /* 2058 */  "Plugin %s could not be loaded: %s",
-/* 2059 */  "An attribute with same name already exists"
+/* 2059 */  "An attribute with same name already exists",
 /* 2060 */  "Plugin doesn't support this function",
             ""
 };
@@ -157,6 +157,7 @@ const char *mariadb_client_errors[] =
   /* 5004 */ "File '%s' not found (Errcode: %d)",
   /* 5005 */ "Error reading file '%s' (Errcode: %d)",
   /* 5006 */ "Bulk operation without parameters is not supported",
+  /* 5007 */ "Invalid statement handle",
   ""
 };
 

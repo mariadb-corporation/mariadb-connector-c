@@ -108,6 +108,7 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
     ma_file= (MA_FILE *)malloc(sizeof(MA_FILE));
     if (!ma_file)
     {
+      fclose(fp);
       my_set_error(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return NULL;
     }

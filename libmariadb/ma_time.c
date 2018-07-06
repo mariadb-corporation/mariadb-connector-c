@@ -34,7 +34,7 @@ size_t mariadb_time_to_string(const MYSQL_TIME *tm, char *time_str, size_t len,
     return 0;
 
   if (digits == AUTO_SEC_PART_DIGITS)
-    digits= MIN((tm->second_part) ? SEC_PART_DIGITS : 0, 15);
+    digits= (tm->second_part) ? SEC_PART_DIGITS : 0;
 
   switch(tm->time_type) {
     case MYSQL_TIMESTAMP_DATE:

@@ -117,6 +117,7 @@ char *load_pub_key_file(const char *filename, int *pub_key_size)
   FILE *fp= NULL;
   char *buffer= NULL;
   unsigned char error= 1;
+  size_t bytes_read= 0;
 
   if (!pub_key_size)
     return NULL;
@@ -133,7 +134,8 @@ char *load_pub_key_file(const char *filename, int *pub_key_size)
   if (!(buffer= malloc(*pub_key_size + 1)))
     goto end;
 
-  if (!fread(buffer, *pub_key_size, 1, fp))
+  bytes_read= fread(buffer, (size_t)*pub_key_size, 1, fp);
+  if (bytes_read < (size_t)*pub_key_size)
     goto end;
 
   error= 0;
