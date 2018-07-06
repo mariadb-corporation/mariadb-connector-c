@@ -15,22 +15,20 @@ env:
 addons:
   hosts:
     - mariadb.example.com
- coverity_scan:
+  coverity_scan:
     project:
       name: "MariaDB/mariadb-connector-c"
       description: "MariaDB Connector/C"
     notification_email: georg@mariadb.com
     build_command_prepend: "cmake ."
     build_command: "make"
-    branch_pattern: coverity_scan
-  
+    branch_pattern: master
 
 before_script:
   # Disable services enabled by default
   - sudo /etc/init.d/mysql stop
 
 before_install:
-  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
   - chmod -R +x .travis/*
   - chmod 777 .travis/build/
   - export PROJ_PATH=`pwd`
