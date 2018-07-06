@@ -22,7 +22,7 @@ addons:
     notification_email: georg@mariadb.com
     build_command_prepend: "cmake ."
     build_command: "make"
-    branch_pattern: master
+    branch_pattern: coverity_scan 
 
 before_script:
   # Disable services enabled by default
@@ -54,9 +54,10 @@ matrix:
     - env: SERVER_BRANCH=10.4
     - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
 
-script:
-  - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
-  - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
-  - if [ -z "$DB" ] ; then .travis/server-replace-submodule.sh; fi
-  - if [ -n "$DB" ] ; then .travis/script.sh; fi
+script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then
+    - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
+    - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
+    - if [ -z "$DB" ] ; then .travis/server-replace-submodule.sh; fi
+    - if [ -n "$DB" ] ; then .travis/script.sh; fi
+        fi
 
