@@ -549,7 +549,6 @@ ulong ma_net_read(NET *net)
         return packet_error;
       if (_mariadb_uncompress((unsigned char*) net->buff + net->where_b, &packet_length, &complen))
       {
-        len= packet_error;
         net->error=2;			/* caller will close socket */
         net->last_errno=ER_NET_UNCOMPRESS_ERROR;
         break;

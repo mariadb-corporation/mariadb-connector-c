@@ -231,12 +231,7 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
       key= ptr;
     for ( ; isspace(end[-1]) ; end--) ;
     *end= 0;
-    if (!value)
-    {
-      if (!key)
-        key= ptr;
-    }
-    else
+    if (value)
     {
       /* Remove pre- and end space */
       char *value_end;

@@ -237,20 +237,20 @@ static void load_env_plugins(MYSQL *mysql)
 {
   char *plugs, *free_env, *s= getenv("LIBMYSQL_PLUGINS");
 
-  /* no plugins to load */
-  if (!s)
-    return;
+  if ((s= getenv("LIBMYSQL_PLUGINS")))
+  {
+    s= strdup(s);
+    free_env= plugs= s;
 
-  free_env= plugs= strdup(s);
+    do {
+      if ((s= strchr(plugs, ';')))
+        *s= '\0';
+      mysql_load_plugin(mysql, plugs, -1, 0);
+      plugs= s + 1;
+    } while (s);
 
-  do {
-    if ((s= strchr(plugs, ';')))
-      *s= '\0';
-    mysql_load_plugin(mysql, plugs, -1, 0);
-    plugs= s + 1;
-  } while (s);
-
-  free(free_env);
+    free(free_env);
+  }
 }
 
 /********** extern functions to be used by libmariadb *********************/
@@ -365,7 +365,7 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   char errbuf[1024];
 #endif
   char dlpath[FN_REFLEN+1];
-  void *sym, *dlhandle;
+  void *sym, *dlhandle = NULL;
   struct st_mysql_client_plugin *plugin;
   char *env_plugin_dir= getenv("MARIADB_PLUGIN_DIR");
 
@@ -448,6 +448,8 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   return plugin;
 
 err:
+  if (dlhandle)
+    dlclose(dlhandle);
   pthread_mutex_unlock(&LOCK_load_client_plugin);
   my_set_error(mysql, CR_AUTH_PLUGIN_CANNOT_LOAD, SQLSTATE_UNKNOWN,
                ER(CR_AUTH_PLUGIN_CANNOT_LOAD), name, errmsg);

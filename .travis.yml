@@ -4,16 +4,33 @@ cache:
   apt: true
   ccache: true
 services: docker
+
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "Pk5DUyHtal064Yc4bx0S2Zo4C3NqOURLOqYxW/tQJ73XDTRhyJqD5PFLhsFN+nqvZqx8b1LLtQuVoxP7sW12Qpys7Qs39QavSsa2GWAVf9Kf4PRRsUy5as72/Vh19XbQ1w8fFdPax6KPgnWMb97XZSDJP+2Tyuk8R5pk+/T2t2QsQeml5bJwD0diffLZi27APc0mcNSdaLpPYN4SlEKFmD2CxUAR5IxaBjGKoiuo0f6FSSB1tqlirAnAc5s28tGVkXf42o13oooNYwLgNatc4JRDMofbCVxo9OzqsVbVaN2OwOD3uQ+RxB7X1FydFQm2nfiDNt+D/dBlAz0LkUw1NRrDxl+r6+9xtzVZgHTNUOqG9W5JGJ7j99dUzwSJl6RS4QxeetlrRHGx9S2TTBa6JSkDxiRTQR2XfZxyMtARuHZkY7SAq6sHNKYoyAERuUoeq5e8UOa3dLj4gBwsB/J4y0eLWMxtfDKZj2vGI2BRJewBCBeouPAVIlmWGDyNg6f6X/o07N2IeWJOoj9ZF27Kbp7QxK/D0pQp4AONxtl15ZCfRs5lthKYIHQo0qzlukcir8e7zi5J0bUlOlTT4DtXAeaeIP9oUrLn9kCv7EyvLZMR4dPvREDThqQovF03jqwMDggVa3iGmxu/zrm+S11PwDmzq45+WLcYwyikvsqBFSE="
+
+
 addons:
   hosts:
     - mariadb.example.com
+ coverity_scan:
+    project:
+      name: "MariaDB/mariadb-connector-c"
+      description: "MariaDB Connector/C"
+    notification_email: georg@mariadb.com
+    build_command_prepend: "cmake ."
+    build_command: "make"
+    branch_pattern: coverity_scan
+  
 
 before_script:
   # Disable services enabled by default
   - sudo /etc/init.d/mysql stop
 
-
 before_install:
+  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
   - chmod -R +x .travis/*
   - chmod 777 .travis/build/
   - export PROJ_PATH=`pwd`

@@ -37,8 +37,8 @@
 #define SET_CLIENT_STMT_ERROR(a, b, c, d) \
 { \
   (a)->last_errno= (b);\
-  strncpy((a)->sqlstate, (c), sizeof((a)->sqlstate));\
-  strncpy((a)->last_error, (d) ? (d) : ER((b)), sizeof((a)->last_error));\
+  strncpy((a)->sqlstate, (c), SQLSTATE_LENGTH);\
+  strncpy((a)->last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE - 1);\
 }
 
 #define CLEAR_CLIENT_STMT_ERROR(a) \

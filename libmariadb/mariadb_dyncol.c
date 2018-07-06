@@ -1681,7 +1681,10 @@ dynamic_new_column_store(DYNAMIC_COLUMN *str,
       goto err;
   }
   if (!column_count)
+  {
+    free(columns_order);
     return ER_DYNCOL_OK;
+  }
 
   memset(str->str, 0, fmt->fixed_hdr);
   str->length= fmt->fixed_hdr;
@@ -2755,7 +2758,7 @@ dynamic_column_update_copy(DYNAMIC_COLUMN *str, PLAN *plan,
     new_hdr->header_size + new_hdr->nmpool_size;
   for (i= 0, j= 0; i < add_column_count || j < hdr->column_count; i++)
   {
-    size_t UNINIT_VAR(first_offset);
+    size_t first_offset= 0;
     uint start= j, end;
 
     /*
