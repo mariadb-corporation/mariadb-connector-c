@@ -524,6 +524,9 @@ extern const char *ma_get_type(TYPELIB *typelib,uint nr);
 extern my_bool ma_init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
 				   size_t init_alloc, size_t alloc_increment);
 extern my_bool ma_dynstr_append(DYNAMIC_STRING *str, const char *append);
+extern my_bool ma_dynstr_append_quoted(DYNAMIC_STRING *str,
+                             const char *append, size_t len,
+                             char quote);
 my_bool ma_dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
 			  size_t length);
 extern my_bool ma_dynstr_set(DYNAMIC_STRING *str, const char *init_str);

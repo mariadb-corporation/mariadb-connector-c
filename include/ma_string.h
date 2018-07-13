@@ -33,4 +33,23 @@ size_t ma_gcvt(double x, my_gcvt_arg_type type, int width, char *to,
                my_bool *error);
 char *ma_ll2str(long long val,char *dst, int radix);
 
+#define MAX_ENV_SIZE 1024
+
+static inline my_bool ma_check_env_str(const char *env)
+{
+  unsigned int i;
+
+  if (!env)
+    return 1;
+
+  for (i=0; i < MAX_ENV_SIZE; i++)
+  {
+    if (env[i] == 0)
+      break;
+  }
+  if (i >= MAX_ENV_SIZE)
+    return 1;
+  return 0;
+}
+
 #endif
