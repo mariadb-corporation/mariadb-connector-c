@@ -92,6 +92,36 @@ my_bool ma_dynstr_append(DYNAMIC_STRING *str, const char *append)
   return ma_dynstr_append_mem(str,append,strlen(append));
 }
 
+my_bool ma_dynstr_append_quoted(DYNAMIC_STRING *str,
+                             const char *append, size_t len,
+                             char quote)
+{
+  uint additional= str->alloc_increment;
+  uint lim= additional;
+  uint i;
+
+  if (ma_dynstr_realloc(str, len + additional + 2))
+    return TRUE;
+  str->str[str->length++]= quote;
+  for (i= 0; i < len; i++)
+  {
+    register char c= append[i];
+    if (c == quote || c == '\\')
+    {
+      if (!lim)
+      {
+        if (ma_dynstr_realloc(str, additional))
+          return TRUE;
+        lim= additional;
+      }
+      lim--;
+      str->str[str->length++]= '\\';
+    }
+    str->str[str->length++]= c;
+  }
+  str->str[str->length++]= quote;
+  return FALSE;
+}
 
 my_bool ma_dynstr_append_mem(DYNAMIC_STRING *str, const char *append,
 			  size_t length)

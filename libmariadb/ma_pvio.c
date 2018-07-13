@@ -105,7 +105,7 @@ MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
 /* coverity[var_deref_op] */
   if (!(pvio= (MARIADB_PVIO *)calloc(1, sizeof(MARIADB_PVIO)))) 
   {
-    PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
+    my_set_error(cinfo->mysql, CR_OUT_OF_MEMORY, unknown_sqlstate, 0);
     return NULL;
   }
 

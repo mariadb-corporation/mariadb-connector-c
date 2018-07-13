@@ -332,7 +332,7 @@ static my_bool type_and_offset_store_num(uchar *place, size_t offset_size,
 {
   ulong val = (((ulong) offset) << 3) | (type - 1);
   DBUG_ASSERT(type != DYN_COL_NULL);
-  DBUG_ASSERT(((type - 1) & (~7)) == 0); /* fit in 3 bits */
+  DBUG_ASSERT(((type - 1) & (~0xf)) == 0); /* fit in 4 bits */
   DBUG_ASSERT(offset_size >= 1 && offset_size <= 4);
 
   /* Index entry starts with column number; jump over it */
@@ -3889,10 +3889,9 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
             return ER_DYNCOL_RESOURCE;
         }
         if (quote)
-          rc= ma_dynstr_append_mem(str, &quote, 1);
-        rc= ma_dynstr_append_mem(str, from, len);
-        if (quote)
-          rc= ma_dynstr_append_mem(str, &quote, 1);
+          rc= ma_dynstr_append_quoted(str, from, len, quote);
+        else
+          rc= ma_dynstr_append_mem(str, from, len);
         if (alloc)
           free(alloc);
         if (rc)
@@ -3948,7 +3947,7 @@ mariadb_dyncol_val_long(longlong *ll, DYNAMIC_COLUMN_VALUE *val)
       break;
     case DYN_COL_UINT:
       *ll= (longlong)val->x.ulong_value;
-      if (val->x.ulong_value > ULONGLONG_MAX)
+      if (*ll > (longlong)ULONGLONG_MAX)
          rc= ER_DYNCOL_TRUNCATED;
       break;
     case DYN_COL_DOUBLE:

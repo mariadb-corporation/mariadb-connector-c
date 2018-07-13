@@ -56,6 +56,42 @@ static int create_dyncol_named(MYSQL *mysql)
   mariadb_dyncol_init(&dyncol);
   rc= mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 0); 
   FAIL_IF(mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 1) < 0, "Error");
+  if (1) {
+    DYNAMIC_COLUMN foo, bar;
+    MYSQL_BIND bind;
+    MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+    DYNAMIC_COLUMN_VALUE val;
+    MYSQL_LEX_STRING keys[]= {{(char *)"TEST", 4}};
+    MYSQL_LEX_STRING keys2[]= {{(char *)"PyTuple", 7}};
+    rc= mysql_query(mysql, "CREATE OR REPLACE TABLE dyn1 (a blob)");
+    check_mysql_rc(rc, mysql);
+    rc= mysql_stmt_prepare(stmt, SL("INSERT INTO dyn1 VALUES (?)"));
+    check_stmt_rc(rc, stmt);
+    memset(&bind, 0, sizeof(MYSQL_BIND));
+    mariadb_dyncol_init(&foo);
+    mariadb_dyncol_init(&bar);
+    memset(&val, 0, sizeof(DYNAMIC_COLUMN_VALUE));
+    val.type= DYN_COL_DYNCOL;
+    val.x.string.value.str= dyncol.str;
+    val.x.string.value.length= dyncol.length;
+    if (mariadb_dyncol_create_many_named(&bar, 1, keys2, &val, 0) != ER_DYNCOL_OK)
+    val.type= DYN_COL_DYNCOL;
+    val.x.string.value.str= bar.str;
+    val.x.string.value.length= bar.length;
+    diag("l1: %lld\n", bar.length);
+    if (mariadb_dyncol_create_many_named(&foo, 1, keys2, &val, 0) != ER_DYNCOL_OK)
+      printf("Error\n");
+    diag("l2: %lld\n", foo.length);
+    bind.buffer_type= MYSQL_TYPE_BLOB;
+    bind.buffer= (void *)foo.str;
+    bind.buffer_length= foo.length;
+    mysql_stmt_bind_param(stmt, &bind);
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+    diag("check: %d %d", ER_DYNCOL_OK, mariadb_dyncol_check(&dyncol));
+    exit(1);
+  }
+
   column_count= 0;
   FAIL_IF(mariadb_dyncol_column_count(&dyncol, &column_count) < 0, "Error");
 
