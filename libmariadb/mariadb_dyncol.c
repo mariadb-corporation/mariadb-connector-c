@@ -332,7 +332,7 @@ static my_bool type_and_offset_store_num(uchar *place, size_t offset_size,
 {
   ulong val = (((ulong) offset) << 3) | (type - 1);
   DBUG_ASSERT(type != DYN_COL_NULL);
-  DBUG_ASSERT(((type - 1) & (~0xf)) == 0); /* fit in 4 bits */
+  DBUG_ASSERT(((type - 1) & (~7)) == 0); /* fit in 3 bits */
   DBUG_ASSERT(offset_size >= 1 && offset_size <= 4);
 
   /* Index entry starts with column number; jump over it */
