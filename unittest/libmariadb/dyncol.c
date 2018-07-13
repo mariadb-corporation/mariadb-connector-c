@@ -56,42 +56,6 @@ static int create_dyncol_named(MYSQL *mysql)
   mariadb_dyncol_init(&dyncol);
   rc= mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 0); 
   FAIL_IF(mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 1) < 0, "Error");
-  if (1) {
-    DYNAMIC_COLUMN foo, bar;
-    MYSQL_BIND bind;
-    MYSQL_STMT *stmt= mysql_stmt_init(mysql);
-    DYNAMIC_COLUMN_VALUE val;
-    MYSQL_LEX_STRING keys[]= {{(char *)"TEST", 4}};
-    MYSQL_LEX_STRING keys2[]= {{(char *)"PyTuple", 7}};
-    rc= mysql_query(mysql, "CREATE OR REPLACE TABLE dyn1 (a blob)");
-    check_mysql_rc(rc, mysql);
-    rc= mysql_stmt_prepare(stmt, SL("INSERT INTO dyn1 VALUES (?)"));
-    check_stmt_rc(rc, stmt);
-    memset(&bind, 0, sizeof(MYSQL_BIND));
-    mariadb_dyncol_init(&foo);
-    mariadb_dyncol_init(&bar);
-    memset(&val, 0, sizeof(DYNAMIC_COLUMN_VALUE));
-    val.type= DYN_COL_DYNCOL;
-    val.x.string.value.str= dyncol.str;
-    val.x.string.value.length= dyncol.length;
-    if (mariadb_dyncol_create_many_named(&bar, 1, keys2, &val, 0) != ER_DYNCOL_OK)
-    val.type= DYN_COL_DYNCOL;
-    val.x.string.value.str= bar.str;
-    val.x.string.value.length= bar.length;
-    diag("l1: %lld\n", bar.length);
-    if (mariadb_dyncol_create_many_named(&foo, 1, keys2, &val, 0) != ER_DYNCOL_OK)
-      printf("Error\n");
-    diag("l2: %lld\n", foo.length);
-    bind.buffer_type= MYSQL_TYPE_BLOB;
-    bind.buffer= (void *)foo.str;
-    bind.buffer_length= foo.length;
-    mysql_stmt_bind_param(stmt, &bind);
-    rc= mysql_stmt_execute(stmt);
-    check_stmt_rc(rc, stmt);
-    diag("check: %d %d", ER_DYNCOL_OK, mariadb_dyncol_check(&dyncol));
-    exit(1);
-  }
-
   column_count= 0;
   FAIL_IF(mariadb_dyncol_column_count(&dyncol, &column_count) < 0, "Error");
 
@@ -289,12 +253,54 @@ static int dyncol_column_count(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int dyncol_nested(MYSQL *mysql __attribute__((unused)))
+{
+  DYNAMIC_COLUMN col1, col2;
+  DYNAMIC_COLUMN_VALUE value[2];
+  MYSQL_LEX_STRING cols[2]= {{(char *)"0",1},{(char *)"1",1}};
+  DYNAMIC_STRING s;
+
+  mariadb_dyncol_init(&col1);
+  mariadb_dyncol_init(&col2);
+
+  memset(&value, 0, sizeof(DYNAMIC_COLUMN_VALUE));
+
+  value[0].type= DYN_COL_UINT;
+  value[0].x.ulong_value = 17;
+
+  mariadb_dyncol_create_many_named(&col1, 1, cols, value, 0);
+  if (mariadb_dyncol_check(&col1) != ER_DYNCOL_OK)
+  {
+    diag("Error while creating col1");
+    return FAIL;
+  }
+
+  value[1].type= DYN_COL_DYNCOL;
+  value[1].x.string.value.str= col1.str;
+  value[1].x.string.value.length= col1.length;
+ 
+  mariadb_dyncol_create_many_named(&col2, 2, cols, value, 0);
+  if (mariadb_dyncol_check(&col2) != ER_DYNCOL_OK)
+  {
+    diag("Error while creating col1");
+    return FAIL;
+  }
+  mariadb_dyncol_json(&col2, &s);
+  if (strcmp(s.str, "{\"0\":17,\"1\":{\"0\":17}}") != 0)
+  {
+    diag("%s != %s", s.str, "{\"0\":17,\"1\":{\"0\":17}}");
+    return FAIL;
+  }
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"mdev_x1", mdev_x1, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"mdev_4994", mdev_4994, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"create_dyncol_named", create_dyncol_named, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"create_dyncol_num", create_dyncol_num, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"dyncol_column_count", dyncol_column_count, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
+  {"dyncol_nested", dyncol_nested, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {NULL, NULL, 0, 0, NULL, 0}
 };
 
