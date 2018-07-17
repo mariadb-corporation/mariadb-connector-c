@@ -552,7 +552,6 @@ ulong ma_net_read(NET *net)
         net->error=2;			/* caller will close socket */
         net->last_errno=ER_NET_UNCOMPRESS_ERROR;
         break;
-        return packet_error;
       }
       buffer_length+= complen;
     }
