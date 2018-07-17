@@ -1729,8 +1729,8 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
   else
     mysql->charset=mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
 
-  mysql->user= strdup(user ? user : "");
-  mysql->passwd= strdup(passwd ? passwd : "");
+  mysql->user= strdup(user);
+  mysql->passwd= strdup(passwd);
 
   /* db will be set in run_plugin_auth */
   mysql->db= 0;
