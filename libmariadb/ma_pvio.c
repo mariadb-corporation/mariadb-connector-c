@@ -483,7 +483,7 @@ my_bool ma_pvio_connect(MARIADB_PVIO *pvio,  MA_PVIO_CINFO *cinfo)
 my_bool ma_pvio_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
 {
   if (pvio && pvio->methods->blocking)
-    return pvio->methods->blocking(pvio, block, previous_mode);
+    return pvio->methods->blocking(pvio, block, previous_mode) != 0;
   return 1;
 }
 /* }}} */

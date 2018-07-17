@@ -38,7 +38,7 @@ ssize_t pvio_npipe_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
 ssize_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 ssize_t pvio_npipe_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
-my_bool pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
+int pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool pvio_npipe_close(MARIADB_PVIO *pvio);
 int pvio_npipe_fast_send(MARIADB_PVIO *pvio);
@@ -187,7 +187,7 @@ int pvio_npipe_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeo
   return -1;
 }
 
-my_bool pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
+int pvio_npipe_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
 {
   /* not supported */
   DWORD flags= 0;

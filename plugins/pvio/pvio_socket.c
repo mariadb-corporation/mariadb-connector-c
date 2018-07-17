@@ -92,7 +92,7 @@ ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
-my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
+int pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool pvio_socket_close(MARIADB_PVIO *pvio);
 int pvio_socket_fast_send(MARIADB_PVIO *pvio);
@@ -565,7 +565,7 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
   return rc;
 }
 
-my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
+int pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
 {
   my_bool is_blocking;
   struct st_pvio_socket *csock;
