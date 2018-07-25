@@ -65,9 +65,9 @@ enum enum_stmt_attr_type
   STMT_ATTR_PREBIND_PARAMS=200,
   STMT_ATTR_ARRAY_SIZE,
   STMT_ATTR_ROW_SIZE,
-  STMT_ATTR_USER_DATA,
-  STMT_ATTR_PARAM_READ,
-  STMT_ATTR_FIELD_FETCH_CALLBACK,
+  STMT_ATTR_CB_USER_DATA,
+  STMT_ATTR_CB_PARAM,
+  STMT_ATTR_CB_RESULT,
   STMT_ATTR_STATE /* read only */
 };
 
@@ -199,9 +199,9 @@ struct st_mysqlnd_stmt_methods
 
 typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row);
 
-typedef void (*ps_field_fetch_callback)(void *data, unsigned int column, unsigned char **row);
+typedef void (*ps_result_callback)(void *data, unsigned int column, unsigned char **row);
 
-typedef my_bool *(*ps_update_param_callback)(void *data, MYSQL_BIND *bind, unsigned int row_nr);
+typedef my_bool *(*ps_param_callback)(void *data, MYSQL_BIND *bind, unsigned int row_nr);
 
 struct st_mysql_stmt
 {
@@ -242,8 +242,8 @@ struct st_mysql_stmt
   size_t row_size;
   unsigned int prebind_params;
   void *user_data;
-  ps_field_fetch_callback field_fetch_callback;
-  ps_update_param_callback param_callback;
+  ps_result_callback result_callback;
+  ps_param_callback param_callback;
 };
 
 typedef void (*ps_field_fetch_func)(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row);

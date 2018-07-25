@@ -369,8 +369,8 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
     /* save row position for fetching values in pieces */
     if (*null_ptr & bit_offset)
     {
-      if (stmt->field_fetch_callback)
-        stmt->field_fetch_callback(stmt->user_data, i, NULL);
+      if (stmt->result_callback)
+        stmt->result_callback(stmt->user_data, i, NULL);
       else
       {
         if (!stmt->bind[i].is_null)
@@ -386,8 +386,8 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
       {
         unsigned long length;
 
-        if (stmt->field_fetch_callback)
-          stmt->field_fetch_callback(stmt->user_data, i, &row);
+        if (stmt->result_callback)
+          stmt->result_callback(stmt->user_data, i, &row);
         else {
           if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
             length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
@@ -941,13 +941,13 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
     /* calculate data size */
     for (j=0; j < stmt->array_size; j++)
     {
-      if (mysql_stmt_skip_paramset(stmt, j))
-        continue;
-
       /* If callback for parameters was specified, we need to
          update bind information for new row */
       if (stmt->param_callback)
         stmt->param_callback(stmt->user_data, stmt->params, j);
+
+      if (mysql_stmt_skip_paramset(stmt, j))
+        continue;
 
       for (i=0; i < stmt->param_count; i++)
       {
@@ -1056,7 +1056,7 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     case STMT_ATTR_STATE:
       *((enum mysql_stmt_state *)value)= stmt->state;
       break;
-    case STMT_ATTR_USER_DATA:
+    case STMT_ATTR_CB_USER_DATA:
       *((void **)value) = stmt->user_data;
       break;
     case STMT_ATTR_UPDATE_MAX_LENGTH:
@@ -1086,13 +1086,13 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
 my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type attr_type, const void *value)
 {
   switch (attr_type) {
-  case STMT_ATTR_FIELD_FETCH_CALLBACK:
-    stmt->field_fetch_callback= (ps_field_fetch_callback)value;
+  case STMT_ATTR_CB_RESULT:
+    stmt->result_callback= (ps_result_callback)value;
     break;
-  case STMT_ATTR_PARAM_READ:
-    stmt->param_callback= (ps_update_param_callback)value;
+  case STMT_ATTR_CB_PARAM:
+    stmt->param_callback= (ps_param_callback)value;
     break;
-  case STMT_ATTR_USER_DATA:
+  case STMT_ATTR_CB_USER_DATA:
     stmt->user_data= (void *)value;
     break;
   case STMT_ATTR_UPDATE_MAX_LENGTH:
