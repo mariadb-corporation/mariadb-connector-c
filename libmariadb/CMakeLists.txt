@@ -144,6 +144,7 @@ SET(MYSQL_LIB_SYMBOLS
  mysql_stmt_send_long_data
  mysql_stmt_sqlstate
  mysql_stmt_store_result
+ mariadb_stmt_fetch_fields
  mysql_store_result
  mysql_thread_end
  mysql_thread_id

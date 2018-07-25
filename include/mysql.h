@@ -668,6 +668,7 @@ int STDCALL mysql_stmt_send_long_data_start(my_bool *ret, MYSQL_STMT *stmt,
                                             unsigned long len);
 int STDCALL mysql_stmt_send_long_data_cont(my_bool *ret, MYSQL_STMT *stmt,
                                            int status);
+MYSQL_FIELD STDCALL *mariadb_stmt_fetch_fields(MYSQL_STMT *stmt);
 int STDCALL mysql_reset_connection(MYSQL *mysql);
 
 /* API function calls (used by dynmic plugins) */
