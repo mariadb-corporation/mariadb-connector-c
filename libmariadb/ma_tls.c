@@ -130,7 +130,7 @@ const char *ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls)
   return tls_protocol_version[version];
 }
 
-static char ma_hex2int(char c)
+static signed char ma_hex2int(char c)
 {
   if (c >= '0' && c <= '9')
     return c - '0';
@@ -161,7 +161,7 @@ static my_bool ma_pvio_tls_compare_fp(const char *cert_fp,
 
   for(c= (char *)cert_fp; c < cert_fp + cert_fp_len; c++)
   {
-    char d1, d2;
+    signed char d1, d2;
     if (*p == ':')
       p++;
     if (p - fp > (int)fp_len -1)

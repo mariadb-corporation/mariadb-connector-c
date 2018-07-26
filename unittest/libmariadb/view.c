@@ -30,7 +30,7 @@ static int test_view(MYSQL *mysql)
   MYSQL_BIND      my_bind[1];
   char            str_data[50];
   ulong           length = 0L;
-  long            is_null = 0L;
+  my_bool         is_null = 0L;
   const char *query=
     "SELECT COUNT(*) FROM v1 WHERE SERVERNAME=?";
 
@@ -84,7 +84,7 @@ static int test_view(MYSQL *mysql)
   my_bind[0].buffer_length= 50;
   my_bind[0].length= &length;
   length= 4;
-  my_bind[0].is_null= (char*)&is_null;
+  my_bind[0].is_null= &is_null;
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
 
@@ -301,7 +301,7 @@ static int test_view_insert(MYSQL *mysql)
   MYSQL_BIND      my_bind[1];
   int             my_val = 0;
   ulong           my_length = 0L;
-  long            my_null = 0L;
+  my_bool         my_null = 0;
   const char *query=
     "insert into v1 values (?)";
 
@@ -328,7 +328,7 @@ static int test_view_insert(MYSQL *mysql)
   my_bind[0].buffer_type = MYSQL_TYPE_LONG;
   my_bind[0].buffer = (char *)&my_val;
   my_bind[0].length = &my_length;
-  my_bind[0].is_null = (char*)&my_null;
+  my_bind[0].is_null = &my_null;
   rc= mysql_stmt_bind_param(insert_stmt, my_bind);
   check_stmt_rc(rc, select_stmt);
 
