@@ -199,7 +199,7 @@ my_bool pvio_socket_change_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout ty
 #ifndef _WIN32
       rc= setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tm, sizeof(tm));
 #else
-      src= etsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(int));
+      rc= setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(int));
 #endif
     break;
     default:
