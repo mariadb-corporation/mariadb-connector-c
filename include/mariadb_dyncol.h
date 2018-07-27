@@ -225,7 +225,7 @@ void mariadb_dyncol_free(DYNAMIC_COLUMN *str);
 /* conversion of values to 3 base types */
 enum enum_dyncol_func_result
 mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
-                       MARIADB_CHARSET_INFO *cs, my_bool quote);
+                       MARIADB_CHARSET_INFO *cs, char quote);
 enum enum_dyncol_func_result
 mariadb_dyncol_val_long(longlong *ll, DYNAMIC_COLUMN_VALUE *val);
 enum enum_dyncol_func_result
