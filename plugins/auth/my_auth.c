@@ -10,6 +10,7 @@ static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
+extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
 
 typedef struct {
   int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
@@ -577,7 +578,6 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                           errno);
     return 1;
   }
-
   if (mysql->net.read_pos[0] == 254)
   {
     /* The server asked to use a different authentication plugin */
@@ -632,6 +632,8 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
     net->read_pos[0] should always be 0 here if the server implements
     the protocol correctly
   */
-  return mysql->net.read_pos[0] != 0;
+  if (mysql->net.read_pos[0] == 0)
+    return ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length);
+  return 1;
 }
 
