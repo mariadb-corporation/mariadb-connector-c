@@ -1084,6 +1084,7 @@ static int test_auth256(MYSQL *my)
   if (!mysql_client_find_plugin(mysql, "sha256_password", 3))
   {
     diag("sha256_password plugin not available");
+    mysql_close(mysql);
     return SKIP;
   }
 
@@ -1097,6 +1098,7 @@ static int test_auth256(MYSQL *my)
   if (!num_rows)
   {
     diag("server doesn't support sha256 authentication");
+    mysql_close(mysql);
     return SKIP;
   }
 

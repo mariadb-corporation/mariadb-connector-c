@@ -1745,7 +1745,7 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
     free(s_passwd);
     free(s_db);
 
-    if (db && !(mysql->db= strdup(db)))
+    if (!mysql->db && db && !(mysql->db= strdup(db)))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       rc= 1;
