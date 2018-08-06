@@ -2100,6 +2100,9 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
       }
     }
   }
+  /* CONC-351: clear session state information */
+  else if (mysql->server_capabilities & CLIENT_SESSION_TRACKING)
+    ma_clear_session_state(mysql);
   return(0);
 }
 
