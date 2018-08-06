@@ -1528,7 +1528,31 @@ static int test_conc332(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_conc351(MYSQL *unused __attribute__((unused)))
+{
+  int rc;
+  const char *data;
+  size_t len;
+  MYSQL *mysql= mysql_init(NULL);
+
+  my_test_connect(mysql, hostname, username, password, schema,
+                  port, socketname, 0);
+
+  FAIL_IF(mysql_errno(mysql), "Error during connect");
+
+  FAIL_IF(mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len), "expected session track schema");
+
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(!mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len), "expected no schema tracking information");
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc351", test_conc351, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc332", test_conc332, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef WIN32
   {"test_conc327", test_conc327, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
