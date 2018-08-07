@@ -4710,8 +4710,13 @@ static int test_codbc138(MYSQL *mysql)
     {
       FAIL_UNLESS(tm.time_type == MYSQL_TIMESTAMP_ERROR, "MYSQL_TIMESTAMP_ERROR expected");
     }
-    else
-      FAIL_UNLESS(memcmp(&tm, &time_test[i].tm, sizeof(MYSQL_TIME)) == 0, "time_in != time_out");
+    else if (memcmp(&tm, &time_test[i].tm, sizeof(MYSQL_TIME)) != 0)
+    {
+      diag("error: time_in != timeout");
+      diag("timeout: %4d-%2d-%2d %2d:%2d%2d.%6ld", tm.year, tm.month, tm.day,
+            tm.hour, tm.minute, tm.second, tm.second_part);
+      return FAIL;
+    }
     mysql_stmt_close(stmt);
     i++;
   }
