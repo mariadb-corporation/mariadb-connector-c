@@ -1534,11 +1534,20 @@ static int test_conc351(MYSQL *unused __attribute__((unused)))
   const char *data;
   size_t len;
   MYSQL *mysql= mysql_init(NULL);
+  ulong capabilities= 0;
 
   my_test_connect(mysql, hostname, username, password, schema,
                   port, socketname, 0);
 
   FAIL_IF(mysql_errno(mysql), "Error during connect");
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &capabilities);
+  if (!(capabilities & CLIENT_SESSION_TRACKING))
+  {
+    mysql_close(mysql);
+    diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
+    return SKIP;
+  }
 
   FAIL_IF(mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len), "expected session track schema");
 
