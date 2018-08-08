@@ -4694,7 +4694,7 @@ static int test_codbc138(MYSQL *mysql)
   int i= 0;
 
   struct st_time_test {
-    char *statement;
+    const char *statement;
     MYSQL_TIME tm;
   } time_test[]= {
     {"SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)",
