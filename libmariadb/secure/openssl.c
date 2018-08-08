@@ -39,6 +39,13 @@
 #define HAVE_OPENSSL_1_1_API
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
+#define SSL_OP_NO_TLSv1_1 0L
+#define SSL_OP_NO_TLSv1_2 0L
+#define CRYPTO_THREADID_set_callback CRYPTO_set_id_callback
+#define CRYPTO_THREADID_get_callback CRYPTO_get_id_callback
+#endif
+
 #ifdef HAVE_TLS_SESSION_CACHE
 #undef HAVE_TLS_SESSION_CACHE
 #endif
