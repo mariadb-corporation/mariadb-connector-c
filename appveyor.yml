@@ -10,6 +10,9 @@ environment:
     - DB: '10.3.8'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+    - DB: '10.4.0'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
     - DB: '10.1.35'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
