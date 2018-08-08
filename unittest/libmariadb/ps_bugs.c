@@ -34,6 +34,29 @@ static int cmp_double(double *a, double *b)
   return OK;
 }
 
+static int cmp_time(MYSQL_TIME *t1, MYSQL_TIME *t2)
+{
+  if (t1->time_type != t2->time_type ||
+      t1->neg != t2->neg ||
+      t1->year != t2->year ||
+      t1->month != t2->month ||
+      t1->day != t2->day ||
+      t1->hour != t2->hour ||
+      t1->minute != t2->minute ||
+      t1->second != t2->second ||
+      t1->second_part != t2->second_part)
+  {
+    diag("Error: %c %4d-%2d-%2d %2d:%2d:%2d.%6ld type: %d != ", t1->neg ? '-' : ' ',
+         t1->year, t1->month, t1->day, t1->hour, t1->minute, t1->second,
+         t1->second_part, t1->time_type);
+    diag("       %c %4d-%2d-%2d %2d:%2d:%2d.%6ld type: %d != ", t2->neg ? '-' : ' ',
+         t2->year, t2->month, t2->day, t2->hour, t2->minute, t2->second,
+         t2->second_part, t2->time_type);
+    return 1;
+  }
+  return 0;
+}
+
 /* Test BUG#1115 (incorrect string parameter value allocation) */
 
 static int test_conc67(MYSQL *mysql)
@@ -2240,8 +2263,10 @@ static int test_bug4026(MYSQL *mysql)
 
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == 0, "rc != 0");
-  FAIL_UNLESS(memcmp(&time_in, &time_out, sizeof(time_in)) == 0, "time_in != time_out");
-  FAIL_UNLESS(memcmp(&datetime_in, &datetime_out, sizeof(datetime_in)) == 0, "datetime_in != datetime_out");
+  if (cmp_time(&time_in, &time_out))
+    return FAIL;
+  if (cmp_time(&datetime_in, &datetime_out))
+    return FAIL;
   mysql_stmt_close(stmt);
 
   return OK;
@@ -2304,9 +2329,12 @@ static int test_bug4030(MYSQL *mysql)
 
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == 0, "rc != 0");
-  FAIL_UNLESS(memcmp(&time_canonical, &time_out, sizeof(time_out)) == 0, "time_canonical != time_out");
-  FAIL_UNLESS(memcmp(&date_canonical, &date_out, sizeof(date_out)) == 0, "date_canoncical != date_out");
-  FAIL_UNLESS(memcmp(&datetime_canonical, &datetime_out, sizeof(datetime_out)) == 0, "datetime_canonical != datetime_out");
+  if (cmp_time(&time_canonical, &time_out))
+    return FAIL;
+  if (cmp_time(&date_canonical, &date_out))
+    return FAIL;
+  if (cmp_time(&datetime_canonical, &datetime_out))
+    return FAIL;
   mysql_stmt_close(stmt);
   return OK;
 }
@@ -4710,13 +4738,8 @@ static int test_codbc138(MYSQL *mysql)
     {
       FAIL_UNLESS(tm.time_type == MYSQL_TIMESTAMP_ERROR, "MYSQL_TIMESTAMP_ERROR expected");
     }
-    else if (memcmp(&tm, &time_test[i].tm, sizeof(MYSQL_TIME)) != 0)
-    {
-      diag("error: time_in != timeout");
-      diag("timeout: %4d-%2d-%2d %2d:%2d%2d.%6ld", tm.year, tm.month, tm.day,
-            tm.hour, tm.minute, tm.second, tm.second_part);
+    else if (cmp_time(&tm, &time_test[i].tm))
       return FAIL;
-    }
     mysql_stmt_close(stmt);
     i++;
   }
