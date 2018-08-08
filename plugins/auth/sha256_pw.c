@@ -142,7 +142,7 @@ char *load_pub_key_file(const char *filename, int *pub_key_size)
   if (bytes_read < (size_t)fsize)
     goto end;
 
-  *pub_key_size= bytes_read;
+  *pub_key_size= (int)bytes_read;
 
   error= 0;
 
