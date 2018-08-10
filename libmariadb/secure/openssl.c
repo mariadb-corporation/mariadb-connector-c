@@ -726,15 +726,14 @@ ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   ssize_t rc;
-  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ctls->ssl);
-  MARIADB_PVIO *pvio= mysql->net.pvio;
+  MARIADB_PVIO *pvio= ctls->pvio;
 
   while ((rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length)) < 0)
   {
     int error= SSL_get_error((SSL *)ctls->ssl, rc);
     if (error != SSL_ERROR_WANT_READ)
       return rc;
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.read_timeout) < 1)
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.read_timeout) < 1)
       return rc;
   }
   return rc;
@@ -743,15 +742,14 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   ssize_t rc;
-  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ctls->ssl);
-  MARIADB_PVIO *pvio= mysql->net.pvio;
+  MARIADB_PVIO *pvio= ctls->pvio;
 
   while ((rc= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length)) <= 0)
   {
     int error= SSL_get_error((SSL *)ctls->ssl, rc);
     if (error != SSL_ERROR_WANT_WRITE)
       return rc;
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.write_timeout) < 1)
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.write_timeout) < 1)
       return rc;
   }
   return rc;

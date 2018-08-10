@@ -90,6 +90,7 @@ extern my_bool  mysql_ps_subsystem_initialized;
 extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_nr(uint charsetnr);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_name(const char * const name);
+extern my_bool set_default_charset_by_name(const char *cs_name, myf flags __attribute__((unused)));
 extern int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                            const char *data_plugin, const char *db);
 extern int net_add_multi_command(NET *net, uchar command, const uchar *packet,
@@ -996,7 +997,7 @@ mysql_init(MYSQL *mysql)
     goto error;
   mysql->options.report_data_truncation= 1;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
-  mysql->charset= ma_default_charset_info;
+  mysql->charset= mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
   mysql->methods= &MARIADB_DEFAULT_METHODS;
   strcpy(mysql->net.sqlstate, "00000");
   mysql->net.last_error[0]= mysql->net.last_errno= 0;
@@ -1483,14 +1484,14 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (mysql->options.charset_name)
     mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
   else
-    mysql->charset=ma_default_charset_info;
+    mysql->charset=mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
 
   if (!mysql->charset)
   {
     net->last_errno=CR_CANT_READ_CHARSET;
     sprintf(net->last_error,ER(net->last_errno),
       mysql->options.charset_name ? mysql->options.charset_name : 
-                                    "unknown",
+                                    MARIADB_DEFAULT_CHARSET,
       "compiled_in");
     goto error;
   }
@@ -1724,9 +1725,9 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
   int rc;
 
   if (mysql->options.charset_name)
-    mysql->charset =mysql_find_charset_name(mysql->options.charset_name);
+    mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
   else
-    mysql->charset=ma_default_charset_info;
+    mysql->charset=mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
 
   mysql->user= strdup(user ? user : "");
   mysql->passwd= strdup(passwd ? passwd : "");
@@ -1744,7 +1745,7 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
     free(s_passwd);
     free(s_db);
 
-    if (db && !(mysql->db= strdup(db)))
+    if (!mysql->db && db && !(mysql->db= strdup(db)))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       rc= 1;
@@ -3488,6 +3489,7 @@ static void mysql_once_init()
   ma_init();					/* Will init threads */
   init_client_errs();
   get_default_configuration_dirs();
+  set_default_charset_by_name(MARIADB_DEFAULT_CHARSET, 0);
   if (mysql_client_plugin_init())
   {
 #ifdef _WIN32

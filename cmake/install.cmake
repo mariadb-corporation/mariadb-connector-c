@@ -31,13 +31,13 @@ IF(NOT INSTALL_LAYOUT)
 ENDIF()
 
 SET(INSTALL_LAYOUT ${INSTALL_LAYOUT} CACHE
-  STRING "Installation layout. Currently supported options are DEFAULT (tar.gz and zip) and RPM")
+  STRING "Installation layout. Currently supported options are DEFAULT (tar.gz and zip), RPM and DEB")
 
 # On Windows we only provide zip and .msi. Latter one uses a different packager. 
 IF(UNIX)
   IF(INSTALL_LAYOUT MATCHES "RPM")
     SET(libmariadb_prefix "/usr")
-  ELSEIF(INSTALL_LAYOUT MATCHES "DEFAULT")
+  ELSEIF(INSTALL_LAYOUT MATCHES "DEFAULT|DEB")
     SET(libmariadb_prefix ${CMAKE_INSTALL_PREFIX})
   ENDIF()
 ENDIF()
@@ -47,7 +47,7 @@ IF(CMAKE_DEFAULT_PREFIX_INITIALIZED_BY_DEFAULT)
 ENDIF()
 
 # check if the specified installation layout is valid
-SET(VALID_INSTALL_LAYOUTS "DEFAULT" "RPM")
+SET(VALID_INSTALL_LAYOUTS "DEFAULT" "RPM" "DEB")
 LIST(FIND VALID_INSTALL_LAYOUTS "${INSTALL_LAYOUT}" layout_no)
 IF(layout_no EQUAL -1)
   MESSAGE(FATAL_ERROR "Invalid installation layout ${INSTALL_LAYOUT}. Please specify one of the following layouts: ${VALID_INSTALL_LAYOUTS}")
@@ -64,14 +64,12 @@ ENDIF()
 # DEFAULT layout
 #
 
-
-
 SET(INSTALL_BINDIR_DEFAULT "bin")
 SET(INSTALL_LIBDIR_DEFAULT "lib/mariadb")
 SET(INSTALL_INCLUDEDIR_DEFAULT "include/mariadb")
 SET(INSTALL_DOCDIR_DEFAULT "docs")
 SET(INSTALL_PLUGINDIR_DEFAULT "lib/mariadb/plugin")
-
+SET(LIBMARIADB_STATIC_DEFAULT "mariadbclient")
 #
 # RPM layout
 #
@@ -85,6 +83,22 @@ ELSE()
 ENDIF()
 SET(INSTALL_INCLUDEDIR_RPM "include")
 SET(INSTALL_DOCDIR_RPM "docs")
+SET(LIBMARIADB_STATIC_RPM "mariadbclient")
+
+#
+# DEB layout
+#
+SET(INSTALL_BINDIR_DEB "bin")
+SET(INSTALL_LIBDIR_DEB "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+IF(PLUGINDIR_DEB)
+  SET(INSTALL_PLUGINDIR_DEB "${INSTALL_LIBDIR_DEB}/${PLUGINDIR_DEB}/plugin")
+ELSE()
+  SET(INSTALL_PLUGINDIR_DEB "${INSTALL_LIBDIR_DEB}/mariadb/plugin")
+ENDIF()
+SET(INSTALL_INCLUDEDIR_DEB "include/mariadb")
+SET(LIBMARIADB_STATIC_DEB "mariadb")
+
+
 
 #
 # Overwrite defaults
@@ -119,3 +133,6 @@ FOREACH(dir "BIN" "LIB" "INCLUDE" "DOCS"  "PLUGIN")
   SET(INSTALL_${dir}DIR ${INSTALL_${dir}DIR_${INSTALL_LAYOUT}})
   MARK_AS_ADVANCED(INSTALL_${dir}DIR)
 ENDFOREACH()
+
+SET(LIBMARIADB_STATIC_NAME ${LIBMARIADB_STATIC_${INSTALL_LAYOUT}})
+MARK_AS_ADVANCED(LIBMARIADB_STATIC_NAME)

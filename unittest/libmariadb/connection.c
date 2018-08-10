@@ -1084,6 +1084,7 @@ static int test_auth256(MYSQL *my)
   if (!mysql_client_find_plugin(mysql, "sha256_password", 3))
   {
     diag("sha256_password plugin not available");
+    mysql_close(mysql);
     return SKIP;
   }
 
@@ -1097,6 +1098,7 @@ static int test_auth256(MYSQL *my)
   if (!num_rows)
   {
     diag("server doesn't support sha256 authentication");
+    mysql_close(mysql);
     return SKIP;
   }
 
@@ -1365,12 +1367,13 @@ static int test_conc315(MYSQL *mysql)
     return SKIP;
 
   mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, (void *)&csname);
-  FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
+  diag("csname=%s", csname);
+  FAIL_UNLESS(strcmp(csname, MARIADB_DEFAULT_CHARSET) == 0, "Wrong default character set");
 
   rc= mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);
   mysql_get_optionv(mysql, MYSQL_SET_CHARSET_NAME, (void *)&csname);
-  FAIL_UNLESS(strcmp(csname, "utf8") == 0, "Wrong default character set");
+  FAIL_UNLESS(strcmp(csname, MARIADB_DEFAULT_CHARSET) == 0, "Wrong default character set");
   return OK;
 }
 #ifndef WIN32
@@ -1531,7 +1534,7 @@ struct my_tests_st my_tests[] = {
   {"test_conc327", test_conc327, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc317", test_conc317, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #endif
-  {"test_conc315", test_conc315, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
+  {"test_conc315", test_conc315, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_expired_pw", test_expired_pw, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_mdev13100", test_mdev13100, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
