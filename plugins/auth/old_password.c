@@ -96,8 +96,8 @@ static int auth_old_password(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
         return CR_SERVER_HANDSHAKE_ERR;
 
     /* save it in MYSQL */
-    memmove(mysql->scramble_buff, pkt, pkt_len);
-    mysql->scramble_buff[pkt_len] = 0;
+    memmove(mysql->scramble_buff, pkt, pkt_len - 1);
+    mysql->scramble_buff[pkt_len - 1] = 0;
   }
 
   if (mysql && mysql->passwd[0])

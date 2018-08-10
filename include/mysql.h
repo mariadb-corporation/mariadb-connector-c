@@ -124,8 +124,8 @@ extern unsigned int mariadb_deinitialize_ssl;
 #define SET_CLIENT_ERROR(a, b, c, d) \
   { \
     (a)->net.last_errno= (b);\
-    strncpy((a)->net.sqlstate, (c), sizeof((a)->net.sqlstate));\
-    strncpy((a)->net.last_error, (d) ? (d) : ER((b)), sizeof((a)->net.last_error));\
+    strncpy((a)->net.sqlstate, (c), SQLSTATE_LENGTH);\
+    strncpy((a)->net.last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE - 1);\
   }
 
 /* For mysql_async.c */
@@ -409,8 +409,8 @@ typedef struct character_set
 {
   unsigned int      number;     /* character set number              */
   unsigned int      state;      /* character set state               */
-  const char        *csname;    /* collation name                    */
-  const char        *name;      /* character set name                */
+  const char        *csname;    /* character set name                */
+  const char        *name;      /* collation name                    */
   const char        *comment;   /* comment                           */
   const char        *dir;       /* character set directory           */
   unsigned int      mbminlen;   /* min. length for multibyte strings */

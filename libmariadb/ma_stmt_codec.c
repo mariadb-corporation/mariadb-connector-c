@@ -198,42 +198,90 @@ double my_atod(const char *number, const char *end, int *error)
 
 my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
 {
-  my_bool is_time=0, is_date=0, has_time_frac=0;
-  char *p= (char *)str;
+  char *start= alloca(length + 1);
+  my_bool is_date= 0, is_time= 0;
 
-  if ((p= strchr(str, '-')) && p <= str + length)
-    is_date= 1;
-  if ((p= strchr(str, ':')) && p <= str + length)
-    is_time= 1;
-  if ((p= strchr(str, '.')) && p <= str + length)
-    has_time_frac= 1;
-
-  p= (char *)str;
- 
   memset(tm, 0, sizeof(MYSQL_TIME));
+  if (!start)
+    goto error;
+  tm->time_type= MYSQL_TIMESTAMP_NONE;
+
+  memcpy(start, str, length);
+  start[length]= '\0';
+
+  while (length && isspace(*start)) start++, length--;
+
+  if (!length)
+    goto error;
+
+  /*  negativ value? */
+  if (*start == '-')
+  {
+    tm->neg= 1;
+    start++;
+    length--;
+  }
+
+  if (!length)
+    return 1;
+
+  /* Determine time type:
+     MYSQL_TIMESTAMP_DATE: [-]YY[YY].MM.DD
+     MYSQL_TIMESTAMP_DATETIME: [-]YY[YY].MM.DD hh:mm:ss.mmmmmm
+     MYSQL_TIMESTAMP_TIME: [-]hh:mm:ss.mmmmmm
+   */
+  if (strchr(start, '-'))
+  {
+    if (tm->neg)
+      goto error;
+    tm->time_type= MYSQL_TIMESTAMP_DATE;
+    if (sscanf(start, "%d-%d-%d", &tm->year, &tm->month, &tm->day) < 3)
+      goto error;
+    is_date= 1;
+    if (!(start= strchr(start, ' ')))
+      goto check;
+  }
+  if (!strchr(start, ':'))
+    goto check;
+
+  is_time= 1;
+  if (tm->time_type== MYSQL_TIMESTAMP_DATE)
+    tm->time_type= MYSQL_TIMESTAMP_DATETIME;
+  else
+    tm->time_type= MYSQL_TIMESTAMP_TIME;
+
+  if (strchr(start, '.')) /* fractional seconds */
+  {
+    if (sscanf(start, "%d:%d:%d.%ld", &tm->hour, &tm->minute,
+                                 &tm->second,&tm->second_part) < 4)
+      goto error;
+  } else {
+    if (sscanf(start, "%d:%d:%d", &tm->hour, &tm->minute,
+                                 &tm->second) < 3)
+      goto error;
+  }
+
+check:
+  if (tm->time_type == MYSQL_TIMESTAMP_NONE)
+    goto error;
 
   if (is_date)
   {
-    sscanf(str, "%d-%d-%d", &tm->year, &tm->month, &tm->day);
-    p= strchr(str, ' ');
-    if (!p)
-    {
-      tm->time_type= MYSQL_TIMESTAMP_DATE;
-      return 0;
-    }
-  }
-  if (has_time_frac)
-  {
-    sscanf(p, "%d:%d:%d.%ld", &tm->hour, &tm->minute, &tm->second, &tm->second_part);
-    tm->time_type= (is_date) ? MYSQL_TIMESTAMP_DATETIME : MYSQL_TIMESTAMP_TIME;
-    return 0;
+    if (tm->year < 69)
+      tm->year+= 2000;
+    else if (tm->year < 100)
+      tm->year+= 1900;
+    if (tm->day > 31 || tm->month > 12)
+      goto error;
   }
   if (is_time)
   {
-    sscanf(p, "%d:%d:%d", &tm->hour, &tm->minute, &tm->second);
-    tm->time_type= (is_date) ? MYSQL_TIMESTAMP_DATETIME : MYSQL_TIMESTAMP_TIME;
-    return 0;
+    if (tm->minute > 59 || tm->second > 59)
+      goto error;
   }
+  return 0;
+error:
+  tm->time_type= MYSQL_TIMESTAMP_ERROR;
   return 1;
 }
 
@@ -394,7 +442,8 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
           len < field->length && len < r_param->buffer_length)
       {
         ma_bmove_upp(buffer + field->length, buffer + len, len);
-        memset((char*) buffer, '0', field->length - len);
+        /* coverity [bad_memset] */
+        memset((void*) buffer, (int) '0', field->length - len);
         len= field->length;
       }
       convert_froma_string(r_param, buffer, len);
@@ -612,7 +661,8 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
         if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
           break;
         ma_bmove_upp(buff + field->length, buff + length, length);
-        memset((char*) buff, '0', field->length - length);
+        /* coverity [bad_memset] */
+        memset((void*) buff, (int) '0', field->length - length);
         length= field->length;
       }
 
@@ -711,7 +761,8 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
        if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
          break;
        ma_bmove_upp(buff + field->length, buff + length, length);
-       memset((char*) buff, '0', field->length - length);
+       /* coverity [bad_memset] */
+       memset((void*) buff, (int) '0', field->length - length);
        length= field->length;
      }
      convert_froma_string(r_param, buff, length);

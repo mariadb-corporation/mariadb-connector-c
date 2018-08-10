@@ -1333,7 +1333,9 @@ static char *dtoa(double dd, int mode, int ndigits, int *decpt, int *sign,
     *sign= 0;
 
   /* If infinity, set decpt to DTOA_OVERFLOW, if 0 set it to 1 */
+  /* coverity[assign_where_compare_meant] */
   if (((word0(&u) & Exp_mask) == Exp_mask && (*decpt= DTOA_OVERFLOW)) ||
+  /* coverity[assign_where_compare_meant] */
       (!dval(&u) && (*decpt= 1)))
   {
     /* Infinity, NaN, 0 */

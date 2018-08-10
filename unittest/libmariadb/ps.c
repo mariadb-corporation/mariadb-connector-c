@@ -2209,7 +2209,7 @@ static int test_bind_negative(MYSQL *mysql)
   my_bind[0].buffer_type= MYSQL_TYPE_LONG;
   my_bind[0].buffer= (void *)&my_val;
   my_bind[0].length= &my_length;
-  my_bind[0].is_null= (char*)&my_null;
+  my_bind[0].is_null= &my_null;
 
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
@@ -2400,12 +2400,12 @@ static int test_union_param(MYSQL *mysql)
   my_bind[0].buffer=         (char*) &my_val;
   my_bind[0].buffer_length=  4;
   my_bind[0].length=         &my_length;
-  my_bind[0].is_null=        (char*)&my_null;
+  my_bind[0].is_null=        &my_null;
   my_bind[1].buffer_type=    MYSQL_TYPE_STRING;
   my_bind[1].buffer=         (char*) &my_val;
   my_bind[1].buffer_length=  4;
   my_bind[1].length=         &my_length;
-  my_bind[1].is_null=        (char*)&my_null;
+  my_bind[1].is_null=        &my_null;
 
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
@@ -3313,7 +3313,7 @@ ENGINE=InnoDB DEFAULT CHARSET=utf8");
   my_bind[0].buffer_type= MYSQL_TYPE_LONG;
   my_bind[0].buffer= (void *)&my_val;
   my_bind[0].length= &my_length;
-  my_bind[0].is_null= (char*)&my_null;
+  my_bind[0].is_null= &my_null;
   my_val= 1;
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
@@ -4637,7 +4637,6 @@ static int test_stmt_close(MYSQL *mysql)
   FAIL_IF(mysql_stmt_param_count(stmt2) != 1, "param_count != 1");
 
   rc= mysql_stmt_close(stmt1);
-  check_stmt_rc(rc, stmt1);
 
   /*
     Originally we were going to close all statements automatically in

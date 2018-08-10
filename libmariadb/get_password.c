@@ -65,7 +65,7 @@ static char *get_password(FILE *file, char *buffer, int length)
         !CharsProcessed)
       break;
 #else
-    inChar= fgetc(file);
+    inChar= (char)fgetc(file);
 #endif
 
     switch(inChar) {

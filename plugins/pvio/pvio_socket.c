@@ -92,7 +92,7 @@ ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
-my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
+int pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool pvio_socket_close(MARIADB_PVIO *pvio);
 int pvio_socket_fast_send(MARIADB_PVIO *pvio);
@@ -178,6 +178,7 @@ static int pvio_socket_end(void)
 my_bool pvio_socket_change_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout)
 {
   struct timeval tm;
+  int rc= 0;
   struct st_pvio_socket *csock= NULL;
   if (!pvio)
     return 1;
@@ -189,22 +190,22 @@ my_bool pvio_socket_change_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout ty
   {
     case PVIO_WRITE_TIMEOUT:
 #ifndef _WIN32
-      setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&tm, sizeof(tm));
+      rc= setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&tm, sizeof(tm));
 #else
-      setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(int));
+      rc= setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(int));
 #endif
     break;
     case PVIO_READ_TIMEOUT:
 #ifndef _WIN32
-      setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tm, sizeof(tm));
+      rc= setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tm, sizeof(tm));
 #else
-      setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(int));
+      rc= setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(int));
 #endif
     break;
     default:
     break;
   }
-  return 0;
+  return rc;
 }
 
 /* {{{ pvio_socket_set_timeout */
@@ -564,7 +565,7 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
   return rc;
 }
 
-my_bool pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
+int pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
 {
   my_bool is_blocking;
   struct st_pvio_socket *csock;
@@ -887,6 +888,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
         if (rc)
         {
           closesocket(csock->socket);
+          csock->socket= INVALID_SOCKET;
           continue;
         }
       }
@@ -901,6 +903,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
         if (pvio_socket_blocking(pvio, 0, 0) == SOCKET_ERROR)
         {
           closesocket(csock->socket);
+          csock->socket= INVALID_SOCKET;
           continue;
         }
         break; /* success! */
@@ -936,21 +939,27 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
   /* apply timeouts */
   if (pvio->timeout[PVIO_CONNECT_TIMEOUT] > 0)
   {
-    pvio_socket_change_timeout(pvio, PVIO_READ_TIMEOUT, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
-    pvio_socket_change_timeout(pvio, PVIO_WRITE_TIMEOUT, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
+    if (pvio_socket_change_timeout(pvio, PVIO_READ_TIMEOUT, pvio->timeout[PVIO_CONNECT_TIMEOUT]) ||
+        pvio_socket_change_timeout(pvio, PVIO_WRITE_TIMEOUT, pvio->timeout[PVIO_CONNECT_TIMEOUT]))
+      goto error;
   }
   else
   {
     if (pvio->timeout[PVIO_WRITE_TIMEOUT] > 0)
-      pvio_socket_change_timeout(pvio, PVIO_WRITE_TIMEOUT, pvio->timeout[PVIO_WRITE_TIMEOUT]);
+      if (pvio_socket_change_timeout(pvio, PVIO_WRITE_TIMEOUT, pvio->timeout[PVIO_WRITE_TIMEOUT]))
+        goto error;
     if (pvio->timeout[PVIO_READ_TIMEOUT] > 0)
-      pvio_socket_change_timeout(pvio, PVIO_READ_TIMEOUT, pvio->timeout[PVIO_READ_TIMEOUT]);
+      if (pvio_socket_change_timeout(pvio, PVIO_READ_TIMEOUT, pvio->timeout[PVIO_READ_TIMEOUT]))
+        goto error;
   }
   return 0;
 error:
   /* close socket: MDEV-10891 */
   if (csock->socket != INVALID_SOCKET)
+  {
     closesocket(csock->socket);
+    csock->socket= INVALID_SOCKET;
+  }
   if (pvio->data)
   {
     free((gptr)pvio->data);

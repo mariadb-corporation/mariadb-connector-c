@@ -253,12 +253,54 @@ static int dyncol_column_count(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int dyncol_nested(MYSQL *mysql __attribute__((unused)))
+{
+  DYNAMIC_COLUMN col1, col2;
+  DYNAMIC_COLUMN_VALUE value[2];
+  MYSQL_LEX_STRING cols[2]= {{(char *)"0",1},{(char *)"1",1}};
+  DYNAMIC_STRING s;
+
+  mariadb_dyncol_init(&col1);
+  mariadb_dyncol_init(&col2);
+
+  memset(&value, 0, sizeof(DYNAMIC_COLUMN_VALUE));
+
+  value[0].type= DYN_COL_UINT;
+  value[0].x.ulong_value = 17;
+
+  mariadb_dyncol_create_many_named(&col1, 1, cols, value, 0);
+  if (mariadb_dyncol_check(&col1) != ER_DYNCOL_OK)
+  {
+    diag("Error while creating col1");
+    return FAIL;
+  }
+
+  value[1].type= DYN_COL_DYNCOL;
+  value[1].x.string.value.str= col1.str;
+  value[1].x.string.value.length= col1.length;
+ 
+  mariadb_dyncol_create_many_named(&col2, 2, cols, value, 0);
+  if (mariadb_dyncol_check(&col2) != ER_DYNCOL_OK)
+  {
+    diag("Error while creating col1");
+    return FAIL;
+  }
+  mariadb_dyncol_json(&col2, &s);
+  if (strcmp(s.str, "{\"0\":17,\"1\":{\"0\":17}}") != 0)
+  {
+    diag("%s != %s", s.str, "{\"0\":17,\"1\":{\"0\":17}}");
+    return FAIL;
+  }
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"mdev_x1", mdev_x1, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"mdev_4994", mdev_4994, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"create_dyncol_named", create_dyncol_named, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"create_dyncol_num", create_dyncol_num, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"dyncol_column_count", dyncol_column_count, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
+  {"dyncol_nested", dyncol_nested, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {NULL, NULL, 0, 0, NULL, 0}
 };
 

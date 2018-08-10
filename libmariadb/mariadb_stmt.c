@@ -88,12 +88,18 @@ void stmt_set_error(MYSQL_STMT *stmt,
                   ...)
 {
   va_list ap;
+  const char *error= NULL;
+
+  if (error_nr >= CR_MIN_ERROR && error_nr <= CR_MYSQL_LAST_ERROR)
+    error= ER(error_nr);
+  else if (error_nr >= CER_MIN_ERROR && error_nr <= CR_MARIADB_LAST_ERROR)
+    error= CER(error_nr);
 
   stmt->last_errno= error_nr;
   ma_strmake(stmt->sqlstate, sqlstate, SQLSTATE_LENGTH);
   va_start(ap, format);
   vsnprintf(stmt->last_error, MYSQL_ERRMSG_SIZE,
-            format ? format : ER(error_nr), ap);
+            format ? format : error ? error : "", ap);
   va_end(ap);
   return;
 }
@@ -869,7 +875,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
   if (!stmt->param_count)
   {
     stmt_set_error(stmt, CR_BULK_WITHOUT_PARAMETERS, "IM001",
-                   CER(CR_BULK_WITHOUT_PARAMETERS), "Bulk operation");
+                   CER(CR_BULK_WITHOUT_PARAMETERS));
     return NULL;
   }
 
@@ -1328,15 +1334,18 @@ static my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove)
 
 my_bool STDCALL mysql_stmt_close(MYSQL_STMT *stmt)
 {
-  my_bool rc;
-  if (stmt && stmt->mysql && stmt->mysql->net.pvio)
-    mysql_stmt_internal_reset(stmt, 1);
+  my_bool rc= 1;
 
-  rc= net_stmt_close(stmt, 1);
+  if (stmt)
+  {
+    if (stmt->mysql && stmt->mysql->net.pvio)
+      mysql_stmt_internal_reset(stmt, 1);
 
-  free(stmt->extension);
-  free(stmt);
+    rc= net_stmt_close(stmt, 1);
 
+    free(stmt->extension);
+    free(stmt);
+  }
   return(rc);
 }
 
@@ -1854,6 +1863,12 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
 
       for (i=0; i < stmt->field_count; i++)
       {
+        memcpy(&stmt->fields[i], &mysql->fields[i], sizeof(MYSQL_FIELD));
+
+        /* since  all pointers will be incorrect if another statement will
+           be executed, so we need to allocate memory and copy the
+           information */
+        stmt->fields[i].extension= 0; /* not in use yet */
         if (mysql->fields[i].db)
           stmt->fields[i].db= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].db);
         if (mysql->fields[i].table)
@@ -1866,7 +1881,8 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
           stmt->fields[i].org_name= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].org_name);
         if (mysql->fields[i].catalog)
           stmt->fields[i].catalog= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].catalog);
-        stmt->fields[i].def= mysql->fields[i].def ? ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].def) : NULL;
+        if (mysql->fields[i].def)
+          stmt->fields[i].def= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].def);
       }
     }
 
@@ -1891,7 +1907,8 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
          */
 
       /* preferred is buffered read */
-      mysql_stmt_store_result(stmt);
+      if (mysql_stmt_store_result(stmt))
+        return 1;
       stmt->mysql->status= MYSQL_STATUS_STMT_RESULT;
     } else
     {
@@ -1970,8 +1987,9 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   {
     ma_free_root(&stmt->result.alloc, MYF(MY_KEEP_PREALLOC));
     stmt->result_cursor= stmt->result.data= 0;
-    stmt->result.rows= 0;
   }
+  /* CONC-344: set row count to zero */
+  stmt->result.rows= 0;
   if (stmt->array_size > 0)
     request= (char *)mysql_stmt_execute_generate_bulk_request(stmt, &request_len);
   else
@@ -2305,16 +2323,22 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
                                       const char *stmt_str,
                                       size_t length)
 {
-  MYSQL *mysql= stmt->mysql;
-  my_bool emulate_cmd= !(!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
-      (stmt->mysql->extension->mariadb_server_capabilities &
-      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))) || mysql->net.compress;
+  MYSQL *mysql;
+  my_bool emulate_cmd;
 
+  if (!stmt)
+    return 1;
+
+  mysql= stmt->mysql;
   if (!mysql)
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
-    goto fail;
+    return 1;
   }
+
+  emulate_cmd= !(!(stmt->mysql->server_capabilities & CLIENT_MYSQL) &&
+      (stmt->mysql->extension->mariadb_server_capabilities &
+      (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))) || mysql->net.compress;
 
   /* Server versions < 10.2 don't support execute_direct, so we need to 
      emulate it */
@@ -2323,7 +2347,6 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
     int rc;
 
     /* avoid sending close + prepare in 2 packets */
-
     if ((rc= mysql_stmt_prepare(stmt, stmt_str, (unsigned long)length)))
       return rc;
     return mysql_stmt_execute(stmt);
@@ -2332,13 +2355,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   if (ma_multi_command(mysql, COM_MULTI_ENABLED))
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
-    goto fail;
-  }
-
-  if (!stmt->mysql)
-  {
-    SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
-    return(1);
+    return 1;
   }
 
   if (length == (size_t) -1)
@@ -2422,8 +2439,10 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   /* read execute response packet */
   return stmt_read_execute_response(stmt);
 fail:
-  SET_CLIENT_STMT_ERROR(stmt, mysql->net.last_errno, mysql->net.sqlstate,
-      mysql->net.last_error);
+  /* check if we need to set error message */
+  if (!mysql_stmt_errno(stmt))
+    SET_CLIENT_STMT_ERROR(stmt, mysql->net.last_errno, mysql->net.sqlstate,
+        mysql->net.last_error);
   do {
     stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
   } while(mysql_stmt_more_results(stmt));

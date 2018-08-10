@@ -4654,43 +4654,138 @@ static int test_compress(MYSQL *mysql)
 static int test_codbc138(MYSQL *mysql)
 {
   int rc;
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   MYSQL_BIND bind[1];
   MYSQL_TIME tm;
+  int i= 0;
 
-  rc= mysql_stmt_prepare(stmt, SL("SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)"));
+  struct st_time_test {
+    const char *statement;
+    MYSQL_TIME tm;
+  } time_test[]= {
+    {"SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)",
+     {2017,7,28,0,0,0,0L,0, MYSQL_TIMESTAMP_DATE}
+    },
+    {"SELECT '2001-02-03 11:12:13.123456'",
+     {2001,2,3,11,12,13,123456L,0, MYSQL_TIMESTAMP_DATETIME}
+    },
+    {"SELECT '-11:12:13'",
+     {0,0,0,11,12,13,0,1, MYSQL_TIMESTAMP_TIME}
+    },
+    {"SELECT ' '",
+     {0,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
+    },
+    {"SELECT '1--'",
+     {1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
+    },
+    {"SELECT '-2001-01-01'",
+     {1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
+    },
+    {"SELECT '-11:00'",
+     {1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
+    },
+    {NULL, {0}}
+  };
+
+  while (time_test[i].statement)
+  {
+    stmt= mysql_stmt_init(mysql);
+    rc= mysql_stmt_prepare(stmt, SL(time_test[i].statement));
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_store_result(stmt);
+
+    memset(bind, 0, sizeof(MYSQL_BIND));
+    bind[0].buffer_type= MYSQL_TYPE_DATETIME;
+    bind[0].buffer= &tm;
+    bind[0].buffer_length= sizeof(MYSQL_TIME);
+
+    rc= mysql_stmt_bind_result(stmt, bind);
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_fetch(stmt);
+    check_stmt_rc(rc, stmt);
+    diag("test: %s %d %d", time_test[i].statement, tm.time_type, time_test[i].tm.time_type);
+    if (time_test[i].tm.time_type == MYSQL_TIMESTAMP_ERROR)
+    {
+      FAIL_UNLESS(tm.time_type == MYSQL_TIMESTAMP_ERROR, "MYSQL_TIMESTAMP_ERROR expected");
+    }
+    else
+      FAIL_UNLESS(memcmp(&tm, &time_test[i].tm, sizeof(MYSQL_TIME)) == 0, "time_in != time_out");
+    mysql_stmt_close(stmt);
+    i++;
+  }
+
+  return OK;
+}
+
+static int test_conc334(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_RES *result;
+  MYSQL_FIELD *field;
+  int rc;
+
+  rc= mysql_stmt_prepare(stmt, SL("SHOW ENGINES"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
-  memset(bind, 0, sizeof(MYSQL_BIND));
-  bind[0].buffer_type= MYSQL_TYPE_DATETIME;
-  bind[0].buffer= &tm;
-  bind[0].buffer_length= sizeof(MYSQL_TIME);
+  result= mysql_stmt_result_metadata(stmt);
+  if (!result)
+  {
+    diag("Coudn't retrieve result set");
+    mysql_stmt_close(stmt);
+    return FAIL;
+  }
 
-  rc= mysql_stmt_bind_result(stmt, bind);
+  mysql_field_seek(result, 0);
+
+  while ((field= mysql_fetch_field(result)))
+  {
+    FAIL_IF(field->name_length == 0, "Invalid name length (0)");
+    FAIL_IF(field->table_length == 0, "Invalid name length (0)");
+  }
+  mysql_free_result(result);
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+static int test_conc344(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+ 
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int, b int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1,1), (2,2),(3,3),(4,4),(5,5)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT * FROM t1 ORDER BY a"));
   check_stmt_rc(rc, stmt);
 
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  while (!mysql_stmt_fetch(stmt));
+  FAIL_IF(mysql_stmt_num_rows(stmt) != 5, "expected 5 rows");
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
   rc= mysql_stmt_fetch(stmt);
-  check_stmt_rc(rc, stmt);
-
-  if (tm.year != 2017 && tm.day != 28 && tm.month != 7)
-  {
-    diag("Error: Expected 2017-07-02");
-    return FAIL;
-  }
-  if (tm.minute | tm.second || tm.second_part)
-  {
-    diag("Error: minute, second or second_part is not zero");
-    return FAIL;
-  }
+  diag("num_rows: %lld", mysql_stmt_num_rows(stmt));
+  FAIL_IF(mysql_stmt_num_rows(stmt) != 1, "expected 1 row");
 
   mysql_stmt_close(stmt);
   return OK;
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_conc334", test_conc334, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NEW, CLIENT_COMPRESS, NULL, NULL},
   {"test_codbc138", test_codbc138, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
@@ -4776,4 +4871,3 @@ int main(int argc, char **argv)
 
   return(exit_status());
 }
-
