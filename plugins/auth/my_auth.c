@@ -521,7 +521,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
     else
     {
       if (!(auth_plugin= (auth_plugin_t*)mysql_client_find_plugin(mysql,
-                         "old_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
+                         "mysql_old_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
         return 1; /* not found */
     }
     auth_plugin_name= auth_plugin->name;
