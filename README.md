@@ -1,8 +1,8 @@
 # MariaDB Connector/C
 
-[![Linux Build](https://travis-ci.org/MariaDB/mariadb-connector-c.svg?branch=master)](https://travis-ci.org/MariaDB/mariadb-connector-c)
 [![Windows Build](https://ci.appveyor.com/api/projects/status/32r7s2skrgm9ubva/branch/master?svg=true)](https://ci.appveyor.com/project/9EOR9/mariadb-connector-c/branch/master/)
 
+[![Linux Build](https://travis-ci.org/MariaDB/mariadb-connector-c.svg?branch=master)](https://travis-ci.org/MariaDB/mariadb-connector-c)
 
 MariaDB Connector/C is used to connect applications developed in C/C++ to MariaDB (and MySQL) databases.
 
