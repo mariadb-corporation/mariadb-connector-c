@@ -1163,6 +1163,8 @@ unpack_fields(MYSQL_DATA *data,MEM_ROOT *alloc,uint fields,
 
   for (row=data->data; row ; row = row->next,field++)
   {
+    if (field >= result + fields)
+      goto error;
     for (i=0; i < field_count; i++)
     {
       switch(row->data[i][0]) {
@@ -1206,8 +1208,14 @@ unpack_fields(MYSQL_DATA *data,MEM_ROOT *alloc,uint fields,
       field->def=0;
     field->max_length= 0;
   }
+  if (field < result + fields)
+    goto error;
   free_rows(data);				/* Free old data */
   DBUG_RETURN(result);
+error:
+  free_rows(data);
+  free_root(alloc, MYF(0));
+  return(0);
 }
 
 
@@ -2308,14 +2316,16 @@ static void mysql_close_options(MYSQL *mysql)
     my_free(mysql->options.extension->ssl_fp_list);
     if(hash_inited(&mysql->options.extension->connect_attrs))
       hash_free(&mysql->options.extension->connect_attrs);
-    if ((ctxt = mysql->options.extension->async_context) != 0)
+    if (mysql->options.extension && (ctxt = mysql->options.extension->async_context) != 0)
     {
       my_context_destroy(&ctxt->async_context);
       my_free(ctxt);
+      mysql->options.extension->async_context= 0;
     }
 
   }
   my_free(mysql->options.extension);
+  mysql->options.extension= 0;
   /* clear all pointer */
   memset(&mysql->options, 0, sizeof(mysql->options));
 }
