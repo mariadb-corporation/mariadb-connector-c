@@ -51,6 +51,7 @@ ELSE()
   OPTION(WITH_RTC "enables run time checks for debug builds" OFF)
 ENDIF()
 
+OPTION(WITH_UNIT_TESTS "builds unittests" ON)
 OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ###############
 
