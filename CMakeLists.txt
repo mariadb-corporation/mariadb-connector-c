@@ -60,7 +60,7 @@ ENDIF()
 
 ADD_OPTION(WITH_UNIT_TESTS "build test suite" ON)
 ADD_OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
-ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
+ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" ON)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
 ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
 ###############
@@ -136,7 +136,7 @@ SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF
 
 IF(CMAKE_COMPILER_IS_GNUCC)
   INCLUDE(CheckCCompilerFlag)
-  SET(GCC_FLAGS -Wunused -Werror -Wlogical-op -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement)
+  SET(GCC_FLAGS -Wunused -Werror -Wlogical-op -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement -fno-builtin)
   FOREACH(GCC_FLAG ${GCC_FLAGS})
     string(REPLACE "-" "" FLAG_NO_HYPHEN ${GCC_FLAG})
     CHECK_C_COMPILER_FLAG("${GCC_FLAG}" OK_${FLAG_NO_HYPHEN})
