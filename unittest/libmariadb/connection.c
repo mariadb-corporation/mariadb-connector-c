@@ -1536,8 +1536,6 @@ static int test_conc351(MYSQL *unused __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
   ulong capabilities= 0;
 
-  diag("%ld", mysql_get_client_version()); exit(-1);
-
   my_test_connect(mysql, hostname, username, password, schema,
                   port, socketname, 0);
 

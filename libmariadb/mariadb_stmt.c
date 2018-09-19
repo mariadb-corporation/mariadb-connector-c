@@ -1886,7 +1886,8 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
       }
     }
 
-    if (stmt->upsert_status.server_status & SERVER_STATUS_CURSOR_EXISTS)
+    if ((stmt->upsert_status.server_status & SERVER_STATUS_CURSOR_EXISTS) &&
+        (stmt->flags & CURSOR_TYPE_READ_ONLY))
     {
       stmt->cursor_exists = TRUE;
       mysql->status = MYSQL_STATUS_READY;
