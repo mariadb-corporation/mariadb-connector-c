@@ -181,6 +181,7 @@ SET(MARIADB_DYNCOL_SYMBOLS
  mariadb_dyncol_val_str)
 
 SET(MARIADB_RPL_SYMBOLS
+mariadb_free_rpl_event
 mariadb_rpl_init
 mariadb_rpl_open
 mariadb_rpl_fetch
