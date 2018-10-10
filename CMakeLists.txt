@@ -136,7 +136,7 @@ SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF
 
 IF(CMAKE_COMPILER_IS_GNUCC)
   INCLUDE(CheckCCompilerFlag)
-  SET(GCC_FLAGS -Wunused -Werror -Wlogical-op -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement -fno-builtin)
+  SET(GCC_FLAGS -Wunused -Werror -Wlogical-op -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement -fno-builtin -Wno-undef)
   FOREACH(GCC_FLAG ${GCC_FLAGS})
     string(REPLACE "-" "" FLAG_NO_HYPHEN ${GCC_FLAG})
     CHECK_C_COMPILER_FLAG("${GCC_FLAG}" OK_${FLAG_NO_HYPHEN})

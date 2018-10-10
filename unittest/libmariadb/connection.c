@@ -1560,7 +1560,47 @@ static int test_conc351(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_conc312(MYSQL *my)
+{
+  int rc;
+  char query[1024];
+  MYSQL *mysql;
+
+  sprintf(query, "DROP USER 'foo'@'%s'", this_host);
+  rc= mysql_query(my, query);
+
+  sprintf(query, "CREATE USER 'foo'@'%s' IDENTIFIED WITH caching_sha2_password BY 'foo'", this_host);
+  rc= mysql_query(my, query);
+
+  if (rc)
+  {
+    diag("caching_sha256_password not supported");
+    return SKIP; 
+  }
+
+  sprintf(query, "GRANT ALL ON %s.* TO 'foo'@'%s'", schema, this_host);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  mysql= mysql_init(NULL);
+  if (!mysql_real_connect(mysql, hostname, "foo", "foo", schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    return FAIL;
+  }
+
+  mysql_close(mysql);
+  
+  sprintf(query, "DROP USER 'foo'@'%s'", this_host);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_conc312", test_conc312, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc351", test_conc351, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc332", test_conc332, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef WIN32
