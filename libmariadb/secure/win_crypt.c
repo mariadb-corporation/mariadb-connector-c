@@ -32,6 +32,9 @@ static LPCWSTR ma_hash_get_algorithm(unsigned int alg, BCRYPT_ALG_HANDLE *algHdl
   case MA_HASH_SHA256:
     *algHdl= Sha256Prov;
     return BCRYPT_SHA256_ALGORITHM;
+  case MA_HASH_SHA512:
+    *algHdl= Sha512Prov;
+    return BCRYPT_SHA512_ALGORITHM;
   default:
     *algHdl= 0;
     return NULL;
@@ -98,4 +101,3 @@ void ma_hash_result(MA_HASH_CTX *ctx, unsigned char *digest)
 {
   BCryptFinishHash(ctx->hHash, digest, ctx->digest_len, 0);
 }
-

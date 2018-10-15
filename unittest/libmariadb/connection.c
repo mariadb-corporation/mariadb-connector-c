@@ -1598,8 +1598,35 @@ static int test_conc312(MYSQL *my)
   return OK;
 }
 
+static int test_conc366(MYSQL *mysql)
+{
+  char query[1024];
+  int rc;
+  MYSQL *my;
+
+  if (!is_mariadb)
+  {
+    diag("feature not supported by MySQL server");
+    return SKIP;
+  }
+
+  sprintf(query, "CREATE OR REPLACE USER ede@%s IDENTIFIED VIA ed25519 USING 'vubFBzIrapbfHct1/J72dnUryz5VS7lA6XHH8sIx4TI'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  my= mysql_init(NULL);
+  if (!mysql_real_connect(my, hostname, "ede", "foo", schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(my));
+    return FAIL;
+  }
+  mysql_close(my);
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"test_conc366", test_conc366, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc312", test_conc312, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc351", test_conc351, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc332", test_conc332, TEST_CONNECTION_NONE, 0, NULL, NULL},

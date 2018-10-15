@@ -46,6 +46,11 @@
 
 #if defined(HAVE_OPENSSL)
 typedef void MA_HASH_CTX;
+#elif defined(HAVE_GNUTLS)
+typedef struct {
+  void *ctx;
+  const struct nettle_hash *hash;
+} MA_HASH_CTX;
 #elif defined(HAVE_SCHANNEL)
 typedef struct {
   char free_me;
@@ -100,18 +105,6 @@ void ma_hash_input(MA_HASH_CTX *ctx,
  */
 void ma_hash_result(MA_HASH_CTX *ctx, unsigned char *digest);
 
-/**
-  @brief wrapper function to compute hash from one or more
-  buffers.
-
-  @param[in] hash_alg ]   hash algorithm
-  @param[out] digest]     computed hash digest
-  @param[in] ...          variable argument list containg touples of
-                          message and message lengths. Last parameter
-                          must be always NULL.
-
-  @return                 void
-*/
 
 /**
   @brief  returns digest size for a given hash algorithm
@@ -140,6 +133,32 @@ static inline size_t ma_hash_digest_size(unsigned int hash_alg)
   default:
     return 0;
   }
+}
+
+/**
+  @brief function to compute hash from buffer.
+
+  @param[in] hash_alg     hash algorithm
+  @param[in] buffer       buffer
+  @param[in] buffer_leng  length of buffer
+  @param[out] digest      computed hash digest
+
+  @return                 void
+*/
+static inline void ma_hash(unsigned int algorithm,
+                           const unsigned char *buffer,
+                           size_t buffer_length,
+                           unsigned char *digest)
+{
+  MA_HASH_CTX *ctx= NULL;
+#ifdef HAVE_SCHANNEL
+  MA_HASH_CTX dctx;
+  ctx= &dctx;
+#endif
+  ctx= ma_hash_new(algorithm, ctx);
+  ma_hash_input(ctx, buffer, buffer_length);
+  ma_hash_result(ctx, digest);
+  ma_hash_free(ctx);
 }
 
 #endif /* _ma_hash_h_ */
