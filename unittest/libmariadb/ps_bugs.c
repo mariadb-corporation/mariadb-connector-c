@@ -4811,16 +4811,16 @@ static int test_conc344(MYSQL *mysql)
   return OK;
 }
 
-static int test_conc367(MYSQL *mysql)
+static int test_conc363(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
   MYSQL_BIND bind;
-  unsigned long l;
+  unsigned long l= 0;
 
-  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p_conc367");
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p_conc363");
   check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "CREATE PROCEDURE p_conc367()\n"
+  rc= mysql_query(mysql, "CREATE PROCEDURE p_conc363()\n"
                    "BEGIN\n"
                      "DECLARE c1 CURSOR FOR SELECT 1;\n"
                      "OPEN c1;\n"
@@ -4830,7 +4830,7 @@ static int test_conc367(MYSQL *mysql)
                    "END");
   check_mysql_rc(rc, mysql);
 
-  rc= mariadb_stmt_execute_direct(stmt, SL("CALL p_conc367()"));
+  rc= mariadb_stmt_execute_direct(stmt, SL("CALL p_conc363()"));
 
   memset(&bind, 0, sizeof(MYSQL_BIND));
 
@@ -4843,6 +4843,7 @@ static int test_conc367(MYSQL *mysql)
   if (mysql_stmt_fetch(stmt) == 1)
     return FAIL;
 
+  diag("l=%ld", l);
   FAIL_IF(l != 2, "Expected value 2");
 
   mysql_stmt_next_result(stmt);
@@ -4857,14 +4858,14 @@ static int test_conc367(MYSQL *mysql)
 
 
   mysql_stmt_close(stmt); 
-  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p_conc367");
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p_conc363");
   check_mysql_rc(rc, mysql);
 
   return OK; 
 }
 
 struct my_tests_st my_tests[] = {
-  {"test_conc367", test_conc367, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_conc363", test_conc363, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc334", test_conc334, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NEW, CLIENT_COMPRESS, NULL, NULL},
