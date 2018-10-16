@@ -40,7 +40,7 @@ static int rpl_alloc_string(MARIADB_RPL_EVENT *event,
   return 0;
 }
 
-MARIADB_RPL STDCALL *mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version)
+MARIADB_RPL * STDCALL mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version)
 {
   MARIADB_RPL *rpl;
 
@@ -91,7 +91,12 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
      * = filename length
 
   */
-  ptr= buf= (unsigned char *)alloca(rpl->filename_length + 11);
+  ptr= buf= 
+#ifdef WIN32
+          (unsigned char *)_alloca(rpl->filename_length + 11);
+#else
+	  (unsigned char *)alloca(rpl->filename_length + 11);
+#endif
 
   int4store(ptr, (unsigned int)rpl->start_position);
   ptr+= 4;
@@ -160,7 +165,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     } else {
       if (!(rpl_event = (MARIADB_RPL_EVENT *)malloc(sizeof(MARIADB_RPL_EVENT))))
         goto mem_error;
-      bzero(rpl_event, sizeof(MARIADB_RPL_EVENT));
+      memset(rpl_event, 0, sizeof(MARIADB_RPL_EVENT));
       ma_init_alloc_root(&rpl_event->memroot, 8192, 0);
     }
     rpl_event->checksum= uint4korr(rpl->buffer + rpl->buffer_size - 4);

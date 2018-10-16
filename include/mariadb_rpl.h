@@ -284,7 +284,7 @@ typedef struct st_mariadb_rpl_event
 #define mariadb_rpl_init(a) mariadb_rpl_init_ex((a), MARIADB_RPL_VERSION)
 
 /* Function prototypes */
-MARIADB_RPL STDCALL *mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version);
+MARIADB_RPL * STDCALL mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version);
 
 int mariadb_rpl_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
 int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);

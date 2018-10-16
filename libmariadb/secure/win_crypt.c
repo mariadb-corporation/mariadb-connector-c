@@ -23,6 +23,7 @@
 #pragma comment(lib, "bcrypt.lib")
 
 BCRYPT_ALG_HANDLE Sha256Prov= 0;
+BCRYPT_ALG_HANDLE Sha512Prov= 0;
 BCRYPT_ALG_HANDLE RsaProv= 0;
 
 static LPCWSTR ma_hash_get_algorithm(unsigned int alg, BCRYPT_ALG_HANDLE *algHdl)
