@@ -6,14 +6,14 @@
 #  Dan Nicholson’s Guide to pkg-config (http://www.freedesktop.org/wiki/Software/pkg-config/)
 #
 
-includedir=@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@
-libdir=@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@
-prefix=@PREFIX_INSTALL_DIR@
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=${prefix}/@INSTALL_INCLUDEDIR@/@SUFFIX_INSTALL_DIR@
+libdir=${prefix}/@INSTALL_LIBDIR@/@SUFFIX_INSTALL_DIR@
 
 Name: libmariadb
-Version: @LIBMARIADB_VERSION@
+Version: @CPACK_PACKAGE_VERSION@
 Description: MariaDB Connector/C dynamic library
-Cflags: -I@PREFIX_INSTALL_DIR@/@INCLUDE_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ @CMAKE_C_FLAGS@
-Libs: -L@PREFIX_INSTALL_DIR@/@LIB_INSTALL_DIR@/@SUFFIX_INSTALL_DIR@ -lmariadb @extra_dynamic_LDFLAGS@
+Cflags: -I${includedir}
+Libs: -L${libdir} -lmariadb @extra_dynamic_LDFLAGS@
 
 
