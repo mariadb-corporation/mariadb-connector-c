@@ -64,7 +64,8 @@ enum enum_stmt_attr_type
   STMT_ATTR_PREFETCH_ROWS,
   STMT_ATTR_PREBIND_PARAMS=200,
   STMT_ATTR_ARRAY_SIZE,
-  STMT_ATTR_ROW_SIZE
+  STMT_ATTR_ROW_SIZE,
+  STMT_ATTR_STATE
 };
 
 enum enum_cursor_type

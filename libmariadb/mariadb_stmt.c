@@ -1028,6 +1028,9 @@ unsigned long long STDCALL mysql_stmt_affected_rows(MYSQL_STMT *stmt)
 my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type attr_type, void *value)
 {
   switch (attr_type) {
+    case STMT_ATTR_STATE:
+      *(enum mysql_stmt_state *)value= stmt->state;
+      break;
     case STMT_ATTR_UPDATE_MAX_LENGTH:
       *(my_bool *)value= stmt->update_max_length;
       break;

@@ -5071,7 +5071,33 @@ static int test_prepare_error(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc349(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  enum mysql_stmt_state state;
+
+  rc= mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
+  FAIL_IF(state != MYSQL_STMT_INITTED, "expected status MYSQL_STMT_INITTED");
+
+  rc= mysql_stmt_prepare(stmt, SL("SET @a:=1"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
+  FAIL_IF(state != MYSQL_STMT_PREPARED, "expected status MYSQL_STMT_PREPARED");
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
+  FAIL_IF(state != MYSQL_STMT_EXECUTED, "expected status MYSQL_STMT_EXECUTED");
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc349", test_conc349, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_prepare_error", test_prepare_error, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_reexecute", test_reexecute, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_bit2tiny", test_bit2tiny, TEST_CONNECTION_NEW, 0, NULL, NULL},
