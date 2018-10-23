@@ -47,10 +47,17 @@ ENDIF()
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
                ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
 
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libmariadb.pc.in
+               ${CMAKE_CURRENT_BINARY_DIR}/libmariadb.pc @ONLY)
+
 ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
 
 # Installation
 #
 INSTALL(TARGETS mariadb_config
         DESTINATION "bin"
+        COMPONENT Development)
+
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmariadb.pc
+        DESTINATION "lib/pkgconfig"
         COMPONENT Development)
