@@ -52,6 +52,8 @@ typedef struct {
   const struct nettle_hash *hash;
 } MA_HASH_CTX;
 #elif defined(HAVE_SCHANNEL)
+#include <windows.h>
+#include <bcrypt.h>
 typedef struct {
   char free_me;
   BCRYPT_ALG_HANDLE hAlg;
