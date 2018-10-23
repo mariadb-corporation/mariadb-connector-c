@@ -872,6 +872,9 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
        we are able to connect to one address or all connect attempts failed */
     for (save_res= res; save_res; save_res= save_res->ai_next)
     {
+      /* CONC-364: Avoid leak of open sockets */
+      if (csock->socket != INVALID_SOCKET)
+        closesocket(csock->socket);
       csock->socket= socket(save_res->ai_family, save_res->ai_socktype, 
                             save_res->ai_protocol);
       if (csock->socket == INVALID_SOCKET)
