@@ -396,7 +396,7 @@ void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl)
   return;
 }
 
-int mariadb_rpl_optionsv(MARIADB_RPL *rpl,
+int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
                         enum mariadb_rpl_option option,
                         ...)
 {
@@ -450,7 +450,7 @@ end:
   return rc;
 }
 
-int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
+int STDCALL mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
                         enum mariadb_rpl_option option,
                         ...)
 {

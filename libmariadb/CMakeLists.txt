@@ -27,6 +27,8 @@ SET(MARIADB_LIB_SYMBOLS
  mariadb_rpl_open
  mariadb_rpl_close
  mariadb_rpl_fetch
+ mariadb_rpl_optionsv
+ mariadb_rpl_get_optionsv
  mariadb_free_rpl_event)
 IF(WITH_SSL)
   SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
