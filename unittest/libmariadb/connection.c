@@ -1612,7 +1612,11 @@ static int test_conc366(MYSQL *mysql)
 
   sprintf(query, "CREATE OR REPLACE USER ede@%s IDENTIFIED VIA ed25519 USING 'vubFBzIrapbfHct1/J72dnUryz5VS7lA6XHH8sIx4TI'", this_host);
   rc= mysql_query(mysql, query);
-  check_mysql_rc(rc, mysql);
+  if (rc)
+  {
+    diag("ed25519 not supported");
+    return SKIP;
+  }
 
   my= mysql_init(NULL);
   if (!mysql_real_connect(my, hostname, "ede", "foo", schema, port, socketname, 0))
