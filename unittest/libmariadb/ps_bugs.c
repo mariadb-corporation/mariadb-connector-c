@@ -4783,6 +4783,54 @@ static int test_conc344(MYSQL *mysql)
   return OK;
 }
 
+
+static int test_conc_fraction(MYSQL *mysql)
+{
+  MYSQL_TIME tm;
+  MYSQL_BIND bind[1];
+  char query[1024];
+  int i;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  for (i=0; i < 6; i++)
+  {
+    unsigned long expected= 0;
+    sprintf(query, "SELECT '2018-11-05 22:25:59.%0*d'", i + 1, 9);
+
+    diag("%d: %s", i, query);
+
+    rc= mysql_stmt_prepare(stmt, SL(query));
+    check_stmt_rc(rc, stmt);
+
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_store_result(stmt);
+
+    memset(bind, 0, sizeof(MYSQL_BIND));
+    bind[0].buffer_type= MYSQL_TYPE_DATETIME;
+    bind[0].buffer= &tm;
+    bind[0].buffer_length= sizeof(MYSQL_TIME);
+
+    rc= mysql_stmt_bind_result(stmt, bind);
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_fetch(stmt);
+    check_stmt_rc(rc, stmt);
+
+    diag("second_part: %ld", tm.second_part);
+
+    expected= 9 * powl(10, (5 - i));
+
+    FAIL_IF(tm.second_part != expected, "expected fractional part to be 900000");
+
+  }
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
   {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc334", test_conc334, TEST_CONNECTION_NEW, 0, NULL, NULL},
@@ -4857,6 +4905,7 @@ struct my_tests_st my_tests[] = {
   {"test_sshort_bug", test_sshort_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_stiny_bug", test_stiny_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug53311", test_bug53311, TEST_CONNECTION_NEW, 0, NULL , NULL},
+  {"test_conc_fraction", test_conc_fraction, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

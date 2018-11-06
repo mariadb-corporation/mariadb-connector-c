@@ -198,7 +198,9 @@ double my_atod(const char *number, const char *end, int *error)
 
 my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
 {
-  char *start= alloca(length + 1);
+  char *start= alloca(length + 1),
+       *begin= start,
+       *frac;
   my_bool is_date= 0, is_time= 0;
 
   memset(tm, 0, sizeof(MYSQL_TIME));
@@ -250,11 +252,15 @@ my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
   else
     tm->time_type= MYSQL_TIMESTAMP_TIME;
 
-  if (strchr(start, '.')) /* fractional seconds */
+  if ((frac= strchr(start, '.'))) /* fractional seconds */
   {
+    size_t frac_len= (begin + length) - (frac + 1);
     if (sscanf(start, "%d:%d:%d.%ld", &tm->hour, &tm->minute,
                                  &tm->second,&tm->second_part) < 4)
       goto error;
+    /* conc-371 */
+    if (frac_len < 6)
+      tm->second_part*= pow(10, 6 - frac_len);
   } else {
     if (sscanf(start, "%d:%d:%d", &tm->hour, &tm->minute,
                                  &tm->second) < 3)
