@@ -9,6 +9,7 @@ examples/mysql_affected_rows
 examples/mysql_debug
 examples/test_output
 mysql_config/mysql_config
+mariadb_config/libmariadb.pc
 
 # Keep empty directories:
 # Keep empty directories: >> .gitignore/.git*
