@@ -39,6 +39,13 @@
 #define HAVE_OPENSSL_1_1_API
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
+#define SSL_OP_NO_TLSv1_1 0L
+#define SSL_OP_NO_TLSv1_2 0L
+#define CRYPTO_THREADID_set_callback CRYPTO_set_id_callback
+#define CRYPTO_THREADID_get_callback CRYPTO_get_id_callback
+#endif
+
 #ifdef HAVE_TLS_SESSION_CACHE
 #undef HAVE_TLS_SESSION_CACHE
 #endif
@@ -436,7 +443,7 @@ int ma_tls_get_password(char *buf, int size,
   memset(buf, 0, size);
   if (userdata)
     strncpy(buf, (char *)userdata, size);
-  return strlen(buf);
+  return (int)strlen(buf);
 }
 
 
@@ -616,7 +623,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   SSL_set_bio(ssl, bio, bio);
   BIO_set_fd(bio, mysql_get_socket(mysql), BIO_NOCLOSE);
 #else
-  SSL_set_fd(ssl, mysql_get_socket(mysql));
+  SSL_set_fd(ssl, (int)mysql_get_socket(mysql));
 #endif
 
   while (try_connect && (rc= SSL_connect(ssl)) == -1)
@@ -693,7 +700,7 @@ ssize_t ma_tls_read_async(MARIADB_PVIO *pvio,
 
   for (;;)
   {
-    res= SSL_read((SSL *)ctls->ssl, (void *)buffer, length);
+    res= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
     if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
       return res;
   }
@@ -709,7 +716,7 @@ ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
 
   for (;;)
   {
-    res= SSL_write((SSL *)ctls->ssl, (void *)buffer, length);
+    res= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
     if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
       return res;
   }
@@ -718,7 +725,7 @@ ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  ssize_t rc;
+  int rc;
   MARIADB_PVIO *pvio= ctls->pvio;
 
   while ((rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length)) < 0)
@@ -734,7 +741,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  ssize_t rc;
+  int rc;
   MARIADB_PVIO *pvio= ctls->pvio;
 
   while ((rc= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length)) <= 0)

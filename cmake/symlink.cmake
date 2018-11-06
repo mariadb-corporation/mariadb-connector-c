@@ -8,22 +8,28 @@
 MACRO(create_symlink symlink_name target install_path)
 # According to cmake documentation symlinks work on unix systems only
 IF(UNIX)
-  # Set target components
-  SET(target_lib $<TARGET_FILE_DIR:${target}>/${symlink_name})
-
+  # Get target components 
   ADD_CUSTOM_COMMAND(
-    TARGET ${target} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} ARGS -E remove -f ${target_lib}
-    COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink $<TARGET_FILE_NAME:${target}> ${symlink_name})
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${symlink_name}
+    COMMAND ${CMAKE_COMMAND} ARGS -E remove -f ${symlink_name}
+    COMMAND ${CMAKE_COMMAND} ARGS -E create_symlink $<TARGET_FILE_NAME:${target}> ${symlink_name}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    DEPENDS ${target}
+    )
   
+  ADD_CUSTOM_TARGET(SYM_${symlink_name}
+    ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${symlink_name})
+  SET_TARGET_PROPERTIES(SYM_${symlink_name} PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+
   IF(CMAKE_GENERATOR MATCHES "Xcode")
     # For Xcode, replace project config with install config
     STRING(REPLACE "${CMAKE_CFG_INTDIR}" 
-      "\${CMAKE_INSTALL_CONFIG_NAME}" output ${target_path}/${symlink_name})
+      "\${CMAKE_INSTALL_CONFIG_NAME}" output ${CMAKE_CURRENT_BINARY_DIR}/${symlink_name})
   ENDIF()
 
   # presumably this will be used for libmysql*.so symlinks
-  INSTALL(FILES ${target_lib} DESTINATION ${install_path}
+  INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/${symlink_name} DESTINATION ${install_path}
           COMPONENT SharedLibraries)
 ENDIF()
 ENDMACRO()

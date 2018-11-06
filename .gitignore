@@ -87,6 +87,7 @@ unittest/libmariadb/t_aurora
 unittest/libmariadb/t_conc173
 unittest/libmariadb/thread
 unittest/libmariadb/view
+unittest/libmariadb/conc336
 
 #VS files/directories
 *.vcxproj

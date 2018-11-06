@@ -449,9 +449,7 @@ INSTALL(TARGETS libmariadb
 
 
 IF(WIN32)
-  IF(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
-    SET(PDB_LOCATION ${CC_BINARY_DIR}/libmariadb/RelWIthDebInfo/libmariadb.pdb)
-   INSTALL(FILES ${PDB_LOCATION} DESTINATION "${INSTALL_LIBDIR}"
+   # On Windows, install PDB
+   INSTALL(FILES $<TARGET_PDB_FILE:libmariadb> DESTINATION "${INSTALL_LIBDIR}"
            COMPONENT Development)
-  ENDIF()
 ENDIF()

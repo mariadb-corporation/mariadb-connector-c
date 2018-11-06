@@ -96,8 +96,8 @@ my_bool ma_dynstr_append_quoted(DYNAMIC_STRING *str,
                              const char *append, size_t len,
                              char quote)
 {
-  uint additional= str->alloc_increment;
-  uint lim= additional;
+  size_t additional= str->alloc_increment;
+  size_t lim= additional;
   uint i;
 
   if (ma_dynstr_realloc(str, len + additional + 2))
