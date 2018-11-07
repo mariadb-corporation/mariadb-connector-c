@@ -4821,7 +4821,7 @@ static int test_conc_fraction(MYSQL *mysql)
 
     diag("second_part: %ld", tm.second_part);
 
-    expected= 9 * powl(10, (5 - i));
+    expected= 9 * (unsigned int)powl(10, (5 - i));
 
     FAIL_IF(tm.second_part != expected, "expected fractional part to be 900000");
 

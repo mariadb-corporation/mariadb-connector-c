@@ -260,7 +260,10 @@ my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
       goto error;
     /* conc-371 */
     if (frac_len < 6)
-      tm->second_part*= pow(10, 6 - frac_len);
+    {
+      static ulong mul[]={1000000,100000,10000,1000,100,10};
+      tm->second_part*= mul[frac_len];
+    }
   } else {
     if (sscanf(start, "%d:%d:%d", &tm->hour, &tm->minute,
                                  &tm->second) < 3)
