@@ -255,7 +255,7 @@ my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
   if ((frac= strchr(start, '.'))) /* fractional seconds */
   {
     size_t frac_len= (begin + length) - (frac + 1);
-    if (sscanf(start, "%d:%d:%d.%ld", &tm->hour, &tm->minute,
+    if (sscanf(start, "%d:%d:%d.%6ld", &tm->hour, &tm->minute,
                                  &tm->second,&tm->second_part) < 4)
       goto error;
     /* conc-371 */

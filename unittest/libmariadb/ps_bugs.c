@@ -4792,11 +4792,12 @@ static int test_conc_fraction(MYSQL *mysql)
   int i;
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
+  unsigned long frac= 0;
 
-  for (i=0; i < 6; i++)
+  for (i=0; i < 10; i++, frac=frac*10+i)
   {
     unsigned long expected= 0;
-    sprintf(query, "SELECT '2018-11-05 22:25:59.%0*d'", i + 1, 9);
+    sprintf(query, "SELECT '2018-11-05 22:25:59.%ld'", frac);
 
     diag("%d: %s", i, query);
 
@@ -4821,8 +4822,9 @@ static int test_conc_fraction(MYSQL *mysql)
 
     diag("second_part: %ld", tm.second_part);
 
-    expected= 9 * (unsigned int)powl(10, (5 - i));
+    expected= i > 6 ? 123456 : frac * (unsigned int)powl(10, (6 - i));
 
+    diag("tm.second_part=%ld expected=%ld", tm.second_part, expected);
     FAIL_IF(tm.second_part != expected, "expected fractional part to be 900000");
 
   }
