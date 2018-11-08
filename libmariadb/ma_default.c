@@ -295,11 +295,11 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
       key= optval= 0;
     }
   }
-  if (file)
-    ma_close(file);
   rc= 0;
 
 err:
+  if (file)
+    ma_close(file);
   return rc;
 }
 
