@@ -4651,6 +4651,13 @@ static int test_compress(MYSQL *mysql)
   return OK;
 }
 
+static int equal_MYSQL_TIME(MYSQL_TIME *tm1, MYSQL_TIME *tm2)
+{
+  return tm1->day==tm1->day && tm1->hour==tm1->hour && tm1->minute==tm1->minute &&
+    tm1->month==tm1->month && tm1->neg==tm1->neg && tm1->second==tm1->second &&
+    tm1->second_part==tm1->second_part && tm1->time_type==tm1->time_type && tm1->year==tm1->year;
+}
+
 static int test_codbc138(MYSQL *mysql)
 {
   int rc;
@@ -4662,29 +4669,29 @@ static int test_codbc138(MYSQL *mysql)
   struct st_time_test {
     const char *statement;
     MYSQL_TIME tm;
-  } time_test[]= {
-    {"SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)",
-     {2017,7,28,0,0,0,0L,0, MYSQL_TIMESTAMP_DATE}
+  } time_test[]={
+    { "SELECT DATE_ADD('2018-02-01', INTERVAL -188 DAY)",
+  { 2017,7,28,0,0,0,0L,0, MYSQL_TIMESTAMP_DATE }
     },
-    {"SELECT '2001-02-03 11:12:13.123456'",
-     {2001,2,3,11,12,13,123456L,0, MYSQL_TIMESTAMP_DATETIME}
-    },
-    {"SELECT '-11:12:13'",
-     {0,0,0,11,12,13,0,1, MYSQL_TIMESTAMP_TIME}
-    },
-    {"SELECT ' '",
-     {0,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
-    },
-    {"SELECT '1--'",
-     {1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
-    },
-    {"SELECT '-2001-01-01'",
-     {1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
-    },
-    {"SELECT '-11:00'",
-     {1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR}
-    },
-    {NULL, {0}}
+  { "SELECT '2001-02-03 11:12:13.123456'",
+  { 2001,2,3,11,12,13,123456L,0, MYSQL_TIMESTAMP_DATETIME }
+  },
+  { "SELECT '-11:12:13'",
+  { 0,0,0,11,12,13,0,1, MYSQL_TIMESTAMP_TIME }
+  },
+  { "SELECT ' '",
+  { 0,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  },
+  { "SELECT '1--'",
+  { 1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  },
+  { "SELECT '-2001-01-01'",
+  { 1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  },
+  { "SELECT '-11:00'",
+  { 1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  },
+  { NULL,{ 0 } }
   };
 
   while (time_test[i].statement)
@@ -4711,7 +4718,7 @@ static int test_codbc138(MYSQL *mysql)
       FAIL_UNLESS(tm.time_type == MYSQL_TIMESTAMP_ERROR, "MYSQL_TIMESTAMP_ERROR expected");
     }
     else
-      FAIL_UNLESS(memcmp(&tm, &time_test[i].tm, sizeof(MYSQL_TIME)) == 0, "time_in != time_out");
+      FAIL_UNLESS(equal_MYSQL_TIME(&tm, &time_test[i].tm), "time_in != time_out");
     mysql_stmt_close(stmt);
     i++;
   }
