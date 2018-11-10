@@ -132,49 +132,103 @@ void ps_fetch_from_1_to_8_bytes(MYSQL_BIND *r_param, const MYSQL_FIELD * const f
 }
 /* }}} */
 
-static longlong my_atoll(const char *number, const char *end, int *error)
+static unsigned long long my_strtoull(const char *str, size_t len, const char **end, int *err)
 {
-  char buffer[255];
-  longlong llval= 0;
-  size_t i;
-  *error= 0;
-  /* set error at the following conditions:
-     - string contains invalid character(s)
-     - length > 254
-     - strtoll returns invalid range
-  */
+  unsigned long long val = 0;
+  const char *p = str;
+  const char *end_str = p + len;
 
-  memcpy(buffer, number, MIN((uint)(end - number), 254));
-  buffer[(uint)(end - number)]= 0;
-
-  errno= 0;
-#ifdef _MSC_VER
-  llval =  _strtoi64(buffer, NULL, 10);
-#else
-  llval= strtoll(buffer, NULL, 10);
-#endif
-
-  /* check size */
-  if ((uint)(end - number) > 254)
+  for (; p < end_str; p++)
   {
-    *error= 1;
-    return llval;
+    if (*p < '0' || *p > '9')
+      break;
+
+    if (val > ULONGLONG_MAX /10 || val*10 > ULONGLONG_MAX - (*p - '0'))
+    {
+      *err = ERANGE;
+      break;
+    }
+    val = val * 10 + *p -'0';
   }
 
-  /* check characters */
-  for (i=0; i < strlen(buffer); i++)
+  if (p == str)
+    /* Did not parse anything.*/
+    *err = ERANGE;
+
+  *end = p;
+  return val;
+}
+
+static long long my_strtoll(const char *str, size_t len, const char **end, int *err)
+{
+  unsigned long long uval = 0;
+  const char *p = str;
+  const char *end_str = p + len;
+  int neg;
+
+  while (p < end_str && isspace(*p))
+    p++;
+
+  if (p == end_str)
   {
-     if ((buffer[i] < '0' || buffer[i] > '9') && !isspace(buffer[i]))
-     {
-       *error= 1;
-       return llval;
-     }
+    *err = ERANGE;
+    return 0;
   }
- 
-  /* check strtoll result */ 
-  if (errno == ERANGE)
-    *error= errno;
-  return llval;
+
+  neg = *p == '-';
+  if (neg)
+    p++;
+
+  uval = my_strtoull(p, (end_str - p), &p, err);
+  *end = p;
+  if (*err)
+    return uval;
+
+  if (!neg)
+  {
+    /* Overflow of the long long range. */
+    if (uval > LONGLONG_MAX)
+    {
+      *end = p - 1;
+      uval = LONGLONG_MAX;
+      *err = ERANGE;
+    }
+    return uval;
+  }
+
+  if (uval == (unsigned long long) LONGLONG_MIN)
+    return LONGLONG_MIN;
+
+  if (uval > LONGLONG_MAX)
+  {
+    *end = p - 1;
+    uval = LONGLONG_MIN;
+    *err = ERANGE;
+  }
+
+  return -1LL * uval;
+}
+
+static long long my_atoll(const char *str, const char *end_str, int *error)
+{
+  const char *p=str;
+  const char *end;
+  long long ret;
+  while (p < end_str && isspace(*p))
+    p++;
+  ret = my_strtoll(p, end_str - p, &end, error);
+  return ret;
+}
+
+static unsigned long long my_atoull(const char *str, const char *end_str, int *error)
+{
+  const char *p = str;
+  const char *end;
+  unsigned long long ret;
+  while (p < end_str && isspace(*p))
+    p++;
+  ret = my_strtoull(p, end_str - p, &end, error);
+  return ret;
 }
 
 double my_atod(const char *number, const char *end, int *error)
@@ -196,101 +250,230 @@ double my_atod(const char *number, const char *end, int *error)
   return val;
 }
 
-my_bool str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
+
+/*
+  strtoui() version, that works for non-null terminated strings
+*/
+static unsigned int my_strtoui(const char *str, size_t len, const char **end, int *err)
 {
-  char *start= alloca(length + 1),
-       *begin= start,
-       *frac;
-  my_bool is_date= 0, is_time= 0;
+  unsigned long long ull = my_strtoull(str, len, end, err);
+  if (ull > UINT_MAX)
+    *err = ERANGE;
+  return (unsigned int)ull;
+}
 
-  memset(tm, 0, sizeof(MYSQL_TIME));
-  if (!start)
-    goto error;
-  tm->time_type= MYSQL_TIMESTAMP_NONE;
+/*
+  Parse time, in MySQL format.
 
-  memcpy(start, str, length);
-  start[length]= '\0';
+  the input string needs is in form "hour:minute:second[.fraction]"
+  hour, minute and second can have leading zeroes or not,
+  they are not necessarily 2 chars.
 
-  while (length && isspace(*start)) start++, length--;
+  Hour must be < 838, minute < 60, second < 60
+  Only 6 places of fraction are considered, the value is truncated after 6 places.
+*/
+static const unsigned int frac_mul[] = { 1000000,100000,10000,1000,100,10 };
 
-  if (!length)
-    goto error;
+static int parse_time(const char *str, size_t length, const char **end_ptr, MYSQL_TIME *tm)
+{
+  int err= 0;
+  const char *p = str;
+  const char *end = str + length;
+  size_t frac_len;
+  int ret=1;
 
-  /*  negativ value? */
-  if (*start == '-')
+  tm->hour = my_strtoui(p, end-p, &p, &err);
+  if (err || tm->hour > 838 || p == end || *p != ':' )
+    goto end;
+
+  p++;
+  tm->minute = my_strtoui(p, end-p, &p, &err);
+  if (err || tm->minute > 59 || p == end || *p != ':')
+    goto end;
+
+  p++;
+  tm->second = my_strtoui(p, end-p, &p, &err);
+  if (err || tm->second > 59)
+    goto end;
+
+  ret = 0;
+  tm->second_part = 0;
+
+  if (p == end)
+    goto end;
+
+  /* Check for fractional part*/
+  if (*p != '.')
+    goto end;
+
+  p++;
+  frac_len = MIN(6,end-p);
+
+  tm->second_part = my_strtoui(p, frac_len, &p, &err);
+  if (err)
+    goto end;
+
+  if (frac_len < 6)
+    tm->second_part *= frac_mul[frac_len];
+
+  ret = 0;
+
+  /* Consume whole fractional part, even after 6 digits.*/
+  p += frac_len;
+  while(p < *end_ptr)
   {
-    tm->neg= 1;
-    start++;
-    length--;
+    if (*p < '0' || *p > '9')
+      break;
+    p++;
   }
+end:
+  *end_ptr = p;
+  return ret;
+}
 
-  if (!length)
-    return 1;
 
-  /* Determine time type:
-     MYSQL_TIMESTAMP_DATE: [-]YY[YY].MM.DD
-     MYSQL_TIMESTAMP_DATETIME: [-]YY[YY].MM.DD hh:mm:ss.mmmmmm
-     MYSQL_TIMESTAMP_TIME: [-]hh:mm:ss.mmmmmm
-   */
-  if (strchr(start, '-'))
+/*
+  Parse date, in MySQL format.
+
+  The input string needs is in form "year-month-day"
+  year, month and day can have leading zeroes or not,
+  they do not have fixed length.
+
+  Year must be < 10000, month < 12, day < 32
+
+  Years with 2 digits, are coverted to values 1970-2069 according to 
+  usual rules:
+
+  00-69 is converted to 2000-2069.
+  70-99 is converted to 1970-1999.
+*/
+static int parse_date(const char *str, size_t length, const char **end_ptr, MYSQL_TIME *tm)
+{
+  int err = 0;
+  const char *p = str;
+  const char *end = str + length;
+  int ret = 1;
+
+  tm->year = my_strtoui(p, end - p, &p, &err);
+  if (err || tm->year > 9999 || p == end || *p != '-')
+    goto end;
+
+  if (p - str == 2) // 2-digit year
+    tm->year += (tm->year >= 70) ? 1900 : 2000;
+
+  p++;
+  tm->month = my_strtoui(p,end -p, &p, &err);
+  if (err || tm->month > 12 || p == end || *p != '-')
+    goto end;
+
+  p++;
+  tm->day = my_strtoui(p, end -p , &p, &err);
+  if (err || tm->day > 31)
+    goto end;
+
+  ret = 0;
+
+end:
+  *end_ptr = p;
+  return ret;
+}
+
+/*
+  Parse (not null terminated) string representing 
+  TIME, DATE, or DATETIME into MYSQL_TIME structure
+
+  The supported formats by this functions are
+  - TIME : [-]hours:minutes:seconds[.fraction]
+  - DATE : year-month-day
+  - DATETIME : year-month-day<space>hours:minutes:seconds[.fraction]
+
+  cf https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+
+  Whitespaces are trimmed from the start and end of the string.
+  The function ignores junk at the end of the string.
+
+  Parts of date of time do not have fixed length, so that parsing is compatible with server.
+  However server supports additional formats, e.g YYYYMMDD, HHMMSS, which this function does
+  not support.
+
+*/
+int str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
+{
+  const char *p = str;
+  const char *end = str + length;
+  int is_time = 0;
+
+  if (!p)
+    goto error;
+
+  while (p < end && isspace(*p))
+    p++;
+  while (p < end && isspace(end[-1]))
+    end--;
+
+  if (end -p < 5)
+    goto error;
+
+  if (*p == '-')
   {
-    if (tm->neg)
-      goto error;
-    tm->time_type= MYSQL_TIMESTAMP_DATE;
-    if (sscanf(start, "%d-%d-%d", &tm->year, &tm->month, &tm->day) < 3)
-      goto error;
-    is_date= 1;
-    if (!(start= strchr(start, ' ')))
-      goto check;
+    tm->neg = 1;
+    /* Only TIME can't be negative.*/
+    is_time = 1;
+    p++;
   }
-  if (!strchr(start, ':'))
-    goto check;
-
-  is_time= 1;
-  if (tm->time_type== MYSQL_TIMESTAMP_DATE)
-    tm->time_type= MYSQL_TIMESTAMP_DATETIME;
   else
-    tm->time_type= MYSQL_TIMESTAMP_TIME;
-
-  if ((frac= strchr(start, '.'))) /* fractional seconds */
   {
-    size_t frac_len= (begin + length) - (frac + 1);
-    if (sscanf(start, "%d:%d:%d.%6ld", &tm->hour, &tm->minute,
-                                 &tm->second,&tm->second_part) < 4)
-      goto error;
-    /* conc-371 */
-    if (frac_len < 6)
+    int i;
+    tm->neg = 0;
+    /*
+      Date parsing (in server) accepts leading zeroes, thus position of the delimiters
+      is not fixed. Scan the string to find out what we need to parse.
+    */
+    for (i = 1; p + i < end; i++)
     {
-      static ulong mul[]={1000000,100000,10000,1000,100,10};
-      tm->second_part*= mul[frac_len];
+      if(p[i] == '-' || p [i] == ':')
+      {
+        is_time = p[i] == ':';
+        break;
+      }
     }
-  } else {
-    if (sscanf(start, "%d:%d:%d", &tm->hour, &tm->minute,
-                                 &tm->second) < 3)
-      goto error;
   }
 
-check:
-  if (tm->time_type == MYSQL_TIMESTAMP_NONE)
-    goto error;
-
-  if (is_date)
-  {
-    if (tm->year < 69)
-      tm->year+= 2000;
-    else if (tm->year < 100)
-      tm->year+= 1900;
-    if (tm->day > 31 || tm->month > 12)
-      goto error;
-  }
   if (is_time)
   {
-    if (tm->minute > 59 || tm->second > 59)
+    if (parse_time(p, end - p, &p, tm))
       goto error;
+    
+    tm->year = tm->month = tm->day = 0;
+    tm->time_type = MYSQL_TIMESTAMP_TIME;
+    return 0;
   }
+
+  if (parse_date(p, end - p, &p, tm))
+    goto error;
+
+  if (p == end || p[0] != ' ')
+  {
+    tm->hour = tm->minute = tm->second = tm->second_part = 0;
+    tm->time_type = MYSQL_TIMESTAMP_DATE;
+    return 0;
+  }
+
+  /* Skip space. */
+  p++;
+  if (parse_time(p, end - p, &p, tm))
+    goto error;
+
+  /* In DATETIME, hours must be < 24.*/
+  if (tm->hour > 23)
+   goto error;
+
+  tm->time_type = MYSQL_TIMESTAMP_DATETIME;
   return 0;
+
 error:
-  tm->time_type= MYSQL_TIMESTAMP_ERROR;
+  memset(tm, 0, sizeof(*tm));
+  tm->time_type = MYSQL_TIMESTAMP_ERROR;
   return 1;
 }
 
@@ -327,7 +510,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     break;
     case MYSQL_TYPE_LONGLONG:
     {
-      longlong val= my_atoll(buffer, buffer + len, &error);
+      longlong val= r_param->is_unsigned ? (longlong)my_atoull(buffer, buffer + len, &error) : my_atoll(buffer, buffer + len, &error);
       *r_param->error= error > 0; /* no need to check for truncation */
       longlongstore(r_param->buffer, val);
       r_param->buffer_length= sizeof(longlong);

@@ -4653,9 +4653,9 @@ static int test_compress(MYSQL *mysql)
 
 static int equal_MYSQL_TIME(MYSQL_TIME *tm1, MYSQL_TIME *tm2)
 {
-  return tm1->day==tm1->day && tm1->hour==tm1->hour && tm1->minute==tm1->minute &&
-    tm1->month==tm1->month && tm1->neg==tm1->neg && tm1->second==tm1->second &&
-    tm1->second_part==tm1->second_part && tm1->time_type==tm1->time_type && tm1->year==tm1->year;
+  return tm1->day==tm2->day && tm1->hour==tm2->hour && tm1->minute==tm2->minute &&
+    tm1->month==tm2->month && tm1->neg==tm2->neg && tm1->second==tm2->second &&
+    tm1->second_part==tm2->second_part && tm1->time_type==tm2->time_type && tm1->year==tm2->year;
 }
 
 static int test_codbc138(MYSQL *mysql)
@@ -4676,6 +4676,9 @@ static int test_codbc138(MYSQL *mysql)
   { "SELECT '2001-02-03 11:12:13.123456'",
   { 2001,2,3,11,12,13,123456L,0, MYSQL_TIMESTAMP_DATETIME }
   },
+  { "SELECT '2001-02-03 11:12:13.123'",
+  { 2001,2,3,11,12,13,123000L,0, MYSQL_TIMESTAMP_DATETIME }
+  },
   { "SELECT '-11:12:13'",
   { 0,0,0,11,12,13,0,1, MYSQL_TIMESTAMP_TIME }
   },
@@ -4683,13 +4686,124 @@ static int test_codbc138(MYSQL *mysql)
   { 0,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
   },
   { "SELECT '1--'",
-  { 1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  { 0,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
   },
   { "SELECT '-2001-01-01'",
-  { 1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  { 0,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
   },
   { "SELECT '-11:00'",
-  { 1,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  { 0,0,0,0,0,0,0,0, MYSQL_TIMESTAMP_ERROR }
+  },
+  {"SELECT '1972-04-22'",
+  {1972,4,22, 0,0,0, 0,0,MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT ' 1972-04-22 '",
+  {1972,4,22, 0,0,0, 0,0,MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '1972-04-22a'",
+  {1972,4,22, 0,0,0, 0,0,MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '0000-00-00'",
+  {0,0,0, 0,0,0 ,0,0,MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '1970-01-00'",
+  {1970,1,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '0069-12-31'",
+  {69,12,31, 0,0,0, 0,0, MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '69-12-31'",
+  {2069,12,31, 0,0,0, 0,0, MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '68-12-31'",
+  {2068,12,31, 0,0,0, 0,0, MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '70-01-01'",
+  {1970,1,1, 0,0,0, 0,0, MYSQL_TIMESTAMP_DATE}
+  },
+  {"SELECT '2010-1-1'",
+  {2010,1,1, 0,0,0, 0,0, MYSQL_TIMESTAMP_DATE}
+  },
+
+  {"SELECT '10000-01-01'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1979-a-01'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1979-01-32'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1979-13-01'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1YYY-01-01'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1979-0M-01'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1979-00-'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1979-00'",
+  {0,0,0, 0,0,0, 0,0,MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '1979'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+  {"SELECT '79'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
+  },
+
+  {"SELECT '10:15:00'", 
+  {0,0,0, 10,15,0, 0,0, MYSQL_TIMESTAMP_TIME}
+  },
+  {"SELECT '10:15:01'",
+  {0,0,0, 10,15,1, 0,0, MYSQL_TIMESTAMP_TIME}
+  },
+  {"SELECT '00:00:00'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_TIME}
+  },
+  {"SELECT '0:0:0'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_TIME}
+  },
+  {"SELECT '10:15:01.'",
+  {0,0,0, 10,15,1, 0,0, MYSQL_TIMESTAMP_TIME},
+  },
+  {"SELECT '25:59:59'",
+  {0,0,0, 25,59,59, 0,0, MYSQL_TIMESTAMP_TIME},
+  },
+  {"SELECT '838:59:59'",
+  {0,0,0, 838,59,59, 0,0, MYSQL_TIMESTAMP_TIME},
+  },
+  {"SELECT '-838:59:59'",
+  {0,0,0, 838,59,59, 0, 1, MYSQL_TIMESTAMP_TIME},
+  },
+ 
+  {"SELECT '00:60:00'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
+  },
+  {"SELECT '00:60:00'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
+  },
+  {"SELECT '839:00:00'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
+  },
+  {"SELECT '-839:00:00'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
+  },
+  {"SELECT '-10:15:a'",
+  { 0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR },
+  },
+  {"SELECT '1999-12-31 23:59:59.9999999'",
+  {1999,12,31, 23,59,59, 999999, 0, MYSQL_TIMESTAMP_DATETIME},
+  },
+  {"SELECT '00-08-11 8:46:40'", 
+  {2000,8,11, 8,46,40, 0,0, MYSQL_TIMESTAMP_DATETIME},
+  },
+  {"SELECT '1999-12-31 25:59:59.999999'",
+  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR },
   },
   { NULL,{ 0 } }
   };
