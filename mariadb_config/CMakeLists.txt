@@ -59,5 +59,5 @@ INSTALL(TARGETS mariadb_config
         COMPONENT Development)
 
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmariadb.pc
-        DESTINATION "lib/pkgconfig"
+        DESTINATION "${INSTALL_PCDIR}"
         COMPONENT Development)
