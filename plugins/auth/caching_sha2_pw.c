@@ -348,7 +348,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     der_buffer_len= packet_length;
     /* Load pem and convert it to binary object. New length will be returned
        in der_buffer_len */
-    if (!(der_buffer= ma_load_pem(filebuffer ? filebuffer : packet, &der_buffer_len)))
+    if (!(der_buffer= ma_load_pem(filebuffer ? filebuffer : (char *)packet, &der_buffer_len)))
       goto error;
 
     /* Create context and load public key */
