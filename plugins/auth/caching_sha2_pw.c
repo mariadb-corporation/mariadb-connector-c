@@ -385,7 +385,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #elif defined(HAVE_SCHANNEL)
 	ZeroMemory(&paddingInfo, sizeof(paddingInfo));
 	paddingInfo.pszAlgId = BCRYPT_SHA1_ALGORITHM;
-    if ((rc= BCryptEncrypt(pubkey, passwd, pwlen, &paddingInfo, NULL, 0, rsa_enc_pw,
+    if ((rc= BCryptEncrypt(pubkey, (PUCHAR)passwd, pwlen, &paddingInfo, NULL, 0, rsa_enc_pw,
                      MAX_PW_LEN, &rsa_size, BCRYPT_PAD_OAEP)))
       goto error;
 
