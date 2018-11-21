@@ -240,7 +240,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #if !defined(HAVE_GNUTLS)
   char passwd[MAX_PW_LEN];
   unsigned char rsa_enc_pw[MAX_PW_LEN];
-  unsigned int rsa_size;
+  ULONG rsa_size;
   unsigned int pwlen, i;
   char *filebuffer= NULL;
 #endif
