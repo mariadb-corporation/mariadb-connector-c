@@ -256,7 +256,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   DWORD der_buffer_len= 0;
   CERT_PUBLIC_KEY_INFO *publicKeyInfo= NULL;
   DWORD ParamSize= sizeof(DWORD);
-  int publicKeyInfoLen;
+  DWORD publicKeyInfoLen;
 #endif
 
   /* read error */
