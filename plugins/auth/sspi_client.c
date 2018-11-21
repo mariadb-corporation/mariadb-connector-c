@@ -79,7 +79,7 @@ int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO
 
   if (!mech || strcmp(mech, "Negotiate") != 0)
   {
-    mech= "Kerberos";
+    mech= (char *)"Kerberos";
   }
 
   sspi_err = AcquireCredentialsHandle(
