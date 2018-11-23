@@ -13,6 +13,13 @@ git config cmake.update-submodules no
 # build latest server with latest C/C as libmariadb
 # skip to build some storage engines to speed up the build
 cmake -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
+[ -f CMakeFiles/CMakeError.log ] && (
+  echo CMakeFiles/CMakeError.log:
+  cat CMakeFiles/CMakeError.log
+  echo CMakeFiles/CMakeOutput.log:
+  cat CMakeFiles/CMakeOutput.log
+)
+
 make -j9
 
 cd mysql-test/
