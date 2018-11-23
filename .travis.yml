@@ -8,6 +8,14 @@ services: docker
 addons:
   hosts:
     - mariadb.example.com
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-7
+    packages:
+      - clang-7
+      - llvm-7-dev
+      - gcc-8
 
 before_script:
   # Disable services enabled by default
@@ -21,13 +29,22 @@ before_install:
   - mkdir tmp
   - .travis/gen-ssl.sh mariadb.example.com tmp
   - export SSLCERT=$PROJ_PATH/tmp
+
 matrix:
   allow_failures:
     - env: DB=build
+      compiler: gcc
+    - env: DB=build CFLAGS='-Wno-error=implicit-fallthrough'
+      compiler: gcc-8
     - env: SERVER_BRANCH=10.4
     - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
   include:
     - env: DB=build
+      compiler: gcc
+    - env: DB=build CFLAGS='-Wno-error=implicit-fallthrough'
+      compiler: gcc-8
+    - env: DB=build
+      compiler: clang-7
     - env: DB=mysql:5.7
     - env: DB=mariadb:5.5
     - env: DB=mariadb:10.0
