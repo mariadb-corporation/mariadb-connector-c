@@ -460,11 +460,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   if ((mysql->options.ssl_cipher &&
         mysql->options.ssl_cipher[0] != 0))
    {
-     if(
-#ifdef TLS1_3_VERSION
-      SSL_set_ciphersuites(ssl, mysql->options.ssl_cipher) == 0 &&
-#endif
-      SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
+     if(SSL_set_cipher_list(ssl, mysql->options.ssl_cipher) == 0)
     goto error;
    }
 
