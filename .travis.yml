@@ -34,6 +34,8 @@ matrix:
     - env: DB=mariadb:10.1
     - env: DB=mariadb:10.2
     - env: DB=mariadb:10.3
+    - env: SERVER_BRANCH=10.2
+    - env: SERVER_BRANCH=10.2 TEST_OPTION=--ps-protocol
     - env: SERVER_BRANCH=10.3
     - env: SERVER_BRANCH=10.3 TEST_OPTION=--ps-protocol
     - env: SERVER_BRANCH=10.4
