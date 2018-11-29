@@ -16,4 +16,4 @@ cmake -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB
 make -j9
 
 cd mysql-test/
-./mysql-test-run.pl --suite=main ${TEST_OPTION} --parallel=auto
+./mysql-test-run.pl --suite=main ${TEST_OPTION} --parallel=auto --skip-test=session_tracker_last_gtid
