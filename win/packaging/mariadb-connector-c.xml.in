@@ -55,7 +55,7 @@
       <File Id="libdll" Name="libmariadb.dll"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.dll" />
       <File Id="libdllimp" Name="libmariadb.lib"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.lib" />
       <File Id="libstatic" Name="mariadbclient.lib"  DiskId="1"  Source="@CLIENT_LIB_DIR@/mariadbclient.lib" />
-      <File Id="libpdb" Name="libmariadb.pdf"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.pdb" />
+      <File Id="libpdb" Name="libmariadb.pdb"  DiskId="1"  Source="@CLIENT_LIB_DIR@/libmariadb.pdb" />
     </Component>
     <Component Id="Binaries" Guid="4b074269-7d81-11e5-8cf9-a0a8cd7fad46" KeyPath="yes" DiskId="1" Directory="inst_bin" Win64="@IS_WIN64@">
       <!--
