@@ -31,10 +31,12 @@ FOREACH(plugin ${PLUGINS_DYNAMIC})
   # Get dependencies
   SET(DYNAMIC_TARGETS ${DYNAMIC_TARGETS} ${TARGET})
   SET(FILE ${CC_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET}.dll)
+  SET(PDB ${CC_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET}.pdb)
   MESSAGE(STATUS "Location for ${TARGET}: ${FILE}")
   # build file list
   STRING(REPLACE "$(Configuration)" "RelWithDebInfo" FILE ${FILE})
   SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"${TARGET}.dll\" Name=\"${TARGET}.dll\" DiskId=\"1\" Source=\"${FILE}\"/>\n")
+  SET(MARIADB_PLUGINS "${MARIADB_PLUGINS} <File Id=\"${TARGET}.pdb\" Name=\"${TARGET}.pdb\" DiskId=\"1\" Source=\"${PDB}\"/>\n")
 ENDFOREACH()
 
 FOREACH(src ${WIX_INCLUDES})
