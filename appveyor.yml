@@ -1,31 +1,31 @@
-version: 3.0.4;{build}
+version: 3.0.8;{build}
 branches:
   only:
   - master
 environment:
   matrix:
-    - DB: '10.2.12'
+    - DB: '10.2.18'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '10.2.12'
+    - DB: '10.2.18'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       CMAKE_PARAM: 'Visual Studio 14 2015 Win64'
-    - DB: '10.2.12'
+    - DB: '10.2.18'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017'
-    - DB: '10.2.12'
+    - DB: '10.2.18'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       CMAKE_PARAM: 'Visual Studio 14 2015'
-    - DB: '10.3.4'
+    - DB: '10.3.11'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '10.1.30'
+    - DB: '10.1.37'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '10.0.33'
+    - DB: '10.0.37'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '5.5.59'
+    - DB: '5.5.62'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
 
