@@ -135,7 +135,7 @@ SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF
 
 IF(CMAKE_COMPILER_IS_GNUCC)
   INCLUDE(CheckCCompilerFlag)
-  SET(GCC_FLAGS -Wunused -Wlogical-op -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement)
+  SET(GCC_FLAGS -Wunused -Wlogical-op -Wno-uninitialized  -Wall -Wextra -Wformat-security -Wno-init-self -Wwrite-strings -Wshift-count-overflow -Wdeclaration-after-statement -Wno-undef -Wno-unknown-pragmas)
   FOREACH(GCC_FLAG ${GCC_FLAGS})
     CHECK_C_COMPILER_FLAG("${GCC_FLAG}" HAS_${GCC_FLAG}_FLAG)
     IF(${HAS_${GCC_FLAG}_FLAG})
@@ -345,7 +345,7 @@ CONFIGURE_FILE(${CC_SOURCE_DIR}/include/mariadb_version.h.in
 INCLUDE_DIRECTORIES(${CC_BINARY_DIR}/include)
 
 IF(WIN32)
-  SET(SYSTEM_LIBS ws2_32 advapi32 kernel32 shlwapi crypt32)
+  SET(SYSTEM_LIBS ws2_32 advapi32 kernel32 shlwapi crypt32 ${LIBZ})
 ELSE()
   SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBPTHREAD} ${LIBDL} ${LIBM})
   IF(ICONV_EXTERNAL)
