@@ -18,6 +18,27 @@ REGISTER_PLUGIN(TARGET dialog
                 SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c
                         ${CC_SOURCE_DIR}/libmariadb/get_password.c)
 
+# SHA256 caching plugin for MySQL 8.0 connection
+IF(WITH_SSL)
+  IF(${WITH_SSL} STREQUAL "OPENSSL")
+    SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/openssl_crypt.c)
+    SET(CACHING_SHA2_LIBS ${SSL_LIBRARIES})
+  ELSEIF(${WITH_SSL} STREQUAL "SCHANNEL")
+    SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/win_crypt.c)
+    SET(CACHING_SHA2_LIBS crypt32 bcrypt)
+  ELSEIF(${WITH_SSL} STREQUAL "GNUTLS")
+    SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/gnutls_crypt.c)
+    SET(CACHING_SHA2_LIBS ${SSL_LIBRARIES})
+  ENDIF()
+  REGISTER_PLUGIN(TARGET caching_sha2_password
+                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                CONFIGURATIONS DYNAMIC STATIC OFF
+                DEFAULT DYNAMIC
+                SOURCES ${CC_SOURCE_DIR}/plugins/auth/caching_sha2_pw.c 
+                        ${CRYPT_SOURCE}
+                LIBRARIES ${CACHING_SHA2_LIBS})
+ENDIF()
+
 #GSSAPI client authentication plugin
 IF(NOT WIN32)
   INCLUDE(${CC_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
