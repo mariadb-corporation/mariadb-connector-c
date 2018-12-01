@@ -3013,6 +3013,10 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MYSQL_OPT_TLS_VERSION:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, tls_version, (char *)arg1);
     break;
+  case MARIADB_OPT_IO_WAIT:
+    CHECK_OPT_EXTENSION_SET(&mysql->options);
+    mysql->options.extension->io_wait = (int(*)(my_socket, my_bool, int))arg1;
+    break;
   default:
     va_end(ap);
     return(-1);
@@ -3226,6 +3230,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MARIADB_OPT_CONNECTION_HANDLER:
     *((char **)arg)= mysql->options.extension ? mysql->options.extension->connection_handler : NULL;
+    break;
+  case MARIADB_OPT_IO_WAIT:
+    *((int(**)(my_socket, my_bool, int))arg) = mysql->options.extension ? mysql->options.extension->io_wait : NULL;
     break;
   default:
     va_end(ap);
