@@ -234,7 +234,7 @@ static int test_frm_bug(MYSQL *mysql)
   MYSQL_RES  *result;
   MYSQL_ROW  row;
   FILE       *test_file;
-  char       data_dir[FN_REFLEN];
+  char       data_dir[64];
   char       test_frm[FN_REFLEN];
   int        rc;
 
@@ -269,8 +269,7 @@ static int test_frm_bug(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
-  sprintf(test_frm, "%s/%s/test_frm_bug.frm", data_dir, schema);
-
+  snprintf(test_frm, FN_REFLEN - 1,"%s/%s/test_frm_bug.frm", data_dir, schema);
 
   if (!(test_file= fopen(test_frm, "w")))
   {
