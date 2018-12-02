@@ -18,6 +18,46 @@ REGISTER_PLUGIN(TARGET dialog
                 SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c
                         ${CC_SOURCE_DIR}/libmariadb/get_password.c)
 
+#ED25519 client authentication plugin
+SET(REF10_DIR ${CC_SOURCE_DIR}/plugins/auth/ref10)
+SET(REF10_SOURCES ${REF10_DIR}/fe_0.c ${REF10_DIR}/fe_isnegative.c ${REF10_DIR}/fe_sub.c ${REF10_DIR}/ge_p1p1_to_p2.c
+                  ${REF10_DIR}/ge_p3_to_cached.c ${REF10_DIR}/open.c ${REF10_DIR}/fe_1.c ${REF10_DIR}/fe_isnonzero.c
+                  ${REF10_DIR}/fe_tobytes.c ${REF10_DIR}/ge_p1p1_to_p3.c ${REF10_DIR}/ge_p3_to_p2.c ${REF10_DIR}/sc_muladd.c
+                  ${REF10_DIR}/fe_add.c ${REF10_DIR}/fe_mul.c ${REF10_DIR}/ge_add.c ${REF10_DIR}/ge_p2_0.c ${REF10_DIR}/ge_precomp_0.c
+                  ${REF10_DIR}/sc_reduce.c ${REF10_DIR}/fe_cmov.c ${REF10_DIR}/fe_neg.c ${REF10_DIR}/ge_double_scalarmult.c 
+                  ${REF10_DIR}/ge_p2_dbl.c ${REF10_DIR}/ge_scalarmult_base.c ${REF10_DIR}/sign.c ${REF10_DIR}/fe_copy.c
+                  ${REF10_DIR}/fe_pow22523.c ${REF10_DIR}/ge_frombytes.c ${REF10_DIR}/ge_p3_0.c ${REF10_DIR}/ge_sub.c
+                  ${REF10_DIR}/verify.c ${REF10_DIR}/fe_frombytes.c ${REF10_DIR}/fe_sq2.c ${REF10_DIR}/ge_madd.c
+                  ${REF10_DIR}/ge_p3_dbl.c ${REF10_DIR}/ge_tobytes.c ${REF10_DIR}/fe_invert.c ${REF10_DIR}/fe_sq.c
+                  ${REF10_DIR}/ge_msub.c ${REF10_DIR}/ge_p3_tobytes.c ${REF10_DIR}/keypair.c)
+
+IF(WITH_SSL)
+  IF(${WITH_SSL} STREQUAL "OPENSSL")
+    SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/openssl_crypt.c)
+    SET(ED25519_LIBS ${SSL_LIBRARIES})
+  ELSEIF(${WITH_SSL} STREQUAL "SCHANNEL")
+    SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/win_crypt.c)
+    SET(ED_25519_LIBS crypt32)
+  ELSE()
+    SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/gnutls_crypt.c)
+    SET(ED25519_LIBS ${SSL_LIBRARIES})
+  ENDIF()
+  REGISTER_PLUGIN(TARGET client_ed25519
+                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                CONFIGURATIONS DYNAMIC STATIC OFF
+                DEFAULT DYNAMIC
+                SOURCES ${CC_SOURCE_DIR}/plugins/auth/ed25519.c 
+                        ${REF10_SOURCES}
+                        ${CRYPT_SOURCE}
+                INCLUDES ${REF10_DIR}
+                COMPILE_OPTIONS -DMYSQL_CLIENT=1
+                LIBRARIES ${ED25519_LIBS})
+ENDIF()
+
+#GSSAPI client authentication plugin
+IF(NOT WIN32)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
+ENDIF()
 # SHA256 caching plugin for MySQL 8.0 connection
 IF(WITH_SSL)
   IF(${WITH_SSL} STREQUAL "OPENSSL")
