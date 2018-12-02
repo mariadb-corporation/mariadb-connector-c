@@ -13,3 +13,5 @@ maria-developers@lists.launchpad.org.
 To report a bug you'll need to signup for an account at https://jira.mariadb.org
 
 The MariaDB team
+
+This is a test branch for MDEV-17688, this commit is not to be merged anywhere
