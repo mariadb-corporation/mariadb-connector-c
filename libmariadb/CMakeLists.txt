@@ -23,7 +23,13 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_optionsv
  mysql_ps_fetch_functions
  mariadb_reconnect
- mysql_stmt_warning_count)
+ mysql_stmt_warning_count
+ mariadb_rpl_open
+ mariadb_rpl_close
+ mariadb_rpl_fetch
+ mariadb_rpl_optionsv
+ mariadb_rpl_get_optionsv
+ mariadb_free_rpl_event)
 IF(WITH_SSL)
   SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
 ENDIF()
@@ -289,6 +295,7 @@ ma_loaddata.c
 ma_stmt_codec.c
 ma_string.c
 ma_dtoa.c
+mariadb_rpl.c
 ${CC_BINARY_DIR}/libmariadb/ma_client_plugin.c
 ma_io.c
 ${SSL_SOURCES}

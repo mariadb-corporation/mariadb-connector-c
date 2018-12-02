@@ -158,6 +158,7 @@ const char *mariadb_client_errors[] =
   /* 5005 */ "Error reading file '%s' (Errcode: %d)",
   /* 5006 */ "Bulk operation without parameters is not supported",
   /* 5007 */ "Invalid statement handle",
+  /* 5008 */ "Unsupported version %d. Supported versions are in the range %d - %d",
   ""
 };
 
