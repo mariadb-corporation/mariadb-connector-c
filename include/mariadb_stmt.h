@@ -293,3 +293,4 @@ unsigned int STDCALL mysql_stmt_field_count(MYSQL_STMT *stmt);
 int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt);
 my_bool STDCALL mysql_stmt_more_results(MYSQL_STMT *stmt);
 int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt, const char *stmt_str, size_t length);
+MYSQL_FIELD * STDCALL mariadb_stmt_fetch_fields(MYSQL_STMT *stmt);

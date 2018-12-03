@@ -2478,3 +2478,10 @@ fail:
   stmt->state= MYSQL_STMT_INITTED;
   return 1;
 }
+
+MYSQL_FIELD * STDCALL mariadb_stmt_fetch_fields(MYSQL_STMT *stmt)
+{
+  if (stmt)
+    return stmt->fields;
+  return NULL;
+}
