@@ -62,10 +62,15 @@ enum enum_stmt_attr_type
   STMT_ATTR_UPDATE_MAX_LENGTH,
   STMT_ATTR_CURSOR_TYPE,
   STMT_ATTR_PREFETCH_ROWS,
+
+  /* MariaDB only */
   STMT_ATTR_PREBIND_PARAMS=200,
   STMT_ATTR_ARRAY_SIZE,
   STMT_ATTR_ROW_SIZE,
-  STMT_ATTR_STATE
+  STMT_ATTR_STATE,
+  STMT_ATTR_CB_USER_DATA,
+  STMT_ATTR_CB_PARAM,
+  STMT_ATTR_CB_RESULT
 };
 
 enum enum_cursor_type
@@ -195,6 +200,8 @@ struct st_mysqlnd_stmt_methods
 };
 
 typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row);
+typedef void (*ps_result_callback)(MYSQL_STMT *stmt, unsigned int column, unsigned char **row);
+typedef my_bool *(*ps_param_callback)(MYSQL_STMT *stmt, MYSQL_BIND *bind, unsigned int row_nr);
 
 struct st_mysql_stmt
 {
@@ -234,6 +241,9 @@ struct st_mysql_stmt
   unsigned int             array_size;
   size_t row_size;
   unsigned int prebind_params;
+  void *user_data;
+  ps_result_callback result_callback;
+  ps_param_callback param_callback;
 };
 
 typedef void (*ps_field_fetch_func)(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row);

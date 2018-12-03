@@ -375,10 +375,15 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
     /* save row position for fetching values in pieces */
     if (*null_ptr & bit_offset)
     {
-      if (!stmt->bind[i].is_null)
-        stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
-      *stmt->bind[i].is_null= 1;
-      stmt->bind[i].u.row_ptr= NULL;
+      if (stmt->result_callback)
+        stmt->result_callback(stmt, i, NULL);
+      else
+      {
+        if (!stmt->bind[i].is_null)
+          stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
+        *stmt->bind[i].is_null= 1;
+        stmt->bind[i].u.row_ptr= NULL;
+      }
     } else
     {
       stmt->bind[i].u.row_ptr= row;
@@ -387,14 +392,18 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
       {
         unsigned long length;
 
-        if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
-          length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
-        else
-          length= net_field_length(&row);
-        row+= length;
-        if (!stmt->bind[i].length)
-          stmt->bind[i].length= &stmt->bind[i].length_value;
-        *stmt->bind[i].length= stmt->bind[i].length_value= length;
+        if (stmt->result_callback)
+          stmt->result_callback(stmt, i, &row);
+        else {
+          if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
+            length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
+          else
+            length= net_field_length(&row);
+          row+= length;
+          if (!stmt->bind[i].length)
+            stmt->bind[i].length= &stmt->bind[i].length_value;
+          *stmt->bind[i].length= stmt->bind[i].length_value= length;
+        }
       }
       else
       {
@@ -928,6 +937,11 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
     /* calculate data size */
     for (j=0; j < stmt->array_size; j++)
     {
+      /* If callback for parameters was specified, we need to
+         update bind information for new row */
+      if (stmt->param_callback)
+        stmt->param_callback(stmt, stmt->params, j);
+
       if (mysql_stmt_skip_paramset(stmt, j))
         continue;
 
@@ -1049,6 +1063,9 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     case STMT_ATTR_ROW_SIZE:
       *(size_t *)value= stmt->row_size;
       break;
+    case STMT_ATTR_CB_USER_DATA:
+      *((void **)value) = stmt->user_data;
+      break;
     default:
       return(1);
   }
@@ -1090,6 +1107,15 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     break;
   case STMT_ATTR_ROW_SIZE:
     stmt->row_size= *(size_t *)value;
+    break;
+  case STMT_ATTR_CB_RESULT:
+    stmt->result_callback= (ps_result_callback)value;
+    break;
+  case STMT_ATTR_CB_PARAM:
+    stmt->param_callback= (ps_param_callback)value;
+    break;
+  case STMT_ATTR_CB_USER_DATA:
+    stmt->user_data= (void *)value;
     break;
   default:
     SET_CLIENT_STMT_ERROR(stmt, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
