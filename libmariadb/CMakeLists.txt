@@ -24,6 +24,7 @@ SET(MARIADB_LIB_SYMBOLS
  mysql_ps_fetch_functions
  mariadb_reconnect
  mysql_stmt_warning_count
+ mariadb_stmt_fetch_fields
  mariadb_rpl_open
  mariadb_rpl_close
  mariadb_rpl_fetch

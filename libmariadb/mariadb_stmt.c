@@ -376,7 +376,7 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
     if (*null_ptr & bit_offset)
     {
       if (stmt->result_callback)
-        stmt->result_callback(stmt, i, NULL);
+        stmt->result_callback(stmt->user_data, i, NULL);
       else
       {
         if (!stmt->bind[i].is_null)
@@ -393,7 +393,7 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
         unsigned long length;
 
         if (stmt->result_callback)
-          stmt->result_callback(stmt, i, &row);
+          stmt->result_callback(stmt->user_data, i, &row);
         else {
           if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
             length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
@@ -477,6 +477,8 @@ static long ma_get_length(MYSQL_STMT *stmt, unsigned int param_nr, unsigned long
 {
   if (!stmt->params[param_nr].length)
     return 0;
+  if (stmt->param_callback)
+    return (long)*stmt->params[param_nr].length;
   if (stmt->row_size)
     return *(long *)((char *)stmt->params[param_nr].length + row_nr * stmt->row_size);
   else
@@ -489,6 +491,8 @@ static signed char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, uns
       !stmt->array_size ||
       !stmt->params[param_nr].u.indicator)
     return 0;
+  if (stmt->param_callback)
+    return *stmt->params[param_nr].u.indicator;
   if (stmt->row_size)
     return *((char *)stmt->params[param_nr].u.indicator + (row_nr * stmt->row_size));
   return stmt->params[param_nr].u.indicator[row_nr];
@@ -497,6 +501,9 @@ static signed char ma_get_indicator(MYSQL_STMT *stmt, unsigned int param_nr, uns
 static void *ma_get_buffer_offset(MYSQL_STMT *stmt, enum enum_field_types type,
                                   void *buffer, unsigned long row_nr)
 {
+  if (stmt->param_callback)
+    return buffer;
+
   if (stmt->array_size)
   {
     int len;
@@ -940,7 +947,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
       /* If callback for parameters was specified, we need to
          update bind information for new row */
       if (stmt->param_callback)
-        stmt->param_callback(stmt, stmt->params, j);
+        stmt->param_callback(stmt->user_data, stmt->params, j);
 
       if (mysql_stmt_skip_paramset(stmt, j))
         continue;
@@ -981,15 +988,21 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
           case MYSQL_TYPE_BIT:
           case MYSQL_TYPE_SET:
             size+= 5; /* max 8 bytes for size */
-            if (indicator == STMT_INDICATOR_NTS ||
-              (!stmt->row_size && ma_get_length(stmt,i,j) == -1))
+            if (!stmt->param_callback)
             {
-                size+= strlen(ma_get_buffer_offset(stmt,
-                                                   stmt->params[i].buffer_type,
-                                                   stmt->params[i].buffer,j));
+              if (indicator == STMT_INDICATOR_NTS ||
+                (!stmt->row_size && ma_get_length(stmt,i,j) == -1))
+              {
+                  size+= strlen(ma_get_buffer_offset(stmt,
+                                                     stmt->params[i].buffer_type,
+                                                     stmt->params[i].buffer,j));
+              }
+              else
+                size+= (size_t)ma_get_length(stmt, i, j);
             }
-            else
-              size+= (size_t)ma_get_length(stmt, i, j);
+            else {
+              size+= stmt->params[i].buffer_length;
+            }
             break;
           default:
             size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
@@ -1008,8 +1021,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
 
         int1store(p, indicator > 0 ? indicator : 0);
         p++;
-        if (has_data)
-          store_param(stmt, i, &p, j);
+        if (has_data) {
+          store_param(stmt, i, &p, (stmt->param_callback) ? 0 : j);
+        }
       }
     }
 
