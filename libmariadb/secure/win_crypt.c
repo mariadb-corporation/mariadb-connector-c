@@ -19,6 +19,7 @@
 #include <windows.h>
 #include <bcrypt.h>
 #include <ma_crypt.h>
+#include <malloc.h>
 
 #pragma comment(lib, "bcrypt.lib")
 
