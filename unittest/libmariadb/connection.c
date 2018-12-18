@@ -1618,7 +1618,7 @@ static int test_conc366(MYSQL *mysql)
   }
 
 
-  sprintf(query, "CREATE OR REPLACE USER ede@%s IDENTIFIED VIA ed25519 USING 'vubFBzIrapbfHct1/J72dnUryz5VS7lA6XHH8sIx4TI'", this_host);
+  sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING 'vubFBzIrapbfHct1/J72dnUryz5VS7lA6XHH8sIx4TI'", this_host);
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
@@ -1629,6 +1629,12 @@ static int test_conc366(MYSQL *mysql)
     return FAIL;
   }
   mysql_close(my);
+
+  sprintf(query, "DROP USER 'ede'@'%s'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+  
+
   return OK;
 }
 
