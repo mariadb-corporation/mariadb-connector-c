@@ -4689,7 +4689,7 @@ static int test_str_to_int(MYSQL *mysql)
 
     stmt= mysql_stmt_init(mysql);
 
-    rc= mysql_stmt_prepare(stmt, sql, strlen(sql));
+    rc= mysql_stmt_prepare(stmt, sql, (ulong)strlen(sql));
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
