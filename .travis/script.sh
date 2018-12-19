@@ -51,7 +51,7 @@ export MYSQL_TEST_DB=ctest
 export MYSQL_TEST_USER=bob
 export MYSQL_TEST_PORT=3305
 export MYSQL_TEST_TRAVIS=1
-export MARIADB_PLUGIN_DIR=$PWD/plugins/lib
+export MARIADB_PLUGIN_DIR=$PWD
 
 ## list ciphers
 openssl ciphers -v
