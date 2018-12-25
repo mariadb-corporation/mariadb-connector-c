@@ -1444,7 +1444,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     mysql->server_language= uint1korr(end + 2);
     mysql->server_status= uint2korr(end + 3);
-    mysql->server_capabilities|= (unsigned int)(uint2korr(end + 5) << 16);
+    mysql->server_capabilities|= (unsigned int)(uint2korr(end + 5)) << 16;
     pkt_scramble_len= uint1korr(end + 7);
 
     /* check if MariaD2B specific capabilities are available */
