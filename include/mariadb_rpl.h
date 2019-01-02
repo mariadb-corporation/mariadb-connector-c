@@ -201,7 +201,7 @@ struct st_mariadb_rpl_table_map_event {
   MARIADB_STRING database;
   MARIADB_STRING table;
   unsigned int column_count;
-  char *column_types;
+  MARIADB_STRING column_types;
   MARIADB_STRING metadata;
   char *null_indicator;
 };
