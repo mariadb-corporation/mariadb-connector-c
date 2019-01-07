@@ -1944,8 +1944,10 @@ mysql_close(MYSQL *mysql)
     /* Clear pointers for better safety */
     memset((char*) &mysql->options, 0, sizeof(mysql->options));
 
-    if (mysql->extension)
+    if (mysql->extension) {
       free(mysql->extension);
+      mysql->extension= NULL;
+    }
 
     mysql->net.pvio= 0;
     if (mysql->free_me)
