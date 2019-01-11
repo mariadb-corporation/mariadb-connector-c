@@ -965,7 +965,7 @@ int ma_tls_start(char *errmsg, size_t errmsg_len)
   if (ma_tls_initialized)
     return 0;
 
-  pthread_mutex_init(&LOCK_gnutls_config,MY_MUTEX_INIT_FAST);
+  pthread_mutex_init(&LOCK_gnutls_config,NULL);
   pthread_mutex_lock(&LOCK_gnutls_config);
 
   if ((rc= gnutls_global_init()) != GNUTLS_E_SUCCESS)
