@@ -44,9 +44,10 @@ MATH(EXPR MARIADB_PACKAGE_VERSION_ID "${CPACK_PACKAGE_VERSION_MAJOR} * 10000 +
 
 MACRO(ADD_OPTION _name _text _default)
   IF(NOT DEFINED ${_name})
-    SET(${_name} ${_default})
+    OPTION(${OPT}${_name} "${_text}" "${_default}")
+  ELSE()
+    OPTION(${OPT}${_name} "${_text}" "${${_name}}")
   ENDIF()
-  OPTION(${OPT}${_name} "${_text}" "${${_name}}")
 ENDMACRO()
 
 ### Options ###
