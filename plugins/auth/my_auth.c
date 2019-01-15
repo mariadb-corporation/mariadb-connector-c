@@ -543,8 +543,11 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   mpvio.mysql= mysql;
   mpvio.packets_read= mpvio.packets_written= 0;
   mpvio.db= db;
+
+retry:
   mpvio.plugin= auth_plugin;
 
+  mysql->net.read_pos[0]= 0;
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);
 
   if (res > CR_OK && mysql->net.read_pos[0] != 254)
@@ -566,7 +569,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   /* read the OK packet (or use the cached value in mysql->net.read_pos */
   if (res == CR_OK)
     pkt_length= ma_net_safe_read(mysql);
-  else /* res == CR_OK_HANDSHAKE_COMPLETE */
+  else /* res == CR_OK_HANDSHAKE_COMPLETE or an error */
     pkt_length= mpvio.last_read_packet_len;
 
   if (pkt_length == packet_error)
@@ -601,32 +604,8 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                          auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
       return 1;
 
-    mpvio.plugin= auth_plugin;
-    res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);
+    goto retry;
 
-    if (res > CR_OK)
-    {
-      if (res > CR_ERROR)
-        my_set_error(mysql, res, SQLSTATE_UNKNOWN, 0);
-      else
-        if (!mysql->net.last_errno)
-          my_set_error(mysql, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, 0);
-      return 1;
-    }
-
-    if (res != CR_OK_HANDSHAKE_COMPLETE)
-    {
-      /* Read what server thinks about out new auth message report */
-      if (ma_net_safe_read(mysql) == packet_error)
-      {
-        if (mysql->net.last_errno == CR_SERVER_LOST)
-          my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
-                              ER(CR_SERVER_LOST_EXTENDED),
-                              "reading final connect information",
-                              errno);
-        return 1;
-      }
-    }
   }
   /*
     net->read_pos[0] should always be 0 here if the server implements
