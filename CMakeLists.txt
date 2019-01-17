@@ -213,6 +213,13 @@ IF(NOT WIN32)
   TEST_BIG_ENDIAN(HAVE_BIGENDIAN)
 ENDIF()
 
+# check for various include files
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
+# check for various functions
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
+# check for various types
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
+
 IF(UNIX)
   SEARCH_LIBRARY(LIBDL dlopen "dl")
   IF(NOT ${LIBDL})
@@ -256,13 +263,6 @@ IF(WIN32)
 ELSEIF()
   SET(HAVE_THREADS ${CMAKE_USE_PTHREADS})
 ENDIF()
-
-# check for various include files
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
-# check for various functions
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
-# check for various types
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
 IF(NOT DEFAULT_CHARSET)
   SET(DEFAULT_CHARSET "latin1")
