@@ -238,10 +238,12 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev++;
       if (rpl_alloc_string(rpl_event, &rpl_event->event.table_map.table, ev, len))
         goto mem_error;
-      ev+= len;
+      ev+= len + 1;
       rpl_event->event.table_map.column_count= mysql_net_field_length(&ev);
-      rpl_event->event.table_map.column_types= (char *)ev;
-      ev+= rpl_event->event.table_map.column_count;
+      len= rpl_event->event.table_map.column_count;
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.table_map.column_types, ev, len))
+        goto mem_error;
+      ev+= len;
       len= mysql_net_field_length(&ev);
       if (rpl_alloc_string(rpl_event, &rpl_event->event.table_map.metadata, ev, len))
         goto mem_error;
