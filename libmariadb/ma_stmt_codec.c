@@ -171,6 +171,7 @@ static long long my_strtoll(const char *str, size_t len, const char **end, int *
 
   if (p == end_str)
   {
+    *end = p;
     *err = ERANGE;
     return 0;
   }
