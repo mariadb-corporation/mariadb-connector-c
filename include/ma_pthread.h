@@ -28,6 +28,7 @@ typedef CRITICAL_SECTION pthread_mutex_t;
 #define pthread_mutex_lock(A)	 (EnterCriticalSection(A),0)
 #define pthread_mutex_unlock(A)  LeaveCriticalSection(A)
 #define pthread_mutex_destroy(A) DeleteCriticalSection(A)
+#define pthread_self() GetCurrentThreadId()
 #endif /* defined(_WIN32) */
 
 #endif /* _my_ptread_h */
