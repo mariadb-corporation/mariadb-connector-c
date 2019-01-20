@@ -3017,6 +3017,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   default:
     va_end(ap);
+    SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
     return(-1);
   }
   va_end(ap);
