@@ -1228,6 +1228,15 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
   }
 
+  /* We already checked host earlier, but if it is still unset, use the value
+     from my_cnf_file, and then set _server_host if possible. */
+  if (!host || !host[0])
+    host = mysql->options.host;
+  if (host && *host) {
+    if (mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "_server_host", host))
+      return(NULL);
+  }
+
 #ifndef WIN32
   if (mysql->options.protocol > MYSQL_PROTOCOL_SOCKET)
   {
