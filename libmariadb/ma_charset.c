@@ -1456,6 +1456,8 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIAD
     *errorcode= errno;
     goto error;
   }
+
+printf("mariadb_convert_string 1 : %lu %lu  %lu\n", rc, save_len, *to_len);
   rc= save_len - *to_len;
 error:
   if (conv != (iconv_t)-1)
