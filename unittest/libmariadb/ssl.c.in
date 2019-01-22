@@ -1212,7 +1212,7 @@ static int test_mdev14027(MYSQL *mysql __attribute__((unused)))
   char *tls_library;
   const char *check_library=
 #if defined(HAVE_OPENSSL)
-#if defined(HAVE_LIBRESSL)
+#if defined(LIBRESSL_VERSION_NUMBER)
     "LibreSSL";
 #else
     "OpenSSL";

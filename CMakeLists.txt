@@ -18,6 +18,13 @@ ENDIF()
 
 PROJECT(mariadb-connector-c C)
 
+# hack for some older CMake versions
+IF(TARGET crypto AND TARGET ssl AND TARGET libressl)
+  ADD_DEPENDENCIES(ssl libressl)
+  ADD_DEPENDENCIES(crypto libressl)
+  SET(HAVE_LIBRESSL ON CACHE INTERNAL "")
+ENDIF()
+
 # Is C/C built as subproject?
 get_directory_property(IS_SUBPROJECT PARENT_DIRECTORY)
 
@@ -298,7 +305,6 @@ IF(NOT WITH_SSL STREQUAL "OFF")
               COMPILE_DEFINITIONS "-I${OPENSSL_INCLUDE_DIR}"
               RUN_OUTPUT_VARIABLE LIBRESSL_VERSION)
       IF(HAVE_LIBRESSL)
-        ADD_DEFINITIONS(-DHAVE_LIBRESSL)
         SET(TLS_LIBRARY_VERSION ${LIBRESSL_VERSION})
       ELSE()
         SET(TLS_LIBRARY_VERSION "OpenSSL ${OPENSSL_VERSION}")
