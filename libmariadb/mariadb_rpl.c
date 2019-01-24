@@ -180,6 +180,12 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
     ev= rpl->buffer + EVENT_HEADER_OFS;
 
+    if (rpl->use_checksum)
+    {
+      rpl_event->checksum= *(ev + rpl_event->event_length - 4);
+      rpl_event->event_length-= 4;
+    }
+
     switch(rpl_event->event_type) {
     case HEARTBEAT_LOG_EVENT:
       rpl_event->event.heartbeat.timestamp= uint4korr(ev);
@@ -202,8 +208,10 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       rpl_event->event.format_description.server_version = (char *)(ev);
       ev+= 50;
       rpl_event->event.format_description.timestamp= uint4korr(ev);
-      ev+= 2;
+      ev+= 4;
       rpl->fd_header_len= rpl_event->event.format_description.header_len= (uint8_t)*ev;
+      ev= rpl->buffer + rpl->buffer_size - 5;
+      rpl->use_checksum= *ev;
       break;
     case QUERY_EVENT:
     {
@@ -301,7 +309,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     case ROTATE_EVENT:
       rpl_event->event.rotate.position= uint8korr(ev);
       ev+= 8;
-      len= rpl->buffer + rpl->buffer_size - ev;
+      len= rpl_event->event_length - rpl->fd_header_len - 8;
       if (rpl_alloc_string(rpl_event, &rpl_event->event.rotate.filename, ev, len))
         goto mem_error;
       break;
@@ -369,7 +377,8 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         memcpy(rpl_event->event.rows.column_update_bitmap, ev, (len + 7) / 8);
         ev+= (len + 7) / 8;
       }
-      if ((rpl_event->event.rows.row_data_size= rpl->buffer + rpl->buffer_size - ev))
+      len= (rpl->buffer + rpl_event->event_length + EVENT_HEADER_OFS - rpl->fd_header_len) - ev;
+      if ((rpl_event->event.rows.row_data_size= len))
       {
         if (!(rpl_event->event.rows.row_data =
             (char *)ma_alloc_root(&rpl_event->memroot, rpl_event->event.rows.row_data_size)))

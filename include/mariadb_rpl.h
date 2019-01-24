@@ -151,6 +151,7 @@ typedef struct st_mariadb_rpl {
   unsigned long start_position;
   uint32_t flags;
   uint8_t fd_header_len; /* header len from last format description event */
+  uint8_t use_checksum;
 } MARIADB_RPL;
 
 /* Event header */
