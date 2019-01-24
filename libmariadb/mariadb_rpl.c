@@ -377,7 +377,8 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         memcpy(rpl_event->event.rows.column_update_bitmap, ev, (len + 7) / 8);
         ev+= (len + 7) / 8;
       }
-      if ((rpl_event->event.rows.row_data_size= rpl->buffer + rpl->buffer_size - ev))
+      len= (rpl->buffer + rpl_event->event_length + EVENT_HEADER_OFS - rpl->fd_header_len) - ev;
+      if ((rpl_event->event.rows.row_data_size= len))
       {
         if (!(rpl_event->event.rows.row_data =
             (char *)ma_alloc_root(&rpl_event->memroot, rpl_event->event.rows.row_data_size)))
