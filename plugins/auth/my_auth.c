@@ -8,6 +8,7 @@
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
+static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
 extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
 extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
@@ -92,6 +93,46 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       return CR_ERROR;
 
   return CR_OK;
+}
+
+auth_plugin_t dummy_fallback_client_plugin=
+{
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
+  "dummy_fallback_auth",
+  "Sergei Golubchik",
+  "Dummy fallback plugin",
+  {1, 0, 0},
+  "LGPL",
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  dummy_fallback_auth_client
+};
+
+
+static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
+{
+  char last_error[MYSQL_ERRMSG_SIZE];
+  unsigned int i, last_errno= ((MCPVIO_EXT *)vio)->mysql->net.last_errno;
+  if (last_errno)
+    strncpy(last_error, ((MCPVIO_EXT *)vio)->mysql->net.last_error,
+            sizeof(last_error));
+
+  /* safety-wise we only do 10 round-trips */
+  for (i=0; i < 10; i++)
+  {
+    uchar *pkt;
+    if (vio->read_packet(vio, &pkt) < 0)
+      break;
+    if (vio->write_packet(vio, 0, 0))
+      break;
+  }
+  if (last_errno)
+    strncpy(((MCPVIO_EXT *)vio)->mysql->net.last_error, last_error,
+            sizeof(((MCPVIO_EXT *)vio)->mysql->net.last_error));
+  return CR_ERROR;
 }
 
 static int send_change_user_packet(MCPVIO_EXT *mpvio,
@@ -510,7 +551,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
     auth_plugin_name= mysql->options.extension->default_auth;
     if (!(auth_plugin= (auth_plugin_t*) mysql_client_find_plugin(mysql,
                        auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
-      return 1; /* oops, not found */
+      auth_plugin= &dummy_fallback_client_plugin;
   }
   else
   {
@@ -520,7 +561,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
     {
       if (!(auth_plugin= (auth_plugin_t*)mysql_client_find_plugin(mysql,
                          "mysql_old_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
-        return 1; /* not found */
+        auth_plugin= &dummy_fallback_client_plugin;
     }
     auth_plugin_name= auth_plugin->name;
   }
@@ -602,7 +643,7 @@ retry:
     }
     if (!(auth_plugin= (auth_plugin_t *) mysql_client_find_plugin(mysql,
                          auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
-      return 1;
+      auth_plugin= &dummy_fallback_client_plugin;
 
     goto retry;
 

@@ -132,8 +132,6 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 
 #include <mysql/client_plugin.h>
 
-#define native_password_plugin_name "mysql_native_password"
-
 #define IS_CONNHDLR_ACTIVE(mysql)\
   ((mysql)->extension && (mysql)->extension->conn_hdlr)
 
