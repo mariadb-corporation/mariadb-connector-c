@@ -80,6 +80,7 @@ unittest/libmariadb/ps
 unittest/libmariadb/ps_bugs
 unittest/libmariadb/ps_new
 unittest/libmariadb/result
+unittest/libmariadb/rpl_api
 unittest/libmariadb/sp
 unittest/libmariadb/sqlite3
 unittest/libmariadb/ssl
