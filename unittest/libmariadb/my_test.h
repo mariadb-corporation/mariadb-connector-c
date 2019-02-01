@@ -139,6 +139,7 @@ static char *username = 0;
 static int force_tls= 0;
 static uchar is_mariadb= 0;
 static char *this_host= 0;
+static char *plugindir= 0;
 static unsigned char travis_test= 0;
 /*
 static struct my_option test_options[] =
@@ -513,6 +514,8 @@ void get_envvars() {
       socketname= envvar;
     diag("socketname: %s", socketname);
   }
+  if ((envvar= getenv("MYSQL_TEST_PLUGINDIR")))
+    plugindir= envvar;
 }
 
 MYSQL *my_test_connect(MYSQL *mysql,

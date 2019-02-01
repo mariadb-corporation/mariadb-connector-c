@@ -1623,6 +1623,8 @@ static int test_conc366(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   my= mysql_init(NULL);
+  if (plugindir)
+    mysql_options(my, MYSQL_PLUGIN_DIR, plugindir);
   if (!mysql_real_connect(my, hostname, "ede", "foo", schema, port, socketname, 0))
   {
     diag("Error: %s", mysql_error(my));
@@ -1633,7 +1635,10 @@ static int test_conc366(MYSQL *mysql)
   sprintf(query, "DROP USER 'ede'@'%s'", this_host);
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
-  
+
+  sprintf(query, "UNINSTALL SONAME 'auth_ed25519'");
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
