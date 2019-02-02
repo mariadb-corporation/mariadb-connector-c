@@ -30,8 +30,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 static int test_rpl_01(MYSQL *mysql)
 {
-  int i;
-  unsigned int server_id= 0;
   MARIADB_RPL_EVENT *event= NULL;
   MARIADB_RPL *rpl= mariadb_rpl_init(mysql);
   mysql_query(mysql, "SET @mariadb_slave_capability=4");
