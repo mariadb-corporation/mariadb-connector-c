@@ -419,9 +419,7 @@ void ma_tls_end()
     if (mariadb_deinitialize_ssl)
     {
 #ifndef HAVE_OPENSSL_1_1_API
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-      ERR_remove_state(0);
-#endif
+      ERR_remove_thread_state(NULL);
       EVP_cleanup();
       CRYPTO_cleanup_all_ex_data();
       ERR_free_strings();
