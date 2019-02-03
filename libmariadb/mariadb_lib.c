@@ -3015,7 +3015,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   default:
     va_end(ap);
-    return(-1);
+    SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
+    return(1);
   }
   va_end(ap);
   return(0);
@@ -3229,13 +3230,14 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   default:
     va_end(ap);
-    return(-1);
+    SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
+    return(1);
   }
   va_end(ap);
   return(0);
 error:
   va_end(ap);
-  return(-1);
+  return(1);
 }
 
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg)
