@@ -423,7 +423,7 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
   case MARIADB_RPL_FILENAME:
   {
     char *arg1= va_arg(ap, char *);
-    rpl->filename_length= va_arg(ap, size_t);
+    rpl->filename_length= (uint32_t)va_arg(ap, size_t);
     free((void *)rpl->filename);
     rpl->filename= NULL;
     if (rpl->filename_length)
@@ -434,7 +434,7 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
     else if (arg1)
     {
       rpl->filename= strdup((const char *)arg1);
-      rpl->filename_length= strlen(rpl->filename);
+      rpl->filename_length= (uint32_t)strlen(rpl->filename);
     }
     break;
   }

@@ -52,6 +52,10 @@ IF(WITH_SSL)
                 INCLUDES ${REF10_DIR}
                 COMPILE_OPTIONS -DMYSQL_CLIENT=1
                 LIBRARIES ${ED25519_LIBS})
+  IF(MSVC)
+     # Silence conversion (integer truncantion) warnings from reference code
+     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146")
+  ENDIF()
 ENDIF()
 
 #GSSAPI client authentication plugin
