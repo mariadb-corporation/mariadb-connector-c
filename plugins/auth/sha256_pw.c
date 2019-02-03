@@ -112,7 +112,7 @@ end:
 }
 #endif
 
-char *load_pub_key_file(const char *filename, int *pub_key_size)
+static char *load_pub_key_file(const char *filename, int *pub_key_size)
 {
   FILE *fp= NULL;
   char *buffer= NULL;

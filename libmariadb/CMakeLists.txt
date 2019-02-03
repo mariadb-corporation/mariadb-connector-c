@@ -451,5 +451,6 @@ INSTALL(TARGETS libmariadb
 IF(WIN32)
    # On Windows, install PDB
    INSTALL(FILES $<TARGET_PDB_FILE:libmariadb> DESTINATION "${INSTALL_LIBDIR}"
+           CONFIGURATIONS Debug RelWithDebInfo
            COMPONENT Development)
 ENDIF()
