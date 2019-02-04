@@ -4658,6 +4658,62 @@ static int equal_MYSQL_TIME(MYSQL_TIME *tm1, MYSQL_TIME *tm2)
     tm1->second_part==tm2->second_part && tm1->time_type==tm2->time_type && tm1->year==tm2->year;
 }
 
+static int test_str_to_int(MYSQL *mysql)
+{
+ int i;
+ struct st_atoi_test{
+    const char *str_value;
+    int int_value;
+    int rc;
+  } atoi_tests[]=
+  {
+    {"0", 0, 0},
+    {" 1",1, 0},
+    {"123 ",123, 0},
+    {"10.2",10, MYSQL_DATA_TRUNCATED},
+    {"a", 0, MYSQL_DATA_TRUNCATED},
+    {"1 2 3", 1, MYSQL_DATA_TRUNCATED},
+    {NULL, 0, 0}
+  };
+
+  for(i=0; atoi_tests[i].str_value; i++)
+  {
+    int rc;
+    MYSQL_STMT *stmt;
+    MYSQL_BIND bind[1];
+    struct st_atoi_test *test= &atoi_tests[i];
+    char sql[256];
+    int int_value;
+
+    snprintf(sql, sizeof(sql), "SELECT '%s'",test->str_value);
+
+    stmt= mysql_stmt_init(mysql);
+
+    rc= mysql_stmt_prepare(stmt, sql, (ulong)strlen(sql));
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_store_result(stmt);
+
+    memset(bind, 0, sizeof(MYSQL_BIND));
+    bind[0].buffer_type= MYSQL_TYPE_LONG;
+    bind[0].buffer= &int_value;
+    bind[0].buffer_length= sizeof(int_value);
+
+    rc= mysql_stmt_bind_result(stmt, bind);
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_fetch(stmt);
+
+    diag("test: str='%s', expected/returned value =%d/%d, expected/returned rc=%d/%d",
+      test->str_value, test->int_value, int_value, test->rc, rc);
+    FAIL_UNLESS(rc == test->rc, "unexpected return code");
+    FAIL_UNLESS(int_value == test->int_value, "unexpected int value");
+    mysql_stmt_close(stmt);
+  }
+  return OK;
+}
+
+
 static int test_codbc138(MYSQL *mysql)
 {
   int rc;
@@ -5029,6 +5085,7 @@ struct my_tests_st my_tests[] = {
   {"test_stiny_bug", test_stiny_bug, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_bug53311", test_bug53311, TEST_CONNECTION_NEW, 0, NULL , NULL},
   {"test_conc_fraction", test_conc_fraction, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
+  {"test_str_to_int", test_str_to_int, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

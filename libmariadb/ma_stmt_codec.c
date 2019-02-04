@@ -209,6 +209,7 @@ static long long my_strtoll(const char *str, size_t len, const char **end, int *
   return -1LL * uval;
 }
 
+
 static long long my_atoll(const char *str, const char *end_str, int *error)
 {
   const char *p=str;
@@ -216,18 +217,36 @@ static long long my_atoll(const char *str, const char *end_str, int *error)
   long long ret;
   while (p < end_str && isspace(*p))
     p++;
+
   ret = my_strtoll(p, end_str - p, &end, error);
+
+  while(end < end_str && isspace(*end))
+   end++;
+
+  if(end != end_str)
+    *error= 1;
+
   return ret;
 }
+
 
 static unsigned long long my_atoull(const char *str, const char *end_str, int *error)
 {
   const char *p = str;
   const char *end;
   unsigned long long ret;
+
   while (p < end_str && isspace(*p))
     p++;
+
   ret = my_strtoull(p, end_str - p, &end, error);
+
+  while(end < end_str && isspace(*end))
+   end++;
+
+  if(end != end_str)
+    *error= 1;
+
   return ret;
 }
 
