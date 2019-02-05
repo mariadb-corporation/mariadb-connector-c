@@ -2786,7 +2786,10 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     net_buffer_length= (unsigned long)(*(size_t *)arg1);
     break;
   case MYSQL_OPT_CAN_HANDLE_EXPIRED_PASSWORDS:
-    *((my_bool *)arg1)= test(mysql->options.client_flag & CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS);
+    if (*(my_bool *)arg1)
+      mysql->options.client_flag |= CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
+    else
+      mysql->options.client_flag &= ~CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
     break;
   case MYSQL_OPT_SSL_ENFORCE:
     mysql->options.use_ssl= (*(my_bool *)arg1);
@@ -3122,10 +3125,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((my_bool *)arg)= test(mysql->options.extension && mysql->options.extension->async_context);
     break;
   case MYSQL_OPT_CAN_HANDLE_EXPIRED_PASSWORDS:
-    if (*(my_bool *)arg)
-      mysql->options.client_flag |= CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
-    else
-      mysql->options.client_flag &= ~CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
+    *((my_bool *)arg)= test(mysql->options.client_flag & CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS);
     break;
   case MYSQL_OPT_SSL_ENFORCE:
     *((my_bool *)arg)= mysql->options.use_ssl;
