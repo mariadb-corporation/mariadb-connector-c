@@ -87,7 +87,7 @@ extern void release_configuration_dirs();
 extern char **get_default_configuration_dirs();
 extern my_bool  ma_init_done;
 extern my_bool  mysql_ps_subsystem_initialized;
-extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename);
+extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename, my_bool can_local_infile);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_nr(uint charsetnr);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_name(const char * const name);
 extern my_bool set_default_charset_by_name(const char *cs_name, myf flags __attribute__((unused)));
@@ -428,6 +428,14 @@ int
 ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
 	       size_t length, my_bool skipp_check, void *opt_arg)
 {
+  if ((mysql->options.client_flag & CLIENT_LOCAL_FILES) &&
+       mysql->options.extension && mysql->options.extension->auto_local_infile == WAIT_FOR_QUERY &&
+       arg && (*arg == 'l' || *arg == 'L') &&
+       command == COM_QUERY)
+  {
+    if (strncasecmp(arg, "load", 4) == 0)
+      mysql->options.extension->auto_local_infile= ACCEPT_FILE_REQUEST;
+  }
   return mysql->methods->db_command(mysql, command, arg, length, skipp_check, opt_arg);
 }
 
@@ -1009,6 +1017,8 @@ mysql_init(MYSQL *mysql)
 */
 #ifdef ENABLED_LOCAL_INFILE
   mysql->options.client_flag|= CLIENT_LOCAL_FILES;
+  OPT_SET_EXTENDED_VALUE_INT(&mysql->options, auto_local_infile, ENABLED_LOCAL_INFILE == LOCAL_INFILE_MODE_AUTO
+                            ? WAIT_FOR_QUERY : ALWAYS_ACCEPT);
 #endif
   mysql->options.reconnect= 0;
   return mysql;
@@ -2113,6 +2123,10 @@ int mthd_my_read_query_result(MYSQL *mysql)
   ulong field_count;
   MYSQL_DATA *fields;
   ulong length;
+  my_bool can_local_infile= (mysql->options.extension) && (mysql->options.extension->auto_local_infile != WAIT_FOR_QUERY);
+
+  if (mysql->options.extension && mysql->options.extension->auto_local_infile == ACCEPT_FILE_REQUEST)
+    mysql->options.extension->auto_local_infile= WAIT_FOR_QUERY;
 
   if (!mysql || (length = ma_net_safe_read(mysql)) == packet_error)
   {
@@ -2125,7 +2139,7 @@ get_info:
     return ma_read_ok_packet(mysql, pos, length);
   if (field_count == NULL_LENGTH)		/* LOAD DATA LOCAL INFILE */
   {
-    int error=mysql_handle_local_infile(mysql, (char *)pos);
+    int error=mysql_handle_local_infile(mysql, (char *)pos, can_local_infile);
 
     if ((length=ma_net_safe_read(mysql)) == packet_error || error)
       return(-1);
@@ -2669,6 +2683,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.client_flag|= CLIENT_LOCAL_FILES;
     else
       mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
+    if (arg1)
+      OPT_SET_EXTENDED_VALUE_INT(&mysql->options, auto_local_infile, *(uint*)arg1 == LOCAL_INFILE_MODE_AUTO
+                              ? WAIT_FOR_QUERY : ALWAYS_ACCEPT);
     break;
   case MYSQL_INIT_COMMAND:
     options_add_initcommand(&mysql->options, (char *)arg1);

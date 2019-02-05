@@ -50,6 +50,7 @@
 #ifdef _WIN32
 #include <share.h>
 #endif
+#include <ma_common.h>
 
 typedef struct st_mysql_infile_info
 {
@@ -183,7 +184,7 @@ void STDCALL mysql_set_local_infile_handler(MYSQL *conn,
 /* }}} */
 
 /* {{{ mysql_handle_local_infile */
-my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
+my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename, my_bool can_local_infile)
 {
   unsigned int buflen= 4096;
   int bufread;
@@ -199,7 +200,9 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename)
     mysql_set_local_infile_default(conn);
   }
 
-  if (!(conn->options.client_flag & CLIENT_LOCAL_FILES)) {
+  if (!(conn->options.client_flag & CLIENT_LOCAL_FILES) ||
+      !can_local_infile)
+ {
     my_set_error(conn, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, "Load data local infile forbidden");
     /* write empty packet to server */
     ma_net_write(&conn->net, (unsigned char *)"", 0);
