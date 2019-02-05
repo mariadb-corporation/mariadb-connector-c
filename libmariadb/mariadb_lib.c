@@ -1206,7 +1206,9 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!host || !host[0])
     host = mysql->options.host;
 
-  ma_set_connect_attrs(mysql, host);
+  if (ma_set_connect_attrs(mysql, host))
+    /* client error should be set already */
+    return(NULL);
 
   if (net->pvio)  /* check if we are already connected */
   {
@@ -3018,7 +3020,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   default:
     va_end(ap);
     SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
-    return(-1);
+    return(1);
   }
   va_end(ap);
   return(0);
