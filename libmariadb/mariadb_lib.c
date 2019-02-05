@@ -815,10 +815,8 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
     if (INTERNAL_NUM_FIELD(field))
       field->flags|= NUM_FLAG;
 
-    if (default_value && row->data[7])
-      field->def=ma_strdup_root(alloc,(char*) row->data[7]);
-    else
-      field->def=0;
+    field->def=0;
+    field->def_length= 0;
     field->max_length= 0;
   }
   if (field < result + fields)
