@@ -1015,15 +1015,10 @@ mysql_init(MYSQL *mysql)
   strcpy(mysql->net.sqlstate, "00000");
   mysql->net.last_error[0]= mysql->net.last_errno= 0;
 
-/*
-  Only enable LOAD DATA INFILE by default if configured with
-  --enable-local-infile
-*/
-#ifdef ENABLED_LOCAL_INFILE
-  mysql->options.client_flag|= CLIENT_LOCAL_FILES;
+  if (ENABLED_LOCAL_INFILE != LOCAL_INFILE_MODE_OFF)
+    mysql->options.client_flag|= CLIENT_LOCAL_FILES;
   OPT_SET_EXTENDED_VALUE_INT(&mysql->options, auto_local_infile, ENABLED_LOCAL_INFILE == LOCAL_INFILE_MODE_AUTO
                             ? WAIT_FOR_QUERY : ALWAYS_ACCEPT);
-#endif
   mysql->options.reconnect= 0;
   return mysql;
 error:
