@@ -5009,11 +5009,51 @@ static int test_conc_fraction(MYSQL *mysql)
   return OK;
 }
 
+static int test_zerofill_1byte(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+  MYSQL_BIND bind;
+  char buffer[3];
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int zerofill)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES(1)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a FROM t1"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer_type= MYSQL_TYPE_STRING;
+  bind.buffer= buffer;
+  bind.buffer_length= 1;
+
+  rc= mysql_stmt_bind_result(stmt, &bind);
+
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc != 101, "expected truncation warning");
+
+  mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
   {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc334", test_conc334, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NEW, CLIENT_COMPRESS, NULL, NULL},
+  {"test_zerofill_1byte", test_zerofill_1byte, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_codbc138", test_codbc138, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc208", test_conc208, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev14165", test_mdev14165, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
