@@ -653,7 +653,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       /* check if field flag is zerofill */
       if (field->flags & ZEROFILL_FLAG)
       {
-        if (len < field->length && len < r_param->buffer_length)
+        if (len <= field->length && len < r_param->buffer_length)
         {
           ma_bmove_upp(buffer + field->length, buffer + len, len);
           /* coverity [bad_memset] */
