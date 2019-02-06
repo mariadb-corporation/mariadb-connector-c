@@ -815,8 +815,14 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
     if (INTERNAL_NUM_FIELD(field))
       field->flags|= NUM_FLAG;
 
-    field->def=0;
+    /* This is used by deprecated function mysql_list_fields only,
+       however the reported length is not correct, so we always zero it */
+    if (default_value && row->data[7])
+      field->def=ma_strdup_root(alloc,(char*) row->data[7]);
+    else
+      field->def=0;
     field->def_length= 0;
+
     field->max_length= 0;
   }
   if (field < result + fields)
@@ -2681,9 +2687,11 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.client_flag|= CLIENT_LOCAL_FILES;
     else
       mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
-    if (arg1)
+    if (arg1) {
+      CHECK_OPT_EXTENSION_SET(&mysql->options);
       OPT_SET_EXTENDED_VALUE_INT(&mysql->options, auto_local_infile, *(uint*)arg1 == LOCAL_INFILE_MODE_AUTO
                               ? WAIT_FOR_QUERY : ALWAYS_ACCEPT);
+    }
     break;
   case MYSQL_INIT_COMMAND:
     options_add_initcommand(&mysql->options, (char *)arg1);
