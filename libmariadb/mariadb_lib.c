@@ -2627,13 +2627,13 @@ mysql_get_client_info(void)
 
 static size_t get_store_length(size_t length)
 {
-  if (length < (size_t) L64(251))
-    return 1;
-  if (length < (size_t) L64(65536))
-    return 2;
-  if (length < (size_t) L64(16777216))
-    return 3;
-  return 9;
+  #define MAX_STORE_SIZE 9
+  unsigned char buffer[MAX_STORE_SIZE], *p;
+
+  /* We just store the length and substract offset of our buffer
+     to determine the length */
+  p= mysql_net_store_length(buffer, length);
+  return p - buffer;
 }
 
 uchar *ma_get_hash_keyval(const uchar *hash_entry,

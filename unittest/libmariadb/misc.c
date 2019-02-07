@@ -1325,7 +1325,29 @@ static int test_wl6797(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc384(MYSQL *my __attribute__((unused)))
+{
+  char value[1000];
+  int len;
+  MYSQL *mysql= mysql_init(NULL);
+
+  memset(&value, 'A', 999);
+  value[999]= 0;
+
+  mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo", value);
+  len= (int)mysql->options.extension->connect_attrs_len;
+  /* Length: 1 (=len) + 3 (="foo") + 3 (=len) + 999 (="AAA...") = 1006 */
+  FAIL_IF(len != 1006, "Wrong length");
+  mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo");
+  len= (int)mysql->options.extension->connect_attrs_len;
+  /* Length should be zero after deleting the connection attribute */
+  FAIL_IF(len != 0, "Wrong length");
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef _WIN32
   {"test_mdev12965", test_mdev12965, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #endif
