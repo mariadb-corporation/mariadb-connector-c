@@ -653,12 +653,13 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       /* check if field flag is zerofill */
       if (field->flags & ZEROFILL_FLAG)
       {
-        if (len <= field->length && len < r_param->buffer_length)
+        uint display_width= MAX(field->length, len);
+        if (display_width < r_param->buffer_length)
         {
-          ma_bmove_upp(buffer + field->length, buffer + len, len);
+          ma_bmove_upp(buffer + display_width, buffer + len, len);
           /* coverity [bad_memset] */
-          memset((void*) buffer, (int) '0', field->length - len);
-          len= field->length;
+          memset((void*) buffer, (int) '0', display_width - len);
+          len= display_width;
         }
         else
           zf_truncated= 1;
