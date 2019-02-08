@@ -78,7 +78,6 @@ struct st_mysql_options_extension {
   char *server_public_key;
   char *proxy_header;
   size_t proxy_header_len;
-  my_bool auto_local_infile;
 };
 
 typedef struct st_connection_handler
@@ -104,6 +103,7 @@ struct st_mariadb_extension {
   struct st_mariadb_session_state session_state[SESSION_TRACK_TYPES];
   unsigned long mariadb_client_flag; /* MariaDB specific client flags */
   unsigned long mariadb_server_capabilities; /* MariaDB specific server capabilities */
+  my_bool auto_local_infile;
 };
 
 #define OPT_EXT_VAL(a,key) \

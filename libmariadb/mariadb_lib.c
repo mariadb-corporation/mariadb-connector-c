@@ -430,12 +430,12 @@ ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg
 	       size_t length, my_bool skipp_check, void *opt_arg)
 {
   if ((mysql->options.client_flag & CLIENT_LOCAL_FILES) &&
-       mysql->options.extension && mysql->options.extension->auto_local_infile == WAIT_FOR_QUERY &&
+       mysql->options.extension && mysql->extension->auto_local_infile == WAIT_FOR_QUERY &&
        arg && (*arg == 'l' || *arg == 'L') &&
        command == COM_QUERY)
   {
     if (strncasecmp(arg, "load", 4) == 0)
-      mysql->options.extension->auto_local_infile= ACCEPT_FILE_REQUEST;
+      mysql->extension->auto_local_infile= ACCEPT_FILE_REQUEST;
   }
   return mysql->methods->db_command(mysql, command, arg, length, skipp_check, opt_arg);
 }
@@ -1018,8 +1018,8 @@ mysql_init(MYSQL *mysql)
 
   if (ENABLED_LOCAL_INFILE != LOCAL_INFILE_MODE_OFF)
     mysql->options.client_flag|= CLIENT_LOCAL_FILES;
-  OPT_SET_EXTENDED_VALUE_INT(&mysql->options, auto_local_infile, ENABLED_LOCAL_INFILE == LOCAL_INFILE_MODE_AUTO
-                            ? WAIT_FOR_QUERY : ALWAYS_ACCEPT);
+  mysql->extension->auto_local_infile= ENABLED_LOCAL_INFILE == LOCAL_INFILE_MODE_AUTO
+                                       ? WAIT_FOR_QUERY : ALWAYS_ACCEPT;
   mysql->options.reconnect= 0;
   return mysql;
 error:
@@ -2123,10 +2123,10 @@ int mthd_my_read_query_result(MYSQL *mysql)
   ulong field_count;
   MYSQL_DATA *fields;
   ulong length;
-  my_bool can_local_infile= (mysql->options.extension) && (mysql->options.extension->auto_local_infile != WAIT_FOR_QUERY);
+  my_bool can_local_infile= (mysql->options.extension) && (mysql->extension->auto_local_infile != WAIT_FOR_QUERY);
 
-  if (mysql->options.extension && mysql->options.extension->auto_local_infile == ACCEPT_FILE_REQUEST)
-    mysql->options.extension->auto_local_infile= WAIT_FOR_QUERY;
+  if (mysql->options.extension && mysql->extension->auto_local_infile == ACCEPT_FILE_REQUEST)
+    mysql->extension->auto_local_infile= WAIT_FOR_QUERY;
 
   if (!mysql || (length = ma_net_safe_read(mysql)) == packet_error)
   {
@@ -2685,8 +2685,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
     if (arg1) {
       CHECK_OPT_EXTENSION_SET(&mysql->options);
-      OPT_SET_EXTENDED_VALUE_INT(&mysql->options, auto_local_infile, *(uint*)arg1 == LOCAL_INFILE_MODE_AUTO
-                              ? WAIT_FOR_QUERY : ALWAYS_ACCEPT);
+      mysql->extension->auto_local_infile= *(uint*)arg1 == LOCAL_INFILE_MODE_AUTO
+                                           ? WAIT_FOR_QUERY : ALWAYS_ACCEPT;
     }
     break;
   case MYSQL_INIT_COMMAND:
