@@ -1345,6 +1345,10 @@ static int test_expired_pw(MYSQL *my)
   my_test_connect(mysql, hostname, "foo", "foo", schema,
                   port, socketname, 0);
 
+  /* we should be in sandbox mode now, only set commands should be allowed */
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  FAIL_IF(!rc, "Error expected (we are in sandbox mode");
+
   diag("error: %d %s", mysql_errno(mysql), mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD &&
           mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD_LOGIN, "Error 1820/1862 expected");
