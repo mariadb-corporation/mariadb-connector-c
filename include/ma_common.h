@@ -31,6 +31,13 @@ enum enum_multi_status {
   COM_MULTI_END
 };
 
+
+typedef enum {
+  ALWAYS_ACCEPT,       /* heuristics is disabled, use CLIENT_LOCAL_FILES */
+  WAIT_FOR_QUERY,      /* heuristics is enabled, not sending files */
+  ACCEPT_FILE_REQUEST  /* heuristics is enabled, ready to send a file */
+} auto_local_infile_state;
+
 typedef struct st_mariadb_db_driver
 {
   struct st_mariadb_client_plugin_DB *plugin;
@@ -97,6 +104,7 @@ struct st_mariadb_extension {
   struct st_mariadb_session_state session_state[SESSION_TRACK_TYPES];
   unsigned long mariadb_client_flag; /* MariaDB specific client flags */
   unsigned long mariadb_server_capabilities; /* MariaDB specific server capabilities */
+  my_bool auto_local_infile;
 };
 
 #define OPT_EXT_VAL(a,key) \

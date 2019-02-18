@@ -108,10 +108,6 @@ double my_ulonglong2double(unsigned long long A);
 #ifdef HAVE_BROKEN_SNPRINTF	/* HPUX 10.20 don't have this defined */
 #undef HAVE_SNPRINTF
 #endif
-#ifdef HAVE_BROKEN_PREAD	/* These doesn't work on HPUX 11.x */
-#undef HAVE_PREAD
-#undef HAVE_PWRITE
-#endif
 #if defined(HAVE_BROKEN_INLINE) && !defined(__cplusplus)
 #undef inline
 #define inline
@@ -496,9 +492,6 @@ extern double		my_atof(const char*);
 #define ulong_to_double(X) ((double) (ulong) (X))
 #define SET_STACK_SIZE(X)	/* Not needed on real machines */
 
-#if !defined(HAVE_mit_thread) && !defined(HAVE_STRTOK_R)
-#define strtok_r(A,B,C) strtok((A),(B))
-#endif
 
 #ifdef HAVE_LINUXTHREADS
 /* #define pthread_sigmask(A,B,C) sigprocmask((A),(B),(C)) */
@@ -513,16 +506,6 @@ extern double		my_atof(const char*);
 #define UNINIT_VAR(x) x= x
 #endif
 
-/* Remove some things that mit_thread break or doesn't support */
-#if defined(HAVE_mit_thread) && defined(THREAD)
-#undef HAVE_PREAD
-#undef HAVE_REALPATH
-#undef HAVE_MLOCK
-#undef HAVE_TEMPNAM				/* Use ours */
-#undef HAVE_PTHREAD_SETPRIO
-#undef HAVE_FTRUNCATE
-#undef HAVE_READLINK
-#endif
 
 /* This is from the old m-machine.h file */
 

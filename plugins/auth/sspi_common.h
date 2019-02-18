@@ -29,7 +29,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define SECURITY_WIN32
 #include <windows.h>
 #include <sspi.h>
-#include <SecExt.h>
+#include <secext.h>
 #include <stdarg.h>
 #include <stdio.h>
 

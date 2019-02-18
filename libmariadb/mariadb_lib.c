@@ -70,6 +70,7 @@
 #include <mysql/client_plugin.h>
 #ifdef _WIN32
 #include "Shlwapi.h"
+#define strncasecmp _strnicmp
 #endif
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
@@ -87,7 +88,7 @@ extern void release_configuration_dirs();
 extern char **get_default_configuration_dirs();
 extern my_bool  ma_init_done;
 extern my_bool  mysql_ps_subsystem_initialized;
-extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename);
+extern my_bool mysql_handle_local_infile(MYSQL *mysql, const char *filename, my_bool can_local_infile);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_nr(uint charsetnr);
 extern const MARIADB_CHARSET_INFO * mysql_find_charset_name(const char * const name);
 extern my_bool set_default_charset_by_name(const char *cs_name, myf flags __attribute__((unused)));
@@ -426,6 +427,14 @@ int
 ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
 	       size_t length, my_bool skipp_check, void *opt_arg)
 {
+  if ((mysql->options.client_flag & CLIENT_LOCAL_FILES) &&
+       mysql->options.extension && mysql->extension->auto_local_infile == WAIT_FOR_QUERY &&
+       arg && (*arg == 'l' || *arg == 'L') &&
+       command == COM_QUERY)
+  {
+    if (strncasecmp(arg, "load", 4) == 0)
+      mysql->extension->auto_local_infile= ACCEPT_FILE_REQUEST;
+  }
   return mysql->methods->db_command(mysql, command, arg, length, skipp_check, opt_arg);
 }
 
@@ -805,10 +814,14 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
     if (INTERNAL_NUM_FIELD(field))
       field->flags|= NUM_FLAG;
 
+    /* This is used by deprecated function mysql_list_fields only,
+       however the reported length is not correct, so we always zero it */
     if (default_value && row->data[7])
       field->def=ma_strdup_root(alloc,(char*) row->data[7]);
     else
       field->def=0;
+    field->def_length= 0;
+
     field->max_length= 0;
   }
   if (field < result + fields)
@@ -1001,13 +1014,10 @@ mysql_init(MYSQL *mysql)
   strcpy(mysql->net.sqlstate, "00000");
   mysql->net.last_error[0]= mysql->net.last_errno= 0;
 
-/*
-  Only enable LOAD DATA INFILE by default if configured with
-  --enable-local-infile
-*/
-#ifdef ENABLED_LOCAL_INFILE
-  mysql->options.client_flag|= CLIENT_LOCAL_FILES;
-#endif
+  if (ENABLED_LOCAL_INFILE != LOCAL_INFILE_MODE_OFF)
+    mysql->options.client_flag|= CLIENT_LOCAL_FILES;
+  mysql->extension->auto_local_infile= ENABLED_LOCAL_INFILE == LOCAL_INFILE_MODE_AUTO
+                                       ? WAIT_FOR_QUERY : ALWAYS_ACCEPT;
   mysql->options.reconnect= 0;
   return mysql;
 error:
@@ -1440,7 +1450,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     mysql->server_language= uint1korr(end + 2);
     mysql->server_status= uint2korr(end + 3);
-    mysql->server_capabilities|= (unsigned int)(uint2korr(end + 5) << 16);
+    mysql->server_capabilities|= (unsigned int)(uint2korr(end + 5)) << 16;
     pkt_scramble_len= uint1korr(end + 7);
 
     /* check if MariaD2B specific capabilities are available */
@@ -2111,6 +2121,10 @@ int mthd_my_read_query_result(MYSQL *mysql)
   ulong field_count;
   MYSQL_DATA *fields;
   ulong length;
+  my_bool can_local_infile= (mysql->options.extension) && (mysql->extension->auto_local_infile != WAIT_FOR_QUERY);
+
+  if (mysql->options.extension && mysql->extension->auto_local_infile == ACCEPT_FILE_REQUEST)
+    mysql->extension->auto_local_infile= WAIT_FOR_QUERY;
 
   if (!mysql || (length = ma_net_safe_read(mysql)) == packet_error)
   {
@@ -2123,7 +2137,7 @@ get_info:
     return ma_read_ok_packet(mysql, pos, length);
   if (field_count == NULL_LENGTH)		/* LOAD DATA LOCAL INFILE */
   {
-    int error=mysql_handle_local_infile(mysql, (char *)pos);
+    int error=mysql_handle_local_infile(mysql, (char *)pos, can_local_infile);
 
     if ((length=ma_net_safe_read(mysql)) == packet_error || error)
       return(-1);
@@ -2611,13 +2625,13 @@ mysql_get_client_info(void)
 
 static size_t get_store_length(size_t length)
 {
-  if (length < (size_t) L64(251))
-    return 1;
-  if (length < (size_t) L64(65536))
-    return 2;
-  if (length < (size_t) L64(16777216))
-    return 3;
-  return 9;
+  #define MAX_STORE_SIZE 9
+  unsigned char buffer[MAX_STORE_SIZE], *p;
+
+  /* We just store the length and substract offset of our buffer
+     to determine the length */
+  p= mysql_net_store_length(buffer, length);
+  return p - buffer;
 }
 
 uchar *ma_get_hash_keyval(const uchar *hash_entry,
@@ -2667,6 +2681,11 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.client_flag|= CLIENT_LOCAL_FILES;
     else
       mysql->options.client_flag&= ~CLIENT_LOCAL_FILES;
+    if (arg1) {
+      CHECK_OPT_EXTENSION_SET(&mysql->options);
+      mysql->extension->auto_local_infile= *(uint*)arg1 == LOCAL_INFILE_MODE_AUTO
+                                           ? WAIT_FOR_QUERY : ALWAYS_ACCEPT;
+    }
     break;
   case MYSQL_INIT_COMMAND:
     options_add_initcommand(&mysql->options, (char *)arg1);
@@ -2767,7 +2786,10 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     net_buffer_length= (unsigned long)(*(size_t *)arg1);
     break;
   case MYSQL_OPT_CAN_HANDLE_EXPIRED_PASSWORDS:
-    *((my_bool *)arg1)= test(mysql->options.client_flag & CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS);
+    if (*(my_bool *)arg1)
+      mysql->options.client_flag |= CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
+    else
+      mysql->options.client_flag &= ~CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
     break;
   case MYSQL_OPT_SSL_ENFORCE:
     mysql->options.use_ssl= (*(my_bool *)arg1);
@@ -3017,7 +3039,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   default:
     va_end(ap);
-    return(-1);
+    SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
+    return(1);
   }
   va_end(ap);
   return(0);
@@ -3106,10 +3129,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((my_bool *)arg)= test(mysql->options.extension && mysql->options.extension->async_context);
     break;
   case MYSQL_OPT_CAN_HANDLE_EXPIRED_PASSWORDS:
-    if (*(my_bool *)arg)
-      mysql->options.client_flag |= CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
-    else
-      mysql->options.client_flag &= ~CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS;
+    *((my_bool *)arg)= test(mysql->options.client_flag & CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS);
     break;
   case MYSQL_OPT_SSL_ENFORCE:
     *((my_bool *)arg)= mysql->options.use_ssl;
@@ -3234,13 +3254,14 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   default:
     va_end(ap);
-    return(-1);
+    SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
+    return(1);
   }
   va_end(ap);
   return(0);
 error:
   va_end(ap);
-  return(-1);
+  return(1);
 }
 
 int STDCALL mysql_get_option(MYSQL *mysql, enum mysql_option option, void *arg)

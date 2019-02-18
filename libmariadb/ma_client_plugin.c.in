@@ -44,6 +44,10 @@
 #include "errmsg.h"
 #include <mysql/client_plugin.h>
 
+#ifndef WIN32
+#include <dlfcn.h>
+#endif
+
 struct st_client_plugin_int {
   struct st_client_plugin_int *next;
   void   *dlhandle;
@@ -196,9 +200,6 @@ add_plugin(MYSQL *mysql, struct st_mysql_client_plugin *plugin, void *dlhandle,
     goto err2;
   }
 
-#ifdef THREAD
-  safe_mutex_assert_owner(&LOCK_load_client_plugin);
-#endif
 
   p->next= plugin_list[plugin_nr];
   plugin_list[plugin_nr]= p;
@@ -276,7 +277,7 @@ int mysql_client_plugin_init()
 
   memset(&mysql, 0, sizeof(mysql)); /* dummy mysql for set_mysql_extended_error */
 
-  pthread_mutex_init(&LOCK_load_client_plugin, MY_MUTEX_INIT_SLOW);
+  pthread_mutex_init(&LOCK_load_client_plugin, NULL);
   ma_init_alloc_root(&mem_root, 128, 128);
 
   memset(&plugin_list, 0, sizeof(plugin_list));

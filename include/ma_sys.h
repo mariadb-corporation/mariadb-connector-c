@@ -247,19 +247,6 @@ typedef struct st_record_cache	/* Used when caching records */
   enum cache_type type;
 } RECORD_CACHE;
 
-/*
-enum file_type { UNOPEN = 0, FILE_BY_OPEN, FILE_BY_CREATE,
-		   STREAM_BY_FOPEN, STREAM_BY_FDOPEN, FILE_BY_MKSTEMP };
-
-extern struct ma_file_info
-{
-  my_string		name;
-  enum file_type	type;
-#if defined(THREAD) && !defined(HAVE_PREAD)  
-  pthread_mutex_t	mutex;
-#endif
-} ma_file_info[MY_NFILE];
-*/
 
 typedef struct st_dynamic_array {
   char *buffer;
@@ -536,13 +523,6 @@ void set_all_changeable_vars(CHANGEABLE_VAR *vars);
 my_bool set_changeable_var(my_string str,CHANGEABLE_VAR *vars);
 my_bool set_changeable_varval(const char *var, ulong val,
 			      CHANGEABLE_VAR *vars);
-#ifdef HAVE_MLOCK
-extern unsigned char *ma_malloc_lock(size_t length,myf flags);
-extern void ma_free_lock(unsigned char *ptr,myf flags);
-#else
-#define ma_malloc_lock(A,B) ma_malloc((A),(B))
-#define ma_free_lock(A,B) ma_free((A),(B))
-#endif
 #define ma_alloc_root_inited(A) ((A)->min_malloc != 0)
 void ma_init_alloc_root(MA_MEM_ROOT *mem_root, size_t block_size, size_t pre_alloc_size);
 void *ma_alloc_root(MA_MEM_ROOT *mem_root, size_t Size);

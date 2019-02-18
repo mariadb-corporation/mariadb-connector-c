@@ -44,9 +44,10 @@ MATH(EXPR MARIADB_PACKAGE_VERSION_ID "${CPACK_PACKAGE_VERSION_MAJOR} * 10000 +
 
 MACRO(ADD_OPTION _name _text _default)
   IF(NOT DEFINED ${_name})
-    SET(${_name} ${_default})
+    OPTION(${OPT}${_name} "${_text}" "${_default}")
+  ELSE()
+    OPTION(${OPT}${_name} "${_text}" "${${_name}}")
   ENDIF()
-  OPTION(${OPT}${_name} "${_text}" "${${_name}}")
 ENDMACRO()
 
 ### Options ###
@@ -212,6 +213,13 @@ IF(NOT WIN32)
   TEST_BIG_ENDIAN(HAVE_BIGENDIAN)
 ENDIF()
 
+# check for various include files
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
+# check for various functions
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
+# check for various types
+INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
+
 IF(UNIX)
   SEARCH_LIBRARY(LIBDL dlopen "dl")
   IF(NOT ${LIBDL})
@@ -255,13 +263,6 @@ IF(WIN32)
 ELSEIF()
   SET(HAVE_THREADS ${CMAKE_USE_PTHREADS})
 ENDIF()
-
-# check for various include files
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
-# check for various functions
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
-# check for various types
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
 
 IF(NOT DEFAULT_CHARSET)
   SET(DEFAULT_CHARSET "latin1")
@@ -331,6 +332,16 @@ IF(NOT WITH_SSL STREQUAL "OFF")
   MESSAGE1(TLS_LIBRARY_VERSION "TLS library/version: ${TLS_LIBRARY_VERSION}")
 
   MARK_AS_ADVANCED(SSL_SOURCES)
+ENDIF()
+
+SET(ENABLED_LOCAL_INFILE "AUTO" CACHE STRING "If we should should enable LOAD DATA LOCAL by default (OFF/ON/AUTO)")
+MARK_AS_ADVANCED(ENABLED_LOCAL_INFILE)
+IF (ENABLED_LOCAL_INFILE MATCHES "^(0|FALSE)$")
+  SET(ENABLED_LOCAL_INFILE OFF)
+ELSEIF(ENABLED_LOCAL_INFILE MATCHES "^(1|TRUE)$")
+  SET(ENABLED_LOCAL_INFILE ON)
+ELSEIF (NOT ENABLED_LOCAL_INFILE MATCHES "^(ON|OFF|AUTO)$")
+  MESSAGE(FATAL_ERROR "ENABLED_LOCAL_INFILE must be one of OFF, ON, AUTO")
 ENDIF()
 
 IF(NOT WIN32)

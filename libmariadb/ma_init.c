@@ -21,10 +21,6 @@
 #include "mariadb_ctype.h"
 #include <ma_string.h>
 #include <mariadb_ctype.h>
-#ifdef HAVE_GETRUSAGE
-#include <sys/resource.h>
-/* extern int     getrusage(int, struct rusage *); */
-#endif
 #include <signal.h>
 #ifdef _WIN32
 #ifdef _MSC_VER
@@ -66,30 +62,6 @@ void ma_end(int infoflag __attribute__((unused)))
 } /* ma_end */
 
 #ifdef _WIN32
-
-/*
-  This code is specially for running MySQL, but it should work in
-  other cases too.
-
-  Inizializzazione delle variabili d'ambiente per Win a 32 bit.
-
-  Vengono inserite nelle variabili d'ambiente (utilizzando cosi'
-  le funzioni getenv e putenv) i valori presenti nelle chiavi
-  del file di registro:
-
-  HKEY_LOCAL_MACHINE\software\MySQL
-
-  Se la kiave non esiste nonn inserisce nessun valore
-*/
-
-/* Crea la stringa d'ambiente */
-
-void setEnvString(char *ret, const char *name, const char *value)
-{
-  sprintf(ret, "%s=%s", name, value);
-  return ;
-}
-
 static my_bool my_win_init()
 {
   WORD VersionRequested;

@@ -234,8 +234,8 @@ static int test_frm_bug(MYSQL *mysql)
   MYSQL_RES  *result;
   MYSQL_ROW  row;
   FILE       *test_file;
-  char       data_dir[64];
-  char       test_frm[FN_REFLEN];
+  char       data_dir[FN_REFLEN];
+  char       test_frm[1024];
   int        rc;
 
   mysql_autocommit(mysql, TRUE);
@@ -269,7 +269,7 @@ static int test_frm_bug(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
-  snprintf(test_frm, FN_REFLEN - 1,"%s/%s/test_frm_bug.frm", data_dir, schema);
+  snprintf(test_frm, sizeof(test_frm)-1, "%s/%s/test_frm_bug.frm", data_dir, schema);
 
   if (!(test_file= fopen(test_frm, "w")))
   {
@@ -1324,7 +1324,29 @@ static int test_wl6797(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc384(MYSQL *my __attribute__((unused)))
+{
+  char value[1000];
+  int len;
+  MYSQL *mysql= mysql_init(NULL);
+
+  memset(&value, 'A', 999);
+  value[999]= 0;
+
+  mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo", value);
+  len= (int)mysql->options.extension->connect_attrs_len;
+  /* Length: 1 (=len) + 3 (="foo") + 3 (=len) + 999 (="AAA...") = 1006 */
+  FAIL_IF(len != 1006, "Wrong length");
+  mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo");
+  len= (int)mysql->options.extension->connect_attrs_len;
+  /* Length should be zero after deleting the connection attribute */
+  FAIL_IF(len != 0, "Wrong length");
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef _WIN32
   {"test_mdev12965", test_mdev12965, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #endif
