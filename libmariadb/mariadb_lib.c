@@ -1215,11 +1215,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
 
-  if (!host || !host[0])
-    host = mysql->options.host;
-
-  ma_set_connect_attrs(mysql, host);
-
   if (net->pvio)  /* check if we are already connected */
   {
     SET_CLIENT_ERROR(mysql, CR_ALREADY_CONNECTED, SQLSTATE_UNKNOWN, 0);
@@ -1237,6 +1232,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     free(mysql->options.my_cnf_group);
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
   }
+
+  if (!host || !host[0])
+    host = mysql->options.host;
+
+  ma_set_connect_attrs(mysql, host);
 
 #ifndef WIN32
   if (mysql->options.protocol > MYSQL_PROTOCOL_SOCKET)
