@@ -1612,7 +1612,6 @@ static int test_conc392(MYSQL *mysql)
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &capabilities);
   if (!(capabilities & CLIENT_SESSION_TRACKING))
   {
-    mysql_close(mysql);
     diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
     return SKIP;
   }
