@@ -2034,7 +2034,8 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
             case SESSION_TRACK_STATE_CHANGE:
             case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
             case SESSION_TRACK_SYSTEM_VARIABLES:
-              net_field_length(&pos); /* ignore total length, item length will follow next */
+              if (si_type != SESSION_TRACK_STATE_CHANGE)
+                net_field_length(&pos); /* ignore total length, item length will follow next */
               plen= net_field_length(&pos);
               if (!ma_multi_malloc(0,
                                   &session_item, sizeof(LIST),

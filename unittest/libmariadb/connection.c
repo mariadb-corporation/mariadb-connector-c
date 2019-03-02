@@ -1602,8 +1602,28 @@ static int test_conc312(MYSQL *my)
   return OK;
 }
 
+static int test_conc392(MYSQL *mysql)
+{
+  int rc;
+  const char *data;
+  size_t len;
+  
+  rc= mysql_query(mysql, "set session_track_state_change=1");
+  check_mysql_rc(rc, mysql);
+
+  if (mysql_session_track_get_first(mysql, SESSION_TRACK_STATE_CHANGE, &data, &len))
+  {
+    diag("session_track_get_first failed");
+    return FAIL;
+  }
+  
+  FAIL_IF(len != 1, "Expected length 1");
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"test_conc392", test_conc392, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc312", test_conc312, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc351", test_conc351, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc332", test_conc332, TEST_CONNECTION_NONE, 0, NULL, NULL},
