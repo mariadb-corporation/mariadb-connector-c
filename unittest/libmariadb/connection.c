@@ -1607,6 +1607,15 @@ static int test_conc392(MYSQL *mysql)
   int rc;
   const char *data;
   size_t len;
+  ulong capabilities= 0;
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &capabilities);
+  if (!(capabilities & CLIENT_SESSION_TRACKING))
+  {
+    mysql_close(mysql);
+    diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
+    return SKIP;
+  }
   
   rc= mysql_query(mysql, "set session_track_state_change=1");
   check_mysql_rc(rc, mysql);
