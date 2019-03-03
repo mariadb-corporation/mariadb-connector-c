@@ -239,6 +239,7 @@ static int test_parse_error_and_bad_length(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
+  char stmt_str[128];
 
   /* check that we get 4 syntax errors over the 4 calls */
 
@@ -254,7 +255,9 @@ static int test_parse_error_and_bad_length(MYSQL *mysql)
   mysql_stmt_close(stmt);
   stmt= mysql_stmt_init(mysql);
   FAIL_UNLESS(stmt, "");
-  rc= mysql_stmt_prepare(stmt, "SHOW DATABASES", 100);
+  memset(stmt_str, 0, 100);
+  strcpy(stmt_str, "SHOW DATABASES");
+  rc= mysql_stmt_prepare(stmt, stmt_str, 99);
   FAIL_IF(!rc, "Error expected");
   mysql_stmt_close(stmt);
   return OK;

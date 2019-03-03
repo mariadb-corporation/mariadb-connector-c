@@ -1345,6 +1345,10 @@ static int test_expired_pw(MYSQL *my)
   my_test_connect(mysql, hostname, "foo", "foo", schema,
                   port, socketname, 0);
 
+  /* we should be in sandbox mode now, only set commands should be allowed */
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  FAIL_IF(!rc, "Error expected (we are in sandbox mode");
+
   diag("error: %d %s", mysql_errno(mysql), mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD &&
           mysql_errno(mysql) != ER_MUST_CHANGE_PASSWORD_LOGIN, "Error 1820/1862 expected");
@@ -1610,6 +1614,13 @@ static int test_conc366(MYSQL *mysql)
     return SKIP;
   }
 
+  /* check if ed25519 plugin is available */
+  if (!mysql_client_find_plugin(mysql, "client_ed25519", 3))
+  {
+    diag("client_ed25519 plugin not available");
+    return SKIP;
+  }
+
   rc= mysql_query(mysql, "INSTALL SONAME 'auth_ed25519'");
   if (rc)
   {
@@ -1639,13 +1650,40 @@ static int test_conc366(MYSQL *mysql)
   sprintf(query, "UNINSTALL SONAME 'auth_ed25519'");
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
+  return OK;
+}
 
+static int test_conc392(MYSQL *mysql)
+{
+  int rc;
+  const char *data;
+  size_t len;
+  ulong capabilities= 0;
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &capabilities);
+  if (!(capabilities & CLIENT_SESSION_TRACKING))
+  {
+    diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
+    return SKIP;
+  }
+  
+  rc= mysql_query(mysql, "set session_track_state_change=1");
+  check_mysql_rc(rc, mysql);
+
+  if (mysql_session_track_get_first(mysql, SESSION_TRACK_STATE_CHANGE, &data, &len))
+  {
+    diag("session_track_get_first failed");
+    return FAIL;
+  }
+  
+  FAIL_IF(len != 1, "Expected length 1");
   return OK;
 }
 
 
 struct my_tests_st my_tests[] = {
   {"test_conc366", test_conc366, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc392", test_conc392, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc312", test_conc312, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc351", test_conc351, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc332", test_conc332, TEST_CONNECTION_NONE, 0, NULL, NULL},

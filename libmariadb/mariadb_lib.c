@@ -1213,11 +1213,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
 
-  if (!host || !host[0])
-    host = mysql->options.host;
-
-  ma_set_connect_attrs(mysql, host);
-
   if (net->pvio)  /* check if we are already connected */
   {
     SET_CLIENT_ERROR(mysql, CR_ALREADY_CONNECTED, SQLSTATE_UNKNOWN, 0);
@@ -1235,6 +1230,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     free(mysql->options.my_cnf_group);
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
   }
+
+  if (!host || !host[0])
+    host = mysql->options.host;
+
+  ma_set_connect_attrs(mysql, host);
 
 #ifndef WIN32
   if (mysql->options.protocol > MYSQL_PROTOCOL_SOCKET)
@@ -2032,7 +2032,8 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
             case SESSION_TRACK_STATE_CHANGE:
             case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
             case SESSION_TRACK_SYSTEM_VARIABLES:
-              net_field_length(&pos); /* ignore total length, item length will follow next */
+              if (si_type != SESSION_TRACK_STATE_CHANGE)
+                net_field_length(&pos); /* ignore total length, item length will follow next */
               plen= net_field_length(&pos);
               if (!ma_multi_malloc(0,
                                   &session_item, sizeof(LIST),

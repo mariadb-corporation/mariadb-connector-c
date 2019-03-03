@@ -8,7 +8,7 @@
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
-static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
+static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attribute__((unused)));
 extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
 extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
@@ -112,7 +112,7 @@ auth_plugin_t dummy_fallback_client_plugin=
 };
 
 
-static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
+static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attribute__((unused)))
 {
   char last_error[MYSQL_ERRMSG_SIZE];
   unsigned int i, last_errno= ((MCPVIO_EXT *)vio)->mysql->net.last_errno;
