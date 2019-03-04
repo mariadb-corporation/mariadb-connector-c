@@ -31,6 +31,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <errmsg.h>
 #include <stdlib.h>
 #include <ma_server_error.h>
+#include <mysql/client_plugin.h>
 
 #ifndef WIN32
 #include <pthread.h>

@@ -1081,7 +1081,7 @@ static int test_auth256(MYSQL *my)
   my_ulonglong num_rows= 0;
   char query[1024];
 
-  if (!mysql_client_find_plugin(mysql, "sha256_password", 3))
+  if (!mysql_client_find_plugin(mysql, "sha256_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN))
   {
     diag("sha256_password plugin not available");
     mysql_close(mysql);
@@ -1615,7 +1615,7 @@ static int test_conc366(MYSQL *mysql)
   }
 
   /* check if ed25519 plugin is available */
-  if (!mysql_client_find_plugin(mysql, "client_ed25519", 3))
+  if (!mysql_client_find_plugin(mysql, "client_ed25519", MYSQL_CLIENT_AUTHENTICATION_PLUGIN))
   {
     diag("client_ed25519 plugin not available");
     return SKIP;
@@ -1630,6 +1630,10 @@ static int test_conc366(MYSQL *mysql)
 
 
   sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING 'vubFBzIrapbfHct1/J72dnUryz5VS7lA6XHH8sIx4TI'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  sprintf(query, "GRANT ALL ON %s.* TO 'ede'@'%s'", schema, this_host);
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
