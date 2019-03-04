@@ -55,6 +55,7 @@ static int create_dyncol_named(MYSQL *mysql)
 
   mariadb_dyncol_init(&dyncol);
   rc= mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 0); 
+  mariadb_dyncol_free(&dyncol);
   FAIL_IF(mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 1) < 0, "Error");
   column_count= 0;
   FAIL_IF(mariadb_dyncol_column_count(&dyncol, &column_count) < 0, "Error");
@@ -119,6 +120,7 @@ static int mdev_4994(MYSQL *unused __attribute__((unused)))
   mariadb_dyncol_init(&dyncol);
   rc= mariadb_dyncol_create_many_num(&dyncol, 1, &key, &val, 0); 
   FAIL_IF(rc < 0, "Unexpected error");
+  mariadb_dyncol_free(&dyncol);
   return OK;
 }
 
@@ -291,6 +293,8 @@ static int dyncol_nested(MYSQL *mysql __attribute__((unused)))
     diag("%s != %s", s.str, "{\"0\":17,\"1\":{\"0\":17}}");
     return FAIL;
   }
+  ma_dynstr_free(&s);
+  mariadb_dyncol_free(&col1);
   return OK;
 }
 
