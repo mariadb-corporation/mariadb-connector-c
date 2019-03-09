@@ -347,6 +347,8 @@ static int bulk_null(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+  free(buf[0]);
+  free(buf[1]);
   free(buf);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_null");
   check_mysql_rc(rc, mysql);

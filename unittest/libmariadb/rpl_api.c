@@ -50,6 +50,7 @@ static int test_rpl_01(MYSQL *mysql)
     printf("event: %d\n", event->event_type);
   }
   mariadb_free_rpl_event(event);
+  mariadb_rpl_close(rpl);
   return OK;
 }
 
