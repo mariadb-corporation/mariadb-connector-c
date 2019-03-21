@@ -508,7 +508,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p)
     if (t->second_part)
     {
       int4store(t_buffer + 8, t->second_part);
-      len= 12;
+      len= 11;
     }
     else if (t->hour || t->minute || t->second)
       len= 7;
