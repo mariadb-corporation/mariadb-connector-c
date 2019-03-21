@@ -662,8 +662,16 @@ unsigned char* mysql_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *req
           case MYSQL_TYPE_ENUM:
           case MYSQL_TYPE_BIT:
           case MYSQL_TYPE_SET:
-            data_size+= 5; /* max 8 bytes for size */
+            data_size+= 9; /* max 8 bytes for size */
             data_size+= (size_t)*stmt->params[i].length;
+            break;
+          case MYSQL_TYPE_DATE:
+          case MYSQL_TYPE_TIMESTAMP:
+          case MYSQL_TYPE_DATETIME:
+            data_size += MAX_DATETIME_STR_LEN;
+            break;
+          case MYSQL_TYPE_TIME:
+            data_size += MAX_TIME_STR_LEN;
             break;
           default:
             data_size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
