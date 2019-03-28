@@ -194,6 +194,7 @@ end:
 }
 #endif
 
+#ifndef HAVE_GNUTLS
 static char *load_pub_key_file(const char *filename, int *pub_key_size)
 {
   FILE *fp= NULL;
@@ -230,6 +231,7 @@ end:
   }
   return buffer;
 }
+#endif
 
 
 static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
