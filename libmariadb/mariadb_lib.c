@@ -621,6 +621,8 @@ struct st_default_options mariadb_defaults[] =
   {MYSQL_OPT_SSL_CERT, MARIADB_OPTION_STR,"ssl-cert"},
   {MYSQL_OPT_SSL_CA, MARIADB_OPTION_STR,"ssl-ca"},
   {MYSQL_OPT_SSL_CAPATH, MARIADB_OPTION_STR,"ssl-capath"},
+  {MYSQL_OPT_SSL_CRL, MARIADB_OPTION_STR,"ssl-crl"},
+  {MYSQL_OPT_SSL_CRLPATH, MARIADB_OPTION_STR,"ssl-crlpath"},
   {MYSQL_OPT_SSL_VERIFY_SERVER_CERT, MARIADB_OPTION_BOOL,"ssl-verify-server-cert"},
   {MYSQL_SET_CHARSET_DIR, MARIADB_OPTION_STR, "character-sets-dir"},
   {MYSQL_SET_CHARSET_NAME, MARIADB_OPTION_STR, "default-character-set"},
@@ -648,6 +650,7 @@ struct st_default_options mariadb_defaults[] =
   {MARIADB_OPT_TLS_VERSION, MARIADB_OPTION_STR, "tls_version"},
   {MYSQL_SERVER_PUBLIC_KEY, MARIADB_OPTION_STR, "server_public_key"},
   {MYSQL_OPT_BIND, MARIADB_OPTION_STR, "bind-address"},
+  {MYSQL_OPT_SSL_ENFORCE, MARIADB_OPTION_BOOL, "ssl-enforce"},
   {0, 0, NULL}
 };
 
