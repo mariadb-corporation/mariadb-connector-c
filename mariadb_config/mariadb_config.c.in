@@ -15,6 +15,7 @@ static char *mariadb_progname;
 #define SOCKET  "@MARIADB_UNIX_ADDR@"
 #define PORT "@MARIADB_PORT@"
 #define TLS_LIBRARY_VERSION "@TLS_LIBRARY_VERSION@"
+#define EMBED_LIBS "-L@CMAKE_INSTALL_PREFIX@/@INSTALL_LIBDIR@/ -lmariadbd @extra_dynamic_LDFLAGS@"
 
 static struct option long_options[]=
 {
@@ -30,6 +31,9 @@ static struct option long_options[]=
   {"port", no_argument, 0, 'i'},
   {"plugindir", no_argument, 0, 'j'},
   {"tlsinfo", no_argument, 0, 'k'},
+  {"libmysqld-libs", no_argument, 0, 'm' },
+  {"embedded-libs", no_argument, 0, 'm' },
+  {"embedded", no_argument, 0, 'm' },
   {NULL, 0, 0, 0}
 };
 
@@ -46,7 +50,10 @@ static const char *values[]=
   SOCKET,
   PORT,
   PLUGIN_DIR,
-  TLS_LIBRARY_VERSION
+  TLS_LIBRARY_VERSION,
+  EMBED_LIBS,
+  EMBED_LIBS,
+  EMBED_LIBS,
 };
 
 void usage(void)
@@ -114,6 +121,9 @@ int main(int argc, char **argv)
       break;
     case 'l':
       puts(LIBS_SYS);
+      break;
+    case 'm':
+      puts(EMBED_LIBS);
       break;
     default:
       exit((c != -1));
