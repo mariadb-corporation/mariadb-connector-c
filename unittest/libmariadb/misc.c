@@ -1383,7 +1383,6 @@ static int test_conc395(MYSQL *unused __attribute__((unused)))
   mysql_close(mysql);
   return OK;
 }
-#endif
 
 static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 {
@@ -1425,14 +1424,15 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
   mysql_close(mysql);
   return OK;
 }
+#endif
 
 
 struct my_tests_st my_tests[] = {
-  {"test_sslenforce", test_sslenforce, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef _WIN32
   {"test_mdev12965", test_mdev12965, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc395", test_conc395, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_sslenforce", test_sslenforce, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #endif
   {"test_wl6797", test_wl6797, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_server_status", test_server_status, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
