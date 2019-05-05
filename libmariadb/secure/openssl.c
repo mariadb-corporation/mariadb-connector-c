@@ -812,7 +812,8 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
     return 1;
   }
 #ifdef HAVE_OPENSSL_CHECK_HOST
-  if (X509_check_host(cert, mysql->host, 0, 0, 0) != 1)
+  if (X509_check_host(cert, mysql->host, 0, 0, 0) != 1
+     && X509_check_ip_asc(cert, mysql->host, 0) != 1)
     goto error;
 #else
   x509sn= X509_get_subject_name(cert);
