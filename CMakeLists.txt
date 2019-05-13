@@ -67,6 +67,7 @@ ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
 ###############
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/misc.cmake)
+INCLUDE(FindCURL)
 
 IF(WITH_SIGNCODE)
   IF(WIN32 AND NOT SIGN_OPTIONS)
