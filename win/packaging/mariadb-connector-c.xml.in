@@ -48,6 +48,7 @@
     <Component Id="RegistryKeys" Guid="755726EA-9706-413D-86B3-E70582FF2819" DiskId="1" Directory="INSTALLFOLDER" Win64="@IS_WIN64@">
       <RegistryKey Id="Version" Root="HKLM" Key="SOFTWARE\@PRODUCT_MANUFACTURER@\@PRODUCT_NAME@" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
         <RegistryValue Name="Version" Type="string" Value="@PRODUCT_VERSION@"/>
+	<RegistryValue Name="PluginDir" Type="string" Value="[instlib_plugin]"/>
       </RegistryKey>
     </Component>
     <Component Id="Library" Guid="89E28283-23AE-4F10-B743-B5FA485E9F9A" KeyPath="yes" DiskId="1" Directory="instlib" Win64="@IS_WIN64@">

@@ -38,7 +38,7 @@
 
 #include <schnlsp.h>
 #undef SECURITY_WIN32
-#include <windows.h>
+#include <Windows.h>
 #include <sspi.h>
 
 #define SC_IO_BUFFER_SIZE 0x4000
@@ -48,7 +48,8 @@
 
 struct st_schannel {
   HCERTSTORE cert_store;
-  const CERT_CONTEXT *client_cert_ctx;
+  const PCERT_CONTEXT *client_cert_ctx;
+  DWORD cert_cnt;
   CredHandle CredHdl;
   my_bool FreeCredHdl;
   PUCHAR IoBuffer;
@@ -67,10 +68,11 @@ typedef struct st_schannel SC_CTX;
 extern HCERTSTORE ca_CertStore, crl_CertStore;
 extern my_bool ca_Check, crl_Check;
 
-CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file);
+DWORD ma_schannel_load_certs(MARIADB_PVIO* pvio, const char* PemFileName, PCERT_CONTEXT** ctx);
+void ma_schannel_free_certs(const PCERT_CONTEXT* ctx, DWORD count);
 SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls);
 SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData);
-my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, const CERT_CONTEXT *ctx, char *key_file);
+my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, SC_CTX *ctx, char *key_file);
 PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem_file);
 my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls);
 ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,

@@ -125,7 +125,7 @@ void ma_SHA1Update(_MA_SHA1_CTX * context, const unsigned char *input,
       ((unsigned char*) & context->buffer[index], (unsigned char*) input, partLen);
     ma_SHA1Transform(context->state, context->buffer);
 
-    for (i = partLen; i + 63 < inputLen; i += 64)
+    for (i = partLen; i + 63 < (int)inputLen; i += 64)
       ma_SHA1Transform(context->state, &input[i]);
 
     index = 0;

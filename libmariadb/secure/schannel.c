@@ -70,6 +70,12 @@ cipher_map[] =
     "TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA", "EDH-DSS-DES-CBC3-SHA",
     { CALG_DH_EPHEM, CALG_3DES, CALG_SHA1, CALG_DSS_SIGN }
   },
+ /*   {
+    0x0014,
+    PROT_TLS1_0 | PROT_TLS1_2 | PROT_SSL3,
+    "TLS_DHE_DSS_WITH_3DES_EDE_CBC_SHA", "DHE_RSA_EXPORT_WITH_DES40_CBC_SHA",
+    { CALG_DH_EPHEM, CALG_AGREEDKEY_ANY, CALG_SHA1, CALG_DSS_SIGN }
+  }, */
   {
     0x002F,
     PROT_SSL3 | PROT_TLS1_0 | PROT_TLS1_2,
@@ -91,7 +97,7 @@ cipher_map[] =
   {
     0x0035,
     PROT_TLS1_0 |  PROT_TLS1_2,
-    "TLS_RSA_WITH_AES_256_CBC_SHA", "AES256-SHA",
+    "TLS_RSA_WITH_AES_256_CBC_SHA", "AES256-SHA", 
     { CALG_RSA_KEYX, CALG_AES_256, CALG_SHA1, CALG_RSA_SIGN }
   },
   {
@@ -153,11 +159,37 @@ cipher_map[] =
     PROT_TLS1_2,
     "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", "DHE-RSA-AES256-GCM-SHA384",
     { CALG_DH_EPHEM, CALG_AES_256, CALG_SHA_384, CALG_RSA_SIGN }
-  }
-
+  },
 };
 
-#define MAX_ALG_ID 50
+DWORD cipher_suites_tls1_0[] = {
+  0x0035, 0x002F, 0x000A, 0x0000
+};
+
+DWORD cipher_suites_tls1_2[] = {
+  0x0035, 0x002F, 0x000A, /* TLSv1*/
+  0x009E, 0x009F, 0x009C, 0x009D,
+  0x003D, 0x003C, 0x0000
+};
+
+#define DEFAULT_ALG_CNT 13
+ALG_ID default_ALGS[DEFAULT_ALG_CNT] = {
+  CALG_RSA_KEYX,
+  CALG_AES_128,
+  CALG_SHA,
+  CALG_RSA_SIGN,
+  CALG_AES_256,
+  CALG_MD5,
+  CALG_RC4,
+  CALG_SHA1,
+  CALG_3DES,
+  CALG_SHA_256,
+  CALG_SHA_384,
+  CALG_SHA_512,
+  CALG_RSA_SIGN
+ };
+
+#define MAX_ALG_ID 256
 
 void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
 void ma_schannel_set_win_error(MYSQL *mysql);
@@ -204,6 +236,7 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
        *keyfile= mysql->options.ssl_key;
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
+  DWORD i;
 
   sctx->client_cert_ctx= NULL;
 
@@ -215,13 +248,13 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
   if (!certfile)
     return 0;
 
-  if (!(sctx->client_cert_ctx = ma_schannel_create_cert_context(ctls->pvio, certfile)))
+  if (!(sctx->cert_cnt = ma_schannel_load_certs(ctls->pvio, certfile, &sctx->client_cert_ctx)))
     return 1;
 
-  if (!ma_schannel_load_private_key(pvio, sctx->client_cert_ctx, keyfile))
+  if (!ma_schannel_load_private_key(pvio, sctx, sctx->cert_cnt, keyfile))
   {
-    CertFreeCertificateContext(sctx->client_cert_ctx);
-    sctx->client_cert_ctx= NULL;
+    ma_schannel_free_certs(sctx->client_cert_ctx, sctx->cert_cnt);
+    sctx->client_cert_ctx = NULL;
     return 1;
   }
   return 0;
@@ -262,19 +295,21 @@ static struct _tls_version {
 
 static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t arr_size)
 {
-  char *token = strtok(cipher_str, ":");
+  char* token;
   size_t pos = 0;
 
+    token= strtok(cipher_str, ":");
   while (token)
   {
     size_t i;
+
 
     for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
     {
       if((pos + 4 < arr_size && strcmp(cipher_map[i].openssl_name, token) == 0) ||
         (cipher_map[i].protocol <= protocol))
       {
-        memcpy(arr + pos, cipher_map[i].algs, sizeof(ALG_ID)* 4);
+        memcpy(&arr[pos], cipher_map[i].algs, sizeof(ALG_ID)* 4);
         pos += 4;
         break;
       }
@@ -307,6 +342,27 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   ZeroMemory(&Cred, sizeof(SCHANNEL_CRED));
 
+  if (mysql->options.extension && mysql->options.extension->tls_version)
+  {
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.0"))
+      Cred.grbitEnabledProtocols |= SP_PROT_TLS1_0_CLIENT;
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.1"))
+      Cred.grbitEnabledProtocols |= SP_PROT_TLS1_1_CLIENT;
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.2"))
+      Cred.grbitEnabledProtocols |= SP_PROT_TLS1_2_CLIENT;
+#ifdef SP_PROT_TLS1_3_CLIENT
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.3"))
+      Cred.grbitEnabledProtocols |= SP_PROT_TLS1_3_CLIENT;
+#endif
+  }
+  if (!Cred.grbitEnabledProtocols)
+  {
+    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
+#ifdef SP_PROT_TLS1_3_CLIENT
+   // Cred.grbitEnabledProtocols |= SP_PROT_TLS1_3_CLIENT;
+#endif
+  }
+
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
@@ -334,28 +390,40 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       goto end;
     }
   }
-  
+  else
+  {
+    DWORD* ciphers = (Cred.grbitEnabledProtocols >= SP_PROT_TLS1_2_CLIENT) ? cipher_suites_tls1_2 : cipher_suites_tls1_0;
+    DWORD i=0, j, algcnt= 0;
+
+    memset(AlgId, 0, sizeof(ALG_ID) * MAX_ALG_ID);
+    while (ciphers[i])
+    {
+      for (j = 0; j < sizeof(cipher_map) / sizeof(cipher_map[0]); j++)
+      {
+        if (cipher_map[j].cipher_id == ciphers[i])
+        {
+          memcpy(&AlgId[algcnt], cipher_map[j].algs, sizeof(ALG_ID) * 4);
+          algcnt += 4;
+          break;
+        }
+      }
+      i++;
+    }
+
+    Cred.palgSupportedAlgs = AlgId;
+    Cred.cSupportedAlgs = algcnt;
+  }
+ 
   Cred.dwVersion= SCHANNEL_CRED_VERSION;
 
   Cred.dwFlags = SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
 
   if (sctx->client_cert_ctx)
   {
-    Cred.cCreds = 1;
-    Cred.paCred = &sctx->client_cert_ctx;
+    Cred.cCreds = sctx->cert_cnt;
+    Cred.paCred = sctx->client_cert_ctx;
   }
-  if (mysql->options.extension && mysql->options.extension->tls_version)
-  {
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.0"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_0_CLIENT;
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.1"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1_CLIENT;
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.2"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
-  }
-  if (!Cred.grbitEnabledProtocols)
-    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT |  SP_PROT_TLS1_1_CLIENT;
-
+ 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
                                        NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
   {
@@ -374,10 +442,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
 end:
   if (rc && sctx->IoBufferSize)
-    LocalFree(sctx->IoBuffer);
+    free(sctx->IoBuffer);
   sctx->IoBufferSize= 0;
-  if (sctx->client_cert_ctx)
-    CertFreeCertificateContext(sctx->client_cert_ctx);
+  ma_schannel_free_certs(sctx->client_cert_ctx, sctx->cert_cnt);
   sctx->client_cert_ctx= 0;
   return 1;
 }
@@ -420,9 +487,9 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
   if (sctx)
   {
     if (sctx->IoBufferSize)
-      LocalFree(sctx->IoBuffer);
+      free(sctx->IoBuffer);
     if (sctx->client_cert_ctx)
-      CertFreeCertificateContext(sctx->client_cert_ctx);
+      ma_schannel_free_certs(sctx->client_cert_ctx, sctx->cert_cnt);
     FreeCredentialHandle(&sctx->CredHdl);
     DeleteSecurityContext(&sctx->ctxt);
   }
@@ -462,7 +529,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
       goto end;
     }
 
-    if (!(szName= (char *)LocalAlloc(0, NameSize + 1)))
+    if (!(szName= (char *)LocalAlloc(0, (size_t)NameSize + 1)))
     {
       pvio->set_error(ctls->pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
       goto end;
