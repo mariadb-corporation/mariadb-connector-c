@@ -14,6 +14,7 @@ Name: libmariadb
 Version: @CPACK_PACKAGE_VERSION@
 Description: MariaDB Connector/C dynamic library
 Cflags: -I${includedir}
-Libs: -L${libdir} -lmariadb @extra_dynamic_LDFLAGS@
+Libs: -L${libdir} -lmariadb
+Libs.private: @extra_dynamic_LDFLAGS@
 
 
