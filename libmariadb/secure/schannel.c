@@ -354,7 +354,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
   }
   if (!Cred.grbitEnabledProtocols)
-    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT |  SP_PROT_TLS1_1_CLIENT;
+    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
 
   if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
                                        NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
