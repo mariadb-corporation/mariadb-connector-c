@@ -133,11 +133,11 @@ void ma_schannel_set_win_error(MARIADB_PVIO *pvio)
 */
 static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, DWORD *buffer_len)
 {
-  HANDLE hfile;
+  HANDLE hfile= 0;
   char   *buffer= NULL;
   DWORD dwBytesRead= 0;
   LPBYTE der_buffer= NULL;
-  DWORD der_buffer_length;
+  DWORD der_buffer_length= 0;
 
   if (buffer_len == NULL)
     return NULL;
@@ -156,7 +156,7 @@ static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, 
      goto end;
   }
 
-  if (!(buffer= LocalAlloc(0, *buffer_len + 1)))
+  if (!(buffer= malloc((size_t)(*buffer_len + 1))))
   {
     pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
     goto end;
@@ -192,7 +192,7 @@ static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, 
   }
 
   *buffer_len= der_buffer_length;
-  LocalFree(buffer);
+  free(buffer);
   
   return der_buffer;
 
@@ -207,6 +207,196 @@ end:
   return NULL;
 }
 /* }}} */
+
+static LPBYTE ma_schannel_read(MARIADB_PVIO* pvio, const char* PemFile, DWORD* buffer_len)
+{
+  HANDLE hfile = NULL;
+  char* buffer = NULL;
+  DWORD dwBytesRead = 0;
+
+  if ((hfile = CreateFile(PemFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+    FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
+  {
+    ma_schannel_set_win_error(pvio);
+    return NULL;
+  }
+
+  if (!(*buffer_len = GetFileSize(hfile, NULL)))
+  {
+    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid pem format");
+    goto end;
+  }
+
+  if (!(buffer = malloc((size_t)* buffer_len + 1)))
+  {
+    pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
+    goto end;
+  }
+
+  if (!ReadFile(hfile, buffer, *buffer_len, &dwBytesRead, NULL))
+  {
+    ma_schannel_set_win_error(pvio);
+    goto end;
+  }
+
+  buffer[*buffer_len] = 0;
+
+  CloseHandle(hfile);
+  return buffer;
+end:
+  if (hfile != INVALID_HANDLE_VALUE)
+    CloseHandle(hfile);
+  if (buffer)
+    free(buffer);
+  *buffer_len = 0;
+  return NULL;
+}
+
+LPBYTE ma_schannel_convert_base64(MARIADB_PVIO* pvio, char* buffer, DWORD buffer_len, DWORD* der_len)
+{
+  LPBYTE der_buffer = NULL;
+
+  *der_len = 0;
+
+  /* calculate the length of DER binary */
+  if (!CryptStringToBinaryA(buffer, buffer_len, CRYPT_STRING_BASE64HEADER,
+    NULL, der_len, NULL, NULL))
+  {
+    ma_schannel_set_win_error(pvio);
+    goto end;
+  }
+  /* allocate DER binary buffer */
+  if (!(der_buffer = (LPBYTE)malloc(*der_len)))
+  {
+    pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
+    goto end;
+  }
+  /* convert to DER binary */
+  if (!CryptStringToBinaryA(buffer, buffer_len, CRYPT_STRING_BASE64HEADER,
+    der_buffer, der_len, NULL, NULL))
+  {
+    ma_schannel_set_win_error(pvio);
+    goto end;
+  }
+  return der_buffer;
+end:
+  if (der_buffer)
+    free(der_buffer);
+  return NULL;
+}
+
+
+DWORD ma_schannel_load_certs_and_keys(MARIADB_PVIO* pvio, const char* PemFileName, SC_CTX* ctx)
+{
+  char* buffer = NULL;
+  char* p, * type;
+  DWORD buffer_len = 0;
+  LPBYTE der_buffer = NULL;
+  DWORD der_buffer_length = 0;
+
+  /* check if cert and key was already loaded */
+  if (ctx->client_cert_ctx && ctx->der_key)
+    return 0;
+
+  if (!(buffer = ma_schannel_read(pvio, PemFileName, &buffer_len)))
+    return 0;
+
+  p = buffer;
+
+  while ((p = strstr(p, "-----BEGIN")))
+  {
+    my_bool is_cert = 0;
+    char* cert_end = strstr(p, "-----END");
+
+    if (!cert_end)
+    {
+      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown or unsupported X509 PEM type"); goto error;
+      goto error;
+    }
+
+    if (!(cert_end = strchr(cert_end, '\n')))
+      goto error;
+
+    if ((type = strstr(p, "CERTIFICATE")) && type < cert_end)
+    {
+      is_cert = 1;
+      /* We only read first certificate, further certificates will be ignored */
+      if (ctx->client_cert_ctx)
+      {
+        p = cert_end;
+        continue;
+      }
+    }
+    else if ((type = strstr(p, "PRIVATE KEY")) && type < cert_end)
+    {
+      /* We only read the first key, further keys will be ignored */
+      if (ctx->der_key)
+      {
+        p = cert_end;
+        continue;
+      }
+    }
+    else
+    {
+      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown or unsupported X509 PEM type");
+      goto error;
+    }
+
+    if (!(der_buffer = ma_schannel_convert_base64(pvio, p, (DWORD)(cert_end - p), &der_buffer_length)))
+      goto error;
+
+    if (is_cert)
+    {
+      if (!(ctx->client_cert_ctx = (CERT_CONTEXT*)CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+        der_buffer, der_buffer_length)))
+      {
+        ma_schannel_set_win_error(pvio);
+        goto error;
+      }
+    }
+    else
+    {
+      if (!(ctx->der_key= (struct st_DER *)malloc(sizeof(struct st_DER))))
+      {
+        pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Not enough memory");
+        goto error;
+      }
+      
+      ctx->der_key->der_buffer = der_buffer;
+      ctx->der_key->der_length = der_buffer_length;
+
+      der_buffer = 0;
+      der_buffer_length = 0;
+      p = cert_end;
+    }
+
+    free(der_buffer);
+    der_buffer = 0;
+    der_buffer_length = 0;
+    p = cert_end;
+
+    if (ctx->client_cert_ctx && ctx->der_key)
+      break;
+  }
+  free(buffer);
+  return 0;
+error:
+  if (buffer)
+    free(buffer);
+  if (der_buffer)
+    free(der_buffer);
+  return 1;
+}
+
+void ma_delete_key_buffer(SC_CTX* ctx)
+{
+  if (!ctx->der_key)
+    return;
+  free(ctx->der_key->der_buffer);
+  free(ctx->der_key);
+  ctx->der_key = 0;
+}
+
 
 /* {{{ CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file) */
 /*
@@ -281,7 +471,7 @@ PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem
     ma_schannel_set_win_error(pvio);
 end:
   if (der_buffer)
-    LocalFree(der_buffer);
+    free(der_buffer);
   return ctx;
 }
 /* }}} */
@@ -306,10 +496,8 @@ end:
     PCCRL_CONTEXT          A pointer to a certification context structure
 */
 
-my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, const CERT_CONTEXT *ctx, char *key_file)
+my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, SC_CTX *ctx)
 {
-   DWORD der_buffer_len= 0;
-   LPBYTE der_buffer= NULL;
    DWORD priv_key_len= 0;
    LPBYTE priv_key= NULL;
    HCRYPTPROV  crypt_prov= 0;
@@ -317,14 +505,16 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, const CERT_CONTEXT *ctx
    CERT_KEY_CONTEXT kpi={ 0 };
    my_bool rc= 0;
 
-   /* load private key into der binary object */
-   if (!(der_buffer= ma_schannel_load_pem(pvio, key_file, &der_buffer_len)))
-     return 0;
+   if (!ctx->der_key || !ctx->client_cert_ctx)
+   {
+     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid certificate or key");
+     goto end;
+   }
 
    /* determine required buffer size for decoded private key */
    if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                             PKCS_RSA_PRIVATE_KEY,
-                            der_buffer, der_buffer_len,
+                            ctx->der_key->der_buffer, ctx->der_key->der_length,
                             0, NULL,
                             NULL, &priv_key_len))
    {
@@ -333,18 +523,17 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, const CERT_CONTEXT *ctx
    }
 
    /* allocate buffer for decoded private key */
-   if (!(priv_key= LocalAlloc(0, priv_key_len)))
+   if (!(priv_key= malloc(priv_key_len)))
    {
      pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
      goto end;
    }
 
-   /* decode */
    if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                            PKCS_RSA_PRIVATE_KEY,
-                            der_buffer, der_buffer_len,
-                            0, NULL,
-                            priv_key, &priv_key_len))
+     PKCS_RSA_PRIVATE_KEY,
+     ctx->der_key->der_buffer, ctx->der_key->der_length,
+     0, NULL,
+     priv_key, &priv_key_len))
    {
      ma_schannel_set_win_error(pvio);
      goto end;
@@ -368,19 +557,23 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, const CERT_CONTEXT *ctx
    kpi.cbSize= sizeof(kpi);
 
    /* assign private key to certificate context */
-   if (CertSetCertificateContextProperty(ctx, CERT_KEY_CONTEXT_PROP_ID, 0, &kpi))
+   if (CertSetCertificateContextProperty(ctx->client_cert_ctx, CERT_KEY_CONTEXT_PROP_ID, 0, &kpi))
      rc= 1;
    else
      ma_schannel_set_win_error(pvio);
 
 end:
-  if (der_buffer)
-    LocalFree(der_buffer);
+  if (ctx->der_key)
+  {
+    free(ctx->der_key->der_buffer);
+    free(ctx->der_key);
+    ctx->der_key = 0;
+  }
   if (priv_key)
   {
     if (crypt_key)
       CryptDestroyKey(crypt_key);
-    LocalFree(priv_key);
+    free(priv_key);
   if (!rc)
     if (crypt_prov)
       CryptReleaseContext(crypt_prov, 0);

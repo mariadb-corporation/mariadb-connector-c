@@ -46,9 +46,15 @@
 
 #include <ma_pthread.h>
 
+struct st_DER {
+  char* der_buffer;
+  DWORD der_length;
+};
+
 struct st_schannel {
   HCERTSTORE cert_store;
   const CERT_CONTEXT *client_cert_ctx;
+  struct st_DER *der_key;
   CredHandle CredHdl;
   my_bool FreeCredHdl;
   PUCHAR IoBuffer;
@@ -70,8 +76,9 @@ extern my_bool ca_Check, crl_Check;
 CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file);
 SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls);
 SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData);
-my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, const CERT_CONTEXT *ctx, char *key_file);
+my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, SC_CTX *ctx);
 PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem_file);
+void ma_delete_key_buffer(SC_CTX* ctx);
 my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls);
 ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
