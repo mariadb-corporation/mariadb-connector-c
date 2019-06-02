@@ -154,7 +154,6 @@ cipher_map[] =
     "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", "DHE-RSA-AES256-GCM-SHA384",
     { CALG_DH_EPHEM, CALG_AES_256, CALG_SHA_384, CALG_RSA_SIGN }
   }
-
 };
 
 #define MAX_ALG_ID 50
@@ -206,6 +205,7 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
   MARIADB_PVIO *pvio= ctls->pvio;
 
   sctx->client_cert_ctx= NULL;
+  sctx->der_key = NULL;
 
   if (!certfile && keyfile)
     certfile= keyfile;
@@ -215,15 +215,26 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
   if (!certfile)
     return 0;
 
-  if (!(sctx->client_cert_ctx = ma_schannel_create_cert_context(ctls->pvio, certfile)))
+  if (certfile && ma_schannel_load_certs_and_keys(pvio, certfile, sctx))
     return 1;
 
-  if (!ma_schannel_load_private_key(pvio, sctx->client_cert_ctx, keyfile))
+  if (keyfile && ma_schannel_load_certs_and_keys(pvio, keyfile, sctx))
+    return 1;
+
+  if (sctx->client_cert_ctx)
   {
-    CertFreeCertificateContext(sctx->client_cert_ctx);
-    sctx->client_cert_ctx= NULL;
+    if (!ma_schannel_load_private_key(pvio, sctx))
+      return 1;
+  }
+  else if (sctx->der_key)
+  {
+    free(sctx->der_key->der_buffer);
+    free(sctx->der_key);
+    sctx->der_key = 0;
+    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Cert not found");
     return 1;
   }
+
   return 0;
 }
 /* }}} */
@@ -293,6 +304,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   SC_CTX *sctx;
   SECURITY_STATUS sRet;
   ALG_ID AlgId[MAX_ALG_ID];
+  size_t i;
+  DWORD protocol = 0;
+
   
   if (!ctls || !ctls->pvio)
     return 1;;
@@ -310,10 +324,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   /* Set cipher */
   if (mysql->options.ssl_cipher)
   {
-    size_t i;
-    DWORD protocol = 0;
 
-    /* check if a protocol was specified as a cipher:
+   /* check if a protocol was specified as a cipher:
      * In this case don't allow cipher suites which belong to newer protocols
      * Please note: There are no cipher suites for TLS1.1
      */
@@ -533,13 +545,15 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   SecPkgContext_CipherInfo CipherInfo = { SECPKGCONTEXT_CIPHERINFO_V1 };
   SECURITY_STATUS sRet;
   SC_CTX *sctx;
+  SecPkgContext_ConnectionInfo ci;
 
   if (!ctls || !ctls->ssl)
     return NULL;
 
   sctx= (SC_CTX *)ctls->ssl;
+  sRet = QueryContextAttributesA(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, (PVOID)&ci);
+  sRet= QueryContextAttributesA(&sctx->ctxt, SECPKG_ATTR_CIPHER_INFO, (PVOID)&CipherInfo);
 
-  sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CIPHER_INFO, (PVOID)&CipherInfo);
   if (sRet != SEC_E_OK)
     return NULL;
 
