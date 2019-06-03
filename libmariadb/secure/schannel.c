@@ -545,13 +545,11 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   SecPkgContext_CipherInfo CipherInfo = { SECPKGCONTEXT_CIPHERINFO_V1 };
   SECURITY_STATUS sRet;
   SC_CTX *sctx;
-  SecPkgContext_ConnectionInfo ci;
 
   if (!ctls || !ctls->ssl)
     return NULL;
 
   sctx= (SC_CTX *)ctls->ssl;
-  sRet = QueryContextAttributesA(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, (PVOID)&ci);
   sRet= QueryContextAttributesA(&sctx->ctxt, SECPKG_ATTR_CIPHER_INFO, (PVOID)&CipherInfo);
 
   if (sRet != SEC_E_OK)
