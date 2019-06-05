@@ -73,6 +73,7 @@ typedef struct st_schannel SC_CTX;
 extern HCERTSTORE ca_CertStore, crl_CertStore;
 extern my_bool ca_Check, crl_Check;
 
+DWORD ma_schannel_load_certs_and_keys(MARIADB_PVIO* pvio, const char* PemFileName, SC_CTX* ctx);
 CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file);
 SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls);
 SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData);
