@@ -1027,7 +1027,7 @@ static size_t ma_gnutls_get_protocol_version(const char *tls_version_option,
     strcat(tls_versions, ":+VERS-TLS1.2");
 end:
   if (tls_versions[0])
-    snprintf(priority_string, prio_len - 1, "NORMAL:-VERS-TLS-ALL%s", tls_versions);
+    snprintf(priority_string, prio_len - 1, "-VERS-TLS-ALL%s:NORMAL", tls_versions);
   else
     strncpy(priority_string, "NORMAL", prio_len - 1);
   return strlen(priority_string);
