@@ -26,7 +26,7 @@ INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${CC_SOURCE_DIR}/unittest/libmariadb)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
-SET(API_TESTS "conc336" "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2" "bulk1" "rpl_api")
+SET(API_TESTS "conc336" "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2" "bulk1")
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()
@@ -34,7 +34,7 @@ ENDIF()
 SET(API_TESTS ${API_TESTS} "async")
 
 #exclude following tests from ctests, since we need to run them maually with different credentials
-SET(MANUAL_TESTS "t_aurora" "t_conc173")
+SET(MANUAL_TESTS "t_aurora" "t_conc173" "rpl_api")
 # Get finger print from server certificate
 IF(WITH_SSL)
   IF(CERT_PATH)

@@ -47,7 +47,7 @@ static int test_rpl_01(MYSQL *mysql)
 
   while((event= mariadb_rpl_fetch(rpl, event)))
   {
-    printf("event: %d\n", event->event_type);
+    diag("event: %d\n", event->event_type);
   }
   mariadb_free_rpl_event(event);
   mariadb_rpl_close(rpl);
