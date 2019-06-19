@@ -3351,12 +3351,12 @@ my_bool STDCALL mysql_autocommit(MYSQL *mysql, my_bool mode)
 
 my_bool STDCALL mysql_commit(MYSQL *mysql)
 {
-  return((my_bool)mysql_real_query(mysql, "COMMIT", (unsigned long) sizeof("COMMIT")));
+  return((my_bool)mysql_real_query(mysql, "COMMIT", (unsigned long)strlen("COMMIT")));
 }
 
 my_bool STDCALL mysql_rollback(MYSQL *mysql)
 {
-  return((my_bool)mysql_real_query(mysql, "ROLLBACK", (unsigned long)sizeof("ROLLBACK")));
+  return((my_bool)mysql_real_query(mysql, "ROLLBACK", (unsigned long)strlen("ROLLBACK")));
 }
 
 my_ulonglong STDCALL mysql_insert_id(MYSQL *mysql)
