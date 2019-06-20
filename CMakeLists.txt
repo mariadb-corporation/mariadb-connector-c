@@ -189,7 +189,7 @@ ENDIF()
 
 INCLUDE("${CC_SOURCE_DIR}/cmake/install.cmake")
 IF(NOT PLUGINDIR)
-  SET(PLUGINDIR "${INSTALL_PLUGINDIR}")
+  SET(PLUGINDIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_PLUGINDIR}")
 ENDIF()
 
 # todo: we don't character sets in share - all is compiled in
