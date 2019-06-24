@@ -796,6 +796,11 @@ static int test_ssl_fp(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
+#ifndef TEST_SSL_SHA1
+  diag("Fingerprint of server certificate not found");
+  return SKIP;
+#endif
+
   if (!ssl_cert_finger_print[0])
   {
     diag("No fingerprint available");
@@ -839,9 +844,9 @@ static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
     return SKIP;
 
 #ifndef TEST_SSL_SHA1
+  diag("Fingerprint of server certificate not found");
   return SKIP;
 #endif
-
   if (!ssl_cert_finger_print[0])
   {
     diag("No fingerprint available");
@@ -1195,6 +1200,11 @@ static int test_conc286(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
+#ifndef TEST_SSL_SHA1
+  diag("Fingerprint of server certificate not found");
+  return SKIP;
+#endif
+
   if (!ssl_cert_finger_print[0])
   {
     diag("No fingerprint available");
@@ -1248,12 +1258,11 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
     const char *opt_tls_version;
     const char *expected;
   } combinations[]= {
-    {1, "TLSv1.0", "TLSv1.0"},
     {1, "TLSv1.1", "TLSv1.1"},
     {1, "TLSv1,TLSv1.1", "TLSv1.1"},
     {0, "TLSv1.2", "TLSv1.2"},
     {0, NULL, "TLSv1.2"},
-    {0, "TLSv1.0,TLSv1.1,TLSv1.2", "TLSv1.2"},
+    {0, "TLSv1.1,TLSv1.2", "TLSv1.2"},
     {1, NULL, NULL}
   };
 
@@ -1357,7 +1366,6 @@ struct my_tests_st my_tests[] = {
 #else
   {"test_schannel_cipher", test_schannel_cipher, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
 #endif
-
   {"test_conc386", test_conc386, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"drop_ssl_user", drop_ssl_user, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
