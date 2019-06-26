@@ -780,7 +780,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     /* Abstract socket */
     if (cinfo->unix_socket[0] == '@')
     {
-      strncpy(UNIXaddr.sun_path + 1, cinfo->unix_socket + 1, 107);
+      strncpy(UNIXaddr.sun_path + 1, cinfo->unix_socket + 1, 106);
       port_length+= offsetof(struct sockaddr_un, sun_path);
     }
     else
