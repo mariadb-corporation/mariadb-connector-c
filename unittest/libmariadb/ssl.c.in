@@ -1261,7 +1261,6 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
     {1, "TLSv1.1", "TLSv1.1"},
     {1, "TLSv1,TLSv1.1", "TLSv1.1"},
     {0, "TLSv1.2", "TLSv1.2"},
-    {0, NULL, "TLSv1.2"},
     {0, "TLSv1.1,TLSv1.2", "TLSv1.2"},
     {1, NULL, NULL}
   };

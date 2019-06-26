@@ -1025,11 +1025,15 @@ static size_t ma_gnutls_get_protocol_version(const char *tls_version_option,
     strcat(tls_versions, ":+VERS-TLS1.1");
   if (strstr(tls_version_option, "TLSv1.2"))
     strcat(tls_versions, ":+VERS-TLS1.2");
+#if GNUTLS_VERSION_NUMBER > 0x030605
+  if (strstr(tls_version_option, "TLSv1.3"))
+    strcat(tls_versions, ":+VERS-TLS1.3");
+#endif
 end:
   if (tls_versions[0])
     snprintf(priority_string, prio_len - 1, "NORMAL:-VERS-TLS-ALL%s", tls_versions);
   else
-    strncpy(priority_string, "NORMAL", prio_len - 1);
+    strncpy(priority_string, "NORMAL:+VERS-ALL", prio_len - 1);
   return strlen(priority_string);
 }
 
@@ -1189,6 +1193,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (!(blocking= pvio->methods->is_blocking(pvio)))
     pvio->methods->blocking(pvio, TRUE, 0);
 
+
 #ifdef GNUTLS_EXTERNAL_TRANSPORT
   /* we don't use GnuTLS read/write functions */
   gnutls_transport_set_ptr(ssl, pvio);
@@ -1270,12 +1275,32 @@ ssize_t ma_tls_read_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  return gnutls_record_recv((gnutls_session_t )ctls->ssl, (void *)buffer, length);
+  ssize_t rc;
+  MARIADB_PVIO *pvio= ctls->pvio;
+
+  while ((rc= gnutls_record_recv((gnutls_session_t)ctls->ssl, (void *)buffer, length)) <= 0)
+  {
+    if (rc != GNUTLS_E_AGAIN && rc != GNUTLS_E_INTERRUPTED)
+      return rc;
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.read_timeout) < 1)
+      return rc;
+  }
+  return rc;
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 { 
-  return gnutls_record_send((gnutls_session_t )ctls->ssl, (void *)buffer, length);
+  ssize_t rc;
+  MARIADB_PVIO *pvio= ctls->pvio;
+
+  while ((rc= gnutls_record_send((gnutls_session_t)ctls->ssl, (void *)buffer, length)) <= 0)
+  {
+    if (rc != GNUTLS_E_AGAIN && rc != GNUTLS_E_INTERRUPTED)
+      return rc;
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.write_timeout) < 1)
+      return rc;
+  }
+  return rc;
 }
 
 my_bool ma_tls_close(MARIADB_TLS *ctls)
