@@ -5042,8 +5042,77 @@ static int test_zerofill_1byte(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc424(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt;
+  my_bool max_len= 1;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_table1");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE test_table1 (test_int INT, b int)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO test_table1 values(10,11),(11,12)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS testCursor");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE PROCEDURE testCursor()\n"
+                  "BEGIN\n"
+                  "DECLARE test_int INT;\n"
+                  "DECLARE b INT;\n"
+                  "DECLARE done INT DEFAULT FALSE;\n"
+                  "DECLARE testCursor CURSOR\n"
+                  "FOR\n"
+                  "SELECT test_int,b FROM test_table1;\n"
+                  "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;\n"
+                  "OPEN testCursor;\n"
+
+                  " read_loop: LOOP\n"
+                  "   FETCH testCursor INTO test_int, b;\n"
+                  "   IF done THEN\n"
+                  "     LEAVE read_loop;\n"
+                  "   END IF;\n"
+                  "   SELECT test_int,b;"
+                  " END LOOP;\n"
+                  "CLOSE testCursor;\n"
+                  "END");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, SL("CALL testCursor()"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, &max_len);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  do {
+    if (mysql_stmt_field_count(stmt))
+    {
+      MYSQL_RES *res= mysql_stmt_result_metadata(stmt);
+      rc= mysql_stmt_fetch(stmt);
+      FAIL_IF(rc, "Wrong return code");
+      mysql_free_result(res);
+    }
+    rc= mysql_stmt_next_result(stmt);
+    
+  } while (!rc);
+
+  rc= mysql_query(mysql, "DROP PROCEDURE testCursor");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP TABLE test_table1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+} 
 
 struct my_tests_st my_tests[] = {
+  {"test_conc424", test_conc424, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc334", test_conc334, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NEW, CLIENT_COMPRESS, NULL, NULL},
