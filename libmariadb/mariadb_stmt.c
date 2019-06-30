@@ -1756,8 +1756,10 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
 
     if (stmt->mysql->methods->db_command(stmt->mysql, COM_STMT_FETCH,
                                          buff, sizeof(buff), 1, stmt))
+    {
+      UPDATE_STMT_ERROR(stmt);
       return(1);
-    /* todo: cursor */
+    }
   }
   else if (stmt->mysql->status != MYSQL_STATUS_STMT_RESULT)
   {
@@ -1931,8 +1933,8 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
       }
     }
 
-    if ((stmt->upsert_status.server_status & SERVER_STATUS_CURSOR_EXISTS) &&
-        (stmt->flags & CURSOR_TYPE_READ_ONLY))
+    if ((stmt->upsert_status.server_status & SERVER_STATUS_CURSOR_EXISTS)  &&
+        (stmt->flags & CURSOR_TYPE_READ_ONLY)) 
     {
       stmt->cursor_exists = TRUE;
       mysql->status = MYSQL_STATUS_READY;
