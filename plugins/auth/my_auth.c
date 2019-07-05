@@ -353,7 +353,7 @@ static int client_mpvio_read_packet(struct st_plugin_vio *mpv, uchar **buf)
   }
 
   /* otherwise read the data */
-  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error);
+  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
     return (int)packet_error;
 
   mpvio->last_read_packet_len= pkt_len;
