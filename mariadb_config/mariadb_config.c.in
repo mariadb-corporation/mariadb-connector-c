@@ -35,8 +35,8 @@ static struct option long_options[]=
   {"tlsinfo", no_argument, 0, 'k'},
 #ifdef HAVE_EMBEDDED
   {"libmysqld-libs", no_argument, 0, 'm' },
-  {"embedded-libs", no_argument, 0, 'm' },
-  {"embedded", no_argument, 0, 'm' },
+  {"embedded-libs", no_argument, 0, 'n' },
+  {"embedded", no_argument, 0, 'o' },
 #endif
   {NULL, 0, 0, 0}
 };
