@@ -256,6 +256,7 @@ ENDIF()
 # only let mariadb-config return the embedded server build flags
 # if the library was actually built
 IF(IS_SUBPROJECT AND WITH_EMBEDDED_SERVER)
+  SET(EMBEDDED_STATUS "yes")
   ADD_DEFINITIONS(-DHAVE_EMBEDDED)
 ENDIF()
 
@@ -497,4 +498,5 @@ MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- Libraries will be installed in ${INSTALL_LIBDIR}
 -- Binaries will be installed in ${INSTALL_BINDIR}
 -- Documentation included from ${CLIENT_DOCS}
--- Required: ${CMAKE_REQUIRED_LIBRARIES}")
+-- Required: ${CMAKE_REQUIRED_LIBRARIES}
+-- Embedded library config: ${EMBEDDED_STATUS}")
