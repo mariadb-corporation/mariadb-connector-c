@@ -34,7 +34,7 @@ FOREACH (LIB_NAME ${SYSTEM_LIBS})
   GET_LIB_NAME(${LIB_NAME} LIB_OUT)
   SET(extra_dynamic_LDFLAGS "${extra_dynamic_LDFLAGS} ${LIB_OUT}")
 ENDFOREACH()
-STRING(STRIP ${extra_dynamic_LDFLAGS} extra_dynamic_LDFLAGS)
+STRING(STRIP "${extra_dynamic_LDFLAGS}" extra_dynamic_LDFLAGS)
 LIST(REMOVE_DUPLICATES extra_dynamic_LDFLAGS)
 
 IF(UNIX AND NOT APPLE)
