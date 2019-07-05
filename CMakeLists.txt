@@ -253,6 +253,12 @@ ELSEIF()
   SET(HAVE_THREADS ${CMAKE_USE_PTHREADS})
 ENDIF()
 
+# only let mariadb-config return the embedded server build flags
+# if the library was actually built
+IF(IS_SUBPROJECT AND WITH_EMBEDDED_SERVER)
+  ADD_DEFINITIONS(-DHAVE_EMBEDDED)
+ENDIF()
+
 # check for various include files
 INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
 # check for various functions
