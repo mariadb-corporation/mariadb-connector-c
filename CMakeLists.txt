@@ -60,7 +60,7 @@ ELSE()
 ENDIF()
 
 ADD_OPTION(WITH_UNIT_TESTS "build test suite" ON)
-ADD_OPTION(WITH_DYNCOL "Enables support of dynamic coluumns" ON)
+ADD_OPTION(WITH_DYNCOL "Enables support of dynamic columns" ON)
 ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
 ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
