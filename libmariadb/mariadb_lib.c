@@ -3757,7 +3757,7 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
 #ifdef HAVE_TLS
     *((const char **)arg)= tls_library_version;
 #else
-    *((char **)arg)= "Off";
+    *((const char **)arg)= "Off";
 #endif
     break;
   case MARIADB_CLIENT_VERSION:
