@@ -16,6 +16,7 @@
    or write to the Free Software Foundation, Inc.,
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 */
+#include <ma_global.h>
 #include <ma_crypt.h>
 #include <openssl/evp.h>
 
