@@ -394,7 +394,9 @@ static int client_mpvio_read_packet(struct st_plugin_vio *mpv, uchar **buf)
   }
 
   /* otherwise read the data */
-  pkt_len= ma_net_safe_read(mysql);
+  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
+    return (int)packet_error;
+
   mpvio->last_read_packet_len= pkt_len;
   *buf= mysql->net.read_pos;
 
@@ -591,7 +593,8 @@ retry:
   mysql->net.read_pos[0]= 0;
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);
 
-  if (res > CR_OK && mysql->net.read_pos[0] != 254)
+  if ((res == CR_ERROR && !mysql->net.buff) ||
+      (res > CR_OK && mysql->net.read_pos[0] != 254))
   {
     /*
       the plugin returned an error. write it down in mysql,

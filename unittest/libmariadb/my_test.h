@@ -35,6 +35,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #ifndef WIN32
 #include <pthread.h>
+#else
+#include <io.h>
 #endif
 
 #ifndef OK
