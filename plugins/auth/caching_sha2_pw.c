@@ -23,6 +23,9 @@
 #ifdef _WIN32
 #if !defined(HAVE_OPENSSL)
 #define HAVE_WINCRYPT
+#else
+#pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "ws2_32.lib")
 #endif
 #endif
 
