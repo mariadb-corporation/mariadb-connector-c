@@ -5099,9 +5099,10 @@ static int test_conc424(MYSQL *mysql)
       mysql_free_result(res);
     }
     rc= mysql_stmt_next_result(stmt);
-    
+
   } while (!rc);
 
+  mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "DROP PROCEDURE testCursor");
   check_mysql_rc(rc, mysql);
 
@@ -5109,7 +5110,7 @@ static int test_conc424(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   return OK;
-} 
+}
 
 struct my_tests_st my_tests[] = {
   {"test_conc424", test_conc424, TEST_CONNECTION_NEW, 0, NULL, NULL},
