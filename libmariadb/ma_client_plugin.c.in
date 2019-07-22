@@ -486,6 +486,29 @@ mysql_client_find_plugin(MYSQL *mysql, const char *name, int type)
                  ER(CR_AUTH_PLUGIN_CANNOT_LOAD), name, "invalid type");
   }
 
+  /* CONC-429: Don't allow unauthorized auth plugins */
+  if (type == MYSQL_CLIENT_AUTHENTICATION_PLUGIN)
+  {
+    char str[]= ALLOWED_AUTH_PLUGINS;
+    char *token= strtok(str, ",");
+    my_bool allowed= 0;
+
+    while (token)
+    {
+      if (!strcmp(name, token))
+      {
+        allowed= 1;
+        break;
+      }
+      token= strtok(NULL, ",");
+    }
+    if (!allowed)
+    {
+      my_set_error(mysql, CR_AUTH_PLUGIN_CANNOT_LOAD, SQLSTATE_UNKNOWN,
+                   ER(CR_AUTH_PLUGIN_CANNOT_LOAD), name, "Unauthorized authentication plugin");
+      return NULL;
+    }
+  }
   if ((p= find_plugin(name, type)))
     return p;
 

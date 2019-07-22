@@ -398,6 +398,7 @@ IF(NOT WIN32)
     ENDIF()
   ENDIF()
 ENDIF()
+
 INCLUDE(${CC_SOURCE_DIR}/plugins/CMakeLists.txt)
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(libmariadb)
