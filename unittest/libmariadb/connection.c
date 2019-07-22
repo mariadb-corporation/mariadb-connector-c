@@ -43,7 +43,7 @@ static int test_conc66(MYSQL *my)
   fprintf(fp, "user=conc66\n");
   fprintf(fp, "port=3306\n");
   fprintf(fp, "enable-local-infile\n");
-  fprintf(fp, "password='test\\\";#test'\n");
+  fprintf(fp, "password='test@A1\\\";#test'\n");
 
   fclose(fp);
 
@@ -52,7 +52,7 @@ static int test_conc66(MYSQL *my)
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my-conc66-test.cnf");
   check_mysql_rc(rc, mysql);
 
-  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test\";#test'", schema, this_host ? this_host : "localhost");
+  sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test@A1\";#test'", schema, this_host ? this_host : "localhost");
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
@@ -800,7 +800,7 @@ static int test_bind_address(MYSQL *my)
   sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
   rc= mysql_query(my, query);
 
-  sprintf(query, "CREATE USER '%s'@'%s'", username, bind_addr);
+  sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", username, bind_addr, password);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
