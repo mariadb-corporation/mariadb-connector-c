@@ -52,8 +52,7 @@ IF(WITH_SSL)
                         ${REF10_SOURCES}
                         ${CRYPT_SOURCE}
                 INCLUDES ${REF10_DIR}
-                COMPILE_OPTIONS -DMYSQL_CLIENT=1
-                LIBRARIES ${ED25519_LIBS})
+                COMPILE_OPTIONS -DMYSQL_CLIENT=1)
   IF(MSVC)
      # Silence conversion (integer truncantion) warnings from reference code
      SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146")
