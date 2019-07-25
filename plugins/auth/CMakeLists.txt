@@ -3,8 +3,6 @@ SET(AUTH_DIR ${CC_SOURCE_DIR}/plugins/auth)
 INCLUDE_DIRECTORIES(${AUTH_DIR})
 INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
 
-SET(ALLOWED_AUTH_PLUGINS "dummy_fallback_auth")
-
 #native password
 REGISTER_PLUGIN(TARGET mysql_native_password
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
@@ -132,5 +130,4 @@ REGISTER_PLUGIN(TARGET mysql_clear_password
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/mariadb_cleartext.c)
-string(REPLACE ";" "," ALLOWED_AUTH_PLUGINS "${ALLOWED_AUTH_PLUGINS}")
-ADD_DEFINITIONS(-DALLOWED_AUTH_PLUGINS="${ALLOWED_AUTH_PLUGINS}")
+
