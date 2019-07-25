@@ -389,6 +389,13 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
            mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
            MARIADB_PLUGINDIR, name, SO_EXT);
 
+  if (strpbrk(name, "()[]!@#$%^&/*;.,'?\\"))
+  {
+    errmsg= "invalid plugin name";
+    goto err;
+  }
+
+
   /* Open new dll handle */
   if (!(dlhandle= dlopen((const char *)dlpath, RTLD_NOW)))
   {
