@@ -21,12 +21,11 @@
 #endif
 
 #ifdef _WIN32
-#if !defined(HAVE_OPENSSL)
+#undef HAVE_GNUTLS
+#undef HAVE_OPENSSL
 #define HAVE_WINCRYPT
-#else
 #pragma comment(lib, "crypt32.lib")
 #pragma comment(lib, "ws2_32.lib")
-#endif
 #endif
 
 #if defined(HAVE_OPENSSL) || defined(HAVE_WINCRYPT)
@@ -45,12 +44,12 @@
 #include <dlfcn.h>
 #endif
 
-#if defined(HAVE_OPENSSL)
+#if defined(WIN32)
+#include <wincrypt.h>
+#elif defined(HAVE_OPENSSL)
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
-#elif defined(HAVE_WINCRYPT)
-#include <wincrypt.h>
 #endif
 
 #define MAX_PW_LEN 1024
@@ -87,7 +86,7 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 static LPBYTE ma_load_pem(const char *buffer, DWORD *buffer_len)
 {
   LPBYTE der_buffer= NULL;
-  DWORD der_buffer_length;
+  DWORD der_buffer_length= 0;
 
   if (buffer_len == NULL || *buffer_len == 0)
     return NULL;
@@ -181,7 +180,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   DWORD der_buffer_len= 0;
   CERT_PUBLIC_KEY_INFO *publicKeyInfo= NULL;
   DWORD ParamSize= sizeof(DWORD);
-  int publicKeyInfoLen;
+  int publicKeyInfoLen= 0;
 #endif
   char *filebuffer= NULL;
 

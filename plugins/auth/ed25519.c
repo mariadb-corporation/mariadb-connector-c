@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2017 MariaDB Corporation AB
+  Copyright (C) 2017-2019 MariaDB Corporation AB
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -21,12 +21,12 @@
 #endif
 
 #ifdef _WIN32
-#if !defined(HAVE_OPENSSL)
 #define HAVE_WINCRYPT
-#endif
+#undef HAVE_OPENSSL
+#undef HAVE_GNUTLS
 #endif
 
-#if defined(HAVE_OPENSSL) || defined(HAVE_SCHANNEL) || defined(HAVE_GNUTLS)
+#if defined(HAVE_OPENSSL) || defined(HAVE_WINCRYPT) || defined(HAVE_GNUTLS)
 
 #include <ma_global.h>
 #include <mysql.h>
@@ -42,19 +42,19 @@
 #include <dlfcn.h>
 #endif
 
-#if defined(HAVE_OPENSSL)
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-#elif defined(HAVE_GNUTLS)
-#include <gnutls/gnutls.h>
-#elif defined(HAVE_SCHANNEL)
+#if defined(HAVE_WINCRYPT)
 #include <windows.h>
 #include <wincrypt.h>
 #include <bcrypt.h>
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "crypt32.lib")
 extern BCRYPT_ALG_HANDLE Sha512Prov;
+#elif defined(HAVE_OPENSSL)
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+#include <openssl/err.h>
+#elif defined(HAVE_GNUTLS)
+#include <gnutls/gnutls.h>
 #endif
 
 #include <ref10/api.h>
@@ -71,7 +71,7 @@ static int auth_ed25519_init(char *unused1,
 
 
 #ifndef PLUGIN_DYNAMIC
-struct st_mysql_client_plugin_AUTHENTICATION caching_sha2_password_client_plugin=
+struct st_mysql_client_plugin_AUTHENTICATION client_ed25519_client_plugin=
 #else
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 #endif
@@ -126,7 +126,7 @@ static int auth_ed25519_init(char *unused1 __attribute__((unused)),
     int unused3     __attribute__((unused)),
     va_list unused4 __attribute__((unused)))
 {
-#if defined(HAVE_SCHANNEL)
+#if defined(HAVE_WINCRYPT)
   BCryptOpenAlgorithmProvider(&Sha512Prov, BCRYPT_SHA512_ALGORITHM, NULL, 0);
 #endif
   return 0;
@@ -136,7 +136,7 @@ static int auth_ed25519_init(char *unused1 __attribute__((unused)),
 /* {{{ auth_ed25519_deinit */
 static int auth_ed25519_deinit()
 {
-#if defined(HAVE_SCHANNEL)
+#if defined(HAVE_WINCRYPT)
   BCryptCloseAlgorithmProvider(Sha512Prov, 0);
 #endif
   return 0;
