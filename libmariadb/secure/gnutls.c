@@ -19,10 +19,10 @@
  *************************************************************************************/
 #ifdef HAVE_GNUTLS
 
+#include <ma_global.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 #include <gnutls/abstract.h>
-#include <ma_global.h>
 #include <ma_sys.h>
 #include <ma_common.h>
 #include <ma_pvio.h>
