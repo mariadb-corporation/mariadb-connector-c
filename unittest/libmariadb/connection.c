@@ -1670,7 +1670,7 @@ static int test_conc392(MYSQL *mysql)
     diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
     return SKIP;
   }
-  
+
   rc= mysql_query(mysql, "set session_track_state_change=1");
   check_mysql_rc(rc, mysql);
 
@@ -1679,13 +1679,43 @@ static int test_conc392(MYSQL *mysql)
     diag("session_track_get_first failed");
     return FAIL;
   }
-  
+
   FAIL_IF(len != 1, "Expected length 1");
   return OK;
 }
 
+static int test_conc406(MYSQL *mysql)
+{
+  int rc;
+  const char *data;
+  size_t len;
+  ulong capabilities= 0;
+
+  mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &capabilities);
+  if (!(capabilities & CLIENT_SESSION_TRACKING))
+  {
+    diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
+    return SKIP;
+  }
+
+  rc= mysql_query(mysql, "SET @@SESSION.session_track_gtids='ALL_GTIDS';");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_ping(mysql);
+  check_mysql_rc(rc, mysql);
+
+  if (mysql_session_track_get_first(mysql, SESSION_TRACK_GTIDS, &data, &len))
+  {
+    diag("session_track_get_first failed");
+    return FAIL;
+  }
+
+  FAIL_IF(len <= 0, "Expected length > 0");
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_conc406", test_conc406, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc366", test_conc366, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc392", test_conc392, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc312", test_conc312, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
