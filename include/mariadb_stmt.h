@@ -39,7 +39,7 @@
   (a)->last_errno= (b);\
   strncpy((a)->sqlstate, (c), SQLSTATE_LENGTH);\
   (a)->sqlstate[SQLSTATE_LENGTH]= 0;\
-  strncpy((a)->last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE - 1);\
+  strncpy((a)->last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE);\
   (a)->last_error[MYSQL_ERRMSG_SIZE - 1]= 0;\
 }
 
