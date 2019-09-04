@@ -125,7 +125,9 @@ extern unsigned int mariadb_deinitialize_ssl;
   { \
     (a)->net.last_errno= (b);\
     strncpy((a)->net.sqlstate, (c), SQLSTATE_LENGTH);\
+    (a)->net.sqlstate[SQLSTATE_LENGTH]= 0;\
     strncpy((a)->net.last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE - 1);\
+    (a)->net.last_error[MYSQL_ERRMSG_SIZE - 1]= 0;\
   }
 
 /* For mysql_async.c */

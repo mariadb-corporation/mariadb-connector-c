@@ -38,7 +38,9 @@
 { \
   (a)->last_errno= (b);\
   strncpy((a)->sqlstate, (c), SQLSTATE_LENGTH);\
+  (a)->sqlstate[SQLSTATE_LENGTH]= 0;\
   strncpy((a)->last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE - 1);\
+  (a)->last_error[MYSQL_ERRMSG_SIZE - 1]= 0;\
 }
 
 #define CLEAR_CLIENT_STMT_ERROR(a) \
