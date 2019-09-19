@@ -1020,7 +1020,7 @@ mysql_init(MYSQL *mysql)
   mysql->charset= mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
   mysql->methods= &MARIADB_DEFAULT_METHODS;
   strcpy(mysql->net.sqlstate, "00000");
-  mysql->net.last_error[0]= mysql->net.last_errno= 0;
+  mysql->net.last_error[0]= mysql->net.last_errno= mysql->net.extension->extended_errno= 0;
 
   if (ENABLED_LOCAL_INFILE != LOCAL_INFILE_MODE_OFF)
     mysql->options.client_flag|= CLIENT_LOCAL_FILES;
@@ -1199,9 +1199,39 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
       return my;
     }
   }
-
+#ifndef HAVE_SCHANNEL
   return mysql->methods->db_connect(mysql, host, user, passwd,
                                     db, port, unix_socket, client_flag);
+#else
+/* 
+   With older windows versions (prior Win 10) TLS connections periodically
+   fail with SEC_E_INVALID_TOKEN, SEC_E_BUFFER_TOO_SMALL or SEC_E_MESSAGE_ALTERED
+   error (see MDEV-13492). If the connect attempt returns on of these error codes
+   in mysql->net.extended_errno we will try to connect again (max. 3 times)
+*/
+#define MAX_SCHANNEL_CONNECT_ATTEMPTS 3
+  {
+    int ssl_retry= (mysql->options.use_ssl) ? MAX_SCHANNEL_CONNECT_ATTEMPTS : 1;
+	MYSQL *my= NULL;
+    while (ssl_retry)
+    {
+      if ((my= mysql->methods->db_connect(mysql, host, user, passwd,
+                                    db, port, unix_socket, client_flag)))
+        return my;
+
+      switch (mysql->net.extension->extended_errno) {
+        case SEC_E_INVALID_TOKEN:
+        case SEC_E_BUFFER_TOO_SMALL:
+        case SEC_E_MESSAGE_ALTERED:
+          ssl_retry--;
+		  break;
+        default:
+          return NULL;
+      }
+    }
+    return my;
+  }
+#endif
 }
 
 MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,

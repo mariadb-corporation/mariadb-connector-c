@@ -91,6 +91,7 @@ typedef struct st_connection_handler
 
 struct st_mariadb_net_extension {
   enum enum_multi_status multi_status;
+  int extended_errno;
 };
 
 struct st_mariadb_session_state

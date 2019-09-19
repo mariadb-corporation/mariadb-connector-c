@@ -32,6 +32,10 @@ void ma_schannel_set_win_error(MARIADB_PVIO *pvio);
 void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
 {
   MYSQL *mysql= pvio->mysql;
+
+  if (ErrorNo != SEC_E_OK)
+    mysql->net.extension->extended_errno= ErrorNo;
+
   switch(ErrorNo) {
   case SEC_E_ILLEGAL_MESSAGE:
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: The message received was unexpected or badly formatted");
