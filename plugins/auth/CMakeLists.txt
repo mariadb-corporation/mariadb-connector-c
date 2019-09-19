@@ -83,7 +83,7 @@ IF(CRYPTO_PLUGIN)
                     CONFIGURATIONS DYNAMIC STATIC OFF
                     DEFAULT DYNAMIC
                     SOURCES ${AUTH_DIR}/sha256_pw.c
-                    LIBRARIES ${CRYT_LIBS})
+                    LIBRARIES ${CRYPT_LIBS})
   ENDIF()
 ENDIF()
 
