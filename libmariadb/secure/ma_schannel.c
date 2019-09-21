@@ -26,7 +26,7 @@
 #define MAX_SSL_ERR_LEN 100
 
 #define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer
-void ma_schannel_set_win_error(MARIADB_PVIO *pvio);
+void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo __attribute__((unused)));
 
 /* {{{ void ma_schannel_set_sec_error */
 void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
@@ -77,20 +77,20 @@ void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
     break;
   case SEC_E_INTERNAL_ERROR:
     if (GetLastError())
-      ma_schannel_set_win_error(pvio);
+      ma_schannel_set_win_error(pvio, 0);
     else
       pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "The Local Security Authority cannot be contacted");
     break;
   default:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error (0x%x)", ErrorNo);
+    ma_schannel_set_win_error(pvio, ErrorNo);
   }
 }
 /* }}} */
 
 /* {{{ void ma_schnnel_set_win_error */
-void ma_schannel_set_win_error(MARIADB_PVIO *pvio)
+void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo __attribute__((unused)))
 {
-  ulong ssl_errno= GetLastError();
+  ulong ssl_errno= ErrorNo ? ErrorNo : GetLastError();
   char *ssl_error_reason= NULL;
   char *p;
   char buffer[256];
@@ -150,7 +150,7 @@ static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, 
   if ((hfile= CreateFile(PemFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 
                           FILE_ATTRIBUTE_NORMAL, NULL )) == INVALID_HANDLE_VALUE)
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     return NULL;
   }
 
@@ -168,7 +168,7 @@ static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, 
 
   if (!ReadFile(hfile, buffer, *buffer_len, &dwBytesRead, NULL))
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     goto end;
   }
 
@@ -178,7 +178,7 @@ static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, 
   if (!CryptStringToBinaryA(buffer, *buffer_len, CRYPT_STRING_BASE64HEADER,
                             NULL, &der_buffer_length, NULL, NULL))
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     goto end;
   }
   /* allocate DER binary buffer */
@@ -191,7 +191,7 @@ static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, 
   if (!CryptStringToBinaryA(buffer, *buffer_len, CRYPT_STRING_BASE64HEADER,
                             der_buffer, &der_buffer_length, NULL, NULL))
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     goto end;
   }
 
@@ -221,7 +221,7 @@ static LPBYTE ma_schannel_read(MARIADB_PVIO* pvio, const char* PemFile, DWORD* b
   if ((hfile = CreateFile(PemFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
     FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     return NULL;
   }
 
@@ -239,7 +239,7 @@ static LPBYTE ma_schannel_read(MARIADB_PVIO* pvio, const char* PemFile, DWORD* b
 
   if (!ReadFile(hfile, buffer, *buffer_len, &dwBytesRead, NULL))
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     goto end;
   }
 
@@ -266,7 +266,7 @@ LPBYTE ma_schannel_convert_base64(MARIADB_PVIO* pvio, char* buffer, DWORD buffer
   if (!CryptStringToBinaryA(buffer, buffer_len, CRYPT_STRING_BASE64HEADER,
     NULL, der_len, NULL, NULL))
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     goto end;
   }
   /* allocate DER binary buffer */
@@ -279,7 +279,7 @@ LPBYTE ma_schannel_convert_base64(MARIADB_PVIO* pvio, char* buffer, DWORD buffer
   if (!CryptStringToBinaryA(buffer, buffer_len, CRYPT_STRING_BASE64HEADER,
     der_buffer, der_len, NULL, NULL))
   {
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
     goto end;
   }
   return der_buffer;
@@ -354,7 +354,7 @@ DWORD ma_schannel_load_certs_and_keys(MARIADB_PVIO* pvio, const char* PemFileNam
       if (!(ctx->client_cert_ctx = (CERT_CONTEXT*)CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
         der_buffer, der_buffer_length)))
       {
-        ma_schannel_set_win_error(pvio);
+        ma_schannel_set_win_error(pvio, 0);
         goto error;
       }
     }
@@ -433,7 +433,7 @@ CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pe
     goto end;
   if (!(ctx= (CERT_CONTEXT *)CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                     der_buffer, der_buffer_length)))
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
 
 end:
   if (der_buffer)
@@ -472,7 +472,7 @@ PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem
     goto end;
   if (!(ctx= CertCreateCRLContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                     der_buffer, der_buffer_length)))
-    ma_schannel_set_win_error(pvio);
+    ma_schannel_set_win_error(pvio, 0);
 end:
   if (der_buffer)
     free(der_buffer);
@@ -522,7 +522,7 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, SC_CTX *ctx)
                             0, NULL,
                             NULL, &priv_key_len))
    {
-     ma_schannel_set_win_error(pvio);
+     ma_schannel_set_win_error(pvio, 0);
      goto end;
    }
 
@@ -539,20 +539,20 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, SC_CTX *ctx)
      0, NULL,
      priv_key, &priv_key_len))
    {
-     ma_schannel_set_win_error(pvio);
+     ma_schannel_set_win_error(pvio, 0);
      goto end;
    }
 
    /* Acquire context */
    if (!CryptAcquireContext(&crypt_prov, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
    {
-     ma_schannel_set_win_error(pvio);
+     ma_schannel_set_win_error(pvio, 0);
      goto end;
    }
    /* ... and import the private key */
    if (!CryptImportKey(crypt_prov, priv_key, priv_key_len, 0, 0, (HCRYPTKEY *)&crypt_key))
    {
-     ma_schannel_set_win_error(pvio);
+     ma_schannel_set_win_error(pvio, 0);
      goto end;
    }
 
@@ -564,7 +564,7 @@ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, SC_CTX *ctx)
    if (CertSetCertificateContextProperty(ctx->client_cert_ctx, CERT_KEY_CONTEXT_PROP_ID, 0, &kpi))
      rc= 1;
    else
-     ma_schannel_set_win_error(pvio);
+     ma_schannel_set_win_error(pvio, 0);
 
 end:
   if (ctx->der_key)
@@ -1047,7 +1047,7 @@ my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls)
     DWORD flags = CERT_STORE_SIGNATURE_FLAG | CERT_STORE_TIME_VALIDITY_FLAG;
     if (!CertVerifySubjectCertificateContext(pServerCert, ca_ctx, &flags))
     {
-      ma_schannel_set_win_error(pvio);
+      ma_schannel_set_win_error(pvio, 0);
       goto end;
     }
 
