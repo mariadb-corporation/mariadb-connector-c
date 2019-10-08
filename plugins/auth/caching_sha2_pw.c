@@ -275,14 +275,6 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   memmove(mysql->scramble_buff, packet, SCRAMBLE_LENGTH);
   mysql->scramble_buff[SCRAMBLE_LENGTH]= 0;
 
-  /* if a tls session is active we need to send plain password */
-  if (mysql->client_flag & CLIENT_SSL)
-  {
-    if (vio->write_packet(vio, (unsigned char *)mysql->passwd, (int)strlen(mysql->passwd) + 1))
-      return CR_ERROR;
-    return CR_OK;
-  }
-
   /* send empty packet if no password was provided */
   if (!mysql->passwd || !mysql->passwd[0])
   {
