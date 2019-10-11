@@ -1216,7 +1216,7 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
     while (ssl_retry)
     {
       if ((my= mysql->methods->db_connect(mysql, host, user, passwd,
-                                    db, port, unix_socket, client_flag)))
+                                    db, port, unix_socket, client_flag | CLIENT_REMEMBER_OPTIONS)))
         return my;
 
       switch (mysql->net.extension->extended_errno) {
@@ -1224,11 +1224,14 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
         case SEC_E_BUFFER_TOO_SMALL:
         case SEC_E_MESSAGE_ALTERED:
           ssl_retry--;
-		  break;
+          break;
         default:
-          return NULL;
+          ssl_retry= 0;
+          break;
       }
     }
+    if (!ny && !(client_flag & CLIENT_REMEMBER_OPTIONS))
+      mysql_close_options(mysql);
     return my;
   }
 #endif
