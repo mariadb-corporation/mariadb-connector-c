@@ -1684,8 +1684,54 @@ static int test_conc392(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc443(MYSQL *my __attribute__((unused)))
+{
+  my_bool x= 1;
+  unsigned long thread_id= 0;
+  char query[128];
+  MYSQL_RES *result;
+  MYSQL_ROW row;
+  int rc;
+
+  MYSQL *mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=3");
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &x);
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("Connection failed. Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+  }
+
+  thread_id= mysql_thread_id(mysql);
+
+  sprintf(query, "KILL %lu", thread_id);
+  rc= mysql_query(mysql, query);
+
+  sleep(3);
+
+  rc= mysql_ping(mysql);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SELECT @a");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql_thread_id(mysql) == thread_id, "Expected different thread id");
+
+  result= mysql_store_result(mysql);
+  if (!result)
+    return FAIL;
+  row= mysql_fetch_row(result);
+  FAIL_IF(strcmp(row[0],"3"), "Wrong result");
+
+  mysql_free_result(result);
+  mysql_close(mysql);
+
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_conc443", test_conc443, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc366", test_conc366, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc392", test_conc392, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc312", test_conc312, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
