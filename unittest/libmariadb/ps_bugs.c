@@ -5112,7 +5112,57 @@ static int test_conc424(MYSQL *mysql)
   return OK;
 }
 
+static int test_maxparam(MYSQL *mysql)
+{
+  const char *query= "INSERT INTO t1 VALUES (?)";
+  int rc;
+  char *buffer;
+  int i;
+  int val= 1;
+  size_t mem= strlen(query) + 1 + 4 * 65535 + 1;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[65535];
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  buffer= calloc(1, mem);
+  strcpy(buffer, query);
+  for (i=0; i < 65534.; i++)
+    strcat(buffer, ",(?)");
+  rc= mysql_stmt_prepare(stmt, SL(buffer));
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 65535);
+  for (i=0; i < 65534; i++)
+  {
+    bind[i].buffer_type= MYSQL_TYPE_LONG;
+    bind[i].buffer= &val;
+  }
+
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_affected_rows(stmt) != 65535, "Expected affected_rows=65535");
+
+  strcat(buffer, ",(?)");
+  rc= mysql_stmt_prepare(stmt, SL(buffer));
+  free(buffer);
+  FAIL_IF(!rc, "Error expected");
+  FAIL_IF(mysql_stmt_errno(stmt) != ER_PS_MANY_PARAM, "Expected ER_PS_MANY_PARAM error");
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_maxparam", test_maxparam, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc424", test_conc424, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc334", test_conc334, TEST_CONNECTION_NEW, 0, NULL, NULL},
