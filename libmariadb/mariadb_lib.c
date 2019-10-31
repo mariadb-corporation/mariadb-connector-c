@@ -1230,7 +1230,7 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
           break;
       }
     }
-    if (!ny && !(client_flag & CLIENT_REMEMBER_OPTIONS))
+    if (!my && !(client_flag & CLIENT_REMEMBER_OPTIONS))
       mysql_close_options(mysql);
     return my;
   }
