@@ -9,6 +9,14 @@ examples/mysql_affected_rows
 examples/mysql_debug
 examples/test_output
 mysql_config/mysql_config
+win/auth_gssapi_client.rc
+win/caching_sha2_password.rc
+win/client_ed25519.rc
+win/dialog.rc
+win/libmariadb.rc
+win/mysql_clear_password.rc
+win/packaging/plugin.conf
+win/sha256_password.rc
 
 # Keep empty directories:
 # Keep empty directories: >> .gitignore/.git*
