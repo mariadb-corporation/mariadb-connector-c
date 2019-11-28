@@ -761,8 +761,8 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
       MoveMemory( IoBuffer, IoBuffer + (cbIoBuffer - InBuffers[1].cbBuffer), InBuffers[1].cbBuffer );
       cbIoBuffer = InBuffers[1].cbBuffer;
     }
-
-    cbIoBuffer = 0;
+    else
+      cbIoBuffer = 0;
   }
 loopend:
   if (FAILED(rc))
