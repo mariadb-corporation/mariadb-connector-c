@@ -26,69 +26,73 @@
 #define MAX_SSL_ERR_LEN 100
 
 #define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer
-void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo __attribute__((unused)));
+void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
+
+static void get_schannel_error_info(DWORD err, const char** sym, const char** text)
+{
+#define ERR_ENTRY(a,b) {a,#a, b}
+  static struct {
+    DWORD code; /* Error code , e.g SEC_E_ILLEGAL_MESSAGE */
+    const char* symbol; /* Error code as string, e.g "SEC_E_ILLEGAL_MESSAGE"*/
+    const char* msg; /* English text message */
+  }  errinfo[] =
+  {
+    ERR_ENTRY(SEC_E_ILLEGAL_MESSAGE, "The message received was unexpected or badly formatted"),
+    ERR_ENTRY(SEC_E_UNTRUSTED_ROOT, "Untrusted root certificate"),
+    ERR_ENTRY(SEC_E_BUFFER_TOO_SMALL, "Buffer too small"),
+    ERR_ENTRY(SEC_E_CRYPTO_SYSTEM_INVALID, "Cipher is not supported"),
+    ERR_ENTRY(SEC_E_INSUFFICIENT_MEMORY, "Out of memory"),
+    ERR_ENTRY(SEC_E_OUT_OF_SEQUENCE, "Invalid message sequence"),
+    ERR_ENTRY(SEC_E_DECRYPT_FAILURE, "The specified data could not be decrypted"),
+    ERR_ENTRY(SEC_I_INCOMPLETE_CREDENTIALS, "Incomplete credentials"),
+    ERR_ENTRY(SEC_E_ENCRYPT_FAILURE, "The specified data could not be encrypted"),
+    ERR_ENTRY(SEC_I_CONTEXT_EXPIRED, "The context has expired and can no longer be used"),
+    ERR_ENTRY(SEC_E_ALGORITHM_MISMATCH, "no cipher match"),
+    ERR_ENTRY(SEC_E_NO_CREDENTIALS, "no credentials"),
+    ERR_ENTRY(SEC_E_INVALID_TOKEN, "The token supplied to function is invalid")
+  };
+  for (int i = 0; i < sizeof(errinfo) / sizeof(errinfo[0]); i++)
+  {
+    if (errinfo[i].code == err)
+    {
+      *sym = errinfo[i].symbol;
+      *text = errinfo[i].msg;
+      return;
+    }
+  }
+  *sym = NULL;
+  *text = NULL;
+}
+
 
 /* {{{ void ma_schannel_set_sec_error */
-void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
+void ma_schannel_set_sec_error(MARIADB_PVIO* pvio, DWORD ErrorNo)
 {
-  MYSQL *mysql= pvio->mysql;
-
+  MYSQL* mysql = pvio->mysql;
+  const char* sym;
+  const char* text;
   if (ErrorNo != SEC_E_OK)
-    mysql->net.extension->extended_errno= ErrorNo;
-
-  switch(ErrorNo) {
-  case SEC_E_ILLEGAL_MESSAGE:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: The message received was unexpected or badly formatted");
-    break;
-  case SEC_E_UNTRUSTED_ROOT:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Untrusted root certificate");
-    break;
-  case SEC_E_BUFFER_TOO_SMALL:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Buffer too small");
-    break;
-  case SEC_E_CRYPTO_SYSTEM_INVALID:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Cipher is not supported");
-    break;
-  case SEC_E_INSUFFICIENT_MEMORY:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Out of memory");
-    break;
-  case SEC_E_OUT_OF_SEQUENCE:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid message sequence");
-    break;
-  case SEC_E_DECRYPT_FAILURE:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: An error occurred during decrypting data");
-    break;
-  case SEC_I_INCOMPLETE_CREDENTIALS:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Incomplete credentials");
-    break;
-  case SEC_E_ENCRYPT_FAILURE:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: An error occurred during encrypting data");
-    break;
-  case SEC_I_CONTEXT_EXPIRED:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Context expired ");
-    break;
-  case SEC_E_ALGORITHM_MISMATCH:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: no cipher match");
-    break;
-  case SEC_E_NO_CREDENTIALS:
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: no credentials");
-    break;
-  case SEC_E_OK:
-    break;
-  case SEC_E_INTERNAL_ERROR:
-    if (GetLastError())
-      ma_schannel_set_win_error(pvio, 0);
-    else
-      pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "The Local Security Authority cannot be contacted");
-    break;
-  default:
+    mysql->net.extension->extended_errno = ErrorNo;
+  if (ErrorNo == SEC_E_INTERNAL_ERROR && GetLastError())
+  {
+    ma_schannel_set_win_error(pvio, GetLastError());
+    return;
+  }
+  get_schannel_error_info(ErrorNo, &sym, &text);
+  if (sym)
+  {
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+      "SSL connection error: %s (%s , 0x%08x)", text, sym, ErrorNo);
+  }
+  else
+  {
     ma_schannel_set_win_error(pvio, ErrorNo);
   }
 }
 /* }}} */
 
 /* {{{ void ma_schnnel_set_win_error */
-void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo __attribute__((unused)))
+void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
 {
   ulong ssl_errno= ErrorNo ? ErrorNo : GetLastError();
   char *ssl_error_reason= NULL;
@@ -99,14 +103,15 @@ void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo __attribute__((
     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
     return;
   }
-  /* todo: obtain error message */
+
   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, ssl_errno, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR) &ssl_error_reason, 0, NULL );
   for (p = ssl_error_reason; *p; p++)
     if (*p == '\n' || *p == '\r')
       *p = 0;
-  snprintf(buffer, sizeof(buffer), "SSL connection error: %s",ssl_error_reason);
+  snprintf(buffer, sizeof(buffer), "SSL connection error: %s. Windows error %lu / 0x%08lx",ssl_error_reason,
+    ErrorNo, ErrorNo);
   pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, buffer);
   if (ssl_error_reason)
     LocalFree(ssl_error_reason);
@@ -728,7 +733,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
       {
         if (!(pExtraData->pvBuffer= LocalAlloc(0, InBuffers[1].cbBuffer)))
           return SEC_E_INSUFFICIENT_MEMORY;
-        
+
         MoveMemory(pExtraData->pvBuffer, IoBuffer + (cbIoBuffer - InBuffers[1].cbBuffer), InBuffers[1].cbBuffer );
         pExtraData->BufferType = SECBUFFER_TOKEN;
         pExtraData->cbBuffer   = InBuffers[1].cbBuffer;
@@ -740,7 +745,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
         pExtraData->cbBuffer= 0;
       }
     break;
- 
+
     case SEC_I_INCOMPLETE_CREDENTIALS:
       /* Provided credentials didn't contain a valid client certificate.
          We will try to connect anonymously, using current credentials */
@@ -801,10 +806,10 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   SC_CTX *sctx;
   SecBuffer ExtraData;
   DWORD SFlags= ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT |
-                ISC_REQ_CONFIDENTIALITY | ISC_RET_EXTENDED_ERROR | 
+                ISC_REQ_CONFIDENTIALITY | ISC_RET_EXTENDED_ERROR |
                 ISC_REQ_USE_SUPPLIED_CREDS |
                 ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
-  
+
   SecBufferDesc	BufferOut;
   SecBuffer  BuffersOut;
 
@@ -845,7 +850,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
 
   /* send client hello packaet */
   if(BuffersOut.cbBuffer != 0 && BuffersOut.pvBuffer != NULL)
-  {  
+  {
     ssize_t nbytes = (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
 
     if (nbytes <= 0)
@@ -873,7 +878,9 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
 end:
   LocalFree(sctx->IoBuffer);
   sctx->IoBufferSize= 0;
-  FreeContextBuffer(BuffersOut.pvBuffer);
+  if (BuffersOut.pvBuffer)
+    FreeContextBuffer(BuffersOut.pvBuffer);
+
   DeleteSecurityContext(&sctx->ctxt);
   return sRet;
 }

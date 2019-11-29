@@ -158,8 +158,7 @@ cipher_map[] =
 
 #define MAX_ALG_ID 50
 
-void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
-void ma_schannel_set_win_error(MYSQL *mysql);
+extern void ma_schannel_set_sec_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
 
 /*
   Initializes SSL and allocate global
