@@ -330,7 +330,8 @@ IF(NOT WITH_SSL STREQUAL "OFF")
     IF(WITH_SSL STREQUAL "SCHANNEL")
       ADD_DEFINITIONS(-DHAVE_SCHANNEL -DHAVE_TLS)
       SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/schannel.c"
-                      "${CC_SOURCE_DIR}/libmariadb/secure/ma_schannel.c")
+                      "${CC_SOURCE_DIR}/libmariadb/secure/ma_schannel.c"
+                      "${CC_SOURCE_DIR}/libmariadb/secure/schannel_certs.c")
       INCLUDE_DIRECTORIES("${CC_SOURCE_DIR}/plugins/pvio/")
       SET(SSL_LIBRARIES secur32)
       SET(TLS_LIBRARY_VERSION "Schannel ${CMAKE_SYSTEM_VERSION}")

@@ -18,6 +18,7 @@
 
  *************************************************************************************/
 #include "ma_schannel.h"
+#include "schannel_certs.h"
 
 #pragma comment (lib, "crypt32.lib")
 #pragma comment (lib, "secur32.lib")
@@ -195,16 +196,14 @@ void ma_tls_end()
 }
 
 /* {{{ static int ma_tls_set_client_certs(MARIADB_TLS *ctls) */
-static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
+static int ma_tls_set_client_certs(MARIADB_TLS *ctls,const CERT_CONTEXT **cert_ctx)
 {
   MYSQL *mysql= ctls->pvio->mysql;
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
-
-  sctx->client_cert_ctx= NULL;
-  sctx->der_key = NULL;
+  char errmsg[256];
 
   if (!certfile && keyfile)
     certfile= keyfile;
@@ -214,23 +213,10 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
   if (!certfile)
     return 0;
 
-  if (certfile && ma_schannel_load_certs_and_keys(pvio, certfile, sctx))
-    return 1;
-
-  if (keyfile && ma_schannel_load_certs_and_keys(pvio, keyfile, sctx))
-    return 1;
-
-  if (sctx->client_cert_ctx)
+  *cert_ctx = schannel_create_cert_context(certfile, keyfile, errmsg, sizeof(errmsg));
+  if (!*cert_ctx)
   {
-    if (!ma_schannel_load_private_key(pvio, sctx))
-      return 1;
-  }
-  else if (sctx->der_key)
-  {
-    free(sctx->der_key->der_buffer);
-    free(sctx->der_key);
-    sctx->der_key = 0;
-    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Cert not found");
+    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: %s", errmsg);
     return 1;
   }
 
@@ -241,9 +227,12 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls)
 /* {{{ void *ma_tls_init(MARIADB_TLS *ctls, MYSQL *mysql) */
 void *ma_tls_init(MYSQL *mysql)
 {
-  SC_CTX *sctx= NULL;
-  if ((sctx= (SC_CTX *)LocalAlloc(0, sizeof(SC_CTX))))
-    ZeroMemory(sctx, sizeof(SC_CTX));
+  SC_CTX *sctx = (SC_CTX *)LocalAlloc(LMEM_ZEROINIT, sizeof(SC_CTX));
+  if (sctx)
+  {
+    SecInvalidateHandle(&sctx->CredHdl);
+    SecInvalidateHandle(&sctx->hCtxt);
+  }
   return sctx;
 }
 /* }}} */
@@ -297,7 +286,7 @@ static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   MYSQL *mysql;
-  SCHANNEL_CRED Cred;
+  SCHANNEL_CRED Cred = {0};
   MARIADB_PVIO *pvio;
   my_bool rc= 1;
   SC_CTX *sctx;
@@ -305,20 +294,20 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   ALG_ID AlgId[MAX_ALG_ID];
   size_t i;
   DWORD protocol = 0;
+  int verify_certs;
+  CERT_CONTEXT* cert_context = NULL;
 
-  
-  if (!ctls || !ctls->pvio)
-    return 1;;
-  
+  if (!ctls)
+    return 1;
+
   pvio= ctls->pvio;
   sctx= (SC_CTX *)ctls->ssl;
+  if (!pvio || !sctx)
+    return 1;
 
   mysql= pvio->mysql;
- 
-  if (ma_tls_set_client_certs(ctls))
-    goto end;
-
-  ZeroMemory(&Cred, sizeof(SCHANNEL_CRED));
+  if (!mysql)
+    return 1;
 
   /* Set cipher */
   if (mysql->options.ssl_cipher)
@@ -350,11 +339,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   Cred.dwFlags = SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
 
-  if (sctx->client_cert_ctx)
-  {
-    Cred.cCreds = 1;
-    Cred.paCred = &sctx->client_cert_ctx;
-  }
   if (mysql->options.extension && mysql->options.extension->tls_version)
   {
     if (strstr(mysql->options.extension->tls_version, "TLSv1.0"))
@@ -367,30 +351,40 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (!Cred.grbitEnabledProtocols)
     Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
 
-  if ((sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
-                                       NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL)) != SEC_E_OK)
+
+  if (ma_tls_set_client_certs(ctls, &cert_context))
+    goto end;
+
+  if (cert_context)
+  {
+    Cred.cCreds = 1;
+    Cred.paCred = &cert_context;
+  }
+  sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
+                                       NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL);
+  if (sRet)
   {
     ma_schannel_set_sec_error(pvio, sRet);
     goto end;
   }
-  sctx->FreeCredHdl= 1;
-
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
-  
-  if (!ma_schannel_verify_certs(ctls))
-    goto end;
-  
-  return 0;
+
+   verify_certs =  mysql->options.ssl_ca || mysql->options.ssl_capath ||
+     (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT);
+
+  if (verify_certs)
+  {
+    if (!ma_schannel_verify_certs(ctls, (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT)))
+      goto end;
+  }
+
+  rc = 0;
 
 end:
-  if (rc && sctx->IoBufferSize)
-    LocalFree(sctx->IoBuffer);
-  sctx->IoBufferSize= 0;
-  if (sctx->client_cert_ctx)
-    CertFreeCertificateContext(sctx->client_cert_ctx);
-  sctx->client_cert_ctx= 0;
-  return 1;
+  if (cert_context)
+    schannel_free_cert_context(cert_context);
+  return rc;
 }
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
@@ -398,7 +392,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
   DWORD dlength= 0;
-  SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->CredHdl, &sctx->ctxt, &dlength, (uchar *)buffer, (DWORD)length);
+  SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->hCtxt, &dlength, (uchar *)buffer, (DWORD)length);
   if (status == SEC_I_CONTEXT_EXPIRED)
     return 0; /* other side shut down the connection. */
   if (status == SEC_I_RENEGOTIATE)
@@ -430,12 +424,13 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
   
   if (sctx)
   {
-    if (sctx->IoBufferSize)
-      LocalFree(sctx->IoBuffer);
-    if (sctx->client_cert_ctx)
-      CertFreeCertificateContext(sctx->client_cert_ctx);
-    FreeCredentialHandle(&sctx->CredHdl);
-    DeleteSecurityContext(&sctx->ctxt);
+    LocalFree(sctx->IoBuffer);
+
+    if (SecIsValidHandle(&sctx->CredHdl))
+      FreeCredentialHandle(&sctx->CredHdl);
+
+    if (SecIsValidHandle(&sctx->hCtxt))
+      DeleteSecurityContext(&sctx->hCtxt);
   }
   LocalFree(sctx);
   return 0;
@@ -444,87 +439,8 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
 
 int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
 {
-  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
-  MARIADB_PVIO *pvio= ctls->pvio;
-  int rc= 1;
-  char *szName= NULL;
-  char *pszServerName= pvio->mysql->host;
-  PCCERT_CONTEXT pServerCert= NULL;
-
-  /* check server name */
-  if (pszServerName && (ctls->pvio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
-  {
-    DWORD NameSize= 0;
-    char *p1;
-    SECURITY_STATUS sRet;
-
-    if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
-    {
-      ma_schannel_set_sec_error(pvio, sRet);
-      goto end;
-    }
-
-    if (!(NameSize= CertGetNameString(pServerCert,
-                                      CERT_NAME_DNS_TYPE,
-                                      CERT_NAME_SEARCH_ALL_NAMES_FLAG,
-                                      NULL, NULL, 0)))
-    {
-      pvio->set_error(ctls->pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error:  Can't retrieve name of server certificate");
-      goto end;
-    }
-
-    if (!(szName= (char *)LocalAlloc(0, NameSize + 1)))
-    {
-      pvio->set_error(ctls->pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
-      goto end;
-    }
-
-    if (!CertGetNameString(pServerCert,
-                           CERT_NAME_DNS_TYPE,
-                           CERT_NAME_SEARCH_ALL_NAMES_FLAG,
-                           NULL, szName, NameSize))
-
-    {
-      pvio->set_error(ctls->pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Can't retrieve name of server certificate");
-      goto end;
-    }
-
-    /* szName may contain multiple names: Each name is zero terminated, the last name is
-       double zero terminated */
-
-
-    p1 = szName;
-    while (p1 && *p1 != 0)
-    {
-      size_t len = strlen(p1);
-      /* check if given name contains wildcard */
-      if (len && *p1 == '*')
-      {
-        size_t hostlen = strlen(pszServerName);
-        if (hostlen < len)
-          break;
-        if (!stricmp(pszServerName + hostlen - len + 1, p1 + 1))
-        {
-          rc = 0;
-          goto end;
-        }
-      }
-      else if (!stricmp(pszServerName, p1))
-      {
-        rc = 0;
-        goto end;
-      }
-      p1 += (len + 1);
-    }
-    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                     "SSL connection error: Name of server certificate didn't match");
-  }
-end:
-  if (szName)
-    LocalFree(szName);
-  if (pServerCert)
-    CertFreeCertificateContext(pServerCert);
-  return rc;
+  /* Done elsewhere */
+  return 0;
 }
 
 static const char *cipher_name(const SecPkgContext_CipherInfo *CipherInfo)
@@ -549,7 +465,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
     return NULL;
 
   sctx= (SC_CTX *)ctls->ssl;
-  sRet= QueryContextAttributesA(&sctx->ctxt, SECPKG_ATTR_CIPHER_INFO, (PVOID)&CipherInfo);
+  sRet= QueryContextAttributesA(&sctx->hCtxt, SECPKG_ATTR_CIPHER_INFO, (PVOID)&CipherInfo);
 
   if (sRet != SEC_E_OK)
     return NULL;
@@ -561,7 +477,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
 {
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;
-  if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
+  if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
     return 0;
   CertGetCertificateContextProperty(pRemoteCertContext, CERT_HASH_PROP_ID, fp, (DWORD *)&len);
   CertFreeCertificateContext(pRemoteCertContext);

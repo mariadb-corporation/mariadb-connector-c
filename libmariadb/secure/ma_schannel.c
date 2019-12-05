@@ -20,6 +20,7 @@
 
  *************************************************************************************/
 #include "ma_schannel.h"
+#include "schannel_certs.h"
 #include <assert.h>
 
 #define SC_IO_BUFFER_SIZE 0x4000
@@ -28,49 +29,13 @@
 #define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer
 void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
 
-static void get_schannel_error_info(DWORD err, const char** sym, const char** text)
-{
-#define ERR_ENTRY(a,b) {a,#a, b}
-  static struct {
-    DWORD code; /* Error code , e.g SEC_E_ILLEGAL_MESSAGE */
-    const char* symbol; /* Error code as string, e.g "SEC_E_ILLEGAL_MESSAGE"*/
-    const char* msg; /* English text message */
-  }  errinfo[] =
-  {
-    ERR_ENTRY(SEC_E_ILLEGAL_MESSAGE, "The message received was unexpected or badly formatted"),
-    ERR_ENTRY(SEC_E_UNTRUSTED_ROOT, "Untrusted root certificate"),
-    ERR_ENTRY(SEC_E_BUFFER_TOO_SMALL, "Buffer too small"),
-    ERR_ENTRY(SEC_E_CRYPTO_SYSTEM_INVALID, "Cipher is not supported"),
-    ERR_ENTRY(SEC_E_INSUFFICIENT_MEMORY, "Out of memory"),
-    ERR_ENTRY(SEC_E_OUT_OF_SEQUENCE, "Invalid message sequence"),
-    ERR_ENTRY(SEC_E_DECRYPT_FAILURE, "The specified data could not be decrypted"),
-    ERR_ENTRY(SEC_I_INCOMPLETE_CREDENTIALS, "Incomplete credentials"),
-    ERR_ENTRY(SEC_E_ENCRYPT_FAILURE, "The specified data could not be encrypted"),
-    ERR_ENTRY(SEC_I_CONTEXT_EXPIRED, "The context has expired and can no longer be used"),
-    ERR_ENTRY(SEC_E_ALGORITHM_MISMATCH, "no cipher match"),
-    ERR_ENTRY(SEC_E_NO_CREDENTIALS, "no credentials"),
-    ERR_ENTRY(SEC_E_INVALID_TOKEN, "The token supplied to function is invalid")
-  };
-  for (int i = 0; i < sizeof(errinfo) / sizeof(errinfo[0]); i++)
-  {
-    if (errinfo[i].code == err)
-    {
-      *sym = errinfo[i].symbol;
-      *text = errinfo[i].msg;
-      return;
-    }
-  }
-  *sym = NULL;
-  *text = NULL;
-}
+
 
 
 /* {{{ void ma_schannel_set_sec_error */
 void ma_schannel_set_sec_error(MARIADB_PVIO* pvio, DWORD ErrorNo)
 {
   MYSQL* mysql = pvio->mysql;
-  const char* sym;
-  const char* text;
   if (ErrorNo != SEC_E_OK)
     mysql->net.extension->extended_errno = ErrorNo;
   if (ErrorNo == SEC_E_INTERNAL_ERROR && GetLastError())
@@ -78,517 +43,22 @@ void ma_schannel_set_sec_error(MARIADB_PVIO* pvio, DWORD ErrorNo)
     ma_schannel_set_win_error(pvio, GetLastError());
     return;
   }
-  get_schannel_error_info(ErrorNo, &sym, &text);
-  if (sym)
-  {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-      "SSL connection error: %s (%s , 0x%08x)", text, sym, ErrorNo);
-  }
-  else
-  {
-    ma_schannel_set_win_error(pvio, ErrorNo);
-  }
+  ma_schannel_set_win_error(pvio, ErrorNo);
 }
 /* }}} */
 
+#include "win32_errmsg.h"
 /* {{{ void ma_schnnel_set_win_error */
 void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
 {
-  ulong ssl_errno= ErrorNo ? ErrorNo : GetLastError();
-  char *ssl_error_reason= NULL;
-  char *p;
   char buffer[256];
-  if (!ssl_errno)
-  {
-    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
-    return;
-  }
-
-  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                NULL, ssl_errno, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                (LPTSTR) &ssl_error_reason, 0, NULL );
-  for (p = ssl_error_reason; *p; p++)
-    if (*p == '\n' || *p == '\r')
-      *p = 0;
-  snprintf(buffer, sizeof(buffer), "SSL connection error: %s. Windows error %lu / 0x%08lx",ssl_error_reason,
-    ErrorNo, ErrorNo);
+  ma_format_win32_error(buffer, sizeof(buffer), ErrorNo, "SSL connection error: ");
   pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, buffer);
-  if (ssl_error_reason)
-    LocalFree(ssl_error_reason);
   return;
 }
 /* }}} */
 
-/* {{{ LPBYTE ma_schannel_load_pem(const char *PemFileName, DWORD *buffer_len) */
-/*
-   Load a pem or clr file and convert it to a binary DER object
 
-   SYNOPSIS
-     ma_schannel_load_pem()
-     PemFileName           name of the pem file (in)
-     buffer_len            length of the converted DER binary
-
-   DESCRIPTION
-     Loads a X509 file (ca, certification, key or clr) into memory and converts
-     it to a DER binary object. This object can be decoded and loaded into
-     a schannel crypto context.
-     If the function failed, error can be retrieved by GetLastError()
-     The returned binary object must be freed by caller.
-
-   RETURN VALUE
-     NULL                  if the conversion failed or file was not found
-     LPBYTE *              a pointer to a binary der object
-                           buffer_len will contain the length of binary der object
-*/
-static LPBYTE ma_schannel_load_pem(MARIADB_PVIO *pvio, const char *PemFileName, DWORD *buffer_len)
-{
-  HANDLE hfile= 0;
-  char   *buffer= NULL;
-  DWORD dwBytesRead= 0;
-  LPBYTE der_buffer= NULL;
-  DWORD der_buffer_length= 0;
-
-  if (buffer_len == NULL)
-    return NULL;
-
-  
-  if ((hfile= CreateFile(PemFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 
-                          FILE_ATTRIBUTE_NORMAL, NULL )) == INVALID_HANDLE_VALUE)
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    return NULL;
-  }
-
-  if (!(*buffer_len = GetFileSize(hfile, NULL)))
-  {
-     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid pem format");
-     goto end;
-  }
-
-  if (!(buffer= malloc((size_t)(*buffer_len + 1))))
-  {
-    pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
-    goto end;
-  }
-
-  if (!ReadFile(hfile, buffer, *buffer_len, &dwBytesRead, NULL))
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    goto end;
-  }
-
-  CloseHandle(hfile);
-
-  /* calculate the length of DER binary */
-  if (!CryptStringToBinaryA(buffer, *buffer_len, CRYPT_STRING_BASE64HEADER,
-                            NULL, &der_buffer_length, NULL, NULL))
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    goto end;
-  }
-  /* allocate DER binary buffer */
-  if (!(der_buffer= (LPBYTE)LocalAlloc(0, der_buffer_length)))
-  {
-    pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
-    goto end;
-  }
-  /* convert to DER binary */
-  if (!CryptStringToBinaryA(buffer, *buffer_len, CRYPT_STRING_BASE64HEADER,
-                            der_buffer, &der_buffer_length, NULL, NULL))
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    goto end;
-  }
-
-  *buffer_len= der_buffer_length;
-  free(buffer);
-  
-  return der_buffer;
-
-end:
-  if (hfile != INVALID_HANDLE_VALUE)
-    CloseHandle(hfile);
-  if (buffer)
-    LocalFree(buffer);
-  if (der_buffer)
-    LocalFree(der_buffer);
-  *buffer_len= 0;
-  return NULL;
-}
-/* }}} */
-
-static LPBYTE ma_schannel_read(MARIADB_PVIO* pvio, const char* PemFile, DWORD* buffer_len)
-{
-  HANDLE hfile = NULL;
-  char* buffer = NULL;
-  DWORD dwBytesRead = 0;
-
-  if ((hfile = CreateFile(PemFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-    FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    return NULL;
-  }
-
-  if (!(*buffer_len = GetFileSize(hfile, NULL)))
-  {
-    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid pem format");
-    goto end;
-  }
-
-  if (!(buffer = malloc((size_t)* buffer_len + 1)))
-  {
-    pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
-    goto end;
-  }
-
-  if (!ReadFile(hfile, buffer, *buffer_len, &dwBytesRead, NULL))
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    goto end;
-  }
-
-  buffer[*buffer_len] = 0;
-
-  CloseHandle(hfile);
-  return buffer;
-end:
-  if (hfile != INVALID_HANDLE_VALUE)
-    CloseHandle(hfile);
-  if (buffer)
-    free(buffer);
-  *buffer_len = 0;
-  return NULL;
-}
-
-LPBYTE ma_schannel_convert_base64(MARIADB_PVIO* pvio, char* buffer, DWORD buffer_len, DWORD* der_len)
-{
-  LPBYTE der_buffer = NULL;
-
-  *der_len = 0;
-
-  /* calculate the length of DER binary */
-  if (!CryptStringToBinaryA(buffer, buffer_len, CRYPT_STRING_BASE64HEADER,
-    NULL, der_len, NULL, NULL))
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    goto end;
-  }
-  /* allocate DER binary buffer */
-  if (!(der_buffer = (LPBYTE)malloc(*der_len)))
-  {
-    pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
-    goto end;
-  }
-  /* convert to DER binary */
-  if (!CryptStringToBinaryA(buffer, buffer_len, CRYPT_STRING_BASE64HEADER,
-    der_buffer, der_len, NULL, NULL))
-  {
-    ma_schannel_set_win_error(pvio, 0);
-    goto end;
-  }
-  return der_buffer;
-end:
-  if (der_buffer)
-    free(der_buffer);
-  return NULL;
-}
-
-
-DWORD ma_schannel_load_certs_and_keys(MARIADB_PVIO* pvio, const char* PemFileName, SC_CTX* ctx)
-{
-  char* buffer = NULL;
-  char* p, * type;
-  DWORD buffer_len = 0;
-  LPBYTE der_buffer = NULL;
-  DWORD der_buffer_length = 0;
-
-  /* check if cert and key was already loaded */
-  if (ctx->client_cert_ctx && ctx->der_key)
-    return 0;
-
-  if (!(buffer = ma_schannel_read(pvio, PemFileName, &buffer_len)))
-    return 0;
-
-  p = buffer;
-
-  while ((p = strstr(p, "-----BEGIN")))
-  {
-    my_bool is_cert = 0;
-    char* cert_end = strstr(p, "-----END");
-
-    if (!cert_end)
-    {
-      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown or unsupported X509 PEM type"); goto error;
-      goto error;
-    }
-
-    if (!(cert_end = strchr(cert_end, '\n')))
-      goto error;
-
-    if ((type = strstr(p, "CERTIFICATE")) && type < cert_end)
-    {
-      is_cert = 1;
-      /* We only read first certificate, further certificates will be ignored */
-      if (ctx->client_cert_ctx)
-      {
-        p = cert_end;
-        continue;
-      }
-    }
-    else if ((type = strstr(p, "PRIVATE KEY")) && type < cert_end)
-    {
-      /* We only read the first key, further keys will be ignored */
-      if (ctx->der_key)
-      {
-        p = cert_end;
-        continue;
-      }
-    }
-    else
-    {
-      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown or unsupported X509 PEM type");
-      goto error;
-    }
-
-    if (!(der_buffer = ma_schannel_convert_base64(pvio, p, (DWORD)(cert_end - p), &der_buffer_length)))
-      goto error;
-
-    if (is_cert)
-    {
-      if (!(ctx->client_cert_ctx = (CERT_CONTEXT*)CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-        der_buffer, der_buffer_length)))
-      {
-        ma_schannel_set_win_error(pvio, 0);
-        goto error;
-      }
-    }
-    else
-    {
-      if (!(ctx->der_key= (struct st_DER *)malloc(sizeof(struct st_DER))))
-      {
-        pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Not enough memory");
-        goto error;
-      }
-      
-      ctx->der_key->der_buffer = der_buffer;
-      ctx->der_key->der_length = der_buffer_length;
-
-      der_buffer = 0;
-      der_buffer_length = 0;
-      p = cert_end;
-    }
-
-    free(der_buffer);
-    der_buffer = 0;
-    der_buffer_length = 0;
-    p = cert_end;
-
-    if (ctx->client_cert_ctx && ctx->der_key)
-      break;
-  }
-  free(buffer);
-  return 0;
-error:
-  if (buffer)
-    free(buffer);
-  if (der_buffer)
-    free(der_buffer);
-  return 1;
-}
-
-void ma_delete_key_buffer(SC_CTX* ctx)
-{
-  if (!ctx->der_key)
-    return;
-  free(ctx->der_key->der_buffer);
-  free(ctx->der_key);
-  ctx->der_key = 0;
-}
-
-
-/* {{{ CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file) */
-/*
-  Create a certification context from ca or cert file
-
-  SYNOPSIS
-    ma_schannel_create_cert_context()
-    pvio                    pvio object
-    pem_file               name of certificate or ca file
-
-  DESCRIPTION
-    Loads a PEM file (certificate authority or certificate) creates a certification
-    context and loads the binary representation into context.
-    The returned context must be freed by caller.
-    If the function failed, error can be retrieved by GetLastError().
-
-  RETURNS
-    NULL                   If loading of the file or creating context failed
-    CERT_CONTEXT *         A pointer to a certification context structure
-*/
-CERT_CONTEXT *ma_schannel_create_cert_context(MARIADB_PVIO *pvio, const char *pem_file)
-{
-  DWORD der_buffer_length;
-  LPBYTE der_buffer= NULL;
-
-  CERT_CONTEXT *ctx= NULL;
-
-  /* create DER binary object from ca/certification file */
-  if (!(der_buffer= ma_schannel_load_pem(pvio, pem_file, (DWORD *)&der_buffer_length)))
-    goto end;
-  if (!(ctx= (CERT_CONTEXT *)CertCreateCertificateContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                                    der_buffer, der_buffer_length)))
-    ma_schannel_set_win_error(pvio, 0);
-
-end:
-  if (der_buffer)
-    LocalFree(der_buffer);
-  return ctx;
-}
-/* }}} */
-
-/* {{{ PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem_file) */
-/*
-  Create a crl context from crlfile
-
-  SYNOPSIS
-    ma_schannel_create_crl_context()
-    pem_file               name of certificate or ca file
-
-  DESCRIPTION
-    Loads a certification revocation list file, creates a certification
-    context and loads the binary representation into crl context.
-    The returned context must be freed by caller.
-    If the function failed, error can be retrieved by GetLastError().
-
-  RETURNS
-    NULL                   If loading of the file or creating context failed
-    PCCRL_CONTEXT          A pointer to a certification context structure
-*/
-PCCRL_CONTEXT ma_schannel_create_crl_context(MARIADB_PVIO *pvio, const char *pem_file)
-{
-  DWORD der_buffer_length;
-  LPBYTE der_buffer= NULL;
-
-  PCCRL_CONTEXT ctx= NULL;
-
-  /* load ca pem file into memory */
-  if (!(der_buffer= ma_schannel_load_pem(pvio, pem_file, (DWORD *)&der_buffer_length)))
-    goto end;
-  if (!(ctx= CertCreateCRLContext(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                                    der_buffer, der_buffer_length)))
-    ma_schannel_set_win_error(pvio, 0);
-end:
-  if (der_buffer)
-    free(der_buffer);
-  return ctx;
-}
-/* }}} */
-
-/* {{{ my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, CERT_CONTEXT *ctx, char *key_file) */
-/*
-  Load private key into context
-
-  SYNOPSIS
-    ma_schannel_load_private_key()
-    ctx                    pointer to a certification context
-    pem_file               name of certificate or ca file
-
-  DESCRIPTION
-    Loads a certification revocation list file, creates a certification
-    context and loads the binary representation into crl context.
-    The returned context must be freed by caller.
-    If the function failed, error can be retrieved by GetLastError().
-
-  RETURNS
-    NULL                   If loading of the file or creating context failed
-    PCCRL_CONTEXT          A pointer to a certification context structure
-*/
-
-my_bool ma_schannel_load_private_key(MARIADB_PVIO *pvio, SC_CTX *ctx)
-{
-   DWORD priv_key_len= 0;
-   LPBYTE priv_key= NULL;
-   HCRYPTPROV  crypt_prov= 0;
-   HCRYPTKEY  crypt_key= 0;
-   CERT_KEY_CONTEXT kpi={ 0 };
-   my_bool rc= 0;
-
-   if (!ctx->der_key || !ctx->client_cert_ctx)
-   {
-     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Invalid certificate or key");
-     goto end;
-   }
-
-   /* determine required buffer size for decoded private key */
-   if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-                            PKCS_RSA_PRIVATE_KEY,
-                            ctx->der_key->der_buffer, ctx->der_key->der_length,
-                            0, NULL,
-                            NULL, &priv_key_len))
-   {
-     ma_schannel_set_win_error(pvio, 0);
-     goto end;
-   }
-
-   /* allocate buffer for decoded private key */
-   if (!(priv_key= malloc(priv_key_len)))
-   {
-     pvio->set_error(pvio->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, NULL);
-     goto end;
-   }
-
-   if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
-     PKCS_RSA_PRIVATE_KEY,
-     ctx->der_key->der_buffer, ctx->der_key->der_length,
-     0, NULL,
-     priv_key, &priv_key_len))
-   {
-     ma_schannel_set_win_error(pvio, 0);
-     goto end;
-   }
-
-   /* Acquire context */
-   if (!CryptAcquireContext(&crypt_prov, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
-   {
-     ma_schannel_set_win_error(pvio, 0);
-     goto end;
-   }
-   /* ... and import the private key */
-   if (!CryptImportKey(crypt_prov, priv_key, priv_key_len, 0, 0, (HCRYPTKEY *)&crypt_key))
-   {
-     ma_schannel_set_win_error(pvio, 0);
-     goto end;
-   }
-
-   kpi.hCryptProv= crypt_prov;
-   kpi.dwKeySpec = AT_KEYEXCHANGE;
-   kpi.cbSize= sizeof(kpi);
-
-   /* assign private key to certificate context */
-   if (CertSetCertificateContextProperty(ctx->client_cert_ctx, CERT_KEY_CONTEXT_PROP_ID, 0, &kpi))
-     rc= 1;
-   else
-     ma_schannel_set_win_error(pvio, 0);
-
-end:
-  if (ctx->der_key)
-  {
-    free(ctx->der_key->der_buffer);
-    free(ctx->der_key);
-    ctx->der_key = 0;
-  }
-  if (priv_key)
-  {
-    if (crypt_key)
-      CryptDestroyKey(crypt_key);
-    free(priv_key);
-  if (!rc)
-    if (crypt_prov)
-      CryptReleaseContext(crypt_prov, 0);
-  }
-  return rc;
-}
 /* }}} */
 
 /* {{{ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData) */
@@ -688,7 +158,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
 
 
     rc = InitializeSecurityContextA(&sctx->CredHdl,
-                                    &sctx->ctxt,
+                                    &sctx->hCtxt,
                                     NULL,
                                     dwSSPIFlags,
                                     0,
@@ -711,7 +181,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
         if(nbytes <= 0)
         {
           FreeContextBuffer(OutBuffers.pvBuffer);
-          DeleteSecurityContext(&sctx->ctxt);
+          DeleteSecurityContext(&sctx->hCtxt);
           return SEC_E_INTERNAL_ERROR;
         }
         cbData= (DWORD)nbytes;
@@ -773,7 +243,7 @@ loopend:
   if (FAILED(rc))
   {
     ma_schannel_set_sec_error(pvio, rc);
-    DeleteSecurityContext(&sctx->ctxt);
+    DeleteSecurityContext(&sctx->hCtxt);
   }
   LocalFree(IoBuffer);
 
@@ -837,7 +307,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
                                     SECURITY_NATIVE_DREP,
                                     NULL,
                                     0,
-                                    &sctx->ctxt,
+                                    &sctx->hCtxt,
                                     &BufferOut,
                                     &OutFlags,
                                     NULL);
@@ -864,7 +334,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
 
   /* allocate IO-Buffer for write operations: After handshake
   was successful, we are able now to calculate payload */
-  if ((sRet = QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes )))
+  if ((sRet = QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes )))
     goto end;
 
   sctx->IoBufferSize= SCHANNEL_PAYLOAD(sctx->Sizes);
@@ -876,12 +346,8 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
     
   return sRet;
 end:
-  LocalFree(sctx->IoBuffer);
-  sctx->IoBufferSize= 0;
   if (BuffersOut.pvBuffer)
     FreeContextBuffer(BuffersOut.pvBuffer);
-
-  DeleteSecurityContext(&sctx->ctxt);
   return sRet;
 }
 /* }}} */
@@ -909,7 +375,6 @@ end:
 */  
 
 SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
-                                         PCredHandle phCreds,
                                          CtxtHandle * phContext,
                                          DWORD *DecryptLength,
                                          uchar *ReadBuffer,
@@ -1018,85 +483,58 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
   }
 }
 /* }}} */
-
-my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls)
+#include "win32_errmsg.h"
+my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls, BOOL verify_server_name)
 {
-  SECURITY_STATUS sRet;
-  
+  SECURITY_STATUS status;
+
   MARIADB_PVIO *pvio= ctls->pvio;
   MYSQL *mysql= pvio->mysql;
   SC_CTX *sctx = (SC_CTX *)ctls->ssl;
-
   const char *ca_file= mysql->options.ssl_ca;
+  const char* ca_path = mysql->options.ssl_capath;
   const char *crl_file= mysql->options.extension ? mysql->options.extension->ssl_crl : NULL;
+  const char* crl_path = mysql->options.extension ? mysql->options.extension->ssl_crlpath : NULL;
   PCCERT_CONTEXT pServerCert= NULL;
-  CRL_CONTEXT *crl_ctx= NULL;
-  CERT_CONTEXT *ca_ctx= NULL;
+  char errmsg[256];
+  HCERTSTORE store= NULL;
   int ret= 0;
 
-  if (!ca_file && !crl_file)
-    return 1;
-
-  if (ca_file && !(ca_ctx = ma_schannel_create_cert_context(pvio, ca_file)))
+  status = schannel_create_store(ca_file, ca_path, crl_file, crl_path, &store, errmsg, sizeof(errmsg));
+  if(status)
     goto end;
 
-  if (crl_file && !(crl_ctx= (CRL_CONTEXT *)ma_schannel_create_crl_context(pvio, mysql->options.extension->ssl_crl)))
-    goto end;
-
-  if ((sRet= QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert)) != SEC_E_OK)
+  status = QueryContextAttributesA(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert);
+  if (status)
   {
-    ma_schannel_set_sec_error(pvio, sRet);
+    ma_format_win32_error(errmsg, sizeof(errmsg), GetLastError(),
+      "QueryContextAttributes(SECPKG_ATTR_REMOTE_CERT_CONTEXT) failed.");
     goto end;
   }
 
-  if (ca_ctx)
-  {
-    DWORD flags = CERT_STORE_SIGNATURE_FLAG | CERT_STORE_TIME_VALIDITY_FLAG;
-    if (!CertVerifySubjectCertificateContext(pServerCert, ca_ctx, &flags))
-    {
-      ma_schannel_set_win_error(pvio, 0);
-      goto end;
-    }
+  status = schannel_verify_server_certificate(
+      pServerCert,
+      store,
+      crl_file != 0 || crl_path != 0,
+      mysql->host,
+      verify_server_name,
+      errmsg, sizeof(errmsg));
 
-    if (flags)
-    {
-      if ((flags & CERT_STORE_SIGNATURE_FLAG) != 0)
-        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Certificate signature check failed");
-      else if ((flags & CERT_STORE_REVOCATION_FLAG) != 0)
-        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate was revoked");
-      else if ((flags & CERT_STORE_TIME_VALIDITY_FLAG) != 0)
-        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: certificate has expired");
-      else
-        pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: Unknown error during certificate validation");
-      goto end;
-    }
-  }
+  if (status)
+    goto end;
 
-
-  /* Check  certificates in the certificate chain have been revoked. */
-  if (crl_ctx)
-  {
-    if (!CertVerifyCRLRevocation(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, pServerCert->pCertInfo, 1, &crl_ctx->pCrlInfo))
-    {
-      pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: CRL Revocation test failed");
-      goto end;
-    }
-  }
   ret= 1;
 
 end:
-  if (crl_ctx)
+  if (!ret)
   {
-    CertFreeCRLContext(crl_ctx);
-  }
-  if (ca_ctx)
-  {
-    CertFreeCertificateContext(ca_ctx);
+     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+      "SSL connection error: %s", errmsg);
   }
   if (pServerCert)
-  {
     CertFreeCertificateContext(pServerCert);
-  }
+  if(store)
+    schannel_free_store(store);
   return ret;
 }
 
@@ -1159,7 +597,7 @@ ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   Message.ulVersion       = SECBUFFER_VERSION;
   Message.cBuffers        = 4;
   Message.pBuffers        = Buffers;
-  if ((scRet = EncryptMessage(&sctx->ctxt, 0, &Message, 0))!= SEC_E_OK)
+  if ((scRet = EncryptMessage(&sctx->hCtxt, 0, &Message, 0))!= SEC_E_OK)
     return -1;
   write_size = Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer;
   nbytes = pvio->methods->write(pvio, sctx->IoBuffer, write_size);
@@ -1179,7 +617,7 @@ int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
 
   sctx= (SC_CTX *)ctls->ssl;
 
-  if (QueryContextAttributes(&sctx->ctxt, SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo) != SEC_E_OK)
+  if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_CONNECTION_INFO, &ConnectionInfo) != SEC_E_OK)
     return -1;
 
   switch(ConnectionInfo.dwProtocol)
