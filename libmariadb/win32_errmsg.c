@@ -21,6 +21,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*
   Format Windows error, with optional text.
@@ -40,7 +41,7 @@ void ma_format_win32_error(char* buf, size_t buflen, DWORD code, _Printf_format_
   {
     va_list vargs;
     va_start(vargs, fmt);
-    cur += vsnprintf(cur, end - cur, fmt, vargs);
+    cur += vsnprintf_s(cur, end - cur, _TRUNCATE, fmt, vargs);
     va_end(vargs);
   }
 
@@ -96,7 +97,7 @@ void ma_format_win32_error(char* buf, size_t buflen, DWORD code, _Printf_format_
   };
 
   struct map_entry* entry = NULL;
-  strncpy(cur,". ",end-cur);
+  strncpy_s(cur,end-cur, ". ", _TRUNCATE);
   cur += 2;
 
   for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
@@ -111,7 +112,7 @@ void ma_format_win32_error(char* buf, size_t buflen, DWORD code, _Printf_format_
     return;
   if (entry)
   {
-    cur += snprintf(cur, end - cur, "%s. Error 0x%08lX(%s)", entry->msg, code, entry->sym);
+    sprintf_s(cur, end - cur, "%s. Error 0x%08lX(%s)", entry->msg, code, entry->sym);
   }
   else
   {
@@ -125,7 +126,7 @@ void ma_format_win32_error(char* buf, size_t buflen, DWORD code, _Printf_format_
       cur++;
       *cur = 0;
     }
-    cur += snprintf(cur, end - cur, ". Error %lu/0x%08lX", code, code);
+    sprintf_s(cur, end - cur, ". Error %lu/0x%08lX", code, code);
   }
 }
 

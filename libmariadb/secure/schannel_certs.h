@@ -35,7 +35,7 @@ extern SECURITY_STATUS schannel_create_store(
 extern SECURITY_STATUS schannel_verify_server_certificate(
   const CERT_CONTEXT* cert,
   HCERTSTORE store,
-  BOOL ´check_revocation,
+  BOOL check_revocation,
   const char* server_name,
   BOOL  check_server_name,
   char* errmsg,

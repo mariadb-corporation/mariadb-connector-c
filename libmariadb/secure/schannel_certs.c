@@ -62,6 +62,14 @@ static DWORD get_last_error()
   assert(0);
   return ERROR_INTERNAL_ERROR;
 }
+
+#define FAIL(fmt,...) \
+  {\
+   status = get_last_error();\
+   ma_format_win32_error(errmsg, errmsg_len, status, fmt, __VA_ARGS__);\
+   goto cleanup;\
+  }
+
 /*
   Load file into memory. Add null terminator at the end, so it will be a valid C string.
 */
@@ -71,33 +79,31 @@ static char* pem_file_to_string(const char* file, char* errmsg, size_t errmsg_le
   size_t file_bufsize = 0;
   size_t total_bytes_read = 0;
   char* file_buffer = NULL;
+  SECURITY_STATUS status = SEC_E_OK;
 
   HANDLE file_handle = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file_handle == INVALID_HANDLE_VALUE)
   {
-    ma_format_win32_error(errmsg, errmsg_len, GetLastError(), "failed to open file '%s'", file);
-    goto cleanup;
+    FAIL("failed to open file '%s'", file);
   }
 
   if (!GetFileSizeEx(file_handle, &file_size))
   {
-    ma_format_win32_error(errmsg, errmsg_len, get_last_error(), "GetFileSizeEx failed on '%s'", file);
-    goto cleanup;
+    FAIL("GetFileSizeEx failed on '%s'", file);
   }
 
   if (file_size.QuadPart > ULONG_MAX - 1)
   {
-    snprintf(errmsg, errmsg_len, "file '%s' too large", file);
-    goto cleanup;
+    SetLastError(SEC_E_INVALID_PARAMETER);
+    FAIL("file '%s' too large", file);
   }
 
   file_bufsize = (size_t)file_size.QuadPart;
-  file_buffer = (char*)malloc(file_bufsize + 1);
+  file_buffer = (char*)LocalAlloc(0,file_bufsize + 1);
   if (!file_buffer)
   {
-    snprintf(errmsg, errmsg_len, "malloc(%zu) failed, out of memory", file_bufsize + 1);
-    goto cleanup;
+    FAIL("LocalAlloc(0,%zu) failed", file_bufsize + 1);
   }
 
   while (total_bytes_read < file_bufsize)
@@ -108,9 +114,7 @@ static char* pem_file_to_string(const char* file, char* errmsg, size_t errmsg_le
     if (!ReadFile(file_handle, file_buffer + total_bytes_read,
       bytes_to_read, &bytes_read, NULL))
     {
-      ma_format_win32_error(errmsg, errmsg_len, GetLastError(),
-        "ReadFile() failed to read  file '%s'", file);
-      goto cleanup;
+      FAIL("ReadFile() failed to read  file '%s'", file);
     }
     if (bytes_read == 0)
     {
@@ -125,9 +129,18 @@ static char* pem_file_to_string(const char* file, char* errmsg, size_t errmsg_le
 
   /* Null terminate the buffer */
   file_buffer[file_bufsize] = '\0';
+
 cleanup:
   if (file_handle != INVALID_HANDLE_VALUE)
+  {
     CloseHandle(file_handle);
+  }
+  if (status)
+  {
+    /* Some error happened. */
+    LocalFree(file_buffer);
+    file_buffer = NULL;
+  }
   return file_buffer;
 }
 
@@ -214,7 +227,9 @@ static SECURITY_STATUS add_certs_to_store(
 {
   char* file_buffer = NULL;
   char* cur = NULL;
-  SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
+  SECURITY_STATUS status = SEC_E_OK;
+  CRL_CONTEXT* crl_context = NULL;
+  CERT_CONTEXT* cert_context = NULL;
   char* begin;
   char* end;
 
@@ -231,14 +246,12 @@ static SECURITY_STATUS add_certs_to_store(
 
     if (!end)
     {
-      snprintf(errmsg, errmsg_len, "Invalid PEM file '%s',"
-        "missing end marker corresponding to begin marker '%s' at offset %zu",
+      SetLastError(SEC_E_INVALID_PARAMETER);
+      FAIL("Invalid PEM file '%s', missing end marker corresponding to begin marker '%s' at offset %zu",
         file, pem_sections[type].begin_tag, (size_t)(begin - file_buffer));
-      goto cleanup;
     }
     CERT_BLOB cert_blob;
     void* context = NULL;
-    int add_cert_result = FALSE;
     DWORD actual_content_type = 0;
 
     cert_blob.pbData = (BYTE*)begin;
@@ -249,58 +262,44 @@ static SECURITY_STATUS add_certs_to_store(
       CERT_QUERY_FORMAT_FLAG_ALL, 0, NULL, &actual_content_type,
       NULL, NULL, NULL, (const void**)&context))
     {
-      ma_format_win32_error(errmsg, errmsg_len, GetLastError(),
-        "failed to extract certificate from PEM file '%s'",
-        file);
-      goto cleanup;
+      FAIL("failed to extract certificate from PEM file '%s'",file);
     }
 
     if (!context)
     {
-      ma_format_win32_error(errmsg, errmsg_len, 0,
-        "unexpected result from CryptQueryObject(),cert_context is NULL"
+      SetLastError(SEC_E_INTERNAL_ERROR);
+      FAIL("unexpected result from CryptQueryObject(),cert_context is NULL"
         " after successful completion, file '%s'",
         file);
-      goto cleanup;
     }
 
     if (actual_content_type == CERT_QUERY_CONTENT_CERT)
     {
       CERT_CONTEXT* cert_context = (CERT_CONTEXT*)context;
-      BOOL ok = CertAddCertificateContextToStore(
+      if (!CertAddCertificateContextToStore(
         trust_store, cert_context,
-        CERT_STORE_ADD_ALWAYS, NULL);
-      if (!ok)
-        status = get_last_error();
-      CertFreeCertificateContext(cert_context);
-      if (!ok)
+        CERT_STORE_ADD_ALWAYS, NULL))
       {
-        status = get_last_error();
-        ma_format_win32_error(errmsg, errmsg_len, get_last_error(),
-          "CertAddCertificateContextToStore failed");
-        goto cleanup;
+        FAIL("CertAddCertificateContextToStore failed");
       }
     }
     else if (actual_content_type == CERT_QUERY_CONTENT_CRL)
     {
       CRL_CONTEXT* crl_context = (CRL_CONTEXT*)context;
-      BOOL ok = CertAddCRLContextToStore(
+      if (!CertAddCRLContextToStore(
         trust_store, crl_context,
-        CERT_STORE_ADD_ALWAYS, NULL);
-      if (!ok)
-        status = get_last_error();
-      CertFreeCRLContext(crl_context);
-      if (!ok)
+        CERT_STORE_ADD_ALWAYS, NULL))
       {
-        ma_format_win32_error(errmsg, errmsg_len, status, "CertAddCRLContextToStore() failed");
-        goto cleanup;
+        FAIL("CertAddCRLContextToStore() failed");
       }
     }
   }
-  status = SEC_E_OK;
-
 cleanup:
-  free(file_buffer);
+  LocalFree(file_buffer);
+  if (cert_context)
+    CertFreeCertificateContext(cert_context);
+  if (crl_context)
+    CertFreeCRLContext(crl_context);
   return status;
 }
 
@@ -317,38 +316,41 @@ SECURITY_STATUS add_dir_to_store(HCERTSTORE trust_store, const char* dir,
   char path[MAX_PATH];
   char pattern[MAX_PATH];
   DWORD dwAttr;
-  HANDLE hFind;
-  SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
+  HANDLE hFind = INVALID_HANDLE_VALUE;
+  SECURITY_STATUS status = SEC_E_OK;
 
   if ((dwAttr = GetFileAttributes(dir)) == INVALID_FILE_ATTRIBUTES)
   {
-    ma_format_win32_error(errmsg, errmsg_len, 0, "invalid directory '%s'", dir);
-    return status;
+    SetLastError(SEC_E_INVALID_PARAMETER);
+    FAIL("directory '%s' does not exist", dir);
   }
   if (!(dwAttr & FILE_ATTRIBUTE_DIRECTORY))
   {
-    ma_format_win32_error(errmsg, errmsg_len, 0, "'%s' is not a directory", dir);
-    return status;
+    SetLastError(SEC_E_INVALID_PARAMETER);
+    FAIL("'%s' is not a directory", dir);
   }
-  snprintf(pattern, sizeof(pattern), "%s\\*", dir);
+  sprintf_s(pattern, sizeof(pattern), "%s\\*", dir);
   hFind = FindFirstFile(pattern, &ffd);
   if (hFind == INVALID_HANDLE_VALUE)
   {
-    ma_format_win32_error(errmsg, errmsg_len, GetLastError(), "FindFirstFile(%s) failed", pattern);
-    return status;
+    FAIL("FindFirstFile(%s) failed",pattern);
   }
   do
   {
     if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
       continue;
-    snprintf(path, sizeof(path), "%s\\%s", dir, ffd.cFileName);
+    sprintf_s(path, sizeof(path), "%s\\%s", dir, ffd.cFileName);
 
     // ignore error from add_certs_to_store(), not all file
     // maybe PEM.
     add_certs_to_store(trust_store, path, type, errmsg,
       errmsg_len);
   } while (FindNextFile(hFind, &ffd) != 0);
-  FindClose(hFind);
+
+cleanup:
+  if (hFind != INVALID_HANDLE_VALUE)
+    FindClose(hFind);
+
   return status;
 }
 
@@ -358,7 +360,7 @@ static int count_certificates(HCERTSTORE store)
   int num_certs = 0;
   PCCERT_CONTEXT c = NULL;
 
-  while (c = CertEnumCertificatesInStore(store, c))
+  while ((c = CertEnumCertificatesInStore(store, c)))
     num_certs++;
 
   return num_certs;
@@ -389,7 +391,7 @@ SECURITY_STATUS schannel_create_store(
 
   HCERTSTORE store = NULL;
   HCERTSTORE system_store = NULL;
-  int status = SEC_E_INTERNAL_ERROR;
+  int status = SEC_E_OK;
 
   *out_store = NULL;
   if (!CAFile && !CAPath && !CRLFile && !CRLPath)
@@ -405,9 +407,7 @@ SECURITY_STATUS schannel_create_store(
       CERT_STORE_CREATE_NEW_FLAG, NULL);
     if (!store)
     {
-      status = get_last_error();
-      ma_format_win32_error(errmsg, errmsg_len, status, "failed to create certificate store");
-      goto cleanup;
+      FAIL("CertOpenStore failed for memory store");
     }
   }
   else if (CRLFile || CRLPath)
@@ -419,19 +419,13 @@ SECURITY_STATUS schannel_create_store(
         CERT_SYSTEM_STORE_CURRENT_USER, L"MY");
     if (!system_store)
     {
-      status = get_last_error();
-      ma_format_win32_error(errmsg, errmsg_len, status,
-        "failed to open system certificate store");
-      goto cleanup;
+       FAIL("CertOpenStore failed for system store");
     }
 
     store = CertDuplicateStore(system_store);
     if (!store)
     {
-      status = get_last_error();
-      ma_format_win32_error(errmsg, errmsg_len, status,
-        "failed to duplicate system certificate store");
-      goto cleanup;
+      FAIL("CertDuplicateStore failed");
     }
   }
 
@@ -452,10 +446,9 @@ SECURITY_STATUS schannel_create_store(
 
   if ((CAFile || CAPath) && store && !count_certificates(store))
   {
-    snprintf(errmsg, errmsg_len,
-      "no valid certificates were found, CAFile='%s', CAPath='%s'",
+    SetLastError(SEC_E_INVALID_PARAMETER);
+    FAIL("no valid certificates were found, CAFile='%s', CAPath='%s'",
       CAFile ? CAFile : "<not set>", CAPath ? CAPath : "<not set>");
-    goto cleanup;
   }
 
   if (CRLFile)
@@ -468,7 +461,6 @@ SECURITY_STATUS schannel_create_store(
     status = add_dir_to_store(store, CRLPath, PEM_TYPE_X509_CRL,
       errmsg, errmsg_len);
   }
-  status = SEC_E_OK;
 
 cleanup:
   if (system_store)
@@ -496,8 +488,8 @@ static SECURITY_STATUS VerifyServerCertificate(
   LPWSTR          pwszServerName,
   DWORD           dwRevocationCheckFlags,
   DWORD           dwVerifyFlags,
-  LPSTR           pErrMessage,
-  size_t          cbErrMessage)
+  LPSTR           errmsg,
+  size_t          errmsg_len)
 {
   SSL_EXTRA_CERT_CHAIN_POLICY_PARA  polExtra;
   CERT_CHAIN_POLICY_PARA   PolicyPara;
@@ -509,13 +501,12 @@ static SECURITY_STATUS VerifyServerCertificate(
                           szOID_SERVER_GATED_CRYPTO,
                           szOID_SGC_NETSCAPE };
   DWORD cUsages = sizeof(rgszUsages) / sizeof(LPSTR);
-  SECURITY_STATUS Status = SEC_E_INTERNAL_ERROR;
+  SECURITY_STATUS status = SEC_E_OK;
 
   if (pServerCert == NULL)
   {
-    snprintf(pErrMessage, cbErrMessage, "Invalid parameter pServerCert passed to VerifyServerCertificate");
-    Status = SEC_E_WRONG_PRINCIPAL;
-    goto cleanup;
+    SetLastError(SEC_E_WRONG_PRINCIPAL);
+    FAIL("Invalid parameter pServerCert passed to VerifyServerCertificate");
   }
 
   ZeroMemory(&ChainPara, sizeof(ChainPara));
@@ -531,10 +522,7 @@ static SECURITY_STATUS VerifyServerCertificate(
     EngineConfig.hExclusiveRoot = hStore;
     if (!CertCreateCertificateChainEngine(&EngineConfig, &hChainEngine))
     {
-      Status = get_last_error();
-      ma_format_win32_error(pErrMessage, cbErrMessage, Status,
-        "CertCreateCertificateChainEngine failed");
-      goto cleanup;
+      FAIL("CertCreateCertificateChainEngine failed");
     }
   }
 
@@ -548,8 +536,7 @@ static SECURITY_STATUS VerifyServerCertificate(
     NULL,
     &pChainContext))
   {
-    Status = get_last_error();
-    ma_format_win32_error(pErrMessage, cbErrMessage, Status, "CertGetCertificateChain failed");
+    FAIL("CertGetCertificateChain failed");
     goto cleanup;
   }
 
@@ -573,18 +560,14 @@ static SECURITY_STATUS VerifyServerCertificate(
     &PolicyPara,
     &PolicyStatus))
   {
-    Status = get_last_error();
-    ma_format_win32_error(pErrMessage, cbErrMessage, Status, "CertVerifyCertificateChainPolicy failed");
-    goto cleanup;
+    FAIL("CertVerifyCertificateChainPolicy failed");
   }
 
   if (PolicyStatus.dwError)
   {
-    Status = PolicyStatus.dwError;
-    ma_format_win32_error(pErrMessage, cbErrMessage, Status, "Server certificate validation failed");
-    goto cleanup;
+    SetLastError(PolicyStatus.dwError);
+    FAIL("Server certificate validation failed");
   }
-  Status = SEC_E_OK;
 
 cleanup:
   if (hChainEngine)
@@ -595,7 +578,7 @@ cleanup:
   {
     CertFreeCertificateChain(pChainContext);
   }
-  return Status;
+  return status;
 }
 
 
@@ -619,7 +602,7 @@ SECURITY_STATUS schannel_verify_server_certificate(
   char* errmsg,
   size_t errmsg_len)
 {
-  SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
+  SECURITY_STATUS status = SEC_E_OK;
   wchar_t* wserver_name = NULL;
   DWORD dwVerifyFlags;
   DWORD dwRevocationFlags;
@@ -627,16 +610,14 @@ SECURITY_STATUS schannel_verify_server_certificate(
   if (check_server_name)
   {
     int cchServerName = (int)strlen(server_name) + 1;
-    wserver_name = (wchar_t*)malloc(sizeof(wchar_t) * cchServerName);
+    wserver_name = (wchar_t*)LocalAlloc(0,sizeof(wchar_t) * cchServerName);
     if (!wserver_name)
     {
-      ma_format_win32_error(errmsg, errmsg_len, ERROR_OUTOFMEMORY, "malloc() failed");
-      goto cleanup;
+      FAIL("LocalAlloc() failed");
     }
     if (MultiByteToWideChar(CP_UTF8, 0, server_name, cchServerName, wserver_name, cchServerName) < 0)
     {
-      ma_format_win32_error(errmsg, errmsg_len, GetLastError(), "MultiByteToWideChar() failed");
-      goto cleanup;
+      FAIL("MultiByteToWideChar() failed");
     }
   }
 
@@ -651,7 +632,7 @@ SECURITY_STATUS schannel_verify_server_certificate(
     dwRevocationFlags, dwVerifyFlags, errmsg, errmsg_len);
 
 cleanup:
-  free(wserver_name);
+  LocalFree(wserver_name);
   return status;
 }
 
@@ -668,21 +649,17 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
   CERT_KEY_CONTEXT cert_key_context = { 0 };
   PCRYPT_PRIVATE_KEY_INFO  pki = NULL;
   DWORD pki_len = 0;
-  SECURITY_STATUS status = SEC_E_INTERNAL_ERROR;
+  SECURITY_STATUS status = SEC_E_OK;
 
   derbuf = LocalAlloc(0, derlen);
   if (!derbuf)
   {
-    status = get_last_error();
-    ma_format_win32_error(errmsg, errmsg_len, status, "Memory allocation failed");
-    goto cleanup;
+    FAIL("LocalAlloc failed")
   }
 
   if (!CryptStringToBinaryA(private_key_str, (DWORD)len, CRYPT_STRING_BASE64HEADER, derbuf, &derlen, NULL, NULL))
   {
-    status = get_last_error();
-    ma_format_win32_error(errmsg, errmsg_len, status, "Failed to convert BASE64 private key");
-    goto cleanup;
+    FAIL("Failed to convert BASE64 private key");
   }
 
   /*
@@ -706,10 +683,7 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
       CRYPT_DECODE_ALLOC_FLAG,
       NULL, &keyblob, &keyblob_len))
     {
-      status = get_last_error();
-      ma_format_win32_error(errmsg, errmsg_len, status,
-        "Failed to parse private key");
-      goto cleanup;
+      FAIL("Failed to parse private key");
     }
   }
   else if (!CryptDecodeObjectEx(
@@ -719,24 +693,17 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
     CRYPT_DECODE_ALLOC_FLAG, NULL,
     &keyblob, &keyblob_len))
   {
-    status = get_last_error();
-    ma_format_win32_error(errmsg, errmsg_len, status,
-      "Failed to parse private key");
-    goto cleanup;
+    FAIL("Failed to parse private key");
   }
 
   if (!CryptAcquireContext(&hProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
   {
-    status = get_last_error();
-    ma_format_win32_error(errmsg, errmsg_len, status, "CryptAcquireContext failed");
-    goto cleanup;
+    FAIL("CryptAcquireContext failed");
   }
 
   if (!CryptImportKey(hProv, keyblob, keyblob_len, 0, 0, (HCRYPTKEY*)&hKey))
   {
-    status = get_last_error();
-    ma_format_win32_error(errmsg, errmsg_len, status, "CryptImportKey failed");
-    goto cleanup;
+    FAIL("CryptImportKey failed");
   }
   cert_key_context.hCryptProv = hProv;
   cert_key_context.dwKeySpec = AT_KEYEXCHANGE;
@@ -745,10 +712,8 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
   /* assign private key to certificate context */
   if (!CertSetCertificateContextProperty(cert, CERT_KEY_CONTEXT_PROP_ID, 0, &cert_key_context))
   {
-    status = get_last_error();
-    ma_format_win32_error(errmsg, errmsg_len, get_last_error(), "Can't assign private key to certificate context");
+    FAIL("CertSetCertificateContextProperty failed");
   }
-  status = SEC_E_OK;
 
 cleanup:
   LocalFree(derbuf);
@@ -779,7 +744,7 @@ static CERT_CONTEXT* create_client_certificate_mem(
   char* end;
   CERT_BLOB cert_blob;
   DWORD actual_content_type = 0;
-  int ok = 0;
+  SECURITY_STATUS status = SEC_E_OK;
 
   /* Parse certificate */
   pem_locate(cert_file_content, PEM_TYPE_CERTIFICATE,
@@ -787,8 +752,8 @@ static CERT_CONTEXT* create_client_certificate_mem(
 
   if (!begin || !end)
   {
-    snprintf(errmsg, errmsg_len, "Client certificate not found in PEM file");
-    goto cleanup;
+    SetLastError(SEC_E_INVALID_PARAMETER);
+    FAIL("Client certificate not found in PEM file");
   }
 
   cert_blob.pbData = (BYTE*)begin;
@@ -799,9 +764,7 @@ static CERT_CONTEXT* create_client_certificate_mem(
     CERT_QUERY_FORMAT_FLAG_ALL, 0, NULL, &actual_content_type,
     NULL, NULL, NULL, (const void**)&ctx))
   {
-    ma_format_win32_error(errmsg, errmsg_len, GetLastError(),
-      "Can't parse client certficate");
-    goto cleanup;
+    FAIL("Can't parse client certficate");
   }
 
   /* Parse key */
@@ -812,22 +775,22 @@ static CERT_CONTEXT* create_client_certificate_mem(
     if (begin && end)
     {
       /* Assign key to certificate.*/
-      ok = !load_private_key(ctx, begin, (end - begin), errmsg, errmsg_len);
+      status = load_private_key(ctx, begin, (end - begin), errmsg, errmsg_len);
       goto cleanup;
     }
   }
 
   if (!begin || !end)
-    snprintf(errmsg, errmsg_len, "Client private key not found in PEM");
+  {
+    SetLastError(SEC_E_INVALID_PARAMETER);
+    FAIL("Client private key not found in PEM");
+  }
 
 cleanup:
-  if (!ok)
+  if (status && ctx)
   {
-    if (ctx)
-    {
-      CertFreeCertificateContext(ctx);
-      ctx = NULL;
-    }
+    CertFreeCertificateContext(ctx);
+    ctx = NULL;
   }
   return ctx;
 }
@@ -859,9 +822,9 @@ CERT_CONTEXT* schannel_create_cert_context(char* cert_file, char* key_file, char
   ctx = create_client_certificate_mem(cert_file_content, key_file_content, errmsg, errmsg_len);
 
 cleanup:
-  free(cert_file_content);
+  LocalFree(cert_file_content);
   if (cert_file != key_file)
-    free(key_file_content);
+    LocalFree(key_file_content);
 
   return ctx;
 }

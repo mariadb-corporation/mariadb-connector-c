@@ -19,6 +19,7 @@
  *************************************************************************************/
 #include "ma_schannel.h"
 #include "schannel_certs.h"
+#include <string.h>
 
 #pragma comment (lib, "crypt32.lib")
 #pragma comment (lib, "secur32.lib")
@@ -201,7 +202,6 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls,const CERT_CONTEXT **cert_c
   MYSQL *mysql= ctls->pvio->mysql;
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
-  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
   char errmsg[256];
 
@@ -295,7 +295,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   size_t i;
   DWORD protocol = 0;
   int verify_certs;
-  CERT_CONTEXT* cert_context = NULL;
+  const CERT_CONTEXT* cert_context = NULL;
 
   if (!ctls)
     return 1;
@@ -319,10 +319,10 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
      */
     for (i = 0; i < sizeof(tls_version) / sizeof(tls_version[0]); i++)
     {
-      if (!stricmp(mysql->options.ssl_cipher, tls_version[i].tls_version))
+      if (!_stricmp(mysql->options.ssl_cipher, tls_version[i].tls_version))
         protocol |= tls_version[i].protocol;
     }
-    memset(AlgId, 0, MAX_ALG_ID * sizeof(ALG_ID));
+    memset(AlgId, 0, sizeof(AlgId));
     Cred.cSupportedAlgs = (DWORD)set_cipher(mysql->options.ssl_cipher, protocol, AlgId, MAX_ALG_ID);
     if (Cred.cSupportedAlgs)
     {
