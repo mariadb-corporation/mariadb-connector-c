@@ -583,8 +583,8 @@ typedef void	*gptr;		/* Generic pointer */
 typedef char	*gptr;		/* Generic pointer */
 #endif
 #ifndef HAVE_INT_8_16_32
-typedef char	int8;		/* Signed integer >= 8	bits */
-typedef short	int16;		/* Signed integer >= 16 bits */
+typedef signed char	int8;	/* Signed integer >= 8	bits */
+typedef signed short	int16;	/* Signed integer >= 16 bits */
 #endif
 #ifndef HAVE_UCHAR
 typedef unsigned char	uchar;	/* Short for unsigned char */
