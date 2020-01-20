@@ -1514,7 +1514,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       scramble_len= pkt_scramble_len;
       scramble_plugin= scramble_data + scramble_len;
       if (scramble_data + scramble_len > end_pkt)
-        scramble_len= (uint)(end_pkt - scramble_data);
+      {
+        SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
+        goto error;
+      }
     } else
     {
       scramble_len= (uint)(end_pkt - scramble_data);
