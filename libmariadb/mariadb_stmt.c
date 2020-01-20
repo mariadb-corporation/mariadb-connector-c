@@ -55,6 +55,8 @@
 #include <time.h>
 #include <mysql/client_plugin.h>
 #include <ma_common.h>
+#include "ma_priv.h"
+
 
 #define UPDATE_STMT_ERROR(stmt)\
 SET_CLIENT_STMT_ERROR((stmt), (stmt)->mysql->net.last_errno, (stmt)->mysql->net.sqlstate, (stmt)->mysql->net.last_error)
@@ -75,10 +77,6 @@ typedef struct
   MA_MEM_ROOT fields_ma_alloc_root;
 } MADB_STMT_EXTENSION;
 
-MYSQL_DATA *read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields, uint fields);
-void free_rows(MYSQL_DATA *cur);
-int ma_multi_command(MYSQL *mysql, enum enum_multi_status status);
-MYSQL_FIELD * unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields, my_bool default_value, my_bool long_flag_protocol);
 static my_bool net_stmt_close(MYSQL_STMT *stmt, my_bool remove);
 
 static my_bool is_not_null= 0;
@@ -1598,8 +1596,7 @@ my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt)
   if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0, 7)))
     return(1);
   if (!(stmt->fields= unpack_fields(result,fields_ma_alloc_root,
-          stmt->field_count, 0,
-          stmt->mysql->server_capabilities & CLIENT_LONG_FLAG)))
+          stmt->field_count, 0)))
     return(1);
   return(0);
 }
