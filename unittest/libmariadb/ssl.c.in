@@ -1329,8 +1329,41 @@ static int test_conc386(MYSQL *mysql)
   return OK;
 }
 
+#ifdef HAVE_OPENSSL
+static int test_ssl_verify(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  my_bool verify= 1, enforce= 1;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  /* verify, using system ca should fail with self signed certificate */
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  FAIL_IF(mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), "Error expected");
+  diag("error expected: %s\n", mysql_error(mysql));
+  mysql_close(mysql);
+
+  /* verify against local ca, this should pass */
+  mysql= mysql_init(NULL);
+  mysql_ssl_set(mysql,0, 0, sslca, 0, 0);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+  mysql_close(mysql);
+
+  return OK;
+}
+#endif
+
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#ifdef HAVE_OPENSSL
+  {"test_ssl_verify", test_ssl_verify, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#endif
   {"test_mdev14101", test_mdev14101, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_mdev14027", test_mdev14027, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc286", test_conc286, TEST_CONNECTION_NEW, 0,  NULL,  NULL},

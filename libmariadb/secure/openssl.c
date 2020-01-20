@@ -530,8 +530,9 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
       X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
     }
   }
-  SSL_CTX_set_verify(ctx, (mysql->options.ssl_ca || mysql->options.ssl_capath)?
-                     SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
+  SSL_CTX_set_verify(ctx, (mysql->options.ssl_ca || mysql->options.ssl_capath) ||
+                          (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) ?
+                          SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
   return 0;
 
 error:
