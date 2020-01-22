@@ -540,8 +540,7 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
      2. verify CN (requires option ssl_verify_check)
      3. verrify finger print
   */
-  if ((pvio->mysql->options.ssl_ca || pvio->mysql->options.ssl_capath) &&
-        (pvio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
+  if ((pvio->mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) &&
          ma_pvio_tls_verify_server_cert(pvio->ctls))
     return 1;
 

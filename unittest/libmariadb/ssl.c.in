@@ -1329,7 +1329,7 @@ static int test_conc386(MYSQL *mysql)
   return OK;
 }
 
-#ifdef HAVE_OPENSSL
+#ifndef HAVE_SCHANNEL
 static int test_ssl_verify(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql;
@@ -1355,13 +1355,20 @@ static int test_ssl_verify(MYSQL *my __attribute__((unused)))
                          port, socketname, 0), mysql_error(mysql));
   mysql_close(mysql);
 
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+
+  diag("cipher: %s", mysql_get_ssl_cipher(mysql));
+  mysql_close(mysql);
   return OK;
 }
 #endif
 
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
-#ifdef HAVE_OPENSSL
+#ifndef HAVE_SCHANNEL
   {"test_ssl_verify", test_ssl_verify, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
 #endif
   {"test_mdev14101", test_mdev14101, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
