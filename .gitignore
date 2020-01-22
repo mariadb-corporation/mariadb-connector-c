@@ -84,7 +84,6 @@ unittest/libmariadb/rpl_api
 unittest/libmariadb/sp
 unittest/libmariadb/sqlite3
 unittest/libmariadb/ssl
-unittest/libmariadb/ssl.c
 unittest/libmariadb/t_aurora
 unittest/libmariadb/t_conc173
 unittest/libmariadb/thread
