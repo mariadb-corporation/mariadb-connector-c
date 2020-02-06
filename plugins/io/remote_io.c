@@ -290,10 +290,30 @@ MA_FILE *ma_rio_open(const char *url,const char *operation)
   }
   rf->curl = curl_easy_init();
 
-  curl_easy_setopt(rf->curl, CURLOPT_URL, url);
-  curl_easy_setopt(rf->curl, CURLOPT_WRITEDATA, file);
-  curl_easy_setopt(rf->curl, CURLOPT_VERBOSE, 0L);
-  curl_easy_setopt(rf->curl, CURLOPT_WRITEFUNCTION, rio_write_callback);
+  if(curl_easy_setopt(rf->curl, CURLOPT_URL, url))
+  {
+    free(file);
+    free(rf);
+    return NULL;
+  }
+  if(curl_easy_setopt(rf->curl, CURLOPT_WRITEDATA, file))
+  {
+    free(file);
+    free(rf);
+    return NULL;
+  }
+  if(curl_easy_setopt(rf->curl, CURLOPT_VERBOSE, 0L))
+  {
+    free(file);
+    free(rf);
+    return NULL;
+  }
+  if(curl_easy_setopt(rf->curl, CURLOPT_WRITEFUNCTION, rio_write_callback))
+  {
+    free(file);
+    free(rf);
+    return NULL;
+  }
 
   curl_multi_add_handle(multi_handle, rf->curl);
 
