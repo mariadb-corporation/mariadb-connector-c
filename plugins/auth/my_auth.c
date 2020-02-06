@@ -118,7 +118,7 @@ static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attr
   unsigned int i, last_errno= ((MCPVIO_EXT *)vio)->mysql->net.last_errno;
   if (last_errno)
     strncpy(last_error, ((MCPVIO_EXT *)vio)->mysql->net.last_error,
-            sizeof(last_error));
+            sizeof(last_error) - 1);
 
   /* safety-wise we only do 10 round-trips */
   for (i=0; i < 10; i++)
@@ -131,7 +131,7 @@ static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attr
   }
   if (last_errno)
     strncpy(((MCPVIO_EXT *)vio)->mysql->net.last_error, last_error,
-            sizeof(((MCPVIO_EXT *)vio)->mysql->net.last_error));
+            sizeof(((MCPVIO_EXT *)vio)->mysql->net.last_error) - 1);
   return CR_ERROR;
 }
 
