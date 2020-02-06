@@ -1269,7 +1269,11 @@ if (!(fp= fopen("./mdev13100.cnf", "w")))
   FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
   mysql_close(mysql);
 
-  remove("./mdev13100.cnf");
+  if (remove("./mdev13100.cnf"))
+  {
+    diag("Remove wasn't successfull");
+    return FAIL;
+  }
 
   return OK;
 }
@@ -1412,7 +1416,11 @@ static int test_conc317(MYSQL *unused __attribute__((unused)))
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
-  remove(cnf_file1);
+  if (remove(cnf_file1))
+  {
+    diag("Remove wasn't successfull");
+    return FAIL;
+  }
 
   FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
   mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -1458,8 +1466,16 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
-  remove(cnf_file1);
-  remove(cnf_file2);
+  if (remove(cnf_file1))
+  {
+    diag("Remove wasn't successfull");
+    return FAIL;
+  }
+  if (remove(cnf_file2))
+  {
+    diag("Remove wasn't successfull");
+    return FAIL;
+  }
 
   FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
   mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -1481,8 +1497,16 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
-  remove(cnf_file1);
-  remove(cnf_file2);
+  if (remove(cnf_file1))
+  {
+    diag("Remove wasn't successfull");
+    return FAIL;
+  }
+  if (remove(cnf_file2))
+  {
+    diag("Remove wasn't successfull");
+    return FAIL;
+  }
 
   FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
   mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
