@@ -29,27 +29,27 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 static int test_conc_173(MYSQL *unused __attribute__((unused)))
 {
-  MYSQL mysql;
+  MYSQL *mysql;
   int arg;
   int i=0;
 
   for (;;)
   {
-    mysql_init(&mysql);
-    mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "client");
-    mysql_options(&mysql, MYSQL_OPT_COMPRESS, 0);
+    mysql = mysql_init(NULL);
+    mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "client");
+    mysql_options(mysql, MYSQL_OPT_COMPRESS, 0);
 
-    mysql_options(&mysql, MYSQL_OPT_NAMED_PIPE, 0);
+    mysql_options(mysql, MYSQL_OPT_NAMED_PIPE, 0);
 
     arg = MYSQL_PROTOCOL_SOCKET;
 
-    mysql_options(&mysql, MYSQL_OPT_PROTOCOL, &arg);
+    mysql_options(mysql, MYSQL_OPT_PROTOCOL, &arg);
 
-    if(!mysql_real_connect(&mysql, hostname, username, password, schema, 0, 0, 0))  {
-      fprintf(stderr, "Failed to connect to database after %d iterations: Error: %s\n", i, mysql_error(&mysql));
+    if(!mysql_real_connect(mysql, hostname, username, password, schema, 0, 0, 0))  {
+      fprintf(stderr, "Failed to connect to database after %d iterations: Error: %s\n", i, mysql_error(mysql));
       return 1;
     }
-    mysql_close(&mysql);
+    mysql_close(mysql);
   }
   return OK;
 }
