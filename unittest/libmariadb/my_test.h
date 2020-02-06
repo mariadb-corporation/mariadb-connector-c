@@ -532,7 +532,7 @@ MYSQL *my_test_connect(MYSQL *mysql,
 {
   if (force_tls)
     mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls); 
-  if (!mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag))
+  if (!mysql || !mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag))
   {
     diag("error: %s", mysql_error(mysql));
     return NULL;
@@ -543,7 +543,7 @@ MYSQL *my_test_connect(MYSQL *mysql,
     diag("Error: TLS connection not established");
     return NULL;
   }
-  if (!this_host)
+  if (!this_host && !mysql)
     get_this_host(mysql);
   return mysql;
 }
