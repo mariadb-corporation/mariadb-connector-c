@@ -1169,6 +1169,7 @@ static int test_bug2247(MYSQL *mysql)
   */
   res= mysql_store_result(mysql);
   FAIL_IF(!res, "Invalid result set");
+  mysql_free_result(res);
 
   FAIL_UNLESS(mysql_affected_rows(mysql) == NUM_ROWS, "affected_rows != NUM_ROWS");
   FAIL_UNLESS(exp_count == mysql_stmt_affected_rows(stmt), "affected_rows != exp_count");
@@ -1178,7 +1179,6 @@ static int test_bug2247(MYSQL *mysql)
   FAIL_UNLESS(mysql_affected_rows(mysql) == NUM_ROWS, "affected_rows != NUM_ROWS");
   FAIL_UNLESS(exp_count == mysql_stmt_affected_rows(stmt), "affected_rows != exp_count");
 
-  mysql_free_result(res);
   mysql_stmt_close(stmt);
 
   /* check that mysql_stmt_store_result modifies mysql_stmt_affected_rows */
