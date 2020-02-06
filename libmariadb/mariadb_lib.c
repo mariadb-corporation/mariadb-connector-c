@@ -2172,7 +2172,7 @@ int mthd_my_read_query_result(MYSQL *mysql)
   if (mysql->options.extension && mysql->extension->auto_local_infile == ACCEPT_FILE_REQUEST)
     mysql->extension->auto_local_infile= WAIT_FOR_QUERY;
 
-  if (!mysql || (length = ma_net_safe_read(mysql)) == packet_error)
+  if ((length = ma_net_safe_read(mysql)) == packet_error)
   {
     return(1);
   }
