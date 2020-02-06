@@ -34,10 +34,10 @@ static int test_view(MYSQL *mysql)
   const char *query=
     "SELECT COUNT(*) FROM v1 WHERE SERVERNAME=?";
 
-  rc = mysql_query(mysql, "DROP TABLE IF EXISTS t1,t2,t3,v1");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1,t2,t3,v1");
   check_mysql_rc(rc, mysql);
 
-  rc = mysql_query(mysql, "DROP VIEW IF EXISTS v1,t1,t2,t3");
+  rc= mysql_query(mysql, "DROP VIEW IF EXISTS v1,t1,t2,t3");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql,"CREATE TABLE t1 ("
                         " SERVERGRP varchar(20) NOT NULL default '', "
@@ -117,10 +117,10 @@ static int test_view_where(MYSQL *mysql)
   const char *query=
     "select v1.c,v2.c from v1, v2";
 
-  rc = mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1,v2");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1,v2");
   check_mysql_rc(rc, mysql);
 
-  rc = mysql_query(mysql, "DROP VIEW IF EXISTS v1,v2,t1");
+  rc= mysql_query(mysql, "DROP VIEW IF EXISTS v1,v2,t1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql,"CREATE TABLE t1 (a int, b int)");
   check_mysql_rc(rc, mysql);
@@ -305,9 +305,9 @@ static int test_view_insert(MYSQL *mysql)
   const char *query=
     "insert into v1 values (?)";
 
-  rc = mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1");
   check_mysql_rc(rc, mysql);
-  rc = mysql_query(mysql, "DROP VIEW IF EXISTS t1,v1");
+  rc= mysql_query(mysql, "DROP VIEW IF EXISTS t1,v1");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql,"create table t1 (a int, primary key (a))");
@@ -365,10 +365,10 @@ static int test_left_join_view(MYSQL *mysql)
   const char *query=
     "select t1.a, v1.x from t1 left join v1 on (t1.a= v1.x);";
 
-  rc = mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1");
   check_mysql_rc(rc, mysql);
 
-  rc = mysql_query(mysql, "DROP VIEW IF EXISTS v1,t1");
+  rc= mysql_query(mysql, "DROP VIEW IF EXISTS v1,t1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql,"CREATE TABLE t1 (a int)");
   check_mysql_rc(rc, mysql);

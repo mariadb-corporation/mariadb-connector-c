@@ -386,7 +386,7 @@ static int test_bug31669(MYSQL *mysql)
   rc= mysql_change_user(mysql, buff, buff, buff);
   FAIL_UNLESS(rc, "Error epected");
 
-  rc = mysql_change_user(mysql, username, password, schema);
+  rc= mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);
 
   memset(db, 'a', sizeof(db));
@@ -430,7 +430,7 @@ static int test_bug31669(MYSQL *mysql)
   rc= mysql_change_user(mysql, user + 1, buff + 1, db + 1);
   FAIL_UNLESS(rc, "Error expected");
 
-  rc = mysql_change_user(mysql, username, password, schema);
+  rc= mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);
 
   sprintf(query, "DROP DATABASE %s", db);

@@ -70,7 +70,8 @@ static int test_conc67(MYSQL *mysql)
   rbind.buffer_type= MYSQL_TYPE_LONG;
   rbind.buffer= &i;
   rbind.buffer_length= 4;
-  mysql_stmt_bind_param(stmt, &rbind);
+  rc= mysql_stmt_bind_param(stmt, &rbind);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -448,7 +449,7 @@ static int test_bug11037(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   /* expected error */
-  rc = mysql_stmt_fetch(stmt);
+  rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc==1, "Error expedted");
 
   rc= mysql_stmt_execute(stmt);
@@ -1518,7 +1519,8 @@ static int test_bug3035(MYSQL *mysql)
                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
-  mysql_stmt_bind_param(stmt, bind_array);
+  rc= mysql_stmt_bind_param(stmt, bind_array);
+  check_stmt_rc(rc, stmt);
 
   int8_val= int8_min;
   uint8_val= uint8_min;
@@ -2148,7 +2150,8 @@ static int test_bug3796(MYSQL *mysql)
   my_bind[0].buffer= (void *) concat_arg0;
   my_bind[0].buffer_length= (unsigned long)strlen(concat_arg0);
 
-  mysql_stmt_bind_param(stmt, my_bind);
+  rc= mysql_stmt_bind_param(stmt, my_bind);
+  check_stmt_rc(rc, stmt);
 
   /* Execute the select statement */
   rc= mysql_stmt_execute(stmt);
@@ -2228,7 +2231,8 @@ static int test_bug4026(MYSQL *mysql)
   datetime_in.day= 31;
   datetime_in.time_type= MYSQL_TIMESTAMP_DATETIME;
 
-  mysql_stmt_bind_param(stmt, my_bind);
+  rc= mysql_stmt_bind_param(stmt, my_bind);
+  check_stmt_rc(rc, stmt);
 
   /* Execute the select statement */
   rc= mysql_stmt_execute(stmt);
@@ -2433,7 +2437,7 @@ static int test_bug4231(MYSQL *mysql)
   my_bind[1].buffer_type= MYSQL_TYPE_DATE;
   my_bind[1].buffer= &tm[1];
 
-  mysql_stmt_bind_param(stmt, my_bind);
+  rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
   /*
     First set server-side params to some non-zero non-equal values:
@@ -2711,6 +2715,7 @@ static int test_bug5194(MYSQL *mysql)
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_reset(stmt);
+    check_stmt_rc(rc, stmt);
   }
 
   free(param_str);
@@ -2788,6 +2793,7 @@ static int test_bug5399(MYSQL *mysql)
     rc= mysql_stmt_store_result(*stmt);
     check_stmt_rc(rc, *stmt);
     rc= mysql_stmt_fetch(*stmt);
+    check_stmt_rc(rc, *stmt);
     FAIL_UNLESS((int32) (stmt - stmt_list) == no, "");
   }
 
@@ -2827,7 +2833,8 @@ static int test_bug6046(MYSQL *mysql)
   memset(my_bind, '\0', sizeof(my_bind));  my_bind[0].buffer= &b;
   my_bind[0].buffer_type= MYSQL_TYPE_SHORT;
 
-  mysql_stmt_bind_param(stmt, my_bind);
+  rc= mysql_stmt_bind_param(stmt, my_bind);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -3067,7 +3074,8 @@ static int test_bug8330(MYSQL *mysql)
     my_bind[i].buffer_type= MYSQL_TYPE_LONG;
     my_bind[i].buffer= (void*) &lval[i];
     my_bind[i].is_null= 0;
-    mysql_stmt_bind_param(stmt[i], &my_bind[i]);
+    rc= mysql_stmt_bind_param(stmt[i], &my_bind[i]);
+    check_stmt_rc(rc, stmt[0]);  
   }
 
   rc= mysql_stmt_execute(stmt[0]);
@@ -3105,11 +3113,12 @@ static int test_field_misc(MYSQL *mysql)
     rc++;
   FAIL_UNLESS(rc == 1, "rowcount != 1");
 
-  verify_prepare_field(result, 0,
+  if (verify_prepare_field(result, 0,
                        "@@autocommit", "",  /* field and its org name */
                        MYSQL_TYPE_LONGLONG, /* field type */
                        "", "",              /* table and its org name */
-                       "", 1, 0);           /* db name, length(its bool flag)*/
+                       "", 1, 0))           /* db name, length(its bool flag)*/
+    goto error;
 
   mysql_free_result(result);
 
@@ -3129,12 +3138,12 @@ static int test_field_misc(MYSQL *mysql)
     rc++;
   FAIL_UNLESS(rc == 1, "rowcount != 1");
 
-  verify_prepare_field(result, 0,
+  if (verify_prepare_field(result, 0,
                        "@@autocommit", "",  /* field and its org name */
                        MYSQL_TYPE_LONGLONG, /* field type */
                        "", "",              /* table and its org name */
-                       "", 1, 0);           /* db name, length(its bool flag)*/
-
+                       "", 1, 0))           /* db name, length(its bool flag)*/
+    goto error;
   mysql_free_result(result);
   mysql_stmt_close(stmt);
 

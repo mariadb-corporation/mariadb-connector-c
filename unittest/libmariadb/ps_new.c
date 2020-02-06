@@ -32,10 +32,10 @@ static int test_multi_result(MYSQL *mysql)
   int        rc, i;
 
   /* set up stored procedure */
-  rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
 
-  rc = mysql_query(mysql,
+  rc= mysql_query(mysql,
       "CREATE PROCEDURE p1("
       "  IN p_in INT, "
       "  OUT p_out INT, "
@@ -54,7 +54,7 @@ static int test_multi_result(MYSQL *mysql)
     diag("Could not initialize statement");
     exit(1);
   }
-  rc = mysql_stmt_prepare(stmt, "CALL p1(?, ?, ?)", 16);
+  rc= mysql_stmt_prepare(stmt, "CALL p1(?, ?, ?)", 16);
   check_stmt_rc(rc, stmt);
 
   /* initialize parameters: p_in, p_out, p_inout (all INT) */
@@ -76,7 +76,7 @@ static int test_multi_result(MYSQL *mysql)
   ps_params[2].is_null = 0;
 
   /* bind parameters */
-  rc = mysql_stmt_bind_param(stmt, ps_params);
+  rc= mysql_stmt_bind_param(stmt, ps_params);
   check_stmt_rc(rc, stmt);
 
   /* assign values to parameters and execute statement */
@@ -84,7 +84,7 @@ static int test_multi_result(MYSQL *mysql)
   int_data[1]= 20;  /* p_out */
   int_data[2]= 30;  /* p_inout */
 
-  rc = mysql_stmt_execute(stmt);
+  rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_field_count(stmt) != 3, "expected 3 fields");
@@ -126,7 +126,7 @@ static int test_multi_result(MYSQL *mysql)
   FAIL_IF(mysql_stmt_field_count(stmt) != 0, "expected 0 fields");
 
   rc= mysql_stmt_close(stmt);
-  rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
   return OK;
 }
@@ -300,7 +300,8 @@ int test_sp_reset1(MYSQL *mysql)
   bind[0].buffer_type= MYSQL_TYPE_STRING;
   bind[0].buffer_length= 4;
 
-  mysql_stmt_bind_param(stmt, bind);
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -455,7 +456,8 @@ int test_query(MYSQL *mysql)
     bind[0].buffer_type= MYSQL_TYPE_STRING;
     bind[0].buffer_length= 4;
 
-    mysql_stmt_bind_param(stmt, bind);
+    rc= mysql_stmt_bind_param(stmt, bind);
+    check_stmt_rc(rc, stmt);
 
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);

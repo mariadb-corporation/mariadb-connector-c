@@ -646,9 +646,11 @@ static int test_wl4166_4(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
 
-  mysql_stmt_bind_param(stmt, bind_array);
+  rc= mysql_stmt_bind_param(stmt, bind_array);
+  check_stmt_rc(rc, stmt);
 
-  mysql_stmt_send_long_data(stmt, 0, koi8, (unsigned long)strlen(koi8));
+  rc= mysql_stmt_send_long_data(stmt, 0, koi8, (unsigned long)strlen(koi8));
+  check_stmt_rc(rc, stmt);
 
   /* Cause a reprepare at statement execute */
   rc= mysql_query(mysql, "alter table t1 add column d int");
@@ -806,6 +808,7 @@ static int test_conc49(MYSQL *mysql)
   MYSQL_RES *res;
   int i;
   FILE *fp= fopen("./sample.csv", "w");
+  FAIL_IF(!fp, "Can't open sample.csv");
   for (i=1; i < 4; i++)
     fprintf(fp, "\"%d\", \"%d\", \"%d\"\r\n", i, i, i);
   fclose(fp);
@@ -1094,7 +1097,11 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
-  remove(cnf_file1);
+  if (remove(cnf_file1))
+  {
+    diag("Remove of cnf_file1 wasn't successful");
+    return FAIL;
+  }
 
   FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
   mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -1377,7 +1384,11 @@ static int test_conc395(MYSQL *unused __attribute__((unused)))
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
-  remove(cnf_file1);
+  if (remove(cnf_file1))
+  {
+    diag("Remove of cnf_file1 wasn't successful");
+    return FAIL;
+  }
 
   FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
   mysql_close(mysql);
@@ -1418,7 +1429,11 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
   my_test_connect(mysql, hostname, username, password,
                   schema, 0, socketname, 0);
 
-  remove(cnf_file1);
+  if (remove(cnf_file1))
+  {
+    diag("Remove of cnf_file1 wasn't successful");
+    return FAIL;
+  }
 
   FAIL_IF(!mysql_get_ssl_cipher(mysql), "no secure connection");
   mysql_close(mysql);

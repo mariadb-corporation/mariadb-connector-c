@@ -40,7 +40,7 @@ static int test_conc97(MYSQL *mysql)
   FAIL_IF(!rc, "Error expected while resetting stmt");
 
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   mysql= mysql_init(NULL);
 
@@ -95,6 +95,7 @@ static int test_conc60(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void *)&x);
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, SL(query));
   if (rc && mysql_stmt_errno(stmt) == 1146) {
@@ -909,6 +910,7 @@ static int test_open_direct(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_query(mysql, "SELECT * FROM test_open_direct");
+  check_mysql_rc(rc, mysql);
 
   result= mysql_store_result(mysql);
   FAIL_IF(!result, "invalid resultset");
@@ -964,7 +966,7 @@ static int test_open_direct(MYSQL *mysql)
   FAIL_IF(!rc, "Error expected");
 
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   rc= mysql_query(mysql, "INSERT INTO test_open_direct(id) VALUES(20)");
   check_mysql_rc(rc, mysql);
@@ -988,7 +990,7 @@ static int test_open_direct(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   return OK;
 }
@@ -1197,7 +1199,7 @@ static int test_long_data(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(query));
   FAIL_IF(!rc, "Error expected");
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   strcpy(query, "INSERT INTO test_long_data(col1, col2, col3) VALUES(?, ?, ?)");
   stmt= mysql_stmt_init(mysql);
@@ -1505,6 +1507,7 @@ static int test_long_data_str1(MYSQL *mysql)
   my_bind[0].length= (unsigned long *)&blob_length;
   my_bind[0].error= &my_bind[0].error_value;
   rc= mysql_stmt_bind_result(stmt, my_bind);
+  check_mysql_rc(rc, mysql);
   data[16]= 0;
 
   rc= mysql_stmt_fetch(stmt);
@@ -2793,10 +2796,10 @@ static int test_left_join_view(MYSQL *mysql)
     "select t1.a, v1.x from t1 left join v1 on (t1.a= v1.x);";
 
 
-  rc = mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1,v1");
   check_mysql_rc(rc, mysql);
 
-  rc = mysql_query(mysql, "DROP VIEW IF EXISTS v1,t1");
+  rc= mysql_query(mysql, "DROP VIEW IF EXISTS v1,t1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql,"CREATE TABLE t1 (a int)");
   check_mysql_rc(rc, mysql);
@@ -2920,7 +2923,7 @@ static int test_manual_sample(MYSQL *mysql)
 
   /* Close the statement */
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   /* DROP THE TABLE */
   rc= mysql_query(mysql, "DROP TABLE test_table");
@@ -4035,7 +4038,9 @@ static int test_rewind(MYSQL *mysql)
   rc= mysql_real_query(mysql, SL(stmt_text));
   check_mysql_rc(rc, mysql);
   rc= mysql_stmt_free_result(stmt);
+  check_mysql_rc(rc, mysql);
   rc= mysql_stmt_close(stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
   return OK;
 }
 
@@ -4415,7 +4420,8 @@ static int test_set_variable(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
-  mysql_commit(mysql);
+  rc= mysql_commit(mysql);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt1);
   check_stmt_rc(rc, stmt1);
@@ -4637,6 +4643,7 @@ static int test_stmt_close(MYSQL *mysql)
   FAIL_IF(mysql_stmt_param_count(stmt2) != 1, "param_count != 1");
 
   rc= mysql_stmt_close(stmt1);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   /*
     Originally we were going to close all statements automatically in
@@ -4668,7 +4675,7 @@ static int test_stmt_close(MYSQL *mysql)
   FAIL_IF(mysql_stmt_affected_rows(stmt_x) != 1, "affected_rows != 1");
 
   rc= mysql_stmt_close(stmt_x);
-  check_stmt_rc(rc, stmt_x);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   rc= mysql_query(mysql, "SELECT id FROM test_stmt_close");
   check_mysql_rc(rc, mysql);
@@ -4768,7 +4775,7 @@ static int test_long_data1(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS tld");
   check_mysql_rc(rc, mysql);
   return OK;
@@ -4789,6 +4796,7 @@ int test_blob_9000(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(query));
+  check_stmt_rc(rc, stmt);
 
   memset(bind, 0, sizeof(MYSQL_BIND));
   memset(buffer, 'C', 9200);
@@ -4835,7 +4843,7 @@ int test_fracseconds(MYSQL *mysql)
   FAIL_IF(strlen(buffer) != 26, "Expected timestamp with length of 26");
 
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -4868,9 +4876,10 @@ int test_fracseconds(MYSQL *mysql)
   FAIL_IF(strcmp(buffer1, "10:20:49.019400") != 0, "Wrong result");
 
   rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+  FAIL_IF(rc == 1, "mysql_stmt_close wasn't successful");
 
   rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
 
   return OK;  
 }
@@ -4982,10 +4991,10 @@ static int test_reexecute(MYSQL *mysql)
     return SKIP;
 
   /* set up stored procedure */
-  rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
 
-  rc = mysql_query(mysql,
+  rc= mysql_query(mysql,
       "CREATE PROCEDURE p1("
       "  IN p_in INT, "
       "  OUT p_out INT, "
@@ -5004,7 +5013,7 @@ static int test_reexecute(MYSQL *mysql)
     diag("Could not initialize statement");
     exit(1);
   }
-  rc = mysql_stmt_prepare(stmt, "CALL p1(?, ?, ?)", 16);
+  rc= mysql_stmt_prepare(stmt, "CALL p1(?, ?, ?)", 16);
   check_stmt_rc(rc, stmt);
 
   /* initialize parameters: p_in, p_out, p_inout (all INT) */
@@ -5026,7 +5035,7 @@ static int test_reexecute(MYSQL *mysql)
   ps_params[2].is_null = 0;
 
   /* bind parameters */
-  rc = mysql_stmt_bind_param(stmt, ps_params);
+  rc= mysql_stmt_bind_param(stmt, ps_params);
   check_stmt_rc(rc, stmt);
 
   /* assign values to parameters and execute statement */
@@ -5034,7 +5043,7 @@ static int test_reexecute(MYSQL *mysql)
   int_data[1]= 20;  /* p_out */
   int_data[2]= 30;  /* p_inout */
 
-  rc = mysql_stmt_execute(stmt);
+  rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
@@ -5042,7 +5051,7 @@ static int test_reexecute(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
   return OK;
 }
@@ -5077,19 +5086,19 @@ static int test_conc349(MYSQL *mysql)
   int rc;
   enum mysql_stmt_state state;
 
-  rc= mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
+  mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
   FAIL_IF(state != MYSQL_STMT_INITTED, "expected status MYSQL_STMT_INITTED");
 
   rc= mysql_stmt_prepare(stmt, SL("SET @a:=1"));
   check_stmt_rc(rc, stmt);
 
-  rc= mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
+  mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
   FAIL_IF(state != MYSQL_STMT_PREPARED, "expected status MYSQL_STMT_PREPARED");
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
-  rc= mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
+  mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
   FAIL_IF(state != MYSQL_STMT_EXECUTED, "expected status MYSQL_STMT_EXECUTED");
 
   mysql_stmt_close(stmt);

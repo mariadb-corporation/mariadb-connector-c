@@ -569,13 +569,16 @@ static int test_conc243(MYSQL *mysql)
   bind[2].u.indicator= &data[0].surname_ind;
 
   /* set array size */
-  mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
 
   /* set row size */
-  mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+  check_stmt_rc(rc, stmt);
 
   /* bind parameter */
-  mysql_stmt_bind_param(stmt, bind);
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
 
   /* execute */
   rc= mysql_stmt_execute(stmt);
@@ -833,13 +836,16 @@ static int bulk_skip_row(MYSQL *mysql)
   bind[2].u.indicator= &data[0].surname_ind;
 
   /* set array size */
-  mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
 
   /* set row size */
-  mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ROW_SIZE, &row_size);
+  check_stmt_rc(rc, stmt);
 
   /* bind parameter */
-  mysql_stmt_bind_param(stmt, bind);
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_stmt_rc(rc, stmt);
 
   /* execute */
   rc= mysql_stmt_execute(stmt);

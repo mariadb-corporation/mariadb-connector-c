@@ -151,7 +151,8 @@ int bug_41785(MYSQL *mysql)
   rc= mysql_query(mysql, "SET sql_mode=''");
   check_mysql_rc(rc, mysql);
 
-  mysql_change_user(mysql, "root", "", "test");
+  rc= mysql_change_user(mysql, "root", "", "test");
+  check_mysql_rc(rc, mysql);
 
   len= mysql_real_escape_string(mysql, out, "\\", 1);
   FAIL_IF(len != 2, "len != 2");
@@ -190,7 +191,8 @@ static int test_conversion(MYSQL *mysql)
   my_bind[0].length= &length;
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
 
-  mysql_stmt_bind_param(stmt, my_bind);
+  rc= mysql_stmt_bind_param(stmt, my_bind);
+  check_stmt_rc(rc, stmt);
 
   buff[0]= (uchar) 0xC3;
   buff[1]= (uchar) 0xA0;
@@ -335,7 +337,7 @@ static int test_ps_i18n(MYSQL *mysql)
 
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
-  mysql_stmt_bind_param(stmt, bind_array);
+  rc= mysql_stmt_bind_param(stmt, bind_array);
   check_stmt_rc(rc, stmt);
 
 //  mysql_stmt_send_long_data(stmt, 0, koi8, strlen(koi8));

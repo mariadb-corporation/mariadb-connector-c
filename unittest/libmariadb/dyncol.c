@@ -54,7 +54,11 @@ static int create_dyncol_named(MYSQL *mysql)
   }
 
   mariadb_dyncol_init(&dyncol);
-  rc= mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 0); 
+  rc= mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 0);
+  if (rc < 0) {
+    diag("Error!!: %d", rc);
+    return FAIL;
+  } 
   mariadb_dyncol_free(&dyncol);
   FAIL_IF(mariadb_dyncol_create_many_named(&dyncol, column_count, keys1, vals, 1) < 0, "Error");
   column_count= 0;

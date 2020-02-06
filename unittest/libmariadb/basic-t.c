@@ -147,47 +147,49 @@ static int test_conc70(MYSQL *my)
   mysql= mysql_init(NULL);
 
   rc= mysql_query(my, "SET @a:=@@max_allowed_packet");
-  check_mysql_rc(rc, my);
+  check_mysql_rc_with_post_action(rc, my, mysql_close(mysql));
 
-  mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
-  check_mysql_rc(rc, my);
+  rc= mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
+  check_mysql_rc_with_post_action(rc, my, mysql_close(mysql));
 
   mysql_options(mysql, MYSQL_OPT_COMPRESS, (void *)1);
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, mysql_close(mysql));
 
   rc= mysql_query(mysql, "CREATE TABLE t1 (a LONGBLOB) engine=MyISAM");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, mysql_close(mysql));
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (REPEAT('A', 1024 * 1024 * 20))");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, mysql_close(mysql));
 
   if (mysql_warning_count(mysql))
   {
     diag("server doesn't accept package size");
+    mysql_close(mysql);
     return SKIP;
   }
 
 
   rc= mysql_query(mysql, "SELECT a FROM t1");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, mysql_close(mysql));
 
   if (!(res= mysql_store_result(mysql)))
   {
     diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
     return FAIL;
   }
 
   row= mysql_fetch_row(res);
   diag("Length: %ld", (long)strlen(row[0]));
-  FAIL_IF(strlen(row[0]) != 1024 * 1024 * 20, "Wrong length");
+  FAIL_IF_WITH_POST_ACTION(strlen(row[0]) != 1024 * 1024 * 20, "Wrong length", mysql_free_result(res));
 
   mysql_free_result(res);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, mysql_close(mysql));
 
   mysql_close(mysql);
 

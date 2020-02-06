@@ -612,6 +612,7 @@ static int test_bug10760(MYSQL *mysql)
     rc= mysql_stmt_fetch(stmt);
     FAIL_UNLESS(rc == 0, "rc != 0");
     rc= mysql_rollback(mysql);                  /* should close the cursor */
+    check_mysql_rc(rc, mysql);
   }
 
   mysql_stmt_close(stmt);
@@ -900,7 +901,8 @@ static int test_bug11904(MYSQL *mysql)
                           " (3,'berlin'), (3, 'frankfurt')");
 
   check_mysql_rc(rc, mysql);
-  mysql_commit(mysql);
+  rc= mysql_commit(mysql);
+  check_mysql_rc(rc, mysql);
   /* create statement */
   stmt1= mysql_stmt_init(mysql);
   mysql_stmt_attr_set(stmt1, STMT_ATTR_CURSOR_TYPE, (const void*) &type);
@@ -1558,10 +1560,12 @@ static int test_bug9159(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
-  mysql_stmt_prepare(stmt, SL(stmt_text));
+  rc= mysql_stmt_prepare(stmt, SL(stmt_text));
+  check_mysql_rc(rc, mysql);
   mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, (const void *)&type);
 
-  mysql_stmt_execute(stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_mysql_rc(rc, stmt);
   mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
@@ -1643,6 +1647,7 @@ static int test_bug9478(MYSQL *mysql)
     rc= mysql_stmt_reset(stmt);
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_fetch(stmt);
+    check_stmt_rc(rc, stmt);
 
     /* mariadb client supports GEOMETRY, so no error will
        be returned 
