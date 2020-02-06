@@ -182,7 +182,11 @@ int fetch_n(MYSQL *mysql, const char **query_list, unsigned query_count,
   {
     if (stmt_fetch_init(mysql, fetch, (unsigned int)(fetch - fetch_array),
                     query_list[fetch - fetch_array]))
-      return FAIL;
+                    {
+                      free(fetch_array);
+                      return FAIL;
+                    }
+      
   }
 
   if (fetch_type == USE_STORE_RESULT)
