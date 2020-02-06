@@ -1121,7 +1121,8 @@ static Bigint *d2b(U *d, int *e, int *bits, Stack_alloc *alloc)
     if ((k= lo0bits(&y)))
     {
       x[0]= y | z << (32 - k);
-      z>>= k;
+
+      z>>= (k == 32) ? (--k) : k;
     }
     else
       x[0]= y;
