@@ -1572,8 +1572,8 @@ static int test_conc351(MYSQL *unused __attribute__((unused)))
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &capabilities);
   if (!(capabilities & CLIENT_SESSION_TRACKING))
   {
-    mysql_close(mysql);
     diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
+    mysql_close(mysql);
     return SKIP;
   }
 
@@ -1725,6 +1725,7 @@ static int test_conc443(MYSQL *my __attribute__((unused)))
   {
     diag("Connection failed. Error: %s", mysql_error(mysql));
     mysql_close(mysql);
+    return FAIL;
   }
 
   thread_id= mysql_thread_id(mysql);
