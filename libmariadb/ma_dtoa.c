@@ -1907,7 +1907,8 @@ trimzeros:
     s++;
   }
 ret:
-  Bfree(S, &alloc);
+  if (S != NULL)
+    Bfree(S, &alloc);
   if (mhi)
   {
     if (mlo && mlo != mhi)
