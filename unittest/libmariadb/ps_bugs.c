@@ -1729,7 +1729,12 @@ static int test_ps_null_param(MYSQL *mysql)
   for(cur_query= queries; *cur_query; cur_query++)
   {
     char query[MAX_TEST_QUERY_LENGTH];
-    strcpy(query, *cur_query);
+    strncpy(query, *cur_query, MAX_TEST_QUERY_LENGTH - 1);
+    if (MAX_TEST_QUERY_LENGTH == strlen(query) + 1 && query[MAX_TEST_QUERY_LENGTH - 1] != '\0')
+    {
+      // Making the string null-terminated
+      query[MAX_TEST_QUERY_LENGTH] = '\0';
+    }
     stmt= mysql_stmt_init(mysql);
     FAIL_IF(!stmt, mysql_error(mysql));
     rc= mysql_stmt_prepare(stmt, SL(query));
