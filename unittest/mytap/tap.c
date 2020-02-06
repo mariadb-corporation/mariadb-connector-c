@@ -258,8 +258,10 @@ skip(int how_many, char const *const fmt, ...)
   while (how_many-- > 0)
   {
     va_list ap;
+    va_start(ap, fmt);
     memset((char*) &ap, 0, sizeof(ap));         /* Keep compiler happy */
     vemit_tap(1, NULL, ap);
+    va_end(ap);
     emit_dir("skip", reason);
     emit_endl();
   }
