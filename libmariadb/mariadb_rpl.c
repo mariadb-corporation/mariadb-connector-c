@@ -458,6 +458,7 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
     goto end;
   }
 end:
+  va_end(ap);
   return rc;
 }
 
@@ -501,8 +502,10 @@ int STDCALL mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
     break;
   }
   default:
+    va_end(ap);
     return 1;
     break;
   }
+  va_end(ap);
   return 0;
 }
