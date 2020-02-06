@@ -3523,6 +3523,7 @@ int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname)
       mysql->charset= cs;
       return(0);
     }
+    return(mysql->net.last_errno);
   }
 
 error:
