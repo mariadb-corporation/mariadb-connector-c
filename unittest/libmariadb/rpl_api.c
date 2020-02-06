@@ -42,14 +42,17 @@ static int test_rpl_01(MYSQL *mysql)
   rpl->start_position= 4;
   rpl->flags= MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS;
 
-  if (mariadb_rpl_open(rpl))
+  if (mariadb_rpl_open(rpl)){
+    mariadb_rpl_close(rpl);
     return FAIL;
+  }
+    
 
   while((event= mariadb_rpl_fetch(rpl, event)))
   {
     diag("event: %d\n", event->event_type);
+    mariadb_free_rpl_event(event);
   }
-  mariadb_free_rpl_event(event);
   mariadb_rpl_close(rpl);
   return OK;
 }
