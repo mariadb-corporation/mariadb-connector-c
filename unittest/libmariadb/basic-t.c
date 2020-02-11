@@ -60,6 +60,7 @@ static int test_conc75(MYSQL *my)
     mysql_kill(my, thread_id);
     mysql_ping(mysql);
     rc= mysql_query(mysql, "load data local infile './nonexistingfile.csv' into table a (`a`)");
+    check_mysql_rc(rc, mysql);
     FAIL_IF(!test(mysql->options.client_flag | CLIENT_LOCAL_FILES), "client_flags not correct");
     diag("thread1: %ld %ld", thread_id, mysql_thread_id(mysql));
     FAIL_IF(thread_id == mysql_thread_id(mysql), "new thread id expected");
