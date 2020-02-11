@@ -243,7 +243,7 @@ static int test_conc68(MYSQL *my)
 
   row= mysql_fetch_row(res);
   diag("Length: %ld", (long)strlen(row[0]));
-  FAIL_IF(strlen(row[0]) != 1024 * 1024 * 20, "Wrong length");
+  FAIL_IF_WITH_POST_ACTION(strlen(row[0]) != 1024 * 1024 * 20, "Wrong length", mysql_free_result(res));
 
   mysql_free_result(res);
   mysql_close(mysql);

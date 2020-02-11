@@ -201,7 +201,7 @@ static int async1(MYSQL *unused __attribute__((unused)))
       if (!row)
         break;
     }
-    FAIL_IF(mysql_errno(&mysql), "Got error while retrieving rows");
+    FAIL_IF_WITH_POST_ACTION(mysql_errno(&mysql), "Got error while retrieving rows", mysql_free_result(res));
     mysql_free_result(res);
 
     /*
