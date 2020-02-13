@@ -279,11 +279,13 @@ MA_FILE *ma_rio_open(const char *url,const char *operation)
   MA_REMOTE_FILE *rf;
   (void)operation;
  
-  if (!(file = (MA_FILE *)calloc(sizeof(MA_FILE), 1)))
-    return NULL;
- 
+  file = (MA_FILE *)calloc(sizeof(MA_FILE), 1);
+  if (!file)
+     return NULL;
+
   file->type= MA_FILE_REMOTE;
-  if (!(file->ptr= rf= (MA_REMOTE_FILE *)calloc(sizeof(MA_REMOTE_FILE), 1)))
+  file->ptr= rf= (MA_REMOTE_FILE *)calloc(sizeof(MA_REMOTE_FILE), 1);
+  if (!rf)
   {
     free(file);
     return NULL; 
