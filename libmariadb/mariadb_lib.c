@@ -85,6 +85,7 @@ extern ulong net_buffer_length;  /* net.c */
 static MYSQL_PARAMETERS mariadb_internal_parameters= {&max_allowed_packet, &net_buffer_length, 0};
 static my_bool mysql_client_init=0;
 static void mysql_close_options(MYSQL *mysql);
+static void ma_clear_session_state(MYSQL *mysql);
 extern void release_configuration_dirs();
 extern char **get_default_configuration_dirs();
 extern my_bool  ma_init_done;
@@ -1906,6 +1907,7 @@ static void mysql_close_options(MYSQL *mysql)
 
 static void mysql_close_memory(MYSQL *mysql)
 {
+  ma_clear_session_state(mysql);
   free(mysql->host_info);
   free(mysql->host);
   free(mysql->user);
@@ -1925,11 +1927,23 @@ void my_set_error(MYSQL *mysql,
 {
   va_list ap;
 
+  const char *errmsg;
+
+  if (!format)
+  {
+    if (error_nr >= CR_MIN_ERROR && error_nr <= CR_MYSQL_LAST_ERROR)
+      errmsg= ER(error_nr);
+    else if (error_nr >= CER_MIN_ERROR && error_nr <= CR_MARIADB_LAST_ERROR)
+      errmsg= CER(error_nr);
+    else
+      errmsg= ER(CR_UNKNOWN_ERROR);
+  }
+
   mysql->net.last_errno= error_nr;
   ma_strmake(mysql->net.sqlstate, sqlstate, SQLSTATE_LENGTH);
   va_start(ap, format);
-  vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE,
-            format ? format : ER(error_nr), ap);
+  vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE - 1,
+            format ? format : errmsg, ap);
   va_end(ap);
   return;
 }
@@ -1947,7 +1961,7 @@ void mysql_close_slow_part(MYSQL *mysql)
   }
 }
 
-void ma_clear_session_state(MYSQL *mysql)
+static void ma_clear_session_state(MYSQL *mysql)
 {
   uint i;
 
@@ -1956,7 +1970,6 @@ void ma_clear_session_state(MYSQL *mysql)
 
   for (i= SESSION_TRACK_BEGIN; i <= SESSION_TRACK_END; i++)
   {
-    /* we acquired memory via ma_multi_alloc, so we don't need to free data */
     list_free(mysql->extension->session_state[i].list, 0);
   }
   memset(mysql->extension->session_state, 0, sizeof(struct st_mariadb_session_state) * SESSION_TRACK_TYPES);
@@ -2080,12 +2093,13 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
               if (si_type != SESSION_TRACK_STATE_CHANGE)
                 net_field_length(&pos); /* ignore total length, item length will follow next */
               plen= net_field_length(&pos);
-              if (!ma_multi_malloc(0,
+              if (!(session_item= ma_multi_malloc(0,
                                   &session_item, sizeof(LIST),
                                   &str, sizeof(MYSQL_LEX_STRING),
                                   &data, plen,
-                                  NULL))
+                                  NULL)))
               {
+                ma_clear_session_state(mysql);
                 SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
                 return -1;
               }
@@ -2111,12 +2125,13 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
                 if (!strncmp(str->str, "character_set_client", str->length))
                   set_charset= 1;
                 plen= net_field_length(&pos);
-                if (!ma_multi_malloc(0,
+                if (!(session_item= ma_multi_malloc(0,
                                     &session_item, sizeof(LIST),
                                     &str, sizeof(MYSQL_LEX_STRING),
                                     &data, plen,
-                                    NULL))
+                                    NULL)))
                 {
+                  ma_clear_session_state(mysql);
                   SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
                   return -1;
                 }
@@ -2172,7 +2187,7 @@ int mthd_my_read_query_result(MYSQL *mysql)
   if (mysql->options.extension && mysql->extension->auto_local_infile == ACCEPT_FILE_REQUEST)
     mysql->extension->auto_local_infile= WAIT_FOR_QUERY;
 
-  if (!mysql || (length = ma_net_safe_read(mysql)) == packet_error)
+  if ((length = ma_net_safe_read(mysql)) == packet_error)
   {
     return(1);
   }

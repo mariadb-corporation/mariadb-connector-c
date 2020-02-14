@@ -2191,7 +2191,7 @@ static int test_bind_negative(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "create temporary table t1 (c1 int unsigned)");
+  rc= mysql_query(mysql, "create temporary table t1 (c1 int)");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1), (-1)");

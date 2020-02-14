@@ -83,7 +83,6 @@ static int auth_old_password(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       we use the old scramble.
     */
     pkt= (uchar*)mysql->scramble_buff;
-    pkt_len= SCRAMBLE_LENGTH_323 + 1;
   }
   else
   {
