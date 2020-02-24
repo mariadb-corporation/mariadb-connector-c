@@ -785,14 +785,10 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     }
     else
 #endif
-    {
-      size_t sun_path_size = sizeof(UNIXaddr.sun_path);
-      strncpy(UNIXaddr.sun_path, cinfo->unix_socket, sun_path_size - 1);
-      if (sun_path_size == strlen(UNIXaddr.sun_path) + 1 && UNIXaddr.sun_path[sun_path_size - 1] != '\0')
-      {
-        // Making the string null-terminated
-        UNIXaddr.sun_path[sun_path_size -1] = '\0';
-      }
+    { 
+      // The check for strlen(cinfo->unix_socket) is made few line before
+      /* coverity[fixed_size_dest] */
+      strcpy(UNIXaddr.sun_path, cinfo->unix_socket);
       port_length= sizeof(UNIXaddr);
     }
     if (pvio_socket_connect_sync_or_async(pvio, (struct sockaddr *) &UNIXaddr, port_length))
