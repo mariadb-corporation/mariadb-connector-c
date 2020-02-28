@@ -2476,6 +2476,12 @@ mysql_field_seek(MYSQL_RES *result, MYSQL_FIELD_OFFSET field_offset)
   return return_value;
 }
 
+/********************************************************
+ Warning: mysql_list_dbs is deprecated and will be
+          removed. Use SQL statement "SHOW DATABASES"
+          instead
+ ********************************************************/
+
 /*****************************************************************************
 ** List all databases
 *****************************************************************************/
@@ -2491,6 +2497,11 @@ mysql_list_dbs(MYSQL *mysql, const char *wild)
 }
 
 
+/********************************************************
+ Warning: mysql_list_tables is deprecated and will be
+          removed. Use SQL statement "SHOW TABLES"
+          instead
+ ********************************************************/
 /*****************************************************************************
 ** List all tables in a database
 ** If wild is given then only the tables matching wild are returned
@@ -2550,6 +2561,12 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
   return(NULL);
 }
 
+/********************************************************
+ Warning: mysql_list_processes is deprecated and will be
+          removed. Use SQL statement "SHOW PROCESSLIST"
+          instead
+ ********************************************************/
+
 /* List all running processes (threads) in server */
 
 MYSQL_RES * STDCALL
@@ -2565,7 +2582,7 @@ mysql_list_processes(MYSQL *mysql)
   free_old_query(mysql);
   pos=(uchar*) mysql->net.read_pos;
   field_count=(uint) net_field_length(&pos);
-  if (!(fields = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,5)))
+  if (!(fields = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,7)))
     return(NULL);
   if (!(mysql->fields=unpack_fields(fields, &mysql->field_alloc,
                                     field_count, 0)))
