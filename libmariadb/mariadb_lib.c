@@ -1751,7 +1751,10 @@ void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
 unsigned int STDCALL
 mysql_get_timeout_value(const MYSQL *mysql)
 {
-  unsigned int timeout= mysql->options.extension->async_context->timeout_value;
+  unsigned int timeout= 0;
+
+  if (mysql->options.extension && mysql->options.extension->async_context)
+    timeout= mysql->options.extension->async_context->timeout_value;
   /* Avoid overflow. */
   if (timeout > UINT_MAX - 999)
     return (timeout - 1)/1000 + 1;
@@ -1763,7 +1766,9 @@ mysql_get_timeout_value(const MYSQL *mysql)
 unsigned int STDCALL
 mysql_get_timeout_value_ms(const MYSQL *mysql)
 {
-  return mysql->options.extension->async_context->timeout_value;
+  if (mysql->options.extension && mysql->options.extension->async_context)
+    return mysql->options.extension->async_context->timeout_value;
+  return 0;
 }
 
 /**************************************************************************

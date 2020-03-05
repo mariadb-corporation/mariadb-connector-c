@@ -1435,8 +1435,17 @@ static int test_conc457(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc458(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  FAIL_IF(mysql_get_timeout_value(mysql) != 0, "expected timeout 0");
+  mysql_close(mysql);
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc457", test_conc457, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef _WIN32
