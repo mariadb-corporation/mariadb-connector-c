@@ -24,8 +24,8 @@ before_install:
 matrix:
   allow_failures:
     - env: DB=build
-    - env: SERVER_BRANCH=10.4
-    - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
+    - env: SERVER_BRANCH=10.5
+    - env: SERVER_BRANCH=10.5 TEST_OPTION=--ps-protocol
   include:
     - env: DB=build
     - env: DB=mysql:5.7
