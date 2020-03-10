@@ -596,8 +596,6 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
         *r_param->error= (copylen > r_param->buffer_length);
 
       }
-      else
-        *r_param->error= 1;
       *r_param->length= (ulong)len;
     }
     break;
