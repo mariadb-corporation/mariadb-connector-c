@@ -24,8 +24,27 @@
 
 void free_rows(MYSQL_DATA *cur);
 int ma_multi_command(MYSQL *mysql, enum enum_multi_status status);
-MYSQL_FIELD * unpack_fields(MYSQL_DATA *data,
+MYSQL_FIELD * unpack_fields(const MYSQL *mysql, MYSQL_DATA *data,
                             MA_MEM_ROOT *alloc,uint fields,
                             my_bool default_value);
+
+static inline my_bool ma_has_extended_type_info(const MYSQL *mysql)
+{
+  return ((mysql->extension->mariadb_server_capabilities << 32) &
+          MARIADB_CLIENT_EXTENDED_METADATA) != 0;
+}
+
+static inline uint ma_extended_type_info_rows(const MYSQL *mysql)
+{
+  return ma_has_extended_type_info(mysql) ? 1 : 0;
+}
+
+static inline uint ma_result_set_rows(const MYSQL *mysql)
+{
+  return ma_has_extended_type_info(mysql) ? 9 : 8;
+}
+
+MA_FIELD_EXTENSION *ma_field_extension_deep_dup(MA_MEM_ROOT *memroot,
+                                                const MA_FIELD_EXTENSION *from);
 
 #endif

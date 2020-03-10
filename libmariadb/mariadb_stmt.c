@@ -1581,7 +1581,8 @@ my_bool mthd_stmt_get_param_metadata(MYSQL_STMT *stmt)
 {
   MYSQL_DATA *result;
 
-  if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0, 7)))
+  if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0,
+                                                   7 + ma_extended_type_info_rows(stmt->mysql))))
     return(1);
 
   free_rows(result);
@@ -1593,9 +1594,10 @@ my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt)
   MYSQL_DATA *result;
   MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
 
-  if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0, 7)))
+  if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0,
+                                                   7 + ma_extended_type_info_rows(stmt->mysql))))
     return(1);
-  if (!(stmt->fields= unpack_fields(result,fields_ma_alloc_root,
+  if (!(stmt->fields= unpack_fields(stmt->mysql, result, fields_ma_alloc_root,
           stmt->field_count, 0)))
     return(1);
   return(0);
@@ -1836,6 +1838,11 @@ static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
       stmt->fields[i].decimals= stmt->mysql->fields[i].decimals;
       stmt->fields[i].charsetnr= stmt->mysql->fields[i].charsetnr;
       stmt->fields[i].max_length= stmt->mysql->fields[i].max_length;
+      stmt->fields[i].extension=
+                stmt->mysql->fields[i].extension ?
+                ma_field_extension_deep_dup(fields_ma_alloc_root,
+                                            stmt->mysql->fields[i].extension) :
+                NULL;
     }
     if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
     {
@@ -1912,7 +1919,6 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
         /* since  all pointers will be incorrect if another statement will
            be executed, so we need to allocate memory and copy the
            information */
-        stmt->fields[i].extension= 0; /* not in use yet */
         if (mysql->fields[i].db)
           stmt->fields[i].db= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].db);
         if (mysql->fields[i].table)
@@ -1927,6 +1933,11 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
           stmt->fields[i].catalog= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].catalog);
         if (mysql->fields[i].def)
           stmt->fields[i].def= ma_strdup_root(fields_ma_alloc_root, mysql->fields[i].def);
+        stmt->fields[i].extension=
+                mysql->fields[i].extension ?
+                ma_field_extension_deep_dup(fields_ma_alloc_root,
+                                            mysql->fields[i].extension) :
+                NULL;
       }
     }
 

@@ -752,6 +752,79 @@ my_bool _mariadb_set_conf_option(MYSQL *mysql, const char *config_option, const 
   return 1;
 }
 
+
+static MARIADB_CONST_STRING null_const_string= {0,0};
+
+/***************************************************************************
+** Allocate a string copy on memroot
+***************************************************************************/
+static MARIADB_CONST_STRING ma_const_string_copy_root(MA_MEM_ROOT *memroot,
+                                                      const char *str,
+                                                      size_t length)
+{
+  MARIADB_CONST_STRING res;
+  if (!str || !(res.str= ma_memdup_root(memroot, str, length)))
+    return null_const_string;
+  res.length= length;
+  return res;
+}
+
+
+/***************************************************************************
+** Allocate and initialize MA_FIELD_EXTENSION
+***************************************************************************/
+MA_FIELD_EXTENSION *new_ma_field_extension(MA_MEM_ROOT *memroot)
+{
+  MA_FIELD_EXTENSION *ext= ma_alloc_root(memroot, sizeof(MA_FIELD_EXTENSION));
+  if (ext)
+    memset((void *) ext, 0, sizeof(*ext));
+  return ext;
+}
+
+
+/***************************************************************************
+** Populate field extension from a type info packet
+***************************************************************************/
+
+static void ma_field_extension_init_type_info(MA_MEM_ROOT *memroot,
+                                              MA_FIELD_EXTENSION *ext,
+                                              const char *ptr, size_t length)
+{
+  const char *end= ptr + length;
+  for ( ;  ptr < end; )
+  {
+    uint itype= (uchar) *ptr++;
+    uint len= (uchar) *ptr++;
+    if (ptr + len > end  || len > 127)
+      break; /*Badly encoded data*/
+    if (itype <= 127 && itype <= MARIADB_FIELD_ATTR_LAST)
+      ext->metadata[itype]= ma_const_string_copy_root(memroot, ptr, len);
+    ptr+= len;
+  }
+}
+
+
+/***************************************************************************
+** Allocate a field extension deep copy
+***************************************************************************/
+
+MA_FIELD_EXTENSION *ma_field_extension_deep_dup(MA_MEM_ROOT *memroot,
+                                                const MA_FIELD_EXTENSION *from)
+{
+  MA_FIELD_EXTENSION *ext= new_ma_field_extension(memroot);
+  uint i;
+  if (!ext)
+    return NULL;
+  for (i= 0; i < MARIADB_FIELD_ATTR_LAST; i++)
+  {
+    if (from->metadata[i].str)
+      ext->metadata[i]= ma_const_string_copy_root(memroot,
+                                                  from->metadata[i].str,
+                                                  from->metadata[i].length);
+  }
+  return ext;
+}
+
 /***************************************************************************
 ** Change field rows to field structs
 ***************************************************************************/
@@ -772,7 +845,8 @@ static size_t rset_field_offsets[]= {
 };
 
 MYSQL_FIELD *
-unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
+unpack_fields(const MYSQL *mysql,
+              MYSQL_DATA *data, MA_MEM_ROOT *alloc, uint fields,
 	      my_bool default_value)
 {
   MYSQL_ROWS	*row;
@@ -805,7 +879,20 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
       }
     }
 
-    p= (char *)row->data[6];
+    field->extension= NULL;
+    if (ma_has_extended_type_info(mysql))
+    {
+      if (row->data[i+1] - row->data[i] > 1)
+      {
+        size_t len= row->data[i+1] - row->data[i] - 1;
+        MA_FIELD_EXTENSION *ext= new_ma_field_extension(alloc);
+        if ((field->extension= ext))
+          ma_field_extension_init_type_info(alloc, ext, row->data[i], len);
+      }
+      i++;
+    }
+
+    p= (char *)row->data[i];
     /* filler */
     field->charsetnr= uint2korr(p);
     p+= 2;
@@ -824,10 +911,11 @@ unpack_fields(MYSQL_DATA *data,MA_MEM_ROOT *alloc,uint fields,
     if (INTERNAL_NUM_FIELD(field))
       field->flags|= NUM_FLAG;
 
+    i++;
     /* This is used by deprecated function mysql_list_fields only,
        however the reported length is not correct, so we always zero it */
-    if (default_value && row->data[7])
-      field->def=ma_strdup_root(alloc,(char*) row->data[7]);
+    if (default_value && row->data[i])
+      field->def=ma_strdup_root(alloc,(char*) row->data[i]);
     else
       field->def=0;
     field->def_length= 0;
@@ -2213,9 +2301,10 @@ get_info:
     mysql->server_status|= SERVER_STATUS_IN_TRANS;
 
   mysql->extra_info= net_field_length_ll(&pos); /* Maybe number of rec */
-  if (!(fields=mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,8)))
+  if (!(fields=mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,
+                                            ma_result_set_rows(mysql))))
     return(-1);
-  if (!(mysql->fields=unpack_fields(fields,&mysql->field_alloc,
+  if (!(mysql->fields=unpack_fields(mysql, fields, &mysql->field_alloc,
 				    (uint) field_count, 1)))
     return(-1);
   mysql->status=MYSQL_STATUS_GET_RESULT;
@@ -2364,6 +2453,26 @@ mysql_fetch_field(MYSQL_RES *result)
     return(NULL);
   return &result->fields[result->current_field++];
 }
+
+
+/**************************************************************************
+** Return mysql field metadata
+**************************************************************************/
+int STDCALL
+mariadb_field_attr(MARIADB_CONST_STRING *attr,
+                   const MYSQL_FIELD *field,
+                   enum mariadb_field_attr_t type)
+{
+  MA_FIELD_EXTENSION *ext= (MA_FIELD_EXTENSION*) field->extension;
+  if (!ext || type > MARIADB_FIELD_ATTR_LAST)
+  {
+    *attr= null_const_string;
+    return 1;
+  }
+  *attr= ext->metadata[type];
+  return 0;
+}
+
 
 /**************************************************************************
 **  Return next row of the query results
@@ -2544,7 +2653,8 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
   length= snprintf(buff, 128, "%s%c%s", table, '\0', wild ? wild : "");
 
   if (ma_simple_command(mysql, COM_FIELD_LIST,buff,length,1,0) ||
-      !(query = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,8)))
+      !(query = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,
+                                             ma_result_set_rows(mysql))))
     return(NULL);
 
   free_old_query(mysql);
@@ -2557,7 +2667,7 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
   mysql->fields=0;
   result->eof=1;
   result->field_count = (uint) query->rows;
-  result->fields= unpack_fields(query,&result->field_alloc,
+  result->fields= unpack_fields(mysql, query, &result->field_alloc,
 				result->field_count, 1);
   if (result->fields)
     return(result);
@@ -2589,8 +2699,8 @@ mysql_list_processes(MYSQL *mysql)
   field_count=(uint) net_field_length(&pos);
   if (!(fields = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,7)))
     return(NULL);
-  if (!(mysql->fields=unpack_fields(fields, &mysql->field_alloc,
-                                    field_count, 0)))
+  if (!(mysql->fields= unpack_fields(mysql, fields, &mysql->field_alloc,
+                                     field_count, 0)))
     return(NULL);
   mysql->status=MYSQL_STATUS_GET_RESULT;
   mysql->field_count=field_count;
