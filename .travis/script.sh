@@ -39,11 +39,11 @@ if [ "$i" = 0 ]; then
 fi
 
 #list ssl certificates
-ls -lrt /etc/sslcert
+ls -lrt ${SSLCERT}
 
 
 #build C connector
-cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_SSL=OPENSSL -DCERT_PATH=/etc/sslcert
+cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_SSL=OPENSSL -DCERT_PATH=${SSLCERT}
 make
 
 export MYSQL_TEST_HOST=mariadb.example.com
