@@ -30,8 +30,8 @@ MYSQL_FIELD * unpack_fields(const MYSQL *mysql, MYSQL_DATA *data,
 
 static inline my_bool ma_has_extended_type_info(const MYSQL *mysql)
 {
-  return ((mysql->extension->mariadb_server_capabilities << 32) &
-          MARIADB_CLIENT_EXTENDED_METADATA) != 0;
+  return ((mysql->extension->mariadb_server_capabilities) &
+          (MARIADB_CLIENT_EXTENDED_METADATA >> 32)) != 0;
 }
 
 static inline uint ma_extended_type_info_rows(const MYSQL *mysql)
