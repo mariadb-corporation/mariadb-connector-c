@@ -1484,7 +1484,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   {
     my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
-                 "handshake: waiting for inital communication packet",
+                 "handshake: waiting for initial communication packet",
                  errno);
     goto error;
   }
@@ -1494,7 +1494,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     if (mysql->net.last_errno == CR_SERVER_LOST)
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
-                 "handshake: reading inital communication packet",
+                 "handshake: reading initial communication packet",
                  errno);
 
     goto error;

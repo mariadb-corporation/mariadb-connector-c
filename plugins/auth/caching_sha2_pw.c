@@ -314,7 +314,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   {
 #if defined(HAVE_GNUTLS)
      mysql->methods->set_error(mysql, CR_AUTH_PLUGIN_ERR, "HY000", 
-                               "RSA Encrytion not supported - caching_sha2_password plugin was built with GnuTLS support");
+                               "RSA Encryption not supported - caching_sha2_password plugin was built with GnuTLS support");
      return CR_ERROR;
 #else
     /* read public key file (if specified) */

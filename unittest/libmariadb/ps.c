@@ -2543,7 +2543,7 @@ static int test_pure_coverage(MYSQL *mysql)
   FAIL_IF(!rc, "Error expected");
   mysql_stmt_close(stmt);
 
-  /* Query without params and result should allow to bind 0 arrays */
+  /* Query without params and result should allow one to bind 0 arrays */
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL("insert into test_pure(c2) values(10)"));
