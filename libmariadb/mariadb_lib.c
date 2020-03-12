@@ -497,7 +497,7 @@ struct passwd *getpwuid(uid_t);
 char* getlogin(void);
 #endif
 
-#if !defined(MSDOS) && ! defined(VMS) && !defined(_WIN32) && !defined(OS2)
+#if !defined(_WIN32)
 void read_user_name(char *name)
 {
   if (geteuid() == 0)
@@ -507,13 +507,14 @@ void read_user_name(char *name)
 #ifdef HAVE_GETPWUID
     struct passwd *skr;
     const char *str;
-    if ((str=getlogin()) == NULL)
+    if ((skr=getpwuid(geteuid())) != NULL)
     {
-      if ((skr=getpwuid(geteuid())) != NULL)
-	str=skr->pw_name;
-      else if (!(str=getenv("USER")) && !(str=getenv("LOGNAME")) &&
-	       !(str=getenv("LOGIN")))
-	str="UNKNOWN_USER";
+      str=skr->pw_name;
+    } else if ((str=getlogin()) == NULL)
+    {
+      if (!(str=getenv("USER")) && !(str=getenv("LOGNAME")) &&
+               !(str=getenv("LOGIN")))
+        str="UNKNOWN_USER";
     }
     ma_strmake(name,str,USERNAME_LENGTH);
 #elif defined(HAVE_CUSERID)
