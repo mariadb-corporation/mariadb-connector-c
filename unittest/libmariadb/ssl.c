@@ -625,6 +625,8 @@ static int verify_ssl_server_cert(MYSQL *unused __attribute__((unused)))
   if (!hostname || !strcmp(hostname, "localhost"))
     return SKIP;
 
+  SKIP_TRAVIS();
+
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 

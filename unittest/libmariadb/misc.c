@@ -1428,7 +1428,11 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 
 static int test_conc457(MYSQL *mysql)
 {
-  MYSQL_RES *result= mysql_list_processes(mysql);
+  MYSQL_RES *result;
+
+  SKIP_MYSQL(mysql);
+
+  result= mysql_list_processes(mysql);
 
   FAIL_IF(mysql_field_count(mysql) != 9, "expected 9 columns");
   mysql_free_result(result);
