@@ -92,7 +92,7 @@ typedef struct
 CURLM *multi_handle= NULL;
 
 #ifndef PLUGIN_DYNAMIC
-MARIADB_REMOTEIO_PLUGIN remote_io_plugin=
+MARIADB_REMOTEIO_PLUGIN remote_io_client_plugin=
 #else
 MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
