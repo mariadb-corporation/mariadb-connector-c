@@ -401,7 +401,7 @@ static int client_mpvio_read_packet(struct st_plugin_vio *mpv, uchar **buf)
   }
 
   /* otherwise read the data */
-  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
+  if ((pkt_len= ma_net_safe_read(mysql, NULL)) == packet_error)
     return (int)packet_error;
 
   mpvio->last_read_packet_len= pkt_len;
@@ -619,7 +619,7 @@ retry:
 
   /* read the OK packet (or use the cached value in mysql->net.read_pos */
   if (res == CR_OK)
-    pkt_length= ma_net_safe_read(mysql);
+    pkt_length= ma_net_safe_read(mysql, NULL);
   else /* res == CR_OK_HANDSHAKE_COMPLETE or an error */
     pkt_length= mpvio.last_read_packet_len;
 

@@ -23,6 +23,8 @@
 #include <mysql.h>
 #include <ma_hash.h>
 
+#define MAX_PACKET_LENGTH (256L*256L*256L-1)
+
 enum enum_multi_status {
   COM_MULTI_OFF= 0,
   COM_MULTI_CANCEL,

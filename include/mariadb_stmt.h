@@ -257,7 +257,7 @@ typedef struct st_mysql_perm_bind {
 } MYSQL_PS_CONVERSION;
 
 extern MYSQL_PS_CONVERSION mysql_ps_fetch_functions[MYSQL_TYPE_GEOMETRY + 1];
-unsigned long ma_net_safe_read(MYSQL *mysql);
+unsigned long ma_net_safe_read(MYSQL *mysql, my_bool *is_data_packet);
 void mysql_init_ps_subsystem(void);
 unsigned long net_field_length(unsigned char **packet);
 int ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg,

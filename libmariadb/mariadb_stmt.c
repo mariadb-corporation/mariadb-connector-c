@@ -143,6 +143,10 @@ my_bool mthd_supported_buffer_type(enum enum_field_types type)
 
 static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags);
 static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close);
+extern MYSQL_FIELD *mthd_my_read_metadata(MYSQL *mysql, ulong field_count, uint field);
+extern MYSQL_FIELD *mthd_my_read_metadata_ex(MYSQL *mysql, MA_MEM_ROOT *alloc,
+                                     ulong field_count, uint field);
+extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
 static int stmt_unbuffered_eof(MYSQL_STMT *stmt __attribute__((unused)),
                                uchar **row __attribute__((unused)))
 {
@@ -152,8 +156,12 @@ static int stmt_unbuffered_eof(MYSQL_STMT *stmt __attribute__((unused)),
 static int stmt_unbuffered_fetch(MYSQL_STMT *stmt, uchar **row)
 {
   ulong pkt_len;
+  my_bool is_data_packet;
+  MYSQL *mysql;
 
-  pkt_len= ma_net_safe_read(stmt->mysql);
+  mysql = stmt->mysql;
+
+  pkt_len= ma_net_safe_read(mysql, &is_data_packet);
 
   if (pkt_len == packet_error)
   {
@@ -161,14 +169,17 @@ static int stmt_unbuffered_fetch(MYSQL_STMT *stmt, uchar **row)
     return(1);
   }
 
-  if (stmt->mysql->net.read_pos[0] == 254)
+  if (mysql->net.read_pos[0] != 0 && !is_data_packet)
   {
+    /* in case of new client read the OK packet */
+    if (mysql->server_capabilities & CLIENT_DEPRECATE_EOF)
+      ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_len);
     *row = NULL;
     stmt->fetch_row_func= stmt_unbuffered_eof;
     return(MYSQL_NO_DATA);
   }
   else
-    *row = stmt->mysql->net.read_pos;
+    *row = mysql->net.read_pos;
   stmt->result.rows++;
   return(0);
 }
@@ -194,13 +205,14 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
   MYSQL_ROWS *current, **pprevious;
   ulong packet_len;
   unsigned char *p;
+  my_bool is_data_packet;
 
   pprevious= &result->data;
 
-  while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
+  while ((packet_len = ma_net_safe_read(stmt->mysql, &is_data_packet)) != packet_error)
   {
     p= stmt->mysql->net.read_pos;
-    if (packet_len > 7 || p[0] != 254)
+    if (p[0] == 0 || is_data_packet)
     {
       /* allocate space for rows */
       if (!(current= (MYSQL_ROWS *)ma_alloc_root(&result->alloc, sizeof(MYSQL_ROWS) + packet_len)))
@@ -274,11 +286,34 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
     } else  /* end of stream */
     {
       *pprevious= 0;
-      /* sace status info */
-      p++;
-      stmt->upsert_status.warning_count= stmt->mysql->warning_count= uint2korr(p);
-      p+=2;
-      stmt->upsert_status.server_status= stmt->mysql->server_status= uint2korr(p);
+      /* save status info */
+      if (stmt->mysql->server_capabilities & CLIENT_DEPRECATE_EOF && !is_data_packet)
+        ma_read_ok_packet(stmt->mysql, p + 1, packet_len);
+      else
+        stmt->upsert_status.warning_count= stmt->mysql->warning_count= uint2korr(p + 1);
+
+      /*
+        OUT parameters result sets has SERVER_PS_OUT_PARAMS and
+        SERVER_MORE_RESULTS_EXISTS flags in first EOF_Packet only.
+        Last EOF_Packet of OUT parameters result sets have no
+        SERVER_MORE_RESULTS_EXISTS flag as described here:
+        http://dev.mysql.com/doc/internals/en/stored-procedures.html#out-parameter-set
+        Following code reads last EOF_Packet of result set and can clear
+        those flags in server_status if we don't preserve them.
+        Without SERVER_MORE_RESULTS_EXISTS flag mysql_stmt_next_result fails
+        to read OK_Packet after OUT parameters result set.
+        So we need to preserve SERVER_MORE_RESULTS_EXISTS flag for OUT
+        parameters result set.
+      */
+      if (stmt->mysql->server_status & SERVER_PS_OUT_PARAMS)
+      {
+        stmt->upsert_status.server_status= stmt->mysql->server_status= uint2korr(p + 3)
+          | SERVER_PS_OUT_PARAMS
+          | (stmt->mysql->server_status & SERVER_MORE_RESULTS_EXIST);
+      }
+      else
+        stmt->upsert_status.server_status= stmt->mysql->server_status= uint2korr(p + 3);
+
       stmt->result_cursor= result->data;
       return(0);
     }
@@ -334,31 +369,56 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
 /* flush one result set */
 void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
 {
+  MYSQL *mysql = stmt->mysql;
   ulong packet_len;
+  my_bool is_data_packet;
+  uchar *pos;
+
   int in_resultset= stmt->state > MYSQL_STMT_EXECUTED &&
                     stmt->state < MYSQL_STMT_FETCH_DONE;
-  while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
+  while ((packet_len = ma_net_safe_read(mysql, &is_data_packet)) != packet_error)
   {
-    uchar *pos= stmt->mysql->net.read_pos;
-    if (!in_resultset && *pos == 0) /* OK */
+    pos= mysql->net.read_pos;
+    if (stmt->mysql->server_capabilities & CLIENT_DEPRECATE_EOF)
     {
-      pos++;
-      net_field_length(&pos);
-      net_field_length(&pos);
-      stmt->mysql->server_status= uint2korr(pos);
-      goto end;
-    }
-    if (packet_len < 8 && *pos == 254) /* EOF */
-    {
-      if (mariadb_connection(stmt->mysql))
+      if (!in_resultset && *pos == 0) /* actual OK packet with 0 */
       {
-        stmt->mysql->server_status= uint2korr(pos + 3);
-        if (in_resultset)
-          goto end;
-        in_resultset= 1;
-      }
-      else
+        ma_read_ok_packet(mysql, pos + 1, packet_len);
         goto end;
+      }
+
+      in_resultset = 1; // so we do not check for OK pkt with 0 next time in the loop
+
+      if (*pos != 0 && !is_data_packet)
+      {
+        ma_read_ok_packet(mysql, pos + 1, packet_len);
+        goto end;
+      }
+    }
+    else
+    {
+      if (!in_resultset && *pos == 0) /* OK */
+      {
+        pos++;
+        net_field_length(&pos);
+        net_field_length(&pos);
+        mysql->server_status= uint2korr(pos);
+        goto end;
+      }
+      if (packet_len < 8 && *pos == 254) /* EOF */
+      {
+        if (mariadb_connection(mysql))
+        {
+          mysql->server_status= uint2korr(pos + 3);
+          if (in_resultset)
+            goto end;
+          in_resultset= 1;
+        }
+        else
+        {
+          goto end;
+        }
+      }
     }
   }
 end:
@@ -1552,7 +1612,7 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
   ulong packet_length;
   uchar *p;
 
-  if ((packet_length= ma_net_safe_read(stmt->mysql)) == packet_error)
+  if ((packet_length= ma_net_safe_read(stmt->mysql, NULL)) == packet_error)
     return(1);
 
   p= (uchar *)stmt->mysql->net.read_pos;
@@ -1579,27 +1639,22 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
 
 my_bool mthd_stmt_get_param_metadata(MYSQL_STMT *stmt)
 {
-  MYSQL_DATA *result;
-
-  if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0,
-                                                   7 + ma_extended_type_info_rows(stmt->mysql))))
+  if (!(mthd_my_read_metadata(stmt->mysql, stmt->param_count,
+                              7 + ma_extended_type_info_rows(stmt->mysql))))
     return(1);
 
-  free_rows(result);
+  /* free memory allocated by mthd_my_read_metadata() for parameters data */
+  ma_free_root(&stmt->mysql->field_alloc, MYF(0));
   return(0);
 }
 
 my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt)
 {
-  MYSQL_DATA *result;
   MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+  if (!(stmt->fields= mthd_my_read_metadata_ex(stmt->mysql, fields_ma_alloc_root, stmt->field_count,
+                                           7 + ma_extended_type_info_rows(stmt->mysql))))
+    return(1);
 
-  if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0,
-                                                   7 + ma_extended_type_info_rows(stmt->mysql))))
-    return(1);
-  if (!(stmt->fields= unpack_fields(stmt->mysql, result, fields_ma_alloc_root,
-          stmt->field_count, 0)))
-    return(1);
   return(0);
 }
 
@@ -1668,8 +1723,7 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
       mysql->methods->db_read_prepare_response(stmt))
     goto fail;
 
-  /* metadata not supported yet */
-
+  /* metadata not supported yet, read and discard */
   if (stmt->param_count &&
       stmt->mysql->methods->db_stmt_get_param_metadata(stmt))
   {
@@ -1859,6 +1913,8 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
 {
   MYSQL *mysql= stmt->mysql;
   int ret;
+  size_t pkt_len;
+  my_bool is_data_packet;
 
   if (!mysql)
     return(1);
@@ -1868,6 +1924,48 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
   /* if a reconnect occurred, our connection handle is invalid */
   if (!stmt->mysql)
     return(1);
+
+  if ((mysql->server_capabilities & CLIENT_DEPRECATE_EOF))
+  {
+    if (mysql->server_status & SERVER_STATUS_CURSOR_EXISTS)
+      mysql->server_status&= ~SERVER_STATUS_CURSOR_EXISTS;
+
+    /*
+      After having read the query result, we need to make sure that the client
+      does not end up into a hang waiting for the server to send a packet.
+      If the CURSOR_TYPE_READ_ONLY flag is set, we would want to perform the
+      additional packet read mainly for prepared statements involving SELECT
+      queries. For SELECT queries, the result format would either be
+      <Metadata><OK> or <Metadata><rows><OK>. We would have read the metadata
+      by now and have the field_count populated. The check for field_count will
+      help determine if we can expect an additional packet from the server.
+    */
+    if (!ret && (stmt->flags & CURSOR_TYPE_READ_ONLY) &&
+        mysql->field_count != 0)
+    {
+      /*
+        server can now respond with a cursor - then the respond will be
+        <Metadata><OK> or with binary rows result set <Metadata><row(s)><OK>.
+        The former can be the case when the prepared statement is a procedure
+        invocation, ie. call(). There also other cases. When server responds
+        with <OK> (cursor) packet we read it and get the server status. In case
+        it responds with binary row we add it to the binary rows result set
+        (the reset of the result set will be read in prepare_to_fetch_result).
+      */
+
+      if ((pkt_len= ma_net_safe_read(mysql, &is_data_packet)) == packet_error)
+        return(1);
+
+      if (is_data_packet)
+      {
+        // TODO: <metadata><row(s)><OK> not supported right now
+        // needs a refactoring of reading binary data code
+        return 1;
+      }
+      else
+        ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_len);
+    }
+  }
 
   /* update affected rows, also if an error occurred */
   stmt->upsert_status.affected_rows= stmt->mysql->affected_rows;

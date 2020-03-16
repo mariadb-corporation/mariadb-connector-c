@@ -122,7 +122,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     return 0;
 
   while (1) {
-    unsigned long pkt_len= ma_net_safe_read(rpl->mysql);
+    unsigned long pkt_len= ma_net_safe_read(rpl->mysql, NULL);
 
     if (pkt_len == packet_error)
     {

@@ -39,8 +39,6 @@
 #include <poll.h>
 #endif
 
-#define MAX_PACKET_LENGTH (256L*256L*256L-1)
-
 /* net_buffer_length and max_allowed_packet are defined in mysql.h
    See bug conc-57
  */

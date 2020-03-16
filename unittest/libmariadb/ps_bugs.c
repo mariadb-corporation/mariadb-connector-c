@@ -3931,6 +3931,10 @@ static int test_conc141(MYSQL *mysql)
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_free_result(stmt);
+  check_stmt_rc(rc, stmt);
+
   /* skip first result */
   rc= mysql_stmt_next_result(stmt);
   FAIL_IF(rc==-1, "No more results and error expected");
