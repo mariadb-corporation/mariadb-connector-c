@@ -74,10 +74,10 @@ if (getenv("TRAVIS"))\
 }
 
 #define SKIP_MYSQL(mysql)\
-if (!mariadb_connection(mysql))
-{
-  diag("Skip test for non MariaDB server");
-  return OK;
+if (!mariadb_connection(mysql))\
+{\
+  diag("Skip test for non MariaDB server");\
+  return OK;\
 }
 
 #define check_mysql_rc(rc, mysql) \
