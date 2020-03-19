@@ -1691,7 +1691,8 @@ bump_up:
     else
       b= pow5mult(b, b5, &alloc);
   }
-  S= i2b(1, &alloc);
+  if (&(alloc.free) != NULL)   // Could be freed in pow5mult
+    S= i2b(1, &alloc);
   if (s5 > 0)
     S= pow5mult(S, s5, &alloc);
 
@@ -1739,10 +1740,12 @@ bump_up:
     m2+= i;
     s2+= i;
   }
-  if (b2 > 0)
-    b= lshift(b, b2, &alloc);
-  if (s2 > 0)
-    S= lshift(S, s2, &alloc);
+  if (&(alloc.free) != NULL){   // alloc.free could be freed by pow5mult
+    if (b2 > 0)
+      b= lshift(b, b2, &alloc);
+    if (s2 > 0)
+      S= lshift(S, s2, &alloc);
+  }
   if (k_check)
   {
     if (cmp(b,S) < 0)
@@ -1771,7 +1774,7 @@ one_digit:
   }
   if (leftright)
   {
-    if (m2 > 0)
+    if (m2 > 0 && (&(alloc.free) != NULL))  //alloc.free could be freed by pow5mult
       mhi= lshift(mhi, m2, &alloc);
 
     /*
@@ -1779,7 +1782,7 @@ one_digit:
     */
 
     mlo= mhi;
-    if (spec_case)
+    if (spec_case && (&(alloc.free) != NULL))  //alloc.free could be freed by pow5mult
     {
       mhi= Balloc(mhi->k, &alloc);
       Bcopy(mhi, mlo);
