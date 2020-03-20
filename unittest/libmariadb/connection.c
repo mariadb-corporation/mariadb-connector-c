@@ -54,9 +54,9 @@ static int test_conc66(MYSQL *my)
 
   sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test@A1\";#test'", schema, this_host ? this_host : "localhost");
   rc= mysql_query(my, query);
-  check_mysql_rc(rc, my);
+  check_mysql_rc_with_post_action(rc, my, mysql_close(mysql));
   rc= mysql_query(my, "FLUSH PRIVILEGES");
-  check_mysql_rc(rc, my);
+  check_mysql_rc_with_post_action(rc, my, mysql_close(mysql));
   if (!my_test_connect(mysql, hostname, NULL,
                              NULL, schema, port, socketname, 0))
   {
@@ -473,13 +473,13 @@ static int test_opt_reconnect(MYSQL *mysql)
   FAIL_IF(!mysql, "not enough memory");
 
   mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
+  FAIL_UNLESS_WITH_POST_ACTION(reconnect == 0, "reconnect != 0", mysql_close(mysql));
 
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, &my_true);
   check_mysql_rc(rc, mysql);
 
   mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-  FAIL_UNLESS(reconnect == 1, "reconnect != 1");
+  FAIL_UNLESS_WITH_POST_ACTION(reconnect == 1, "reconnect != 1", mysql_close(mysql));
 
   if (!(my_test_connect(mysql, hostname, username,
                            password, schema, port,
@@ -499,7 +499,7 @@ static int test_opt_reconnect(MYSQL *mysql)
   FAIL_IF(!mysql, "not enough memory");
 
   mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
+  FAIL_UNLESS_WITH_POST_ACTION(reconnect == 0, "reconnect != 0", mysql_close(mysql));
 
   if (!(my_test_connect(mysql, hostname, username,
                            password, schema, port,
@@ -511,7 +511,7 @@ static int test_opt_reconnect(MYSQL *mysql)
   }
 
   mysql_get_option(mysql, MYSQL_OPT_RECONNECT, &reconnect);
-  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
+  FAIL_UNLESS_WITH_POST_ACTION(reconnect == 0, "reconnect != 0", mysql_close(mysql));
 
   mysql_close(mysql);
   return OK;
@@ -544,7 +544,7 @@ static int test_compress(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
   row= mysql_fetch_row(res);
-  FAIL_UNLESS(strcmp(row[1], "ON") == 0, "Compression off");
+  FAIL_UNLESS_WITH_POST_ACTION(strcmp(row[1], "ON") == 0, "Compression off", mysql_close(mysql));
   mysql_free_result(res);
 
   mysql_close(mysql);
@@ -562,13 +562,13 @@ static int test_reconnect(MYSQL *mysql)
   FAIL_IF(!mysql1, "not enough memory");
 
   mysql_get_option(mysql1, MYSQL_OPT_RECONNECT, &reconnect);
-  FAIL_UNLESS(reconnect == 0, "reconnect != 0");
+  FAIL_UNLESS_WITH_POST_ACTION(reconnect == 0, "reconnect != 0", mysql_close(mysql));
 
   rc= mysql_options(mysql1, MYSQL_OPT_RECONNECT, &my_true);
   check_mysql_rc(rc, mysql1);
 
   mysql_get_option(mysql1, MYSQL_OPT_RECONNECT, &reconnect);
-  FAIL_UNLESS(reconnect == 1, "reconnect != 1");
+  FAIL_UNLESS_WITH_POST_ACTION(reconnect == 1, "reconnect != 1", mysql_close(mysql));
 
   if (!(my_test_connect(mysql1, hostname, username,
                            password, schema, port,
@@ -865,14 +865,14 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
     mysql_options(mysql, options_int[i], &intval[0]);
     intval[1]= 0;
     mysql_get_optionv(mysql, options_int[i], &intval[1]);
-    FAIL_IF(intval[0] != intval[1], "mysql_get_optionv (int) failed");
+    FAIL_IF_WITH_POST_ACTION(intval[0] != intval[1], "mysql_get_optionv (int) failed", mysql_close(mysql));
   }
   for (i=0; options_bool[i]; i++)
   {
     mysql_options(mysql, options_bool[i], &boolval[0]);
     intval[1]= 0;
     mysql_get_optionv(mysql, options_bool[i], &boolval[1]);
-    FAIL_IF(boolval[0] != boolval[1], "mysql_get_optionv (my_bool) failed");
+    FAIL_IF_WITH_POST_ACTION(boolval[0] != boolval[1], "mysql_get_optionv (my_bool) failed", mysql_close(mysql));
   }
   for (i=0; options_char[i]; i++)
   {
@@ -880,7 +880,7 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
     char2= NULL;
     mysql_get_optionv(mysql, options_char[i], (void *)&char2);
     if (options_char[i] != MYSQL_SET_CHARSET_NAME) 
-      FAIL_IF(strcmp(char1, char2), "mysql_get_optionv (char) failed");
+      FAIL_IF_WITH_POST_ACTION(strcmp(char1, char2), "mysql_get_optionv (char) failed", mysql_close(mysql));
   }
 
   for (i=0; i < 3; i++)
@@ -1452,8 +1452,9 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
   FAIL_IF(!access(cnf_file1, R_OK), "access");
 
   fp1= fopen(cnf_file1, "w");
+  FAIL_IF(!fp1, "cnf_file1 fopen failed");
   fp2= fopen(cnf_file2, "w");
-  FAIL_IF(!fp1 || !fp2, "fopen failed");
+  FAIL_IF_WITH_POST_ACTION(!fp2, "cnf_file2 fopen failed", fclose(fp1));
 
   fprintf(fp1, "!include %s\n", cnf_file2);
   
@@ -1484,8 +1485,9 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
 
   snprintf(cnf_file1, FN_REFLEN, "%s%cmy.cnf", env, FN_LIBCHAR);
   fp1= fopen(cnf_file1, "w");
+  FAIL_IF(!fp1, "cnf_file1 fopen failed");
   fp2= fopen(cnf_file2, "w");
-  FAIL_IF(!fp1 || !fp2, "fopen failed");
+  FAIL_IF_WITH_POST_ACTION(!fp2, "cnf_file2 fopen failed", fclose(fp1));
 
   fprintf(fp2, "!includedir %s\n", env);
   
@@ -1747,7 +1749,7 @@ static int test_conc443(MYSQL *my __attribute__((unused)))
   if (!result)
     return FAIL;
   row= mysql_fetch_row(result);
-  FAIL_IF(strcmp(row[0],"3"), "Wrong result");
+  FAIL_IF_WITH_POST_ACTION(strcmp(row[0],"3"), "Wrong result", mysql_free_result(result));
 
   mysql_free_result(result);
   mysql_close(mysql);

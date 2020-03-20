@@ -23,13 +23,13 @@ static int basic_connect(MYSQL *unused __attribute__((unused)))
   res= mysql_store_result(my);
   FAIL_IF(!res, mysql_error(my));
   field= mysql_fetch_fields(res);
-  FAIL_IF(!field, "Couldn't fetch fields");
+  FAIL_IF_WITH_POST_ACTION(!field, "Couldn't fetch fields", mysql_free_result(res));
 
   while ((row= mysql_fetch_row(res)) != NULL)
   {
-    FAIL_IF(mysql_num_fields(res) != 1, "Got the wrong number of fields");
+    FAIL_IF_WITH_POST_ACTION(mysql_num_fields(res) != 1, "Got the wrong number of fields", mysql_free_result(res));
   }
-  FAIL_IF(mysql_errno(my), mysql_error(my));
+  FAIL_IF_WITH_POST_ACTION(mysql_errno(my), mysql_error(my), mysql_free_result(res));
 
   mysql_free_result(res);
   mysql_close(my);
@@ -145,7 +145,7 @@ DWORD WINAPI thread_conc27(void)
   }
   pthread_mutex_lock(&LOCK_test);
   rc= mysql_query(mysql, "UPDATE t_conc27 SET a=a+1");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, pthread_mutex_unlock(&LOCK_test));
   pthread_mutex_unlock(&LOCK_test);
   check_mysql_rc(rc, mysql);
   if ((res= mysql_store_result(mysql)))

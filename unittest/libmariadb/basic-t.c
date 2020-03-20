@@ -212,7 +212,7 @@ static int test_conc68(MYSQL *my)
   mysql= mysql_init(NULL);
 
   rc= mysql_query(my, "SET @a:=@@max_allowed_packet");
-  check_mysql_rc(rc, my);
+  check_mysql_rc_with_post_action(rc, my, mysql_close(mysql));
 
   mysql_query(my, "SET global max_allowed_packet=1024*1024*22");
 
@@ -275,12 +275,13 @@ static int basic_connect(MYSQL *unused __attribute__((unused)))
   res= mysql_store_result(my);
   FAIL_IF(!res, mysql_error(my));
   field= mysql_fetch_fields(res);
-  FAIL_IF(!field, "couldn't fetch field");
+  FAIL_IF_WITH_POST_ACTION(!field, "couldn't fetch field", mysql_free_result(res));
   while ((row= mysql_fetch_row(res)) != NULL)
   {
-    FAIL_IF(mysql_num_fields(res) != 1, "Got the wrong number of fields");
+    FAIL_IF_WITH_POST_ACTION(mysql_num_fields(res) != 1, 
+    "Got the wrong number of fields", mysql_free_result(res));
   }
-  FAIL_IF(mysql_errno(my), mysql_error(my));
+  FAIL_IF_WITH_POST_ACTION(mysql_errno(my), mysql_error(my), mysql_free_result(res));
 
   mysql_free_result(res);
   mysql_close(my);
@@ -304,9 +305,10 @@ static int use_utf8(MYSQL *my)
 
   while ((row= mysql_fetch_row(res)) != NULL)
   {
-    FAIL_IF(strcmp(row[0], "utf8"), "wrong character set");
+    FAIL_IF_WITH_POST_ACTION(strcmp(row[0], "utf8"), 
+    "wrong character set", mysql_free_result(res));
   }
-  FAIL_IF(mysql_errno(my), mysql_error(my));
+  FAIL_IF_WITH_POST_ACTION(mysql_errno(my), mysql_error(my), mysql_free_result(res));
   mysql_free_result(res);
 
   return OK;
@@ -682,7 +684,8 @@ static int test_options_initcmd(MYSQL *unused __attribute__((unused)))
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
-  FAIL_IF(mysql_num_rows(res) != 3, "Expected 3 rows");
+  FAIL_IF_WITH_POST_ACTION(mysql_num_rows(res) != 3, 
+  "Expected 3 rows", mysql_free_result(res));
 
   mysql_free_result(res);
 
@@ -697,10 +700,12 @@ static int test_extended_init_values(MYSQL *unused __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
 
   mysql_options(mysql, MYSQL_DEFAULT_AUTH, "unknown");
-  FAIL_IF(strcmp(mysql->options.extension->default_auth, "unknown"), "option not set");
+  FAIL_IF_WITH_POST_ACTION(strcmp(mysql->options.extension->default_auth, 
+  "unknown"), "option not set", mysql_close(mysql));
 
   mysql_options(mysql, MYSQL_PLUGIN_DIR, "/tmp/foo");
-  FAIL_IF(strcmp(mysql->options.extension->plugin_dir, "/tmp/foo"), "option not set");
+  FAIL_IF_WITH_POST_ACTION(strcmp(mysql->options.extension->plugin_dir, 
+  "/tmp/foo"), "option not set", mysql_close(mysql));
 
   mysql_close(mysql);
   return OK;

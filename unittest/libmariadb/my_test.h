@@ -331,7 +331,7 @@ my_bool query_int_variable(MYSQL *con, const char *var_name, int *var_value)
 
   FAIL_IF(mysql_query(con, query_buffer), "Query failed");
   FAIL_UNLESS(rs= mysql_store_result(con), "Invaliid result set");
-  FAIL_UNLESS(row= mysql_fetch_row(rs), "Nothing to fetch");
+  FAIL_UNLESS_WITH_POST_ACTION(row= mysql_fetch_row(rs), "Nothing to fetch", mysql_free_result(rs));
 
   is_null= row[0] == NULL;
 

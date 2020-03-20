@@ -320,10 +320,10 @@ static int bulk_null(MYSQL *mysql)
   buf[1]= strdup("foobar");
 
   rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS bulk_null", -1);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buf));
 
   rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE bulk_null (a int not null auto_increment primary key, b varchar(20))", -1);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buf));
 
   memset(bind, 0, 2 * sizeof(MYSQL_BIND));
   bind[0].buffer_type= MYSQL_TYPE_NULL;
@@ -335,16 +335,16 @@ static int bulk_null(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buf));
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buf));
 
   rc= mysql_stmt_bind_param(stmt, bind);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buf));
 
   rc= mariadb_stmt_execute_direct(stmt, "INSERT INTO bulk_null VALUES (?, ?)", -1);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buf));
 
   mysql_stmt_close(stmt);
   free(buf[0]);
@@ -590,7 +590,8 @@ static int test_conc243(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   result= mysql_store_result(mysql);
-  FAIL_IF(!result || !mysql_num_rows(result), "Invalid resultset");
+  FAIL_IF(!result, "Store result failed");
+  FAIL_IF_WITH_POST_ACTION(!mysql_num_rows(result), "Invalid resultset", mysql_free_result(result));
   row = mysql_fetch_row(result);
   if (strcmp(row[0], "Monty") || strcmp(row[1], "Widenius"))
   {
@@ -721,17 +722,17 @@ static int test_char_conv2(MYSQL *mysql)
   strcpy (buffer[0], "\xC3\x82\xC3\x83\xC3\x84\x00");
 
   rc= mysql_query(mysql, "SET NAMES UTF8");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, free(buffer[0]));
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS char_conv");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, free(buffer[0]));
   rc= mysql_query(mysql, "CREATE TABLE char_conv (a varchar(20)) CHARSET=latin1");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, free(buffer[0]));
 
   rc= mysql_stmt_prepare(stmt, SL("INSERT INTO char_conv VALUES (?)"));
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buffer[0]));
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, free(buffer[0]));
 
   memset(&bind_in, 0, sizeof(MYSQL_BIND));
   bind_in.buffer_type= MYSQL_TYPE_STRING;
@@ -857,7 +858,8 @@ static int bulk_skip_row(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   result= mysql_store_result(mysql);
-  FAIL_IF(!result || mysql_num_rows(result) != 1, "Invalid resultset");
+  FAIL_IF(!result, "Store result failed");
+  FAIL_IF_WITH_POST_ACTION(mysql_num_rows(result) != 1, "Invalid resultset", mysql_free_result(result));
   
   row = mysql_fetch_row(result);
   if (strcmp(row[0], "unknown") || strcmp(row[1], "N.N."))

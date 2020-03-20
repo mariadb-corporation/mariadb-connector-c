@@ -90,7 +90,7 @@ static int create_dyncol_named(MYSQL *mysql)
 
   /* get keys*/
   rc= mariadb_dyncol_list_named(&dyncol, &my_count, &my_keys);
-  FAIL_IF(rc < 0, "list named failed");
+  FAIL_IF_WITH_POST_ACTION(rc < 0, "list named failed", free(my_keys));
 
   for (i=0; i < my_count; i++)
   {
@@ -99,7 +99,7 @@ static int create_dyncol_named(MYSQL *mysql)
     vals[i].type=DYN_COL_NULL;
   }
   rc= mariadb_dyncol_update_many_named(&dyncol, column_count, keys3, vals);
-  FAIL_IF(rc < 0, "update failed");
+  FAIL_IF_WITH_POST_ACTION(rc < 0, "update failed", free(my_keys));
   mariadb_dyncol_free(&dyncol);
 
   keys3[0].str= (char *)"test";

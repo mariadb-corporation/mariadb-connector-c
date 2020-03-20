@@ -487,7 +487,7 @@ static int bug30472_retrieve_charset_info(MYSQL *con,
   rs= mysql_store_result(con);
   FAIL_IF(!rs, "Invalid result set");
   row= mysql_fetch_row(rs);
-  FAIL_IF(!row, "Couldn't fetch row");
+  FAIL_IF_WITH_POST_ACTION(!row, "Couldn't fetch row", mysql_free_result(rs));
   strcpy(character_set_client, row[1]);
   diag("cs: %s", row[1]);
   mysql_free_result(rs);
@@ -506,7 +506,7 @@ static int bug30472_retrieve_charset_info(MYSQL *con,
   rs= mysql_store_result(con);
   FAIL_IF(!rs, "Invalid result set");
   row= mysql_fetch_row(rs);
-  FAIL_IF(!row, "Couldn't fetch row");
+  FAIL_IF_WITH_POST_ACTION(!row, "Couldn't fetch row", mysql_free_result(rs));
   strcpy(collation_connection, row[1]);
   mysql_free_result(rs);
   return OK;
@@ -651,7 +651,7 @@ static int test_bug_54100(MYSQL *mysql)
     if (strcmp(row[0], "ucs2") && strcmp(row[0], "utf16le") && strcmp(row[0], "utf8mb4") && 
         strcmp(row[0], "utf16") && strcmp(row[0], "utf32")) {
       rc= mysql_set_character_set(mysql, row[0]);
-      check_mysql_rc(rc, mysql);
+      check_mysql_rc_with_post_action(rc, mysql, mysql_free_result(result));
     }
   }
   mysql_free_result(result);

@@ -194,7 +194,7 @@ int fetch_n(MYSQL *mysql, const char **query_list, unsigned query_count,
     for (fetch= fetch_array; fetch < fetch_array + query_count; ++fetch)
     {
       rc= mysql_stmt_store_result(fetch->handle);
-      FAIL_IF(rc, mysql_stmt_error(fetch->handle));
+      FAIL_IF_WITH_POST_ACTION(rc, mysql_stmt_error(fetch->handle), free(fetch_array));
     }
   }
 
@@ -322,7 +322,7 @@ static int test_bug21206(MYSQL *mysql)
 
   Stmt_fetch *fetch;
 
-  FAIL_IF(fill_tables(mysql, create_table, sizeof(create_table) / sizeof(*create_table)), "fill_tables failed");
+  FAIL_IF_WITH_POST_ACTION(fill_tables(mysql, create_table, sizeof(create_table) / sizeof(*create_table)), "fill_tables failed", free(fetch_array));
 
   for (fetch= fetch_array; fetch < fetch_array + cursor_count; ++fetch)
   {
@@ -1429,7 +1429,7 @@ static int test_bug32265(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   metadata= mysql_stmt_result_metadata(stmt);
   field= mysql_fetch_field(metadata);
-  FAIL_UNLESS(field, "couldn't fetch field");
+  FAIL_UNLESS_WITH_POST_ACTION(field, "couldn't fetch field", mysql_free_result(metadata));
   FAIL_UNLESS(strcmp(field->table, "t1") == 0, "table != t1");
   FAIL_UNLESS(strcmp(field->org_table, "t1") == 0, "org_table != t1");
   FAIL_UNLESS(strcmp(field->db, schema) == 0, "db != schema");

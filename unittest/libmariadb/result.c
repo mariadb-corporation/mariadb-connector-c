@@ -41,12 +41,12 @@ static int client_store_result(MYSQL *mysql)
 
   /* since we use store result, we should be able execute other api calls */
   rc= mysql_ping(mysql);
-  FAIL_IF(rc, "mysql_ping failed");
+  FAIL_IF_WITH_POST_ACTION(rc, "mysql_ping failed", mysql_free_result(result));
 
   while (mysql_fetch_row(result))
     rowcount++;
 
-  FAIL_IF(rowcount != 2, "rowcount != 2");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 2, "rowcount != 2", mysql_free_result(result));
   
   mysql_free_result(result);
 
@@ -67,12 +67,12 @@ static int client_use_result(MYSQL *mysql)
 
   /* since we use use result, we shouldn't be able execute other api calls */
   rc= mysql_ping(mysql);
-  FAIL_IF(!rc, "Error expected");
+  FAIL_IF_WITH_POST_ACTION(!rc, "Error expected", mysql_free_result(result));
 
   while (mysql_fetch_row(result))
     rowcount++;
 
-  FAIL_IF(rowcount != 2, "rowcount != 2");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 2, "rowcount != 2", mysql_free_result(result));
   
   mysql_free_result(result);
 
@@ -526,7 +526,7 @@ static int test_bug11718(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   res = mysql_store_result(mysql);
 
-  FAIL_UNLESS(res->fields[0].type == MYSQL_TYPE_DATE, "type != MYSQL_TYPE_DATE");
+  FAIL_UNLESS_WITH_POST_ACTION(res->fields[0].type == MYSQL_TYPE_DATE, "type != MYSQL_TYPE_DATE", mysql_free_result(res));
   mysql_free_result(res);
   rc= mysql_query(mysql, "drop table t1, t2");
   check_mysql_rc(rc, mysql);
@@ -639,7 +639,7 @@ static int test_bug6761(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   res= mysql_list_fields(mysql, "t1", "%");
-  FAIL_UNLESS(res && mysql_num_fields(res) == 3, "num_fields != 3");
+  FAIL_UNLESS_WITH_POST_ACTION(res && mysql_num_fields(res) == 3, "num_fields != 3", mysql_free_result(res));
   mysql_free_result(res);
 
   stmt_text= "DROP TABLE t1";
@@ -678,21 +678,21 @@ static int test_field_flags(MYSQL *mysql)
   mysql_field_seek(result, 0);
 
   field= mysql_fetch_field(result);
-  FAIL_UNLESS(field->flags & NOT_NULL_FLAG && 
+  FAIL_UNLESS_WITH_POST_ACTION(field->flags & NOT_NULL_FLAG && 
               field->flags & PRI_KEY_FLAG &&
-              field->flags & AUTO_INCREMENT_FLAG, "Wrong flags for field 0");
+              field->flags & AUTO_INCREMENT_FLAG, "Wrong flags for field 0", mysql_free_result(result));
 
   field= mysql_fetch_field(result);
-  FAIL_UNLESS(field->flags & NOT_NULL_FLAG, "Wrong flags for field 1");
+  FAIL_UNLESS_WITH_POST_ACTION(field->flags & NOT_NULL_FLAG, "Wrong flags for field 1", mysql_free_result(result));
 
   field= mysql_fetch_field(result);
-  FAIL_UNLESS(field->flags & UNIQUE_KEY_FLAG, "Wrong flags for field 2");
+  FAIL_UNLESS_WITH_POST_ACTION(field->flags & UNIQUE_KEY_FLAG, "Wrong flags for field 2", mysql_free_result(result));
 
   field= mysql_fetch_field(result);
-  FAIL_UNLESS(field->flags & MULTIPLE_KEY_FLAG, "Wrong flags for field 3");
+  FAIL_UNLESS_WITH_POST_ACTION(field->flags & MULTIPLE_KEY_FLAG, "Wrong flags for field 3", mysql_free_result(result));
 
   field= mysql_fetch_field(result);
-  FAIL_UNLESS(field->flags & NOT_NULL_FLAG, "Wrong flags for field 4");
+  FAIL_UNLESS_WITH_POST_ACTION(field->flags & NOT_NULL_FLAG, "Wrong flags for field 4", mysql_free_result(result));
 
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_field_flags");
@@ -730,7 +730,7 @@ static int test_field_names(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 0, "rowcount != 0");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 0, "rowcount != 0", mysql_free_result(result));
   mysql_free_result(result);
 
   /* with table name included with TRUE column name */
@@ -782,11 +782,11 @@ static int test_func_fields(MYSQL *mysql)
   FAIL_IF(!result, "Invalid result set");
 
   field= mysql_fetch_field(result);
-  FAIL_IF(!field, "Invalid field");
-  FAIL_UNLESS(strcmp(field->table, "test_dateformat") == 0, "field->table != 'test_dateformat'");
+  FAIL_IF_WITH_POST_ACTION(!field, "Invalid field", mysql_free_result(result));
+  FAIL_UNLESS_WITH_POST_ACTION(strcmp(field->table, "test_dateformat") == 0, "field->table != 'test_dateformat'", mysql_free_result(result));
 
   field= mysql_fetch_field(result);
-  FAIL_IF(field, "no more fields expected");
+  FAIL_IF_WITH_POST_ACTION(field, "no more fields expected", mysql_free_result(result));
 
   mysql_free_result(result);
 
@@ -814,12 +814,12 @@ static int test_func_fields(MYSQL *mysql)
   FAIL_IF(!result, "Invalid result set");
 
   field= mysql_fetch_field(result);
-  FAIL_IF(!field, "Invalid field");
-  FAIL_UNLESS(strcmp(field->name, "YEAR") == 0, "name != 'YEAR'");
-  FAIL_UNLESS(field->org_name[0] == '\0', "org_name != ''");
+  FAIL_IF_WITH_POST_ACTION(!field, "Invalid field", mysql_free_result(result));
+  FAIL_UNLESS_WITH_POST_ACTION(strcmp(field->name, "YEAR") == 0, "name != 'YEAR'", mysql_free_result(result));
+  FAIL_UNLESS_WITH_POST_ACTION(field->org_name[0] == '\0', "org_name != ''", mysql_free_result(result));
 
   field= mysql_fetch_field(result);
-  FAIL_IF(field, "no more fields expected");
+  FAIL_IF_WITH_POST_ACTION(field, "no more fields expected", mysql_free_result(result));
 
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_dateformat");

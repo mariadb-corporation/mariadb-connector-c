@@ -435,7 +435,7 @@ static int test_prepare_field_result(MYSQL *mysql)
                        "t1", "test_prepare_field_result", schema, 4, 0))
     goto error;
 
-  FAIL_IF(mysql_num_fields(result) != 5, "Paramcount != 5");
+  FAIL_IF_WITH_POST_ACTION(mysql_num_fields(result) != 5, "Paramcount != 5", mysql_free_result(result));
   mysql_free_result(result);
   mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_field_result");
@@ -948,7 +948,7 @@ static int test_open_direct(MYSQL *mysql)
 
   result= mysql_store_result(mysql);
   FAIL_IF(!result, "Invalid resultset");
-  FAIL_IF(mysql_num_rows(result) != 2, "rowcount != 2");
+  FAIL_IF_WITH_POST_ACTION(mysql_num_rows(result) != 2, "rowcount != 2", mysql_free_result(result));
 
   mysql_free_result(result);
 
@@ -1167,7 +1167,7 @@ static int test_simple_update(MYSQL *mysql)
   while (mysql_fetch_row(result))
     rowcount++;
 
-  FAIL_IF(rowcount != 1, "rowcount != 1");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 1, "rowcount != 1", mysql_free_result(result));
 
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_update");
@@ -1256,7 +1256,7 @@ static int test_long_data(MYSQL *mysql)
   rowcount= 0;
   while (mysql_fetch_row(result))
     rowcount++;
-  FAIL_IF(rowcount != 1, "rowcount != 1");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 1, "rowcount != 1", mysql_free_result(result));
   mysql_free_result(result);
 
   if (verify_col_data(mysql, "test_long_data", "col1", "999"))
@@ -1352,7 +1352,7 @@ static int test_long_data_str(MYSQL *mysql)
 
   while (mysql_fetch_row(result))
     rowcount++;
-  FAIL_IF(rowcount != 1, "rowcount != 1");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 1, "rowcount != 1", mysql_free_result(result));
 
   mysql_free_result(result);
 
@@ -1487,7 +1487,7 @@ static int test_long_data_str1(MYSQL *mysql)
   field= mysql_fetch_fields(result);
 
   /* First test what happens if STMT_ATTR_UPDATE_MAX_LENGTH is not used */
-  FAIL_IF(field->max_length != 0, "field->max_length != 0");
+  FAIL_IF_WITH_POST_ACTION(field->max_length != 0, "field->max_length != 0", mysql_free_result(result));
   mysql_free_result(result);
 
   /* Enable updating of field->max_length */
@@ -1503,7 +1503,7 @@ static int test_long_data_str1(MYSQL *mysql)
   field= mysql_fetch_fields(result);
 
   diag("max_length: %lu  max_blob_length: %lu", (unsigned long)field->max_length, (unsigned long)max_blob_length);
-  FAIL_UNLESS(field->max_length == max_blob_length, "field->max_length != max_blob_length");
+  FAIL_UNLESS_WITH_POST_ACTION(field->max_length == max_blob_length, "field->max_length != max_blob_length", mysql_free_result(result));
 
   /* Fetch results into a data buffer that is smaller than data */
   memset(my_bind, '\0', sizeof(*my_bind));
@@ -1530,7 +1530,7 @@ static int test_long_data_str1(MYSQL *mysql)
   my_bind[1].length= (unsigned long *)&blob_length;
   memset(data, '\0', sizeof(data));
   mysql_stmt_fetch_column(stmt, my_bind+1, 0, 0);
-  FAIL_UNLESS(strlen(data) == max_blob_length, "strlen(data) != max_blob_length");
+  FAIL_UNLESS_WITH_POST_ACTION(strlen(data) == max_blob_length, "strlen(data) != max_blob_length", mysql_free_result(result));
 
   mysql_free_result(result);
   mysql_stmt_close(stmt);
@@ -1616,7 +1616,7 @@ static int test_long_data_bin(MYSQL *mysql)
   while (mysql_fetch_row(result))
     rowcount++;
 
-  FAIL_IF(rowcount != 1, "rowcount != 1");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 1, "rowcount != 1", mysql_free_result(result));
   mysql_free_result(result);
  
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data_bin");
@@ -1704,7 +1704,7 @@ static int test_simple_delete(MYSQL *mysql)
   while (mysql_fetch_row(result))
     rowcount++;
 
-  FAIL_IF(rowcount, "rowcount > 0");
+  FAIL_IF_WITH_POST_ACTION(rowcount, "rowcount > 0", mysql_free_result(result));
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_simple_delete");
   check_mysql_rc(rc, mysql);
@@ -1808,7 +1808,7 @@ static int test_update(MYSQL *mysql)
 
   while (mysql_fetch_row(result))
     rowcount++;
-  FAIL_IF(rowcount != 1, "rowcount != 1");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 1, "rowcount != 1", mysql_free_result(result));
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_update");
   check_mysql_rc(rc, mysql);
@@ -1862,7 +1862,7 @@ static int test_prepare_noparam(MYSQL *mysql)
   while (mysql_fetch_row(result))
     rowcount++;
 
-  FAIL_IF(rowcount != 1, "rowcount != 1");
+  FAIL_IF_WITH_POST_ACTION(rowcount != 1, "rowcount != 1", mysql_free_result(result));
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS my_prepare");
   check_mysql_rc(rc, mysql);
@@ -2730,7 +2730,7 @@ static int test_insert(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS((int) tiny_data == rc, "rowcount != tinydata");
+  FAIL_UNLESS_WITH_POST_ACTION((int) tiny_data == rc, "rowcount != tinydata", mysql_free_result(result));
   mysql_free_result(result);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prep_insert");
@@ -3500,7 +3500,7 @@ static int test_double_compare(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS((int)tiny_data == rc, "rowcount != tinydata");
+  FAIL_UNLESS_WITH_POST_ACTION((int) tiny_data == rc, "rowcount != tinydata", mysql_free_result(result));
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_double_compare");
   check_mysql_rc(rc, mysql);
@@ -4323,7 +4323,7 @@ static int test_set_option(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 2, "rowcunt != 2");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 2, "rowcunt != 2", mysql_free_result(result));
   mysql_free_result(result);
 
   stmt= mysql_stmt_init(mysql);
@@ -4692,7 +4692,7 @@ static int test_stmt_close(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 1, "rwcount != 1");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 1, "rwcount != 1", mysql_free_result(result));
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_stmt_close");
   check_mysql_rc(rc, mysql);

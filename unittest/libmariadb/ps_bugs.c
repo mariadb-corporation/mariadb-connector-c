@@ -395,30 +395,30 @@ static int test_bug1644(MYSQL *mysql)
   result= mysql_store_result(mysql);
   FAIL_IF(!result, "Invalid resultset");
 
-  FAIL_IF(mysql_num_rows(result) != 3, "rowcount != 3");
+  FAIL_IF_WITH_POST_ACTION(mysql_num_rows(result) != 3, "rowcount != 3", mysql_free_result(result));
 
   mysql_data_seek(result, 0);
 
   row= mysql_fetch_row(result);
-  FAIL_IF(!row, "row = NULL");
+  FAIL_IF_WITH_POST_ACTION(!row, "row = NULL", mysql_free_result(result));
   for (i= 0 ; i < 4 ; i++)
   {
-    FAIL_UNLESS(strcmp(row[i], "22") == 0, "Wrong value");
+    FAIL_UNLESS_WITH_POST_ACTION(strcmp(row[i], "22") == 0, "Wrong value", mysql_free_result(result));
   }
   row= mysql_fetch_row(result);
-  FAIL_IF(!row, "Invalid row");
+  FAIL_IF_WITH_POST_ACTION(!row, "Invalid row", mysql_free_result(result));
   for (i= 0 ; i < 4 ; i++)
   {
-    FAIL_UNLESS(row[i] == 0, "row[i] != 0");
+    FAIL_UNLESS_WITH_POST_ACTION(row[i] == 0, "row[i] != 0", mysql_free_result(result));
   }
   row= mysql_fetch_row(result);
-  FAIL_IF(!row, "Invalid row");
+  FAIL_IF_WITH_POST_ACTION(!row, "Invalid row", mysql_free_result(result));
   for (i= 0 ; i < 4 ; i++)
   {
-    FAIL_UNLESS(strcmp(row[i], "88") == 0, "row[i] != 88");
+    FAIL_UNLESS_WITH_POST_ACTION(strcmp(row[i], "88") == 0, "row[i] != 88", mysql_free_result(result));
   }
   row= mysql_fetch_row(result);
-  FAIL_IF(row, "row != NULL");
+  FAIL_IF_WITH_POST_ACTION(row, "row != NULL", mysql_free_result(result));
 
   mysql_free_result(result);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS foo_dfr");
@@ -784,15 +784,16 @@ static int test_bug15613(MYSQL *mysql)
   /* II. Check SELECT metadata */
   stmt_text= ("select t, tt, mt, lt, vl, vb, vu from t1");
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
+  check_stmt_rc(rc, stmt);
   metadata= mysql_stmt_result_metadata(stmt);
   field= mysql_fetch_fields(metadata);
-  FAIL_UNLESS(field[0].length == 65535, "length != 65535");
-  FAIL_UNLESS(field[1].length == 255, "length != 244");
-  FAIL_UNLESS(field[2].length == 16777215, "length != 166777215");
-  FAIL_UNLESS(field[3].length == 4294967295UL, "length != 4294967295UL");
-  FAIL_UNLESS(field[4].length == 255, "length != 255");
-  FAIL_UNLESS(field[5].length == 255, "length != 255");
-  FAIL_UNLESS(field[6].length == 255, "length != 255");
+  FAIL_UNLESS_WITH_POST_ACTION(field[0].length == 65535, "length != 65535", mysql_free_result(metadata));
+  FAIL_UNLESS_WITH_POST_ACTION(field[1].length == 255, "length != 244", mysql_free_result(metadata));
+  FAIL_UNLESS_WITH_POST_ACTION(field[2].length == 16777215, "length != 166777215", mysql_free_result(metadata));
+  FAIL_UNLESS_WITH_POST_ACTION(field[3].length == 4294967295UL, "length != 4294967295UL", mysql_free_result(metadata));
+  FAIL_UNLESS_WITH_POST_ACTION(field[4].length == 255, "length != 255", mysql_free_result(metadata));
+  FAIL_UNLESS_WITH_POST_ACTION(field[5].length == 255, "length != 255", mysql_free_result(metadata));
+  FAIL_UNLESS_WITH_POST_ACTION(field[6].length == 255, "length != 255", mysql_free_result(metadata));
   mysql_free_result(metadata);
   mysql_stmt_free_result(stmt);
 
@@ -2403,7 +2404,7 @@ static int test_bug4172(MYSQL *mysql)
 
   diag("expected %s %s %s", row[0], row[1], row[2]);
   diag("fetched %s %s %s", f, d, e);
-  FAIL_UNLESS(!strcmp(f, row[0]) && !strcmp(d, row[1]) && !strcmp(e, row[2]), "");
+  FAIL_UNLESS_WITH_POST_ACTION(!strcmp(f, row[0]) && !strcmp(d, row[1]) && !strcmp(e, row[2]), "", mysql_free_result(res));
 
   mysql_free_result(res);
   mysql_stmt_close(stmt);
@@ -2660,14 +2661,14 @@ static int test_bug5194(MYSQL *mysql)
    "c241 float, c242 float, c243 float, c244 float, c245 float, c246 float, "
    "c247 float, c248 float, c249 float, c250 float)";
   rc= mysql_real_query(mysql, SL(stmt_text));
-  check_mysql_rc(rc, mysql);
 
   my_bind= (MYSQL_BIND*) malloc(MAX_PARAM_COUNT * sizeof(MYSQL_BIND));
+  FAIL_IF(my_bind == 0, "Not enough memory")
   query= (char*) malloc(strlen(query_template) +
                         MAX_PARAM_COUNT * CHARS_PER_PARAM + 1);
+  FAIL_IF_WITH_POST_ACTION(query == 0, "Not enough memory", free(my_bind))
   param_str= (char*) malloc(COLUMN_COUNT * CHARS_PER_PARAM);
-
-  FAIL_IF(my_bind == 0 || query == 0 || param_str == 0, "Not enough memory")
+  FAIL_IF_WITH_POST_ACTION(param_str == 0, "Not enough memory", free(my_bind))
 
   stmt= mysql_stmt_init(mysql);
 
@@ -2872,7 +2873,7 @@ static int test_bug6049(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(res));
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   memset(my_bind, '\0', sizeof(my_bind));
@@ -2913,7 +2914,7 @@ static int test_bug6058(MYSQL *mysql)
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(res));
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   memset(my_bind, '\0', sizeof(my_bind));
@@ -2988,19 +2989,20 @@ static int test_bug6096(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   query_result= mysql_store_result(mysql);
   query_field_list= mysql_fetch_fields(query_result);
-  FAIL_IF(!query_field_list, "fetch_fields failed");
+  FAIL_IF_WITH_POST_ACTION(!query_field_list, "fetch_fields failed", mysql_free_result(query_result));
   query_field_count= mysql_num_fields(query_result);
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
-  check_stmt_rc(rc, stmt);  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(query_result));  
+  rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);  mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH,
                       (void*) &update_max_length);
   mysql_stmt_store_result(stmt);
   stmt_metadata= mysql_stmt_result_metadata(stmt);
   stmt_field_list= mysql_fetch_fields(stmt_metadata);
   stmt_field_count= mysql_num_fields(stmt_metadata);
-  FAIL_UNLESS(stmt_field_count == query_field_count, "");
+  FAIL_UNLESS_WITH_POST_ACTION(stmt_field_count == query_field_count, "", mysql_free_result(stmt_metadata));
 
 
   /* Bind and fetch the data */
@@ -3015,9 +3017,9 @@ static int test_bug6096(MYSQL *mysql)
   mysql_stmt_bind_result(stmt, my_bind);
   rc= mysql_stmt_fetch(stmt);
   diag("rc=%d", rc);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(stmt_metadata));
   rc= mysql_stmt_fetch(stmt);
-  FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA", mysql_free_result(stmt_metadata));
 
   /* Clean up */
 
@@ -3161,12 +3163,12 @@ static int test_field_misc(MYSQL *mysql)
   FAIL_IF(!result, "Invalid result set");
 
   rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(result));
 
   rc= 0;
   while (mysql_stmt_fetch(stmt) != MYSQL_NO_DATA)
     rc++;
-  FAIL_UNLESS(rc == 1, "rowcount != 1");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 1, "rowcount != 1", mysql_free_result(result));
 
   if (verify_prepare_field(result, 0,
                        "@@max_error_count", "",   /* field and its org name */
@@ -3188,12 +3190,12 @@ static int test_field_misc(MYSQL *mysql)
   FAIL_IF(!result, "Invalid result set");
 
   rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(result));
 
   rc= 0;
   while (mysql_stmt_fetch(stmt) != MYSQL_NO_DATA)
     rc++;
-  FAIL_UNLESS(rc == 1, "rowcount != 1");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 1, "rowcount != 1", mysql_free_result(result));
 
   if (verify_prepare_field(result, 0,
                        "@@max_allowed_packet", "", /* field and its org name */
@@ -3215,12 +3217,12 @@ static int test_field_misc(MYSQL *mysql)
   FAIL_IF(!result, "Invalid result set");
 
   rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(result));
 
   rc= 0;
   while (mysql_stmt_fetch(stmt) != MYSQL_NO_DATA)
     rc++;
-  FAIL_UNLESS(rc == 1, "rowcount != 1");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 1, "rowcount != 1", mysql_free_result(result));
 
   if (verify_prepare_field(result, 0,
                        "@@sql_warnings", "",  /* field and its org name */
@@ -3287,7 +3289,7 @@ static int test_mem_overun(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(res))
     rc++;
-  FAIL_UNLESS(rc == 1, "rowcount != 1");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 1, "rowcount != 1", mysql_free_result(res));
   mysql_free_result(res);
 
   stmt= mysql_stmt_init(mysql);
@@ -3301,16 +3303,16 @@ static int test_mem_overun(MYSQL *mysql)
   field_res= mysql_stmt_result_metadata(stmt);
   FAIL_IF(!field_res, "Invalid result set");
 
-  FAIL_UNLESS( 1000 == mysql_num_fields(field_res), "fields != 1000");
+  FAIL_UNLESS_WITH_POST_ACTION( 1000 == mysql_num_fields(field_res), "fields != 1000", mysql_free_result(field_res));
 
   rc= mysql_stmt_store_result(stmt);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(field_res));
 
   rc= mysql_stmt_fetch(stmt);
-  check_stmt_rc(rc, stmt);
+  check_stmt_rc_with_post_action(rc, stmt, mysql_free_result(field_res));
 
   rc= mysql_stmt_fetch(stmt);
-  FAIL_UNLESS(rc == MYSQL_NO_DATA, "");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == MYSQL_NO_DATA, "", mysql_free_result(field_res));
 
   mysql_free_result(field_res);
 
@@ -3497,7 +3499,7 @@ static int test_explain_bug(MYSQL *mysql)
   result= mysql_stmt_result_metadata(stmt);
   FAIL_IF(!result, "Invalid result set");
 
-  FAIL_UNLESS(6 == mysql_num_fields(result), "fields != 6");
+  FAIL_UNLESS_WITH_POST_ACTION(6 == mysql_num_fields(result), "fields != 6", mysql_free_result(result));
 
   if (verify_prepare_field(result, 0, "Field", "COLUMN_NAME",
                        mysql_get_server_version(mysql) <= 50000 ?
@@ -3578,7 +3580,7 @@ static int test_explain_bug(MYSQL *mysql)
   result= mysql_stmt_result_metadata(stmt);
   FAIL_IF(!result, "Invalid result set");
 
-  FAIL_UNLESS(10 == mysql_num_fields(result), "fields != 10");
+  FAIL_UNLESS_WITH_POST_ACTION(10 == mysql_num_fields(result), "fields != 10", mysql_free_result(result));
 
   if (verify_prepare_field(result, 0, "id", "", MYSQL_TYPE_LONGLONG, "", "", "", 3, 0))
     goto error;
@@ -3910,9 +3912,9 @@ static int test_conc_5(MYSQL *mysql)
   FAIL_IF(!res, "Can't obtain resultset");
 
   fields= mysql_fetch_fields(res);
-  FAIL_IF(!fields, "Can't obtain fields");
+  FAIL_IF_WITH_POST_ACTION(!fields, "Can't obtain fields", mysql_free_result(res));
 
-  FAIL_IF(strcmp("def", fields[0].catalog), "unexpected value for field->catalog");
+  FAIL_IF_WITH_POST_ACTION(strcmp("def", fields[0].catalog), "unexpected value for field->catalog", mysql_free_result(res));
 
   mysql_free_result(res);
   mysql_stmt_close(stmt);
@@ -4631,12 +4633,12 @@ static int test_mdev14165(MYSQL *mysql)
 
   fields= mysql_fetch_fields(result);
 
-  FAIL_IF(fields[0].length < 20, "Expected length=20");
-  FAIL_IF(fields[0].max_length < 20, "Expected max_length=20");
+  FAIL_IF_WITH_POST_ACTION(fields[0].length < 20, "Expected length=20", mysql_free_result(result));
+  FAIL_IF_WITH_POST_ACTION(fields[0].max_length < 20, "Expected max_length=20", mysql_free_result(result));
 
   mysql_stmt_fetch(stmt);
 
-  FAIL_UNLESS(strcmp(buf1, "00000000000000000002") == 0, "Wrong result");
+  FAIL_UNLESS_WITH_POST_ACTION(strcmp(buf1, "00000000000000000002") == 0, "Wrong result", mysql_free_result(result));
   mysql_free_result(result);
 
   mysql_stmt_close(stmt);
@@ -4929,8 +4931,8 @@ static int test_conc334(MYSQL *mysql)
 
   while ((field= mysql_fetch_field(result)))
   {
-    FAIL_IF(field->name_length == 0, "Invalid name length (0)");
-    FAIL_IF(field->table_length == 0, "Invalid name length (0)");
+    FAIL_IF_WITH_POST_ACTION(field->name_length == 0, "Invalid name length (0)", mysql_free_result(result));
+    FAIL_IF_WITH_POST_ACTION(field->table_length == 0, "Invalid name length (0)", mysql_free_result(result));
   }
   mysql_free_result(result);
   mysql_stmt_close(stmt);
@@ -5109,7 +5111,7 @@ static int test_conc424(MYSQL *mysql)
     {
       MYSQL_RES *res= mysql_stmt_result_metadata(stmt);
       rc= mysql_stmt_fetch(stmt);
-      FAIL_IF(rc, "Wrong return code");
+      FAIL_IF_WITH_POST_ACTION(rc, "Wrong return code", mysql_free_result(res));
       mysql_free_result(res);
     }
     rc= mysql_stmt_next_result(stmt);

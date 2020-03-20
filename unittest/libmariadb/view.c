@@ -555,7 +555,7 @@ static int test_bug19671(MYSQL *mysql)
   FAIL_IF(!result, "Invalid result set");
 
   field= mysql_fetch_field(result);
-  FAIL_IF(!field, "Can't fetch field");
+  FAIL_IF_WITH_POST_ACTION(!field, "Can't fetch field", mysql_free_result(result));
 
   if (strcmp(field->table, "v1") != 0) {
     diag("Wrong value '%s' for field_table. Expected 'v1'. (%s: %d)", field->table, __FILE__, __LINE__);

@@ -279,22 +279,22 @@ static int test_frm_bug(MYSQL *mysql)
   }
 
   rc= mysql_query(mysql, "SHOW TABLE STATUS like 'test_frm_bug'");
-  check_mysql_rc(rc, mysql);
+  check_mysql_rc_with_post_action(rc, mysql, fclose(test_file));
 
   result= mysql_store_result(mysql);
-  FAIL_IF(!result, "Invalid result set");/* It can't be NULL */
+  FAIL_IF_WITH_POST_ACTION(!result, "Invalid result set", fclose(test_file));/* It can't be NULL */
 
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 1, "rowcount != 0");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 1, "rowcount != 0", fclose(test_file));
 
   mysql_data_seek(result, 0);
 
   row= mysql_fetch_row(result);
-  FAIL_IF(!row, "couldn't fetch row");
+  FAIL_IF_WITH_POST_ACTION(!row, "couldn't fetch row", fclose(test_file));
 
-  FAIL_UNLESS(row[17] != 0, "row[17] != 0");
+  FAIL_UNLESS_WITH_POST_ACTION(row[17] != 0, "row[17] != 0", fclose(test_file));
 
   mysql_free_result(result);
   mysql_stmt_close(stmt);
@@ -1343,11 +1343,11 @@ static int test_conc384(MYSQL *my __attribute__((unused)))
   mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo", value);
   len= (int)mysql->options.extension->connect_attrs_len;
   /* Length: 1 (=len) + 3 (="foo") + 3 (=len) + 999 (="AAA...") = 1006 */
-  FAIL_IF(len != 1006, "Wrong length");
+  FAIL_IF_WITH_POST_ACTION(len != 1006, "Wrong length", mysql_close(mysql));
   mysql_optionsv(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "foo");
   len= (int)mysql->options.extension->connect_attrs_len;
   /* Length should be zero after deleting the connection attribute */
-  FAIL_IF(len != 0, "Wrong length");
+  FAIL_IF_WITH_POST_ACTION(len != 0, "Wrong length", mysql_close(mysql));
   mysql_close(mysql);
   return OK;
 }

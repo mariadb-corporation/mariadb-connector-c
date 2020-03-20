@@ -78,7 +78,7 @@ static int test_server_warnings(MYSQL *mysql)
 
   result= mysql_store_result(mysql);
   FAIL_IF(!result, mysql_error(mysql));
-  FAIL_IF(!mysql_num_rows(result), "Empty resultset");
+  FAIL_IF_WITH_POST_ACTION(!mysql_num_rows(result), "Empty resultset", mysql_free_result(result));
 
   mysql_free_result(result);
 
@@ -146,7 +146,7 @@ static int test_server_errors(MYSQL *mysql)
 
   result= mysql_store_result(mysql);
   FAIL_IF(!result, mysql_error(mysql));
-  FAIL_IF(!mysql_num_rows(result), "Empty resultset");
+  FAIL_IF_WITH_POST_ACTION(!mysql_num_rows(result), "Empty resultset", mysql_free_result(result));
   mysql_free_result(result);
 
   return OK;
@@ -209,7 +209,7 @@ static int test_cuted_rows(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 2, "rowcount != 2");
+  FAIL_UNLESS_WITH_POST_ACTION(rc == 2, "rowcount != 2", mysql_free_result(result));
   mysql_free_result(result);
 
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES('junk'), (876789)");

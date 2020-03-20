@@ -55,7 +55,7 @@ static int execute_direct(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
-  FAIL_IF(mysql_num_rows(res) != 1000, "Expected 1000 rows");
+  FAIL_IF_WITH_POST_ACTION(mysql_num_rows(res) != 1000, "Expected 1000 rows", mysql_free_result(res));
 
   mysql_free_result(res);
 
