@@ -3357,7 +3357,6 @@ static int test_bug8722(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
   mysql_stmt_close(stmt);
-  stmt_text= "drop table if exists t1, v1";
   rc= mysql_query(mysql, "DROP TABLE t1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "DROP VIEW v1");
