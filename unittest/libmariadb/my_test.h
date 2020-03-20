@@ -74,10 +74,27 @@ if (rc)\
   return(FAIL);\
 }
 
+#define check_mysql_rc_with_post_action(rc, mysql, action) \
+if (rc)\
+{\
+  diag("Error (%d): %s (%d) in %s line %d", rc, mysql_error(mysql), \
+       mysql_errno(mysql), __FILE__, __LINE__);\
+  (action);\
+  return(FAIL);\
+}
+
 #define check_stmt_rc(rc, stmt) \
 if (rc)\
 {\
   diag("Error: %s (%s: %d)", mysql_stmt_error(stmt), __FILE__, __LINE__);\
+  return(FAIL);\
+}
+
+#define check_stmt_rc_with_post_action(rc, stmt, action) \
+if (rc)\
+{\
+  diag("Error: %s (%s: %d)", mysql_stmt_error(stmt), __FILE__, __LINE__);\
+  (action);\
   return(FAIL);\
 }
 
@@ -88,10 +105,26 @@ if (expr)\
   return FAIL;\
 }
 
+#define FAIL_IF_WITH_POST_ACTION(expr, reason, action)\
+if (expr)\
+{\
+  diag("Error: %s (%s: %d)", (reason) ? reason : "", __FILE__, __LINE__);\
+  (action);\
+  return FAIL;\
+}
+
 #define FAIL_UNLESS(expr, reason)\
 if (!(expr))\
 {\
   diag("Error: %s (%s: %d)", reason, __FILE__, __LINE__);\
+  return FAIL;\
+}
+
+#define FAIL_UNLESS_WITH_POST_ACTION(expr, reason, action)\
+if (!(expr))\
+{\
+  diag("Error: %s (%s: %d)", reason, __FILE__, __LINE__);\
+  (action);\
   return FAIL;\
 }
 
