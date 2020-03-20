@@ -790,7 +790,8 @@ static int test_bind_address(MYSQL *my)
 {
   MYSQL *mysql;
   char *bind_addr= getenv("MYSQL_TEST_BINDADDR");
-  char query[128];
+  int query_size = 128;
+  char query[query_size];
   int rc;
 
   if (!hostname || !strcmp(hostname, "localhost"))
@@ -799,14 +800,35 @@ static int test_bind_address(MYSQL *my)
     return SKIP;
   }
 
-  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  const char *query_line1 = "DROP USER '%s'@'%s'";
+  if (strlen(query_line1) + strlen(username) + strlen(bind_addr) < query_size)
+  {
+    diag("Possible string overflow in test_bind_address on query %s", query_line1);
+    return FAIL;
+  }
+  
+  sprintf(query, query_line1, username, bind_addr);
   rc= mysql_query(my, query);
 
-  sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", username, bind_addr, password);
+  const char *query_line2 = "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'";
+  if (strlen(query_line2) + strlen(username) + strlen(bind_addr) + strlen(password) < query_size)
+  {
+    diag("Possible string overflow in test_bind_address on query %s", query_line2);
+    return FAIL;
+  }
+
+  sprintf(query, query_line2, username, bind_addr, password);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
-  sprintf(query, "GRANT ALL ON %s.* TO '%s'@'%s'", schema, username, bind_addr);
+  const char *query_line3 = "GRANT ALL ON %s.* TO '%s'@'%s'";
+  if (strlen(query_line3) + strlen(schema) + strlen(username) + strlen(bind_addr) < query_size)
+  {
+    diag("Possible string overflow in test_bind_address on query %s", query_line3);
+    return FAIL;
+  }
+
+  sprintf(query, query_line3, schema, username, bind_addr);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
