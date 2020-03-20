@@ -1506,6 +1506,7 @@ static int test_bug38486(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
   mysql_stmt_close(stmt);
 
   stmt= mysql_stmt_init(mysql);

@@ -579,6 +579,7 @@ static int test_wl4166_3(MYSQL *mysql)
   if (verify_col_data(mysql, "t1", "year", "2014-01-01 01:01:01")) {
     mysql_stmt_close(stmt);
     rc= mysql_query(mysql, "drop table t1");
+    check_mysql_rc(rc, mysql);
     return FAIL;
   }
 

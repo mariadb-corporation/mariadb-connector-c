@@ -158,7 +158,9 @@ static int test_bug20023(MYSQL *mysql)
   /* Set MAX_JOIN_SIZE to the default value (-1). */
 
   rc= mysql_query(mysql, "SET @@global.max_join_size = cast(-1 as unsigned int)");
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "SET @@session.max_join_size = default");
+  check_mysql_rc(rc, mysql);
 
   /* Issue COM_CHANGE_USER. */
 
@@ -529,7 +531,7 @@ static int test_compress(MYSQL *mysql)
 
   /* use compressed protocol */
   rc= mysql_options(mysql, MYSQL_OPT_COMPRESS, NULL);
-
+  check_mysql_rc(rc, mysql);
 
 
   if (!(my_test_connect(mysql, hostname, username,

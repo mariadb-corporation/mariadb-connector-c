@@ -142,13 +142,13 @@ static int conc_212(MYSQL *mysql)
 
   rc= mariadb_stmt_execute_direct(stmt, "SELECT 1, 2", -1);
   check_stmt_rc(rc, stmt);
-  mysql_stmt_store_result(stmt);
-  mysql_stmt_free_result(stmt);
+  check_stmt_rc(mysql_stmt_store_result(stmt), stmt);
+  check_stmt_rc(mysql_stmt_free_result(stmt), stmt);
 
   rc= mariadb_stmt_execute_direct(stmt, "SELECT 1, 2", -1);
   check_stmt_rc(rc, stmt);
-  mysql_stmt_store_result(stmt);
-  mysql_stmt_free_result(stmt);
+  check_stmt_rc(mysql_stmt_store_result(stmt), stmt);
+  check_stmt_rc(mysql_stmt_free_result(stmt), stmt);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc,mysql);

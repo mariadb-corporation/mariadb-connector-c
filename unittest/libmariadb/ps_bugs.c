@@ -537,6 +537,7 @@ static int test_bug12744(MYSQL *mysql)
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
@@ -690,6 +691,7 @@ static int test_bug15510(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
   FAIL_UNLESS(mysql_warning_count(mysql), "Warning expected");
 
   /* Cleanup */
@@ -974,6 +976,7 @@ static int test_bug1664(MYSQL *mysql)
 error:
     mysql_stmt_close(stmt);
     rc= mysql_query(mysql, "DROP TABLE test_long_data");
+    check_mysql_rc(rc, mysql);
     return FAIL;
 }
 /* Test a misc bug */
@@ -2616,6 +2619,7 @@ static int test_bug5194(MYSQL *mysql)
 
   stmt_text= "drop table if exists t1";
   rc= mysql_real_query(mysql, SL(stmt_text));
+  check_mysql_rc(rc, mysql);
 
   stmt_text= "create table if not exists t1"
    "(c1 float, c2 float, c3 float, c4 float, c5 float, c6 float, "
@@ -3821,8 +3825,10 @@ static int test_bug53311(MYSQL *mysql)
 
   /* kill connection */
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
   FAIL_IF(rc == 0, "Error expected");
   FAIL_IF(mysql_stmt_errno(stmt) == 0, "Errno != 0 expected");
   rc= mysql_stmt_close(stmt);
@@ -4243,6 +4249,7 @@ static int test_conc177(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
   mysql_stmt_close(stmt);
 
   diag("buf1 %s\nbuf2 %s", buf1, buf2);
@@ -4276,6 +4283,7 @@ static int test_conc177(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
   mysql_stmt_close(stmt);
 
   diag("buf1 %s\nbuf2 %s", buf1, buf2);
@@ -4333,6 +4341,7 @@ static int test_conc182(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "SELECT row_count()");
+  check_mysql_rc(rc, mysql);
   result= mysql_store_result(mysql);
   row= mysql_fetch_row(result);
   diag("buf: %s", row[0]);
@@ -4343,6 +4352,7 @@ static int test_conc182(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, "SELECT row_count()", -1);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
 
   memset(bind, 0, 2 * sizeof(MYSQL_BIND));
   bind[0].buffer= &buf1;
@@ -4350,10 +4360,12 @@ static int test_conc182(MYSQL *mysql)
   bind[0].buffer_type= bind[1].buffer_type= MYSQL_TYPE_STRING;
 
   rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
 
   while(!mysql_stmt_fetch(stmt))
   diag("b1: %s", buf1);
   rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
   return OK;
@@ -4393,6 +4405,7 @@ static int test_conc181(MYSQL *mysql)
   diag("rc=%d err=%d float=%f, %d", rc, err, f, MYSQL_DATA_TRUNCATED);
 
   rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
   return OK;
@@ -4462,7 +4475,9 @@ static int test_conc198(MYSQL *mysql)
   FAIL_UNLESS(num_rows == 9, "num_rows != 9");
 
   rc= mysql_stmt_close(stmt1);
+  check_mysql_rc(rc, mysql);
   rc= mysql_stmt_close(stmt2);
+  check_mysql_rc(rc, mysql);
   FAIL_UNLESS(rc == 0, "");
 
   rc= mysql_query(mysql, "drop table t1");
@@ -4584,6 +4599,7 @@ static int test_conc208(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
 
   while (mysql_stmt_fetch(stmt) != MYSQL_NO_DATA)
   {
@@ -4605,8 +4621,10 @@ static int test_mdev14165(MYSQL *mysql)
   char buf1[52];
 
   rc= mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &val);
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE t1 (i INT(20) ZEROFILL)");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (2),(1)");
@@ -4704,6 +4722,7 @@ static int test_str_to_int(MYSQL *mysql)
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_store_result(stmt);
+    check_stmt_rc(rc, stmt);
 
     memset(bind, 0, sizeof(MYSQL_BIND));
     bind[0].buffer_type= MYSQL_TYPE_LONG;
@@ -4882,6 +4901,7 @@ static int test_codbc138(MYSQL *mysql)
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_store_result(stmt);
+    check_stmt_rc(rc, stmt);
 
     memset(bind, 0, sizeof(MYSQL_BIND));
     bind[0].buffer_type= MYSQL_TYPE_DATETIME;
@@ -4963,6 +4983,7 @@ static int test_conc344(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
   diag("num_rows: %lld", mysql_stmt_num_rows(stmt));
   FAIL_IF(mysql_stmt_num_rows(stmt) != 1, "expected 1 row");
 
@@ -4996,6 +5017,7 @@ static int test_conc_fraction(MYSQL *mysql)
 
     check_stmt_rc(rc, stmt);
     rc= mysql_stmt_store_result(stmt);
+    check_stmt_rc(rc, stmt);
 
     memset(bind, 0, sizeof(MYSQL_BIND));
     bind[0].buffer_type= MYSQL_TYPE_DATETIME;
@@ -5047,6 +5069,7 @@ static int test_zerofill_1byte(MYSQL *mysql)
   bind.buffer_length= 1;
 
   rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_fetch(stmt);
   FAIL_IF(rc != 101, "expected truncation warning");

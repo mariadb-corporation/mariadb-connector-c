@@ -435,6 +435,7 @@ static int test_view_insert_fields(MYSQL *mysql)
                   " F1C4 AS F1C4, F2I4 AS F2I4, F3N5 AS F3N5,"
                   " F7F8 AS F7F8, F6N4 AS F6N4, F5C8 AS F5C8, F9D8 AS F9D8"
                   " from t1 T0001");
+  check_mysql_rc(rc, mysql);
 
   memset(my_bind, '\0', sizeof(my_bind));
   for (i= 0; i < 11; i++)

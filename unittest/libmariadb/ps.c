@@ -65,6 +65,7 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
   /* 1. Status is inited, so prepare should work */
 
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_ping(mysql);
   check_mysql_rc(rc, mysql);
@@ -75,6 +76,7 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
 
   /* 2. Status is prepared, execute should fail */
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_execute(stmt);
   FAIL_IF(!rc, "Error expected"); 

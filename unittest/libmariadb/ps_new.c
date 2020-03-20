@@ -108,16 +108,20 @@ static int test_multi_result(MYSQL *mysql)
   rc= mysql_stmt_next_result(stmt);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_bind_result(stmt, rs_bind);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
   FAIL_IF(mysql_stmt_field_count(stmt) != 3, "expected 3 fields");
   FAIL_IF(int_data[0] != 100 || int_data[1] != 200 || int_data[2] != 300,
           "expected 100 200 300");
 
   FAIL_IF(mysql_stmt_next_result(stmt) != 0, "expected more results");
   rc= mysql_stmt_bind_result(stmt, rs_bind);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
   FAIL_IF(mysql_stmt_field_count(stmt) != 2, "expected 2 fields");
   FAIL_IF(int_data[0] != 200 || int_data[1] != 300,
           "expected 100 200 300");
@@ -212,6 +216,7 @@ int test_sp_params(MYSQL *mysql)
   } while (mysql_stmt_next_result(stmt) == 0);
 
   rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -266,6 +271,7 @@ int test_sp_reset(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -412,6 +418,7 @@ int test_sp_reset2(MYSQL *mysql)
   }
 
   rc= mysql_stmt_close(stmt);
+  check_mysql_rc(rc, mysql);
 
 
   rc= mysql_query(mysql, "DROP PROCEDURE p1");

@@ -897,6 +897,7 @@ static int test_bug9735(MYSQL *mysql)
 error:
   mysql_free_result(res);
   rc= mysql_query(mysql, "drop table t1");
+  check_mysql_rc(rc, mysql);
   return FAIL;
 }
 
