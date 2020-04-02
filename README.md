@@ -1,6 +1,7 @@
 # MariaDB Connector/C
 
 [![Windows Build](https://ci.appveyor.com/api/projects/status/32r7s2skrgm9ubva/branch/master?svg=true)](https://ci.appveyor.com/project/9EOR9/mariadb-connector-c/branch/master/)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FMariaDB%2Fmariadb-connector-c.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FMariaDB%2Fmariadb-connector-c?ref=badge_shield)
 
 [![Linux Build](https://travis-ci.org/MariaDB/mariadb-connector-c.svg?branch=master)](https://travis-ci.org/MariaDB/mariadb-connector-c)
 
@@ -23,6 +24,9 @@ Parts of MariaDB Connector/C are derived from PHP's mysqlnd extension and the or
 GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 
 For licensing questions, see the [Licensing FAQ](https://mariadb.com/kb/en/licensing-faq/).
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FMariaDB%2Fmariadb-connector-c.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FMariaDB%2Fmariadb-connector-c?ref=badge_large)
 
 ## Contributing
 
