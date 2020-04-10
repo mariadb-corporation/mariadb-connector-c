@@ -456,8 +456,7 @@ INSTALL(TARGETS libmariadb
           COMPONENT SharedLibraries
         DESTINATION ${INSTALL_LIBDIR})
 
-
-IF(WIN32)
+IF(WIN32 AND NOT CMAKE_COMPILER_IS_GNUCC)
    # On Windows, install PDB
    INSTALL(FILES $<TARGET_PDB_FILE:libmariadb> DESTINATION "${INSTALL_LIBDIR}"
            CONFIGURATIONS Debug RelWithDebInfo
