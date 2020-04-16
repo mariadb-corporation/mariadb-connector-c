@@ -93,12 +93,17 @@ void ma_format_win32_error(char* buf, size_t buflen, DWORD code, _Printf_format_
     ENTRY(SEC_I_CONTEXT_EXPIRED, "The context has expired and can no longer be used"),
     ENTRY(SEC_E_ALGORITHM_MISMATCH, "no cipher match"),
     ENTRY(SEC_E_NO_CREDENTIALS, "no credentials"),
-    ENTRY(SEC_E_INVALID_TOKEN, "The token supplied to function is invalid")
+    ENTRY(SEC_E_INVALID_TOKEN, "The token supplied to function is invalid"),
+    ENTRY(SEC_E_UNSUPPORTED_FUNCTION,"The function requested is not supported")
   };
 
   struct map_entry* entry = NULL;
-  strncpy_s(cur,end-cur, ". ", _TRUNCATE);
-  cur += 2;
+
+  if (cur > buf && cur[-1] != ' ' && cur[-1] != '.')
+  {
+    strncpy_s(cur,end-cur, ". ", _TRUNCATE);
+    cur += 2;
+  }
 
   for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
   {
