@@ -94,7 +94,6 @@ static const char *commands[]= {
   "COM_SET_OPTION",
   "COM_STMT_FETCH",
   "COM_DAEMON",
-  "COM_MULTI",
   "COM_END"
 };
 

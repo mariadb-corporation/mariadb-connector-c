@@ -157,7 +157,7 @@ int ma_net_flush(NET *net)
 {
   int error=0;
 
-  /* don't flush if com_multi is in progress */
+  /* don't flush if pipelined query is in progress */
   if (net->extension->multi_status > COM_MULTI_OFF)
     return 0;
 

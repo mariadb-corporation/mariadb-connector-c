@@ -94,7 +94,7 @@ enum enum_server_command
   COM_UNSUPPORTED= 30,
   COM_RESET_CONNECTION = 31,
   COM_STMT_BULK_EXECUTE = 250,
-  COM_MULTI = 254,
+  COM_RESERVED_1 = 254, /* former COM_MULTI, now removed */
   COM_END
 };
 
@@ -168,7 +168,7 @@ enum enum_server_command
 /* MariaDB specific capabilities */
 #define MARIADB_CLIENT_FLAGS 0xFFFFFFFF00000000ULL
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
-#define MARIADB_CLIENT_COM_MULTI (1ULL << 33)
+#define MARIADB_CLIENT_RESERVED_1 (1ULL << 33) /* Former COM_MULTI, don't use */
 #define MARIADB_CLIENT_STMT_BULK_OPERATIONS (1ULL << 34)
 /* support of extended data type/format information, since 10.5.0 */
 #define MARIADB_CLIENT_EXTENDED_METADATA (1ULL << 35)
@@ -177,7 +177,6 @@ enum enum_server_command
         (!(mysql->server_capabilities & CLIENT_MYSQL))
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
-                                       MARIADB_CLIENT_COM_MULTI |\
                                        MARIADB_CLIENT_STMT_BULK_OPERATIONS|\
                                        MARIADB_CLIENT_EXTENDED_METADATA)
 
