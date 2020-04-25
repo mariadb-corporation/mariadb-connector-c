@@ -38,7 +38,7 @@ before_build:
   - cmd: set MYSQL_TEST_PASSWD=
   - cmd: set MYSQL_TEST_PORT=3306
   - cmd: set MYSQL_TEST_DB=testc
-  -  cmd: set FILE=set archive=http://ftp.hosteurope.de/mirror/archive.mariadb.org//mariadb-%DB%/winx64-packages/mariadb-%DB%-winx64.msi
+  -  cmd: set FILE=http://mariadb.mirrors.ovh.net/MariaDB/mariadb-%DB%/winx64-packages/mariadb-%DB%-winx64.msi
   - ps: Start-FileDownload $Env:FILE -FileName server.msi
   - cmd: msiexec /i server.msi INSTALLDIR=c:\projects\server SERVICENAME=mariadb ALLOWREMOTEROOTACCESS=true /qn
   - cmd: "\"c:\\projects\\server\\bin\\mysql.exe\" -e \"create database testc\" --user=root"
