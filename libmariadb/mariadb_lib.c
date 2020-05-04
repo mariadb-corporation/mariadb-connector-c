@@ -870,18 +870,13 @@ unpack_fields(const MYSQL *mysql,
 
     for (i=0; i < field_count; i++)
     {
-      switch(row->data[i][0]) {
-      case 0:
-       *(char **)(((char *)field) + rset_field_offsets[i*2])= ma_strdup_root(alloc, "");
-       *(unsigned int *)(((char *)field) + rset_field_offsets[i*2+1])= 0;
-       break;
-     default:
-       *(char **)(((char *)field) + rset_field_offsets[i*2])=
-         ma_strdup_root(alloc, (char *)row->data[i]);
-       *(unsigned int *)(((char *)field) + rset_field_offsets[i*2+1])=
-         (uint)(row->data[i+1] - row->data[i] - 1);
-       break;
-      }
+      uint length= (uint)(row->data[i+1] - row->data[i] - 1);
+      if (!row->data[i] && row->data[i][length])
+        goto error;
+
+      *(char **)(((char *)field) + rset_field_offsets[i*2])=
+        ma_strdup_root(alloc, (char *)row->data[i]);
+      *(unsigned int *)(((char *)field) + rset_field_offsets[i*2+1])= length;
     }
 
     field->extension= NULL;
