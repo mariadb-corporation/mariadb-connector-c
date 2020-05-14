@@ -1,5 +1,5 @@
 /****************************************************************************
-   Copyright (C) 2012 Monty Program AB
+   Copyright (C) 2012, 2020, MariaDB Corporation.
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -1403,7 +1403,8 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
   else
   {
     /* Not our client - copy as is*/
-    strncpy(buffer, cs_name, buff_len);
+    strncpy(buffer, cs_name, buff_len - 1);
+    buffer[buff_len - 1]= '\0';
   }
 
   if (target_cs)
