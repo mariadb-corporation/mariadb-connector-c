@@ -32,6 +32,50 @@ char tls_library_version[] = "Schannel";
 #define PROT_TLS1_2 4
 #define PROT_TLS1_3 8
 
+/* These may not be defined e.g. on MINGW. */
+/* Values from https://docs.microsoft.com/en-us/windows/win32/api/schannel/ns-schannel-secpkgcontext_connectioninfo */
+#ifndef SP_PROT_TLS1_CLIENT
+#define SP_PROT_TLS1_CLIENT 0x00000080
+#endif
+#ifndef SP_PROT_TLS1_0_CLIENT
+#define SP_PROT_TLS1_0_CLIENT SP_PROT_TLS1_CLIENT
+#endif
+#ifndef SP_PROT_TLS1_1_CLIENT
+#define SP_PROT_TLS1_1_CLIENT 0x00000200
+#endif
+#ifndef SP_PROT_TLS1_2_CLIENT
+#define SP_PROT_TLS1_2_CLIENT 0x00000800
+#endif
+#ifndef SECPKG_ATTR_CIPHER_INFO
+/* Value from https://docs.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-querycontextattributesexa */
+#define SECPKG_ATTR_CIPHER_INFO 0x0000005a
+#endif
+
+/* struct _SecPkgContext_CipherInfo may not be defined e.g. on MINGW. */
+#ifndef SECPKGCONTEXT_CIPHERINFO_V1
+#define SECPKGCONTEXT_CIPHERINFO_V1 1
+#define SZ_ALG_MAX_SIZE 64
+/* struct from https://docs.microsoft.com/en-us/windows/win32/api/schannel/ns-schannel-secpkgcontext_cipherinfo */
+typedef struct _SecPkgContext_CipherInfo
+{
+    DWORD dwVersion;
+    DWORD dwProtocol;
+    DWORD dwCipherSuite;
+    DWORD dwBaseCipherSuite;
+    WCHAR szCipherSuite[SZ_ALG_MAX_SIZE];
+    WCHAR szCipher[SZ_ALG_MAX_SIZE];
+    DWORD dwCipherLen;
+    DWORD dwCipherBlockLen;
+    WCHAR szHash[SZ_ALG_MAX_SIZE];
+    DWORD dwHashLen;
+    WCHAR szExchange[SZ_ALG_MAX_SIZE];
+    DWORD dwMinExchangeLen;
+    DWORD dwMaxExchangeLen;
+    WCHAR szCertificate[SZ_ALG_MAX_SIZE];
+    DWORD dwKeyType;
+} SecPkgContext_CipherInfo, *PSecPkgContext_CipherInfo;
+#endif /* SECPKGCONTEXT_CIPHERINFO_V1 */
+
 static struct
 {
   DWORD cipher_id;
