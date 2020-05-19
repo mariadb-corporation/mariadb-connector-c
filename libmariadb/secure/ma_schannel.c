@@ -23,6 +23,15 @@
 #include "schannel_certs.h"
 #include <assert.h>
 
+/* These may not be defined e.g. on MINGW. */
+#ifndef SP_PROT_TLS1_1_CLIENT
+#define SP_PROT_TLS1_1_CLIENT 0x00000200
+#endif
+
+#ifndef SP_PROT_TLS1_2_CLIENT
+#define SP_PROT_TLS1_2_CLIENT 0x00000800
+#endif
+
 #define SC_IO_BUFFER_SIZE 0x4000
 #define MAX_SSL_ERR_LEN 100
 
