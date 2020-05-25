@@ -1730,7 +1730,40 @@ static int test_conc443(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_default_auth(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+
+  if (!is_mariadb)
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_DEFAULT_AUTH, "mysql_clear_password");
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("Connection failed. Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_DEFAULT_AUTH, "caching_sha2_password");
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("Connection failed. Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  
+  }
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_default_auth", test_default_auth, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc443", test_conc443, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc366", test_conc366, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc392", test_conc392, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

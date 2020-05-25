@@ -547,39 +547,37 @@ static void client_mpvio_info(MYSQL_PLUGIN_VIO *vio,
 int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                     const char *data_plugin, const char *db)
 {
-  const char    *auth_plugin_name;
+  const char    *auth_plugin_name= NULL;
   auth_plugin_t *auth_plugin;
   MCPVIO_EXT    mpvio;
   ulong		pkt_length;
   int           res;
 
   /* determine the default/initial plugin to use */
-  if (mysql->options.extension && mysql->options.extension->default_auth &&
-      mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
+  if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
   {
-    auth_plugin_name= mysql->options.extension->default_auth;
-    if (!(auth_plugin= (auth_plugin_t*) mysql_client_find_plugin(mysql,
-                       auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
-      auth_plugin= &dummy_fallback_client_plugin;
+    if (mysql->options.extension && mysql->options.extension->default_auth)
+      auth_plugin_name= mysql->options.extension->default_auth;
+    else if (data_plugin)
+      auth_plugin_name= data_plugin;
   }
-  else
+  if (!auth_plugin_name)
   {
     if (mysql->server_capabilities & CLIENT_PROTOCOL_41)
-      auth_plugin= &mysql_native_password_client_plugin;
+       auth_plugin_name= native_password_plugin_name;
     else
-    {
-      if (!(auth_plugin= (auth_plugin_t*)mysql_client_find_plugin(mysql,
-                         "mysql_old_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
-        auth_plugin= &dummy_fallback_client_plugin;
-    }
-    auth_plugin_name= auth_plugin->name;
+       auth_plugin_name= "mysql_old_password";
   }
+  if (!(auth_plugin= (auth_plugin_t*) mysql_client_find_plugin(mysql,
+                     auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
+    auth_plugin= &dummy_fallback_client_plugin;
 
   mysql->net.last_errno= 0; /* just in case */
 
   if (data_plugin && strcmp(data_plugin, auth_plugin_name))
   {
-    /* data was prepared for a different plugin, don't show it to this one */
+    /* data was prepared for a different plugin, so we don't
+       send any data */
     data= 0;
     data_len= 0;
   }
