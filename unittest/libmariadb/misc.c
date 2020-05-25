@@ -1426,8 +1426,31 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 }
 #endif
 
+static int test_conc457(MYSQL *mysql)
+{
+  MYSQL_RES *result;
+
+  SKIP_MYSQL(mysql);
+
+  result= mysql_list_processes(mysql);
+
+  FAIL_IF(mysql_field_count(mysql) != 9, "expected 9 columns");
+  mysql_free_result(result);
+  return OK;
+}
+
+static int test_conc458(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  FAIL_IF(mysql_get_timeout_value(mysql) != 0, "expected timeout 0");
+  mysql_close(mysql);
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
+  {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_conc457", test_conc457, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef _WIN32
   {"test_mdev12965", test_mdev12965, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

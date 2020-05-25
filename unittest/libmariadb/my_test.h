@@ -66,6 +66,20 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 /* prevent warnings on Win64 by using STMT_LEN instead of strlen */
 #define STMT_LEN(A) (unsigned long)strlen((A))
 
+#define SKIP_TRAVIS()\
+if (getenv("TRAVIS"))\
+{\
+  diag("Skip test on Travis CI");\
+  return SKIP;\
+}
+
+#define SKIP_MYSQL(mysql)\
+if (!mariadb_connection(mysql))\
+{\
+  diag("Skip test for non MariaDB server");\
+  return OK;\
+}
+
 #define check_mysql_rc(rc, mysql) \
 if (rc)\
 {\

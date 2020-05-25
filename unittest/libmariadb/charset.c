@@ -487,7 +487,6 @@ static int bug30472_retrieve_charset_info(MYSQL *con,
   row= mysql_fetch_row(rs);
   FAIL_IF(!row, "Couldn't fetch row");
   strcpy(character_set_client, row[1]);
-  diag("cs: %s", row[1]);
   mysql_free_result(rs);
 
   rc= mysql_query(con, "SHOW VARIABLES LIKE 'character_set_results'");

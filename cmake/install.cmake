@@ -14,7 +14,7 @@
 #
 #
 # The following va+riables are used and can be overwritten
-# 
+#
 # INSTALL_LAYOUT     installation layout (DEFAULT = standard for tar.gz and zip packages
 #                                         RPM packages
 #
@@ -29,7 +29,7 @@ ENDIF()
 SET(INSTALL_LAYOUT ${INSTALL_LAYOUT} CACHE
   STRING "Installation layout. Currently supported options are DEFAULT (tar.gz and zip), RPM and DEB")
 
-# On Windows we only provide zip and .msi. Latter one uses a different packager. 
+# On Windows we only provide zip and .msi. Latter one uses a different packager.
 IF(UNIX)
   IF(INSTALL_LAYOUT MATCHES "RPM")
     SET(libmariadb_prefix "/usr")
@@ -92,15 +92,14 @@ SET(LIBMARIADB_STATIC_RPM "mariadbclient")
 #
 SET(INSTALL_BINDIR_DEB "bin")
 SET(INSTALL_LIBDIR_DEB "lib/${CMAKE_LIBRARY_ARCHITECTURE}")
-SET(INSTALL_PCDIR_DEB "lib/pkgconfig")
-IF(PLUGINDIR_DEB)
-  SET(INSTALL_PLUGINDIR_DEB "${INSTALL_LIBDIR_DEB}/${PLUGINDIR_DEB}/plugin")
-ELSE()
-  SET(INSTALL_PLUGINDIR_DEB "${INSTALL_LIBDIR_DEB}/mariadb/plugin")
-ENDIF()
+SET(INSTALL_PCDIR_DEB "lib/${CMAKE_LIBRARY_ARCHITECTURE}/pkgconfig")
+SET(INSTALL_PLUGINDIR_DEB "${INSTALL_LIBDIR_DEB}/libmariadb${CPACK_PACKAGE_VERSION_MAJOR}/plugin")
 SET(INSTALL_INCLUDEDIR_DEB "include/mariadb")
 SET(LIBMARIADB_STATIC_DEB "mariadb")
 
+IF(INSTALL_LAYOUT MATCHES "DEB")
+  SET(INSTALL_PLUGINDIR_CLIENT ${INSTALL_PLUGINDIR_DEB})
+ENDIF()
 
 
 #
@@ -116,6 +115,11 @@ ENDIF()
 
 IF(INSTALL_PLUGINDIR)
   SET(INSTALL_PLUGINDIR_${INSTALL_LAYOUT} ${INSTALL_PLUGINDIR})
+ENDIF()
+
+# Extra INSTALL_PLUGINDIR_CLIENT that overrides any INSTALL_PLUGINDIR override
+IF(INSTALL_PLUGINDIR_CLIENT)
+  SET(INSTALL_PLUGINDIR_${INSTALL_LAYOUT} ${INSTALL_PLUGINDIR_CLIENT})
 ENDIF()
 
 IF(INSTALL_INCLUDEDIR)
@@ -139,7 +143,10 @@ ENDIF()
 FOREACH(dir "BIN" "LIB" "PC" "INCLUDE" "DOCS"  "PLUGIN")
   SET(INSTALL_${dir}DIR ${INSTALL_${dir}DIR_${INSTALL_LAYOUT}})
   MARK_AS_ADVANCED(INSTALL_${dir}DIR)
+  MESSAGE1(INSTALL_${dir}DIR "MariaDB Connector C: INSTALL_${dir}DIR=${INSTALL_${dir}DIR}")
 ENDFOREACH()
 
 SET(LIBMARIADB_STATIC_NAME ${LIBMARIADB_STATIC_${INSTALL_LAYOUT}})
 MARK_AS_ADVANCED(LIBMARIADB_STATIC_NAME)
+
+MESSAGE1(LIBMARIADB_STATIC_NAME "MariaDB Connector C: LIBMARIADB_STATIC_NAME ${LIBMARIADB_STATIC_NAME}")

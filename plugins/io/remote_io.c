@@ -92,7 +92,7 @@ typedef struct
 CURLM *multi_handle= NULL;
 
 #ifndef PLUGIN_DYNAMIC
-MARIADB_REMOTEIO_PLUGIN remote_io_plugin=
+MARIADB_REMOTEIO_PLUGIN remote_io_client_plugin=
 #else
 MARIADB_REMOTEIO_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
@@ -290,10 +290,15 @@ MA_FILE *ma_rio_open(const char *url,const char *operation)
   }
   rf->curl = curl_easy_init();
 
-  curl_easy_setopt(rf->curl, CURLOPT_URL, url);
-  curl_easy_setopt(rf->curl, CURLOPT_WRITEDATA, file);
-  curl_easy_setopt(rf->curl, CURLOPT_VERBOSE, 0L);
-  curl_easy_setopt(rf->curl, CURLOPT_WRITEFUNCTION, rio_write_callback);
+  if (curl_easy_setopt(rf->curl, CURLOPT_URL, url) ||
+      curl_easy_setopt(rf->curl, CURLOPT_WRITEDATA, file) ||
+      curl_easy_setopt(rf->curl, CURLOPT_VERBOSE, 0L) ||
+      curl_easy_setopt(rf->curl, CURLOPT_WRITEFUNCTION, rio_write_callback))
+  {
+    free(file);
+    free(rf);
+    return NULL;
+  }
 
   curl_multi_add_handle(multi_handle, rf->curl);
 

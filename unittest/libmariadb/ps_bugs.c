@@ -5121,7 +5121,9 @@ static int test_maxparam(MYSQL *mysql)
   int val= 1;
   size_t mem= strlen(query) + 1 + 4 * 65535 + 1;
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
-  MYSQL_BIND bind[65535];
+  MYSQL_BIND* bind;
+
+  bind = calloc(sizeof(MYSQL_BIND), 65535);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -5136,7 +5138,6 @@ static int test_maxparam(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(buffer));
   check_stmt_rc(rc, stmt);
 
-  memset(bind, 0, sizeof(MYSQL_BIND) * 65535);
   for (i=0; i < 65534; i++)
   {
     bind[i].buffer_type= MYSQL_TYPE_LONG;
@@ -5158,10 +5159,46 @@ static int test_maxparam(MYSQL *mysql)
   FAIL_IF(mysql_stmt_errno(stmt) != ER_PS_MANY_PARAM, "Expected ER_PS_MANY_PARAM error");
 
   mysql_stmt_close(stmt);
+  free(bind);
   return OK;
 }
 
+static int test_mdev_21920(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[1];
+  int rc;
+  char buffer[128];
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT ''"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  buffer[0]= 1;
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer= buffer;
+  bind[0].buffer_length= 127;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(buffer[0] != 0, "Expected empty string");
+
+
+  mysql_stmt_close(stmt);
+
+  return OK; 
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev_21920", test_mdev_21920, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_maxparam", test_maxparam, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc424", test_conc424, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc344", test_conc344, TEST_CONNECTION_NEW, 0, NULL, NULL},

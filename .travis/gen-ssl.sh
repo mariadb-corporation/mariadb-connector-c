@@ -35,61 +35,67 @@ main () {
   local clientCertFile="${sslDir}/client-cert.pem"
   local clientKeyFile="${sslDir}/client-key.pem"
   local clientEncryptedKeyFile="${sslDir}/client-key-enc.pem"
+  local clientCombinedFile="${sslDir}/client-certkey.pem"
   local clientKeystoreFile="${sslDir}/client-keystore.jks"
   local fullClientKeystoreFile="${sslDir}/fullclient-keystore.jks"
   local tmpKeystoreFile=$(mktemp)
   local pcks12FullKeystoreFile="${sslDir}/fullclient-keystore.p12"
   local clientReqFile=$(mktemp)
 
-  log "Generating CA key"
+  rm -rf demoCA
+  mkdir demoCA demoCA/newcerts
+  touch demoCA/index.txt
+  echo 01 > demoCA/serial
+  echo 01 > demoCA/crlnumber
+
+  log "# Generating CA key"
   openssl genrsa -out "${caKeyFile}" 2048
 
-  log "Generating CA certificate"
+  log "# Generating CA certificate"
   openssl req \
-    -sha1 \
-    -new \
     -x509 \
+    -newkey rsa:2048 -keyout "${caKeyFile}" \
+    -out "${caCertFile}" \
+    -days 3650 \
     -nodes \
-    -days 3650 \
     -subj "$(gen_cert_subject ca.example.com)" \
-    -key "${caKeyFile}" \
-    -out "${caCertFile}"
+    -text
 
-  log "Generating private key"
-  openssl genrsa -out "${keyFile}" 2048
-
-  log "Generating certificate signing request"
+  log "# Server certificate signing request and private key"
   openssl req \
-    -new \
-    -batch \
-    -sha1 \
-    -subj "$(gen_cert_subject "$fqdn")" \
-    -set_serial 01 \
-    -key "${keyFile}" \
-    -out "${csrFile}" \
-    -nodes
+    -newkey rsa:2048 -keyout "${keyFile}" \
+    -out "./demoCA/server-req.pem" \
+    -nodes \
+    -subj "$(gen_cert_subject "$fqdn")"
 
-  log "Generating X509 certificate"
-  openssl x509 \
-    -req \
-    -sha1 \
-    -set_serial 01 \
-    -CA "${caCertFile}" \
-    -CAkey "${caKeyFile}" \
-    -days 3650 \
-    -in "${csrFile}" \
-    -signkey "${keyFile}" \
-    -out "${certFile}"
+
+  log "# Convert the key to yassl compatible format"
+  openssl rsa -in "${keyFile}" -out "${keyFile}"
+
+  log "# Sign the server certificate with CA certificate"
+  openssl ca -keyfile "${caKeyFile}" -days 3650 -batch \
+    -cert "${caCertFile}" -policy policy_anything -out "${certFile}" -in "./demoCA/server-req.pem"
 
   log "Generating client certificate"
   openssl req \
-    -batch \
     -newkey rsa:2048 \
-    -days 3600 \
-    -subj "$(gen_cert_subject "$fqdn")" \
-    -nodes \
     -keyout "${clientKeyFile}" \
-    -out "${clientReqFile}"
+    -out demoCA/client-req.pem \
+    -days 7300 \
+    -nodes \
+    -subj /CN=client/C=FI/ST=Helsinki/L=Helsinki/O=MariaDB 
+
+  openssl rsa \
+     -in "${clientKeyFile}" \
+     -out "${clientKeyFile}"
+
+  openssl ca -keyfile "${caKeyFile}" \
+      -days 7300 \
+      -batch \
+      -cert "${caCertFile}" \
+      -policy policy_anything \
+      -out "${clientCertFile}" \
+      -in demoCA/client-req.pem
 
   log "Generating password protected client key file"
   openssl rsa \
@@ -97,6 +103,9 @@ main () {
      -in "${clientKeyFile}" \
      -out "${clientEncryptedKeyFile}" \
      -passout pass:qwerty
+
+   log "combined"
+   cat "${clientCertFile}" "${clientKeyFile}" > "${clientCombinedFile}"
 
    log "Generating finger print of server certificate"
    openssl x509 \
@@ -111,41 +120,11 @@ main () {
   log "copy ca file"
     cp "${caCertFile}" "${sslDir}/cacert.pem"
 
-  openssl x509 \
-    -req \
-    -in "${clientReqFile}" \
-    -days 3600 \
-    -CA "${caCertFile}" \
-    -CAkey "${caKeyFile}" \
-    -set_serial 01 \
-    -out "${clientCertFile}"
-
-  # Now generate a keystore with the client cert & key
-  log "Generating client keystore"
-  openssl pkcs12 \
-    -export \
-    -in "${clientCertFile}" \
-    -inkey "${clientKeyFile}" \
-    -out "${tmpKeystoreFile}" \
-    -name "mysqlAlias" \
-    -passout pass:kspass
-
-
-  # Now generate a full keystore with the client cert & key + trust certificates
-  log "Generating full client keystore"
-  openssl pkcs12 \
-    -export \
-    -in "${clientCertFile}" \
-    -inkey "${clientKeyFile}" \
-    -out "${pcks12FullKeystoreFile}" \
-    -name "mysqlAlias" \
-    -passout pass:kspass
-
-
   # Clean up CSR file:
   rm "$csrFile"
   rm "$clientReqFile"
   rm "$tmpKeystoreFile"
+#  rm -rf demoCA 
 
   log "Generated key file and certificate in: ${sslDir}"
   ls -l "${sslDir}"

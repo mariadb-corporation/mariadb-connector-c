@@ -212,13 +212,15 @@ static char *load_pub_key_file(const char *filename, int *pub_key_size)
   if (fseek(fp, 0, SEEK_END))
     goto end;
 
-  *pub_key_size= ftell(fp);
+  if ((*pub_key_size= ftell(fp)) < 0)
+    goto end;
+
   rewind(fp);
 
   if (!(buffer= malloc(*pub_key_size + 1)))
     goto end;
 
-  if (!fread(buffer, *pub_key_size, 1, fp))
+  if (fread(buffer, *pub_key_size, 1, fp) != (size_t)*pub_key_size)
     goto end;
 
   error= 0;
@@ -312,7 +314,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   {
 #if defined(HAVE_GNUTLS)
      mysql->methods->set_error(mysql, CR_AUTH_PLUGIN_ERR, "HY000", 
-                               "RSA Encrytion not supported - caching_sha2_password plugin was built with GnuTLS support");
+                               "RSA Encryption not supported - caching_sha2_password plugin was built with GnuTLS support");
      return CR_ERROR;
 #else
     /* read public key file (if specified) */

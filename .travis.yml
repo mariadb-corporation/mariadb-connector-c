@@ -23,23 +23,26 @@ before_install:
   - export SSLCERT=$PROJ_PATH/tmp
 matrix:
   allow_failures:
-    - env: DB=build
-    - env: SERVER_BRANCH=10.4
-    - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
+#    - env: DB=build
+#    - env: SERVER_BRANCH=10.5
+#    - env: SERVER_BRANCH=10.5 TEST_OPTION=--ps-protocol
   include:
     - env: DB=build
-    - env: DB=mysql:5.7
+# disable for now    - env: DB=mysql:8.0
     - env: DB=mariadb:5.5
     - env: DB=mariadb:10.0
     - env: DB=mariadb:10.1
     - env: DB=mariadb:10.2
     - env: DB=mariadb:10.3
+    - env: DB=mariadb:10.4
     - env: SERVER_BRANCH=10.2
     - env: SERVER_BRANCH=10.2 TEST_OPTION=--ps-protocol
     - env: SERVER_BRANCH=10.3
     - env: SERVER_BRANCH=10.3 TEST_OPTION=--ps-protocol
     - env: SERVER_BRANCH=10.4
     - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
+    - env: SERVER_BRANCH=10.5
+    - env: SERVER_BRANCH=10.5 TEST_OPTION=--ps-protocol
 
 script:
   - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi

@@ -387,12 +387,14 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       }
       break;
     default:
+      free(rpl_event);
       return NULL;
       break;
     }
     return rpl_event;
   }
 mem_error:
+  free(rpl_event);
   SET_CLIENT_ERROR(rpl->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
   return 0;
 }
@@ -407,7 +409,7 @@ void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl)
   return;
 }
 
-int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
+int mariadb_rpl_optionsv(MARIADB_RPL *rpl,
                         enum mariadb_rpl_option option,
                         ...)
 {
@@ -458,10 +460,11 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
     goto end;
   }
 end:
+  va_end(ap);
   return rc;
 }
 
-int STDCALL mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
+int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
                         enum mariadb_rpl_option option,
                         ...)
 {
@@ -501,8 +504,10 @@ int STDCALL mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
     break;
   }
   default:
+    va_end(ap);
     return 1;
     break;
   }
+  va_end(ap);
   return 0;
 }

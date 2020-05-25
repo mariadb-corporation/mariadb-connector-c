@@ -27,7 +27,7 @@ int ZEXPORT uncompress (dest, destLen, source, sourceLen)
     const Bytef *source;
     uLong sourceLen;
 {
-    z_stream stream;
+    z_stream stream= {0};
     int err;
 
     stream.next_in = (Bytef*)source;

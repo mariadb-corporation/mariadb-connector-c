@@ -29,7 +29,9 @@ SET(MARIADB_LIB_SYMBOLS
  mariadb_rpl_fetch
  mariadb_rpl_optionsv
  mariadb_rpl_get_optionsv
- mariadb_free_rpl_event)
+ mariadb_free_rpl_event
+ mariadb_field_attr
+)
 IF(WITH_SSL)
   SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
 ENDIF()
@@ -300,8 +302,11 @@ ${SSL_SOURCES}
 IF(WIN32)
   ADD_DEFINITIONS(-DSIZEOF_CHARP=${CMAKE_SIZEOF_VOID_P})
   INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/win-iconv)
-  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
-                         ${CC_SOURCE_DIR}/win-iconv/win_iconv.c)
+  SET(LIBMARIADB_SOURCES
+    ${LIBMARIADB_SOURCES}
+    ${CC_SOURCE_DIR}/win-iconv/win_iconv.c
+    win32_errmsg.c
+    win32_errmsg.h)
 ELSE()
   IF(ICONV_INCLUDE_DIR)
      INCLUDE_DIRECTORIES(BEFORE ${ICONV_INCLUDE_DIR}) 
@@ -394,11 +399,11 @@ IF(UNIX)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
 ELSE()
   ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} mariadbclient.def)
-  TARGET_LINK_LIBRARIES(libmariadb  mariadbclient)
+  TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE mariadbclient)
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINKER_LANGUAGE C)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(libmariadb ${SYSTEM_LIBS})
+TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${SYSTEM_LIBS})
 
 SIGN_TARGET(libmariadb)
 
@@ -409,7 +414,7 @@ ENDIF()
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux" OR
    CMAKE_SYSTEM_NAME MATCHES "GNU")
   IF (NOT WITH_ASAN AND NOT WITH_TSAN AND NOT WITH_UBSAN AND NOT WITH_MSAN)
-    TARGET_LINK_LIBRARIES (libmariadb "-Wl,--no-undefined")
+    TARGET_LINK_LIBRARIES (libmariadb LINK_PRIVATE "-Wl,--no-undefined")
   ENDIF()
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINK_FLAGS "${CC_BINARY_DIR}/libmariadb/mariadbclient.def")
 ENDIF()
@@ -452,7 +457,7 @@ INSTALL(TARGETS libmariadb
         DESTINATION ${INSTALL_LIBDIR})
 
 
-IF(WIN32)
+IF(MSVC)
    # On Windows, install PDB
    INSTALL(FILES $<TARGET_PDB_FILE:libmariadb> DESTINATION "${INSTALL_LIBDIR}"
            CONFIGURATIONS Debug RelWithDebInfo

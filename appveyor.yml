@@ -4,28 +4,22 @@ branches:
   - master
 environment:
   matrix:
-    - DB: '10.2.18'
+    - DB: '5.5.67'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '10.2.18'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      CMAKE_PARAM: 'Visual Studio 14 2015 Win64'
-    - DB: '10.2.18'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      CMAKE_PARAM: 'Visual Studio 15 2017'
-    - DB: '10.2.18'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      CMAKE_PARAM: 'Visual Studio 14 2015'
-    - DB: '10.3.11'
+    - DB: '10.1.44'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '10.1.37'
+    - DB: '10.2.31'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '10.0.37'
+    - DB: '10.3.22'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
-    - DB: '5.5.62'
+    - DB: '10.4.12'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+    - DB: '10.5.2'
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
 
@@ -38,8 +32,8 @@ before_build:
   - cmd: set MYSQL_TEST_PASSWD=
   - cmd: set MYSQL_TEST_PORT=3306
   - cmd: set MYSQL_TEST_DB=testc
-  -  cmd: set FILE=http://mariadb.mirrors.ovh.net/MariaDB/mariadb-%DB%/winx64-packages/mariadb-%DB%-winx64.msi
-  - ps: Start-FileDownload $Env:FILE -FileName server.msi
+  - cmd: set archive=http://mariadb.mirrors.ovh.net/MariaDB/mariadb-%DB%/winx64-packages/mariadb-%DB%-winx64.msi
+  - cmd: curl -fsS -o server.msi %archive%
   - cmd: msiexec /i server.msi INSTALLDIR=c:\projects\server SERVICENAME=mariadb ALLOWREMOTEROOTACCESS=true /qn
   - cmd: "\"c:\\projects\\server\\bin\\mysql.exe\" -e \"create database testc\" --user=root"
   - cmd: cmake -G "%CMAKE_PARAM%" -DCMAKE_BUILD_TYPE=RelWithDebInfo

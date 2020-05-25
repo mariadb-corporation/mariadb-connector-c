@@ -128,6 +128,10 @@ char **get_default_configuration_dirs()
   if ((env= getenv("MYSQL_HOME")) &&
       add_cfg_dir(configuration_dirs, env))
     goto error;
+  /* CONC-449: Check $MARIADB_HOME/my.cnf in addition to $MYSQL_HOME/my.cnf */
+  if ((env= getenv("MARIADB_HOME")) &&
+      add_cfg_dir(configuration_dirs, env))
+    goto error;
 end:
   return configuration_dirs;
 error:

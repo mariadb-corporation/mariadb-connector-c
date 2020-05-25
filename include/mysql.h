@@ -61,6 +61,14 @@ typedef int my_socket;
 #include "ma_list.h"
 #include "mariadb_ctype.h"
 
+
+typedef struct st_ma_const_string
+{
+  const char *str;
+  size_t length;
+} MARIADB_CONST_STRING;
+
+
 #ifndef ST_MA_USED_MEM_DEFINED
 #define ST_MA_USED_MEM_DEFINED
   typedef struct st_ma_used_mem {   /* struct for once_alloc */
@@ -382,6 +390,20 @@ typedef struct
   unsigned long *p_net_buffer_length;
   void *extension;
 } MYSQL_PARAMETERS;
+
+
+enum mariadb_field_attr_t
+{
+  MARIADB_FIELD_ATTR_DATA_TYPE_NAME= 0,
+  MARIADB_FIELD_ATTR_FORMAT_NAME= 1
+};
+
+#define MARIADB_FIELD_ATTR_LAST MARIADB_FIELD_ATTR_FORMAT_NAME
+
+
+int STDCALL mariadb_field_attr(MARIADB_CONST_STRING *attr,
+                               const MYSQL_FIELD *field,
+                               enum mariadb_field_attr_t type);
 
 #ifndef _mysql_time_h_
 enum enum_mysql_timestamp_type

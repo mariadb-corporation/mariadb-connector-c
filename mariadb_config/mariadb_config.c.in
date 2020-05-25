@@ -5,8 +5,8 @@
 
 static char *mariadb_progname;
 
-#define INCLUDE "-I@CMAKE_INSTALL_PREFIX@/@INSTALL_INCLUDEDIR@ -I@CMAKE_INSTALL_PREFIX@/@INSTALL_INCLUDEDIR@/mysql"
-#define LIBS    "-L@CMAKE_INSTALL_PREFIX@/@INSTALL_LIBDIR@/ -lmariadb"
+#define INCLUDE "-I@CMAKE_SYSROOT@@CMAKE_INSTALL_PREFIX@/@INSTALL_INCLUDEDIR@ -I@CMAKE_SYSROOT@@CMAKE_INSTALL_PREFIX@/@INSTALL_INCLUDEDIR@/mysql"
+#define LIBS    "-L@CMAKE_SYSROOT@@CMAKE_INSTALL_PREFIX@/@INSTALL_LIBDIR@/ -lmariadb"
 #define LIBS_SYS "@extra_dynamic_LDFLAGS@"
 #define CFLAGS  INCLUDE
 #define VERSION "@MARIADB_CLIENT_VERSION@"
@@ -16,20 +16,25 @@ static char *mariadb_progname;
 #define PORT "@MARIADB_PORT@"
 #define TLS_LIBRARY_VERSION "@TLS_LIBRARY_VERSION@"
 
+#if defined(SOLARIS) || defined(__sun)
+#define OPT_STRING_TYPE (char *)
+#else
+#define OPT_STRING_TYPE
+#endif
 static struct option long_options[]=
 {
-  {"cflags", no_argument, 0, 'a'},
-  {"help", no_argument, 0, 'b'},
-  {"include", no_argument, 0, 'c'},
-  {"libs", no_argument, 0, 'd'},
-  {"libs_r", no_argument, 0, 'e'},
-  {"libs_sys", no_argument, 0, 'l'},
-  {"version", no_argument, 0, 'f'},
-  {"cc_version", no_argument, 0, 'g'},
-  {"socket", no_argument, 0, 'h'},
-  {"port", no_argument, 0, 'i'},
-  {"plugindir", no_argument, 0, 'j'},
-  {"tlsinfo", no_argument, 0, 'k'},
+  {OPT_STRING_TYPE "cflags", no_argument, 0, 'a'},
+  {OPT_STRING_TYPE "help", no_argument, 0, 'b'},
+  {OPT_STRING_TYPE "include", no_argument, 0, 'c'},
+  {OPT_STRING_TYPE "libs", no_argument, 0, 'd'},
+  {OPT_STRING_TYPE "libs_r", no_argument, 0, 'e'},
+  {OPT_STRING_TYPE "libs_sys", no_argument, 0, 'l'},
+  {OPT_STRING_TYPE "version", no_argument, 0, 'f'},
+  {OPT_STRING_TYPE "cc_version", no_argument, 0, 'g'},
+  {OPT_STRING_TYPE "socket", no_argument, 0, 'h'},
+  {OPT_STRING_TYPE "port", no_argument, 0, 'i'},
+  {OPT_STRING_TYPE "plugindir", no_argument, 0, 'j'},
+  {OPT_STRING_TYPE "tlsinfo", no_argument, 0, 'k'},
   {NULL, 0, 0, 0}
 };
 

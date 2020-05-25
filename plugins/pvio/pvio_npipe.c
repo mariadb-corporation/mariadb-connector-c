@@ -102,9 +102,9 @@ my_bool pvio_npipe_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, 
   else if (timeout <=0)
     timeout_ms= -1;
   else
-    timeout_ms = timeout*100;
+    timeout_ms = timeout*1000;
 
-  pvio->timeout[type]= (timeout > 0) ? timeout * 1000 : -1;
+  pvio->timeout[type]= timeout_ms;
   return 0;
 }
 
@@ -217,7 +217,6 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     PVIO_SET_ERROR(cinfo->mysql, CR_OUT_OF_MEMORY, "HY000", 0, "");
     return 1;
   }
-  memset(cpipe, 0, sizeof(struct st_pvio_npipe));
   pvio->data= (void *)cpipe;
   cpipe->pipe= INVALID_HANDLE_VALUE;
   pvio->mysql= cinfo->mysql;
@@ -237,7 +236,11 @@ my_bool pvio_npipe_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     szPipeName[MAX_PATH - 1]= 0;
     snprintf(szPipeName, MAX_PATH - 1, "\\\\%s\\pipe\\%s", cinfo->host, cinfo->unix_socket);
 
-    deadline = GetTickCount64() + pvio->timeout[PVIO_CONNECT_TIMEOUT];
+    if (pvio->timeout[PVIO_CONNECT_TIMEOUT] > 0)
+      deadline = GetTickCount64() + pvio->timeout[PVIO_CONNECT_TIMEOUT];
+    else
+      deadline = INFINITE;
+
     while (1)
     {
       if ((cpipe->pipe = CreateFile(szPipeName,
@@ -346,7 +349,8 @@ my_bool pvio_npipe_is_alive(MARIADB_PVIO *pvio)
   HANDLE handle;
   if (!pvio || !pvio->data)
     return FALSE;
-    handle= ((struct st_pvio_npipe *)pvio->data)->pipe;
+
+  handle= ((struct st_pvio_npipe *)pvio->data)->pipe;
   /* Copy data from named pipe without removing it */
   if (PeekNamedPipe(handle, NULL, 0, NULL, NULL, NULL))
     return TRUE;

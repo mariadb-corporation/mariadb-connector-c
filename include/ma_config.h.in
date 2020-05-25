@@ -45,6 +45,7 @@
 #cmakedefine HAVE_THR_YIELD 1
 #cmakedefine HAVE_VASPRINTF 1
 #cmakedefine HAVE_VSNPRINTF 1
+#cmakedefine HAVE_CUSERID 1
 
 /*
  * types and sizes

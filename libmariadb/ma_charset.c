@@ -1,5 +1,5 @@
 /****************************************************************************
-   Copyright (C) 2012 Monty Program AB
+   Copyright (C) 2012, 2020, MariaDB Corporation.
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -546,7 +546,7 @@ static unsigned int check_mb_gb18030_valid(const char * start, const char * end)
 const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
 {
   {   1, 1, "big5","big5_chinese_ci", "", 950, "BIG5", 1, 2, mysql_mbcharlen_big5, check_mb_big5},
-  {   3, 1, "dec8", "dec8_swedisch_ci", "", 0, "DEC", 1, 1, NULL, NULL},
+  {   3, 1, "dec8", "dec8_swedish_ci", "", 0, "DEC", 1, 1, NULL, NULL},
   {   4, 1, "cp850", "cp850_general_ci", "", 850, "CP850", 1, 1, NULL, NULL},
   {   6, 1, "hp8", "hp8_english_ci", "", 0, "HP-ROMAN8", 1, 1, NULL, NULL},
   {   7, 1, "koi8r", "koi8r_general_ci", "", 20866, "KOI8R", 1, 1, NULL, NULL},
@@ -583,7 +583,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   {  95, 1, "cp932", "cp932_japanese_ci", "", 932, "CP932", 1, 2, mysql_mbcharlen_cp932, check_mb_cp932},
   {  97, 1, "eucjpms", "eucjpms_japanese_ci", "", 932, "EUC-JP-MS", 1, 3, mysql_mbcharlen_eucjpms, check_mb_eucjpms},
   {   2, 1, "latin2", "latin2_czech_cs", "", 852, "LATIN2", 1, 1, NULL, NULL},
-  {   5, 1, "latin1", "latin1_german_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
+  {   5, 1, "latin1", "latin1_german1_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
   {  14, 1, "cp1251", "cp1251_bulgarian_ci", "", 1251, "CP1251", 1, 1, NULL, NULL},
   {  15, 1, "latin1", "latin1_danish_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
   {  17, 1, "filename", "filename", "", 0, "", 1, 5, NULL, NULL},
@@ -591,7 +591,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   {  21, 1, "latin2", "latin2_hungarian_ci", "", 852, "LATIN2", 1, 1, NULL, NULL},
   {  23, 1, "cp1251", "cp1251_ukrainian_ci", "", 1251, "CP1251", 1, 1, NULL, NULL},
   {  27, 1, "latin2", "latin2_croatian_ci", "", 852, "LATIN2", 1, 1, NULL, NULL},
-  {  29, 1, "cp1257", "cp1257_lithunian_ci", "", 1257, "CP1257", 1, 1, NULL, NULL},
+  {  29, 1, "cp1257", "cp1257_lithuanian_ci", "", 1257, "CP1257", 1, 1, NULL, NULL},
   {  31, 1, "latin1", "latin1_german2_ci", "", 1252, "LATIN1", 1, 1, NULL, NULL},
   {  34, 1, "cp1250", "cp1250_czech_cs", "", 1250, "CP1250", 1, 1, NULL, NULL},
   {  42, 1, "latin7", "latin7_general_cs", "", 28603, "LATIN7", 1, 1, NULL, NULL},
@@ -682,7 +682,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   { 137, 1, "ucs2", "ucs2_turkish_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
   { 138, 1, "ucs2", "ucs2_czech_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
   { 139, 1, "ucs2", "ucs2_danish_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
-  { 140, 1, "ucs2", "ucs2_lithunian_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
+  { 140, 1, "ucs2", "ucs2_lithuanian_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
   { 141, 1, "ucs2", "ucs2_slovak_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
   { 142, 1, "ucs2", "ucs2_spanish2_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
   { 143, 1, "ucs2", "ucs2_roman_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
@@ -707,7 +707,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   { 169, 1, "utf32", "utf32_turkish_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
   { 170, 1, "utf32", "utf32_czech_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
   { 171, 1, "utf32", "utf32_danish_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
-  { 172, 1, "utf32", "utf32_lithunian_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
+  { 172, 1, "utf32", "utf32_lithuanian_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
   { 173, 1, "utf32", "utf32_slovak_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
   { 174, 1, "utf32", "utf32_spanish_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
   { 175, 1, "utf32", "utf32_roman_ci", "", 0, "UTF32", 4, 4, mysql_mbcharlen_utf32, check_mb_utf32},
@@ -733,7 +733,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   { 201, 1, UTF8_MB3, UTF8_MB3"_turkish_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 202, 1, UTF8_MB3, UTF8_MB3"_czech_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 203, 1, UTF8_MB3, UTF8_MB3"_danish_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid },
-  { 204, 1, UTF8_MB3, UTF8_MB3"_lithunian_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid },
+  { 204, 1, UTF8_MB3, UTF8_MB3"_lithuanian_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid },
   { 205, 1, UTF8_MB3, UTF8_MB3"_slovak_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 206, 1, UTF8_MB3, UTF8_MB3"_spanish2_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 207, 1, UTF8_MB3, UTF8_MB3"_roman_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
@@ -741,7 +741,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   { 209, 1, UTF8_MB3, UTF8_MB3"_esperanto_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 210, 1, UTF8_MB3, UTF8_MB3"_hungarian_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 211, 1, UTF8_MB3, UTF8_MB3"_sinhala_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
-  { 212, 1, UTF8_MB3, UTF8_MB3"_german_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
+  { 212, 1, UTF8_MB3, UTF8_MB3"_german2_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 214, 1, UTF8_MB3, UTF8_MB3"_unicode_520_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 215, 1, UTF8_MB3, UTF8_MB3"_vietnamese_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid},
   { 213, 1, UTF8_MB3, UTF8_MB3"_croatian_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
@@ -1403,7 +1403,8 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
   else
   {
     /* Not our client - copy as is*/
-    strncpy(buffer, cs_name, buff_len);
+    strncpy(buffer, cs_name, buff_len - 1);
+    buffer[buff_len - 1]= '\0';
   }
 
   if (target_cs)
@@ -1451,7 +1452,7 @@ size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIAD
     *errorcode= errno;
     goto error;
   }
-  if ((rc= iconv(conv, IF_WIN(,(char **))&from, from_len, &to, to_len)) == (size_t)-1)
+  if ((rc= iconv(conv, IF_WIN(,IF_SOLARIS(,(char **)))&from, from_len, &to, to_len)) == (size_t)-1)
   {
     *errorcode= errno;
     goto error;

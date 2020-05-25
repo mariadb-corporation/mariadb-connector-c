@@ -44,8 +44,21 @@ char sslkey[FNLEN];
 char sslkey_enc[FNLEN];
 char sslca[FNLEN];
 char sslcrl[FNLEN];
+char ssl_cert_finger_print[129]= {0};
+char bad_cert_finger_print[]= "00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:01:23:45:67";
 
 pthread_mutex_t LOCK_test;
+
+void read_fingerprint()
+{
+  FILE *f= fopen(CERT_PATH "/server-cert.sha1", "r");
+  if (f)
+  {
+    if (!fscanf(f, "%128s", ssl_cert_finger_print))
+      ssl_cert_finger_print[0]= 0;
+    fclose(f);
+  }
+}
 
 int check_skip_ssl()
 {
@@ -61,7 +74,7 @@ int check_skip_ssl()
   }
   if (!(ssldir= getenv("SECURE_LOAD_PATH")))
   {
-    ssldir= "@CERT_PATH@";
+    ssldir= CERT_PATH;
     if (!strlen(ssldir))
     {
       diag("certificate directory not found");
@@ -436,10 +449,6 @@ static int test_password_protected(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
-#ifndef TEST_SSL_PASSPHRASE
-  return SKIP;
-#endif
-
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
@@ -616,6 +625,8 @@ static int verify_ssl_server_cert(MYSQL *unused __attribute__((unused)))
   if (!hostname || !strcmp(hostname, "localhost"))
     return SKIP;
 
+  SKIP_TRAVIS();
+
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "Can't allocate memory");
 
@@ -784,8 +795,6 @@ static int test_conc_102(MYSQL *mysql)
   return OK;
 }
 
-const char *ssl_cert_finger_print= "@CERT_FINGER_PRINT@";
-
 static int test_ssl_fp(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *my;
@@ -796,21 +805,15 @@ static int test_ssl_fp(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
-#ifndef TEST_SSL_SHA1
-  diag("Fingerprint of server certificate not found");
-  return SKIP;
-#endif
-
-  if (!ssl_cert_finger_print[0])
-  {
-    diag("No fingerprint available");
-    return SKIP;
-  }
-
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
   mysql_ssl_set(my,0, 0, sslca, 0, 0);
+
+  mysql_options(my, MARIADB_OPT_SSL_FP, bad_cert_finger_print);
+
+  FAIL_IF(mysql_real_connect(my, hostname, username, password, schema,
+                             port, socketname, 0), mysql_error(my));
 
   mysql_options(my, MARIADB_OPT_SSL_FP, ssl_cert_finger_print);
 
@@ -843,21 +846,12 @@ static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
-#ifndef TEST_SSL_SHA1
-  diag("Fingerprint of server certificate not found");
-  return SKIP;
-#endif
-  if (!ssl_cert_finger_print[0])
-  {
-    diag("No fingerprint available");
-    return SKIP;
-  }
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
   mysql_ssl_set(my,0, 0, sslca, 0, 0);
 
-  mysql_options(my, MARIADB_OPT_SSL_FP_LIST, "@CERT_PATH@/server-cert.sha1");
+  mysql_options(my, MARIADB_OPT_SSL_FP_LIST, CERT_PATH "/server-cert.sha1");
 
   if(!mysql_real_connect(my, hostname, username, password, schema,
                          port, socketname, 0))
@@ -1200,16 +1194,6 @@ static int test_conc286(MYSQL *unused __attribute__((unused)))
   if (check_skip_ssl())
     return SKIP;
 
-#ifndef TEST_SSL_SHA1
-  diag("Fingerprint of server certificate not found");
-  return SKIP;
-#endif
-
-  if (!ssl_cert_finger_print[0])
-  {
-    diag("No fingerprint available");
-    return SKIP;
-  }
   my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
@@ -1304,16 +1288,6 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
 
 static int test_conc386(MYSQL *mysql)
 {
-#ifdef WIN32
-  if (_access(sslcombined, 0) == -1)
-#else
-  if (access(sslcombined, R_OK) != 0)
-#endif
-  {
-    diag("combined cert/key file not found");
-    return SKIP;
-  }
-
   mysql= mysql_init(NULL);
   mysql_ssl_set(mysql,
                 sslcombined,
@@ -1325,12 +1299,64 @@ static int test_conc386(MYSQL *mysql)
                          port, socketname, 0), mysql_error(mysql));
   FAIL_IF(check_cipher(mysql) != 0, "Invalid cipher");
   mysql_close(mysql);
-  unlink(sslcombined);
   return OK;
 }
 
+#ifndef HAVE_SCHANNEL
+static int test_ssl_verify(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  my_bool verify= 1, enforce= 1;
+
+  if (check_skip_ssl())
+    return SKIP;
+
+  /* verify, using system ca should fail with self signed certificate */
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  FAIL_IF(mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), "Error expected");
+  diag("error expected: %s\n", mysql_error(mysql));
+  mysql_close(mysql);
+
+  /* verify, using system ca should pass */
+
+  /* Disable this for now, since for some unknown reason it fails on travis
+  setenv("SSL_CERT_DIR", CERT_PATH, 1);
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+  mysql_close(mysql);
+  unsetenv("SSL_CERT_DIR");
+  */
+
+  /* verify against local ca, this should pass */
+  mysql= mysql_init(NULL);
+  mysql_ssl_set(mysql,0, 0, sslca, 0, 0);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+  mysql_close(mysql);
+
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+
+  diag("cipher: %s", mysql_get_ssl_cipher(mysql));
+  mysql_close(mysql);
+  return OK;
+}
+#endif
+
 struct my_tests_st my_tests[] = {
   {"test_ssl", test_ssl, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#ifndef HAVE_SCHANNEL
+  {"test_ssl_verify", test_ssl_verify, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
+#endif
   {"test_mdev14101", test_mdev14101, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_mdev14027", test_mdev14027, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
   {"test_conc286", test_conc286, TEST_CONNECTION_NEW, 0,  NULL,  NULL},
@@ -1383,6 +1409,7 @@ int main(int argc, char **argv)
 #endif
 
   get_envvars();
+  read_fingerprint();
 
   if (argc > 1)
     get_options(argc, argv);

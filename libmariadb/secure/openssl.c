@@ -530,8 +530,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
       X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
     }
   }
-  SSL_CTX_set_verify(ctx, (mysql->options.ssl_ca || mysql->options.ssl_capath)?
-                     SSL_VERIFY_PEER : SSL_VERIFY_NONE, NULL);
+  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
   return 0;
 
 error:
@@ -647,7 +646,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
   }
-  if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
+  if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) ||
+     (mysql->options.ssl_ca || mysql->options.ssl_capath))
   {
     rc= SSL_get_verify_result(ssl);
     if (rc != X509_V_OK)
