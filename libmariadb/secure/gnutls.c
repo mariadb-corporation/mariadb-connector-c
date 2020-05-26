@@ -1233,10 +1233,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     if (!mysql_errno(mysql))
       ma_tls_set_error(mysql, ssl, ret);
 
+    ma_tls_close(ctls);
+
     /* restore blocking mode */
-    gnutls_deinit((gnutls_session_t )ctls->ssl);
-    free_gnutls_data(data);
-    ctls->ssl= NULL;
     if (!blocking)
       pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
