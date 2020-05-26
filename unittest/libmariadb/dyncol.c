@@ -295,6 +295,7 @@ static int dyncol_nested(MYSQL *mysql __attribute__((unused)))
   }
   ma_dynstr_free(&s);
   mariadb_dyncol_free(&col1);
+  mariadb_dyncol_free(&col2);
   return OK;
 }
 
