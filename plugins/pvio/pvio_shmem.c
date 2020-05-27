@@ -101,7 +101,7 @@ typedef struct {
   size_t buffer_size;
 } PVIO_SHM;
 
-char *StrEvent[]= {"SERVER_WROTE", "SERVER_READ", "CLIENT_WROTE", "CLIENT_READ", "CONNECTION_CLOSED"};
+const char *StrEvent[]= {"SERVER_WROTE", "SERVER_READ", "CLIENT_WROTE", "CLIENT_READ", "CONNECTION_CLOSED"};
 
 struct st_pvio_shm {
   char *shm_name;

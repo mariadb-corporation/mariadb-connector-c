@@ -21,9 +21,6 @@
 #include "schannel_certs.h"
 #include <string.h>
 
-#pragma comment (lib, "crypt32.lib")
-#pragma comment (lib, "secur32.lib")
-
 extern my_bool ma_tls_initialized;
 char tls_library_version[] = "Schannel";
 

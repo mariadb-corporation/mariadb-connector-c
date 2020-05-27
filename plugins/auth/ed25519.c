@@ -46,8 +46,6 @@
 #include <windows.h>
 #include <wincrypt.h>
 #include <bcrypt.h>
-#pragma comment(lib, "bcrypt.lib")
-#pragma comment(lib, "crypt32.lib")
 extern BCRYPT_ALG_HANDLE Sha512Prov;
 #elif defined(HAVE_OPENSSL)
 #include <openssl/rsa.h>

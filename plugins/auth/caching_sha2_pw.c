@@ -24,8 +24,6 @@
 #define HAVE_WINCRYPT
 #undef HAVE_OPENSSL
 #undef HAVE_GNUTLS
-#pragma comment(lib, "crypt32.lib")
-#pragma comment(lib, "ws2_32.lib")
 #endif
 
 #if defined(HAVE_OPENSSL) || defined(HAVE_WINCRYPT) || defined(HAVE_GNUTLS)
@@ -54,8 +52,7 @@
 #include <windows.h>
 #include <wincrypt.h>
 #include <bcrypt.h>
-#pragma comment(lib, "bcrypt.lib")
-#pragma comment(lib, "crypt32.lib")
+
 extern BCRYPT_ALG_HANDLE RsaProv;
 extern BCRYPT_ALG_HANDLE Sha256Prov;
 #endif

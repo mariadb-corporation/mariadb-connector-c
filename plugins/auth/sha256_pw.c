@@ -24,8 +24,6 @@
 #undef HAVE_GNUTLS
 #undef HAVE_OPENSSL
 #define HAVE_WINCRYPT
-#pragma comment(lib, "crypt32.lib")
-#pragma comment(lib, "ws2_32.lib")
 #endif
 
 #if defined(HAVE_OPENSSL) || defined(HAVE_WINCRYPT)
