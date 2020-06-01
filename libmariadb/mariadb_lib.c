@@ -3053,6 +3053,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.extension->connect_attrs_len= 0;
     }
     break;
+  case MYSQL_OPT_USE_REDIRECTION:
+    mysql->options.redirection_mode = *(enable_redirect*)arg1;
+    break;
   case MARIADB_OPT_CONNECTION_HANDLER:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, connection_handler, (char *)arg1);
     break;
