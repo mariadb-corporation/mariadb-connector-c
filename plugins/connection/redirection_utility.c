@@ -241,7 +241,7 @@ struct Redirection_Info* parse_redirection_info(MYSQL* mysql)
 		* ttl_begin = NULL, * ttl_end = NULL;
 
 	host_end = strchr(cur_pos, ']');
-	if (host_end == NULL) return FALSE;
+	if (host_end == NULL) return NULL;
 
 	cur_pos = host_end + 1;
 	if (cur_pos == end || *cur_pos != ':' || ++cur_pos == end) return NULL;
