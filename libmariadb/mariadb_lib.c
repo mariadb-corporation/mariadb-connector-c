@@ -3053,8 +3053,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       mysql->options.extension->connect_attrs_len= 0;
     }
     break;
-  case MYSQL_OPT_USE_REDIRECTION:
-    mysql->options.redirection_mode = *(enable_redirect*)arg1;
+  case MARIADB_OPT_USE_REDIRECTION:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, redirection_mode, *(enable_redirect*)arg1);
     break;
   case MARIADB_OPT_CONNECTION_HANDLER:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, connection_handler, (char *)arg1);
@@ -3418,6 +3418,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MYSQL_OPT_BIND:
     *((char **)arg)= mysql->options.bind_address;
+    break;
+  case MARIADB_OPT_USE_REDIRECTION:
+    *((enable_redirect *)arg) = mysql->options.extension ? mysql->options.extension->redirection_mode : REDIRECTION_OFF;
     break;
   case MARIADB_OPT_TLS_CIPHER_STRENGTH:
     *((unsigned int *)arg) = mysql->options.extension ? mysql->options.extension->tls_cipher_strength : 0;

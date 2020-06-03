@@ -216,7 +216,6 @@ extern const char *SQLSTATE_UNKNOWN;
     MYSQL_OPT_MAX_ALLOWED_PACKET,
     MYSQL_OPT_NET_BUFFER_LENGTH,
     MYSQL_OPT_TLS_VERSION,
-    MYSQL_OPT_USE_REDIRECTION,
 
     /* MariaDB specific */
     MYSQL_PROGRESS_CALLBACK=5999,
@@ -246,7 +245,8 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_OPT_MULTI_STATEMENTS,
     MARIADB_OPT_INTERACTIVE,
     MARIADB_OPT_PROXY_HEADER,
-    MARIADB_OPT_IO_WAIT
+    MARIADB_OPT_IO_WAIT,
+    MARIADB_OPT_USE_REDIRECTION
   };
 
   enum mariadb_value {
@@ -303,7 +303,7 @@ extern const char *SQLSTATE_UNKNOWN;
     MYSQL_PROTOCOL_PIPE, MYSQL_PROTOCOL_MEMORY
   };
 
-  typedef enum mysql_redirection_mode
+  typedef enum mariadb_redirection_mode
   {
       REDIRECTION_OFF,
       REDIRECTION_ON,
@@ -331,7 +331,6 @@ struct st_mysql_options {
     char *bind_address;
     my_bool secure_auth;
     my_bool report_data_truncation; 
-    enable_redirect redirection_mode;
     /* function pointers for local infile support */
     int (*local_infile_init)(void **, const char *, void *);
     int (*local_infile_read)(void *, char *, unsigned int);

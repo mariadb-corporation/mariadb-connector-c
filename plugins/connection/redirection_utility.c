@@ -1,5 +1,5 @@
 /************************************************************************************
-	Copyright (C) 2015 MariaDB Corporation AB,
+	Copyright (C) 2020 MariaDB Corporation AB,
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -29,7 +29,7 @@
 #include <ma_pthread.h>
 #include "redirection_utility.h"
 
-// Note that key, host and user and malloced together with Redirection_Entry
+/* Note that key, host and user and malloced together with Redirection_Entry */
 struct Redirection_Entry
 {
 	char* key;
@@ -40,7 +40,7 @@ struct Redirection_Entry
 	struct Redirection_Entry* prev;
 };
 
-// Note that host and user are malloced together with Redirection_info
+/* Note that host and user are malloced together with Redirection_info */
 struct Redirection_Info
 {
 	char* host;
@@ -90,7 +90,10 @@ MYSQL* check_redirect(MYSQL* mysql, const char* host,
 	const char* unix_socket,
 	ulong client_flag)
 {
-	if (mysql->options.redirection_mode != REDIRECTION_OFF)
+	enable_redirect redirection_mode;
+	mysql->methods->api->mysql_get_option(mysql, MARIADB_OPT_USE_REDIRECTION, &redirection_mode);
+
+	if (redirection_mode != REDIRECTION_OFF)
 	{
 		const char redirect_key[MAX_REDIRECTION_KEY_LENGTH] = { 0 };
 		struct Redirection_Info* info = NULL;
@@ -98,7 +101,7 @@ MYSQL* check_redirect(MYSQL* mysql, const char* host,
 		if (!port)
 			port = MARIADB_PORT;
 
-		sprintf(redirect_key, "%s_%s_%u", host, user, port);
+		snprintf(redirect_key, MAX_REDIRECTION_KEY_LENGTH, "%s_%s_%u", host, user, port);
 
 		my_bool copy_on_found = 1;
 		if (get_redirection_info(redirect_key, &info, copy_on_found))
@@ -120,7 +123,7 @@ MYSQL* check_redirect(MYSQL* mysql, const char* host,
 			}
 			else
 			{
-				// redirection_entry is incorrect or has expired, delete entry before going back to normal workflow
+				/* redirection_entry is incorrect or has expired, delete entry before going back to normal workflow */
 				delete_redirection_entry(redirect_key);
 			}
 		}
@@ -135,10 +138,13 @@ MYSQL* redirect(MYSQL* mysql, const char* host,
 	const char* unix_socket,
 	ulong client_flag)
 {
-	if (mysql->options.redirection_mode == REDIRECTION_OFF)
+	enable_redirect redirection_mode;
+	mysql->methods->api->mysql_get_option(mysql, MARIADB_OPT_USE_REDIRECTION, &redirection_mode);
+	
+	if (redirection_mode == REDIRECTION_OFF)
 		return mysql->methods->db_connect(mysql, host, user, passwd, db, port, unix_socket, client_flag);
 
-	// create a temp connection to gateway to retrieve redirection info
+	/* create a temp connection to gateway to retrieve redirection info */
 	MYSQL tmp_mysql;
 	my_bool use_ssl = 1;
 	if (mysql->options.use_ssl == 0)
@@ -156,14 +162,14 @@ MYSQL* redirect(MYSQL* mysql, const char* host,
 		return NULL;
 	}
 
-	// redirection info is present in tmp_mysql.info if redirection enabled on both ends
+	/* redirection info is present in tmp_mysql.info if redirection enabled on both ends */
 	struct Redirection_Info* info = NULL;
 	info = parse_redirection_info(&tmp_mysql);
 	mysql->methods->api->mysql_close(&tmp_mysql);
 
 	if (!info)
 	{
-		if (mysql->options.redirection_mode == REDIRECTION_ON)
+		if (redirection_mode == REDIRECTION_ON)
 		{
 			mysql->methods->set_error(mysql, ER_PARSE_ERROR, "HY000",
 				"redirection set to ON on client side but parse_redirection_info failed. Redirection info: %s",
@@ -172,12 +178,12 @@ MYSQL* redirect(MYSQL* mysql, const char* host,
 		}
 		else
 		{
-			// enable_redirect = PREFERRED, fallback to normal connection workflow
+			/* enable_redirect = PREFERRED, fallback to normal connection workflow */
 			return mysql->methods->db_connect(mysql, host, user, passwd, db, port, unix_socket, client_flag);
 		}
 	}
 
-	// No need to redirect if we are talking directly to the server
+	/* No need to redirect if we are talking directly to the server */
 	if (!strcmp(info->host, host) &&
 		!strcmp(info->user, user) &&
 		info->port == port)
@@ -186,12 +192,12 @@ MYSQL* redirect(MYSQL* mysql, const char* host,
 		return mysql->methods->db_connect(mysql, host, user, passwd, db, port, unix_socket, client_flag);
 	}
 
-	// the "real" connection
+	/* the "real" connection */
 	if (!mysql->methods->db_connect(mysql, info->host, info->user, passwd,
 		db, info->port, unix_socket, client_flag))
 	{
 		free(info);
-		if (mysql->options.redirection_mode == REDIRECTION_ON)
+		if (redirection_mode == REDIRECTION_ON)
 		{
 			mysql->methods->set_error(mysql, ER_BAD_HOST_ERROR, "HY000",
 				"redirection set to ON on client side but parse_redirection_info failed. Redirection info: %s",
@@ -200,17 +206,17 @@ MYSQL* redirect(MYSQL* mysql, const char* host,
 		}
 		else
 		{
-			// enable_redirect = PREFERRED, fallback to normal connection workflow
+			/* enable_redirect = PREFERRED, fallback to normal connection workflow */
 			return mysql->methods->db_connect(mysql, host, user, passwd, db, port, unix_socket, client_flag);
 		}
 		return NULL;
 	}
 
-	// real_connect succeeded
+	/* real_connect succeeded */
 	free(info);
 
 	const char redirect_key[MAX_REDIRECTION_KEY_LENGTH] = { 0 };
-	sprintf(redirect_key, "%s_%s_%u", host, user, port);
+	snprintf(redirect_key, MAX_REDIRECTION_KEY_LENGTH, "%s_%s_%u", host, user, port);
 	add_redirection_entry(redirect_key, mysql->host, mysql->user, mysql->port);
 
 	return mysql;
@@ -276,7 +282,7 @@ struct Redirection_Info* parse_redirection_info(MYSQL* mysql)
 	int ttl_len = ttl_end - ttl_begin;
 	int redirection_info_length = ttl_end - info_str;
 
-	// server side protocol rules that redirection_info_length should not exceed 512 bytes
+	/* server side protocol rules that redirection_info_length should not exceed 512 bytes */
 	if (host_len <= 0 || port_len <= 0 || user_len <= 0 || ttl_len <= 0 || redirection_info_length > MAX_REDIRECTION_INFO_LENGTH) {
 		return NULL;
 	}
@@ -284,9 +290,11 @@ struct Redirection_Info* parse_redirection_info(MYSQL* mysql)
 	char* host_str = NULL;
 	char* user_str = NULL;
 
-	// free(info) will free all pointers alloced by this ma_multi_malloc
-	// do not include port_str here because port_str is a temp var, whereas port is the real member
-	// of redirection info, so port_str should not get out of this function's scope
+	/* 
+		free(info) will free all pointers alloced by this ma_multi_malloc
+		do not include port_str here because port_str is a temp var, whereas port is the real member
+		of redirection info, so port_str should not get out of this function's scope
+	*/
 	if (!ma_multi_malloc(0,
 		&info, sizeof(struct Redirection_Info),
 		&host_str, (size_t)host_len + 1,
@@ -336,7 +344,7 @@ my_bool get_redirection_info(char* key, struct Redirection_Info** info, my_bool 
 
 	if (ret_entry)
 	{
-		// after find the cache, move it to list header
+		/* after find the cache, move it to list header */
 		if (redirection_cache_root.next != ret_entry)
 		{
 			if (redirection_cache_rear == ret_entry)
@@ -515,6 +523,7 @@ void delete_redirection_entry(char* key)
 		free(del_entry);
 }
 
+#ifdef PLUGIN_DYNAMIC
 void* ma_multi_malloc(myf myFlags, ...)
 {
 	va_list args;
@@ -553,3 +562,4 @@ char* ma_strmake(register char* dst, register const char* src, size_t length)
 	*dst = 0;
 	return dst;
 }
+#endif
