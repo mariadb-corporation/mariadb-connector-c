@@ -1123,7 +1123,7 @@ static int test_bug11909(MYSQL *mysql)
   check_stmt_rc(rc, stmt2);
 
   rc= mysql_stmt_fetch(stmt2);
-  FAIL_UNLESS(rc == 0, "rc != 0")
+  FAIL_UNLESS(rc == 0, "rc != 0");
 
   FAIL_UNLESS(empno == 10, "empno != 10");
   FAIL_UNLESS(strcmp(firstname, "CHRISTINE""") == 0, "firstname != 'Christine'");

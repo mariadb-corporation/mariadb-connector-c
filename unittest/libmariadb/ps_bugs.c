@@ -1064,10 +1064,10 @@ static int test_bug1946(MYSQL *mysql)
 
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS prepare_command");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE prepare_command(ID INT)");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
@@ -1106,9 +1106,9 @@ static int test_bug20152(MYSQL *mysql)
   tm.second = 42;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE t1 (f1 DATE)");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(query));
@@ -1120,7 +1120,7 @@ static int test_bug20152(MYSQL *mysql)
   rc= mysql_stmt_close(stmt);
   check_stmt_rc(rc, stmt);
   rc= mysql_query(mysql, "DROP TABLE t1");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   FAIL_UNLESS(tm.hour == 14 && tm.minute == 9 && tm.second == 42, "time != 14:09:42");
   return OK;
 }
@@ -1142,10 +1142,10 @@ static int test_bug2247(MYSQL *mysql)
 
   /* create table and insert few rows */
   rc= mysql_query(mysql, drop);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, create);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
@@ -1160,7 +1160,7 @@ static int test_bug2247(MYSQL *mysql)
   FAIL_UNLESS(exp_count == 1, "exp_count != 1");
 
   rc= mysql_query(mysql, SELECT);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   /*
     mysql_store_result overwrites mysql->affected_rows. Check that
     mysql_stmt_affected_rows() returns the same value, whereas
@@ -1173,7 +1173,7 @@ static int test_bug2247(MYSQL *mysql)
   FAIL_UNLESS(exp_count == mysql_stmt_affected_rows(stmt), "affected_rows != exp_count");
 
   rc= mysql_query(mysql, update);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   FAIL_UNLESS(mysql_affected_rows(mysql) == NUM_ROWS, "affected_rows != NUM_ROWS");
   FAIL_UNLESS(exp_count == mysql_stmt_affected_rows(stmt), "affected_rows != exp_count");
 
@@ -1192,13 +1192,13 @@ static int test_bug2247(MYSQL *mysql)
   FAIL_UNLESS(exp_count == NUM_ROWS, "exp_count != NUM_ROWS");
 
   rc= mysql_query(mysql, insert);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   FAIL_UNLESS(mysql_affected_rows(mysql) == 1, "affected_rows != 1");
   FAIL_UNLESS(exp_count == mysql_stmt_affected_rows(stmt), "affected_rows != exp_count");
 
   mysql_stmt_close(stmt);
   rc= mysql_query(mysql, drop);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -1215,10 +1215,10 @@ static int test_bug2248(MYSQL *mysql)
 
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bug2248");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE test_bug2248 (id int)");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
@@ -1256,7 +1256,7 @@ static int test_bug2248(MYSQL *mysql)
   mysql_stmt_close(stmt);
 
   rc= mysql_query(mysql, "DROP TABLE test_bug2248");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
@@ -2658,7 +2658,7 @@ static int test_bug5194(MYSQL *mysql)
                         MAX_PARAM_COUNT * CHARS_PER_PARAM + 1);
   param_str= (char*) malloc(COLUMN_COUNT * CHARS_PER_PARAM);
 
-  FAIL_IF(my_bind == 0 || query == 0 || param_str == 0, "Not enough memory")
+  FAIL_IF(my_bind == 0 || query == 0 || param_str == 0, "Not enough memory");
 
   stmt= mysql_stmt_init(mysql);
 

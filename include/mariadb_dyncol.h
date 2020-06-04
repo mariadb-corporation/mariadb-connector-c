@@ -242,7 +242,10 @@ int mariadb_dyncol_column_cmp_named(const MYSQL_LEX_STRING *s1,
 enum enum_dyncol_func_result
 mariadb_dyncol_column_count(DYNAMIC_COLUMN *str, uint *column_count);
 
-#define mariadb_dyncol_value_init(V) (V)->type= DYN_COL_NULL
+#define mariadb_dyncol_value_init(V) \
+do {\
+  (V)->type= DYN_COL_NULL;\
+} while(0)
 
 /*
   Prepare value for using as decimal

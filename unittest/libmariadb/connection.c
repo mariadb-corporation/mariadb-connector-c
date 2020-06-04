@@ -223,11 +223,11 @@ static int test_change_user(MYSQL *mysql)
   /* Prepare environment */
   sprintf(buff, "drop database if exists %s", db);
   rc= mysql_query(mysql, buff);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   sprintf(buff, "create database %s", db);
   rc= mysql_query(mysql, buff);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   sprintf(buff,
           "grant select on %s.* to %s@'%%' identified by '%s'",
@@ -235,14 +235,14 @@ static int test_change_user(MYSQL *mysql)
           user_pw,
           pw);
   rc= mysql_query(mysql, buff);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   sprintf(buff,
           "grant select on %s.* to %s@'%%'",
           db,
           user_no_pw);
   rc= mysql_query(mysql, buff);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
 
   /* Try some combinations */
@@ -288,13 +288,13 @@ static int test_change_user(MYSQL *mysql)
   FAIL_UNLESS(rc, "Error expected");
 
   rc= mysql_change_user(mysql, user_pw, pw, db);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_change_user(mysql, user_pw, pw, NULL);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_change_user(mysql, user_pw, pw, "");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_change_user(mysql, user_no_pw, pw, db);
   FAIL_UNLESS(rc, "Error expected");
@@ -306,16 +306,16 @@ static int test_change_user(MYSQL *mysql)
   FAIL_UNLESS(rc, "Error expected");
 
   rc= mysql_change_user(mysql, user_no_pw, "", NULL);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_change_user(mysql, user_no_pw, "", "");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_change_user(mysql, user_no_pw, "", db);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_change_user(mysql, user_no_pw, NULL, db);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_change_user(mysql, "", pw, db);
   FAIL_UNLESS(rc, "Error expected");
@@ -345,15 +345,15 @@ static int test_change_user(MYSQL *mysql)
 
   sprintf(buff, "drop database %s", db);
   rc= mysql_query(mysql, buff);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   sprintf(buff, "drop user %s@'%%'", user_pw);
   rc= mysql_query(mysql, buff);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   sprintf(buff, "drop user %s@'%%'", user_no_pw);
   rc= mysql_query(mysql, buff);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -661,7 +661,7 @@ int test_connection_timeout(MYSQL *unused __attribute__((unused)))
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
   mysql_close(mysql);
-  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored");
   return OK;
 }
 
@@ -681,7 +681,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
   mysql_close(mysql);
-  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > 2 * timeout, "timeout ignored");
   return OK;
 }
 
@@ -706,7 +706,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   }
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
-  FAIL_IF((unsigned int)elapsed > timeout + 1, "timeout ignored")
+  FAIL_IF((unsigned int)elapsed > timeout + 1, "timeout ignored");
 
   mysql_close(mysql);
   mysql= mysql_init(NULL);

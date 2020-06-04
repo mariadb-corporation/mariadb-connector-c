@@ -678,7 +678,7 @@ static int test_prepare_ext(MYSQL *mysql)
   char query[MAX_TEST_QUERY_LENGTH];
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_ext");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   sql= (char *)"CREATE TABLE test_prepare_ext"
                "("
@@ -716,7 +716,7 @@ static int test_prepare_ext(MYSQL *mysql)
                " c32 set('monday', 'tuesday', 'wednesday'))";
 
   rc= mysql_query(mysql, sql);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   /* insert by prepare - all integers */
   strcpy(query, "INSERT INTO test_prepare_ext(c1, c2, c3, c4, c5, c6) VALUES(?, ?, ?, ?, ?, ?)");
@@ -785,7 +785,7 @@ static int test_prepare_ext(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_ext");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   return OK;
 }
@@ -1203,7 +1203,7 @@ static int test_long_data(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
-  check_stmt_rc(rc, stmt)
+  check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 3, "Paramcount != 3");
 
@@ -1296,7 +1296,7 @@ static int test_long_data_str(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
-  check_stmt_rc(rc, stmt)
+  check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 2, "Paramcount != 2");
 
@@ -1395,7 +1395,7 @@ static int test_long_data_str1(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
-  check_stmt_rc(rc, stmt)
+  check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 2, "Paramcount != 2");
 
@@ -1465,7 +1465,7 @@ static int test_long_data_str1(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
-  check_stmt_rc(rc, stmt)
+  check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 0, "Paramcount != 0");
 
@@ -1560,7 +1560,7 @@ static int test_long_data_bin(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
-  check_stmt_rc(rc, stmt)
+  check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 2, "Paramcount != 2");
 
@@ -1653,7 +1653,7 @@ static int test_simple_delete(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
-  check_stmt_rc(rc, stmt)
+  check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_param_count(stmt) != 2, "Paramcount != 2");
 

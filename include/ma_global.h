@@ -250,7 +250,7 @@ double my_ulonglong2double(unsigned long long A);
 
 
 #if defined(_lint) || defined(FORCE_INIT_OF_VARS)
-#define LINT_INIT(var)	var=0			/* No uninitialize-warning */
+#define LINT_INIT(var)	do{var=0;}while(0)		   /* No uninitialize-warning */
 #define LINT_INIT_STRUCT(var) memset(&var, 0, sizeof(var)) /* No uninitialize-warning */
 #else
 #define LINT_INIT(var)
@@ -272,10 +272,10 @@ typedef unsigned short ushort;
 #endif
 
 #define sgn(a)		(((a) < 0) ? -1 : ((a) > 0) ? 1 : 0)
-#define swap(t,a,b)	{ register t dummy; dummy = a; a = b; b = dummy; }
+#define swap(t,a,b)	do{register t dummy; dummy = a; a = b; b = dummy;}while(0)
 #define test(a)		((a) ? 1 : 0)
-#define set_if_bigger(a,b)  { if ((a) < (b)) (a)=(b); }
-#define set_if_smaller(a,b) { if ((a) > (b)) (a)=(b); }
+#define set_if_bigger(a,b)  do{ if ((a) < (b)) (a)=(b); }while(0)
+#define set_if_smaller(a,b) do{ if ((a) > (b)) (a)=(b); }while(0)
 #define test_all_bits(a,b) (((a) & (b)) == (b))
 #define set_bits(type, bit_count) (sizeof(type)*8 <= (bit_count) ? ~(type) 0 : ((((type) 1) << (bit_count)) - (type) 1))
 #define array_elements(A) ((uint) (sizeof(A)/sizeof(A[0])))
@@ -440,11 +440,11 @@ typedef SOCKET_SIZE_TYPE size_socket;
 */
 #define MALLOC_OVERHEAD 8
 	/* get memory in huncs */
-#define ONCE_ALLOC_INIT		(uint) (4096-MALLOC_OVERHEAD)
+#define ONCE_ALLOC_INIT		((uint) (4096-MALLOC_OVERHEAD))
 	/* Typical record cash */
-#define RECORD_CACHE_SIZE	(uint) (64*1024-MALLOC_OVERHEAD)
+#define RECORD_CACHE_SIZE	((uint) (64*1024-MALLOC_OVERHEAD))
 	/* Typical key cash */
-#define KEY_CACHE_SIZE		(uint) (8*1024*1024-MALLOC_OVERHEAD)
+#define KEY_CACHE_SIZE		((uint) (8*1024*1024-MALLOC_OVERHEAD))
 
 	/* Some things that this system doesn't have */
 
@@ -815,7 +815,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
                              *((T)+3)=(uchar) (((A) >> 24)); \
                              *((T)+4)=(uchar) (((A) >> 32)); \
                              *((T)+5)=(uchar) (((A) >> 40)); } while(0)
-#define int8store(T,A)	*((ulonglong *) (T))= (ulonglong) (A)
+#define int8store(T,A)	do {*((ulonglong *) (T))= (ulonglong) (A);} while(0)
 
 typedef union {
   double v;
@@ -1046,11 +1046,11 @@ do { doubleget_union _tmp; \
 #endif /* WORDS_BIGENDIAN */
 
 #ifndef THREAD
-#define thread_safe_increment(V,L) (V)++
-#define thread_safe_add(V,C,L)     (V)+=(C)
-#define thread_safe_sub(V,C,L)     (V)-=(C)
-#define statistic_increment(V,L)   (V)++
-#define statistic_add(V,C,L)       (V)+=(C)
+#define thread_safe_increment(V,L) ((V)++)
+#define thread_safe_add(V,C,L)     ((V)+=(C))
+#define thread_safe_sub(V,C,L)     ((V)-=(C))
+#define statistic_increment(V,L)   ((V)++)
+#define statistic_add(V,C,L)       ((V)+=(C))
 #endif
 
 #ifdef _WIN32
@@ -1069,9 +1069,9 @@ do { doubleget_union _tmp; \
 
 #ifdef HAVE_DLOPEN
 #ifdef _WIN32
-#define dlsym(lib, name) GetProcAddress((HMODULE)lib, name)
+#define dlsym(lib, name) GetProcAddress((HMODULE)(lib), name)
 #define dlopen(libname, unused) LoadLibraryEx(libname, NULL, 0)
-#define dlclose(lib) FreeLibrary((HMODULE)lib)
+#define dlclose(lib) FreeLibrary((HMODULE)(lib))
 #elif defined(HAVE_DLFCN_H)
 #include <dlfcn.h>
 #endif

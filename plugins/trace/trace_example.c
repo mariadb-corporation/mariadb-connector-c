@@ -116,7 +116,7 @@ typedef struct {
   unsigned long pkt_length;
 } TRACE_INFO;
 
-#define TRACE_STATUS(a) (!a) ? "ok" : "error"
+#define TRACE_STATUS(a) ((!a) ? "ok" : "error")
 
 TRACE_INFO *trace_info= NULL;
 

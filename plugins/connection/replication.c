@@ -85,16 +85,16 @@ typedef struct st_conn_repl {
 } REPL_DATA;
 
 #define SET_SLAVE(mysql, data)\
-{\
+do {\
   mysql->net.pvio= data->pvio[MARIADB_SLAVE]; \
   data->current_type= MARIADB_SLAVE;\
-}
+} while(0)
 
 #define SET_MASTER(mysql, data)\
-{\
+do {\
   mysql->net.pvio= data->pvio[MARIADB_MASTER];\
   data->current_type= MARIADB_MASTER;\
-}
+} while(0)
 
 
 /* parse url

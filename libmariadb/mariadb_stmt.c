@@ -61,7 +61,7 @@
 #define UPDATE_STMT_ERROR(stmt)\
 SET_CLIENT_STMT_ERROR((stmt), (stmt)->mysql->net.last_errno, (stmt)->mysql->net.sqlstate, (stmt)->mysql->net.last_error)
 
-#define STMT_NUM_OFS(type, a,r) ((type *)(a))[r]
+#define STMT_NUM_OFS(type, a, r) (((type *)(a))[r])
 #define MADB_RESET_ERROR     1
 #define MADB_RESET_LONGDATA  2
 #define MADB_RESET_SERVER    4

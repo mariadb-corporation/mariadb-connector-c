@@ -29,7 +29,7 @@
 #include <string.h>
 #include <ma_string.h>
 
-#define PVIO_SHM_BUFFER_SIZE 16000 + 4
+#define PVIO_SHM_BUFFER_SIZE (16000 + 4)
 
 my_bool pvio_shm_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_shm_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);

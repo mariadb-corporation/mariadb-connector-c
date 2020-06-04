@@ -130,13 +130,13 @@ extern unsigned int mariadb_deinitialize_ssl;
   typedef unsigned int MYSQL_FIELD_OFFSET; /* offset to current field */
 
 #define SET_CLIENT_ERROR(a, b, c, d) \
-  { \
+  do { \
     (a)->net.last_errno= (b);\
     strncpy((a)->net.sqlstate, (c), SQLSTATE_LENGTH);\
     (a)->net.sqlstate[SQLSTATE_LENGTH]= 0;\
     strncpy((a)->net.last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE - 1);\
     (a)->net.last_error[MYSQL_ERRMSG_SIZE - 1]= 0;\
-  }
+  } while(0)
 
 /* For mysql_async.c */
 #define set_mariadb_error(A,B,C) SET_CLIENT_ERROR((A),(B),(C),0)
@@ -144,12 +144,12 @@ extern const char *SQLSTATE_UNKNOWN;
 #define unknown_sqlstate SQLSTATE_UNKNOWN
 
 #define CLEAR_CLIENT_ERROR(a) \
-  { \
+  do { \
     (a)->net.last_errno= 0;\
     strcpy((a)->net.sqlstate, "00000");\
     (a)->net.last_error[0]= '\0';\
     (a)->net.extension->extended_errno= 0;\
-  }
+  } while (0)
 
 #define MYSQL_COUNT_ERROR (~(unsigned long long) 0)
 

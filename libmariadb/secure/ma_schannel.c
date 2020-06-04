@@ -26,7 +26,7 @@
 #define SC_IO_BUFFER_SIZE 0x4000
 #define MAX_SSL_ERR_LEN 100
 
-#define SCHANNEL_PAYLOAD(A) (A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer
+#define SCHANNEL_PAYLOAD(A) ((A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer)
 void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
 
 

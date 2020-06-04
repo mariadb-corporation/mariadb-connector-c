@@ -109,8 +109,8 @@ struct st_mariadb_extension {
 };
 
 #define OPT_EXT_VAL(a,key) \
-  ((a)->options.extension && (a)->options.extension->key) ?\
-    (a)->options.extension->key : 0
+  (((a)->options.extension && (a)->options.extension->key) ?\
+    (a)->options.extension->key : 0)
 
 #endif
 

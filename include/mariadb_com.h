@@ -34,7 +34,7 @@
 #define HOSTNAME_LENGTH 60
 #define SYSTEM_MB_MAX_CHAR_LENGTH 4
 #define USERNAME_CHAR_LENGTH 128
-#define USERNAME_LENGTH USERNAME_CHAR_LENGTH * SYSTEM_MB_MAX_CHAR_LENGTH
+#define USERNAME_LENGTH (USERNAME_CHAR_LENGTH * SYSTEM_MB_MAX_CHAR_LENGTH)
 #define SERVER_VERSION_LENGTH 60
 #define SQLSTATE_LENGTH 5
 #define SCRAMBLE_LENGTH 20
@@ -174,7 +174,7 @@ enum enum_server_command
 #define MARIADB_CLIENT_EXTENDED_METADATA (1ULL << 35)
 
 #define IS_MARIADB_EXTENDED_SERVER(mysql)\
-        !(mysql->server_capabilities & CLIENT_MYSQL)
+        (!(mysql->server_capabilities & CLIENT_MYSQL))
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
                                        MARIADB_CLIENT_COM_MULTI |\
@@ -239,7 +239,7 @@ enum enum_server_command
 #define MYSQL_ERRMSG_SIZE	512
 #define NET_READ_TIMEOUT	30		/* Timeout on read */
 #define NET_WRITE_TIMEOUT	60		/* Timeout on write */
-#define NET_WAIT_TIMEOUT	8*60*60		/* Wait for new query */
+#define NET_WAIT_TIMEOUT	(8*60*60)	/* Wait for new query */
 
 /* for server integration (mysqlbinlog) */
 #define LIST_PROCESS_HOST_LEN 64
@@ -316,7 +316,7 @@ enum enum_session_state_type
 
 #define SESSION_TRACK_BEGIN 0
 #define SESSION_TRACK_END SESSION_TRACK_TRANSACTION_TYPE
-#define SESSION_TRACK_TYPES SESSION_TRACK_END + 1
+#define SESSION_TRACK_TYPES (SESSION_TRACK_END + 1)
 
 enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
                         MYSQL_TYPE_SHORT,  MYSQL_TYPE_LONG,

@@ -34,5 +34,5 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 
 #define SSPI_MAX_TOKEN_SIZE 50000
-#define SEC_ERROR(err) (err < 0)
+#define SEC_ERROR(err) ((err) < 0)
 extern void sspi_errmsg(int err, char *buf, size_t size);

@@ -64,57 +64,71 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define MAX_TEST_QUERY_LENGTH 300 /* MAX QUERY BUFFER LENGTH */
 
 /* prevent warnings on Win64 by using STMT_LEN instead of strlen */
-#define STMT_LEN(A) (unsigned long)strlen((A))
+#define STMT_LEN(A) ((unsigned long)strlen((A)))
 
 #define SKIP_TRAVIS()\
-if (getenv("TRAVIS"))\
-{\
-  diag("Skip test on Travis CI");\
-  return SKIP;\
-}
+do {\
+  if (getenv("TRAVIS"))\
+  {\
+    diag("Skip test on Travis CI");\
+    return SKIP;\
+  }\
+}while(0)
 
 #define SKIP_MYSQL(mysql)\
-if (!mariadb_connection(mysql))\
-{\
-  diag("Skip test for non MariaDB server");\
-  return OK;\
-}
+do {\
+  if (!mariadb_connection(mysql))\
+  {\
+    diag("Skip test for non MariaDB server");\
+    return OK;\
+  }\
+} while(0)
 
 #define check_mysql_rc(rc, mysql) \
-if (rc)\
-{\
-  diag("Error (%d): %s (%d) in %s line %d", rc, mysql_error(mysql), \
-       mysql_errno(mysql), __FILE__, __LINE__);\
-  return(FAIL);\
-}
+do {\
+  if (rc)\
+  {\
+    diag("Error (%d): %s (%d) in %s line %d", rc, mysql_error(mysql), \
+         mysql_errno(mysql), __FILE__, __LINE__);\
+    return(FAIL);\
+  }\
+} while(0)
 
 #define check_stmt_rc(rc, stmt) \
-if (rc)\
-{\
-  diag("Error: %s (%s: %d)", mysql_stmt_error(stmt), __FILE__, __LINE__);\
-  return(FAIL);\
-}
+do {\
+  if (rc)\
+  {\
+    diag("Error: %s (%s: %d)", mysql_stmt_error(stmt), __FILE__, __LINE__);\
+    return(FAIL);\
+  }\
+} while(0)
 
 #define FAIL_IF(expr, reason)\
-if (expr)\
-{\
-  diag("Error: %s (%s: %d)", (reason) ? reason : "", __FILE__, __LINE__);\
-  return FAIL;\
-}
+do {\
+  if (expr)\
+  {\
+    diag("Error: %s (%s: %d)", (reason) ? reason : "", __FILE__, __LINE__);\
+    return FAIL;\
+  }\
+} while(0)
 
 #define FAIL_UNLESS(expr, reason)\
-if (!(expr))\
-{\
-  diag("Error: %s (%s: %d)", reason, __FILE__, __LINE__);\
-  return FAIL;\
-}
+do {\
+  if (!(expr))\
+  {\
+    diag("Error: %s (%s: %d)", reason, __FILE__, __LINE__);\
+    return FAIL;\
+  }\
+} while(0)
 
 #define SKIP_CONNECTION_HANDLER \
- if (hostname && strstr(hostname, "://"))\
+do {\
+  if (hostname && strstr(hostname, "://"))\
   {\
     diag("Test skipped (connection handler)");\
     return SKIP;\
-  } 
+  }\
+} while(0)
 
 /* connection options */
 #define TEST_CONNECTION_DEFAULT    1 /* default connection */

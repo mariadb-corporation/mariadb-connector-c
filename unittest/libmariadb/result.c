@@ -541,16 +541,16 @@ static int test_bug19671(MYSQL *mysql)
 
   mysql_query(mysql, "set sql_mode=''");
   rc= mysql_query(mysql, "drop table if exists t1");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "drop view if exists v1");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "create table t1(f1 int)");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "create view v1 as select va.* from t1 va");
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
 
   result= mysql_list_fields(mysql, "v1", NULL);
   FAIL_IF(!result, "Invalid result set");
@@ -568,8 +568,8 @@ static int test_bug19671(MYSQL *mysql)
   }
 
   mysql_free_result(result);
-  check_mysql_rc(mysql_query(mysql, "drop view v1"), mysql)
-  check_mysql_rc(mysql_query(mysql, "drop table t1"), mysql)
+  check_mysql_rc(mysql_query(mysql, "drop view v1"), mysql);
+  check_mysql_rc(mysql_query(mysql, "drop table t1"), mysql);
   return OK;
 }
 
@@ -604,17 +604,17 @@ static int test_bug21726(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, update_query);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   insert_id= mysql_insert_id(mysql);
   FAIL_UNLESS(insert_id == 2, "insert_id != 2");
 
   rc= mysql_query(mysql, update_query);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   insert_id= mysql_insert_id(mysql);
   FAIL_UNLESS(insert_id == 3, "insert_id != 3");
 
   rc= mysql_query(mysql, select_query);
-  check_mysql_rc(rc, mysql)
+  check_mysql_rc(rc, mysql);
   insert_id= mysql_insert_id(mysql);
   FAIL_UNLESS(insert_id == 3, "insert_id != 3");
   result= mysql_store_result(mysql);

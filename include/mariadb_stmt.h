@@ -35,20 +35,20 @@
     (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))))
 
 #define SET_CLIENT_STMT_ERROR(a, b, c, d) \
-{ \
+do { \
   (a)->last_errno= (b);\
   strncpy((a)->sqlstate, (c), SQLSTATE_LENGTH);\
   (a)->sqlstate[SQLSTATE_LENGTH]= 0;\
   strncpy((a)->last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE);\
   (a)->last_error[MYSQL_ERRMSG_SIZE - 1]= 0;\
-}
+} while (0)
 
 #define CLEAR_CLIENT_STMT_ERROR(a) \
-{ \
+do { \
   (a)->last_errno= 0;\
   strcpy((a)->sqlstate, "00000");\
   (a)->last_error[0]= 0;\
-}
+} while (0)
 
 #define MYSQL_PS_SKIP_RESULT_W_LEN  -1
 #define MYSQL_PS_SKIP_RESULT_STR    -2

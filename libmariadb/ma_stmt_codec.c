@@ -73,7 +73,7 @@
 #define LONGLONG_MAX    ((long long) 0x7FFFFFFFFFFFFFFFLL)
 #endif
 
-#define MAX_DBL_STR 3 + DBL_MANT_DIG - DBL_MIN_EXP
+#define MAX_DBL_STR (3 + DBL_MANT_DIG - DBL_MIN_EXP)
 
 #if defined(HAVE_LONG_LONG) && !defined(ULONGLONG_MAX)
 /* First check for ANSI C99 definition: */

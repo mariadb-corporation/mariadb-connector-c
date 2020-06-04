@@ -514,14 +514,14 @@ typedef union { double d; ULong L[2]; } U;
 
 #if defined(HAVE_BIGENDIAN) || defined(WORDS_BIGENDIAN) || \
    (defined(__FLOAT_WORD_ORDER) && (__FLOAT_WORD_ORDER == __BIG_ENDIAN))
-#define word0(x) (x)->L[0]
-#define word1(x) (x)->L[1]
+#define word0(x) ((x)->L[0])
+#define word1(x) ((x)->L[1])
 #else
-#define word0(x) (x)->L[1]
-#define word1(x) (x)->L[0]
+#define word0(x) ((x)->L[1])
+#define word1(x) ((x)->L[0])
 #endif
 
-#define dval(x) (x)->d
+#define dval(x) ((x)->d)
 
 /* #define P DBL_MANT_DIG */
 /* Ten_pmax= floor(P*log(2)/log(5)) */
@@ -568,8 +568,8 @@ typedef union { double d; ULong L[2]; } U;
 #define Rounding Flt_Rounds
 #endif
 
-#define rounded_product(a,b) a*= b
-#define rounded_quotient(a,b) a/= b
+#define rounded_product(a,b) ((a)*= (b))
+#define rounded_quotient(a,b) ((a)/= (b))
 
 #define Big0 (Frac_mask1 | Exp_msk1*(DBL_MAX_EXP+Bias-1))
 #define Big1 0xffffffff
@@ -579,8 +579,8 @@ typedef union { double d; ULong L[2]; } U;
 
 #define Kmax 15
 
-#define Bcopy(x,y) memcpy((char *)&x->sign, (char *)&y->sign,   \
-                          2*sizeof(int) + y->wds*sizeof(ULong))
+#define Bcopy(x,y) memcpy((char *)&(x)->sign, (char *)&(y)->sign,   \
+                          2*sizeof(int) + (y)->wds*sizeof(ULong))
 
 /* Arbitrary-length integer */
 

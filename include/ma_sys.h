@@ -35,9 +35,21 @@ typedef struct my_aio_result {
 
 #include <stdarg.h>  
 
-#define MYSYS_PROGRAM_USES_CURSES()  { ma_error_handler_hook = ma_message_curses;	mysys_uses_curses=1; }
-#define MYSYS_PROGRAM_DONT_USE_CURSES()  { ma_error_handler_hook = ma_message_no_curses; mysys_uses_curses=0;}
-#define MY_INIT(name);		{ ma_progname= name; ma_init(); }
+#define MYSYS_PROGRAM_USES_CURSES() \
+do {\
+  ma_error_handler_hook = ma_message_curses;\
+  mysys_uses_curses=1;\
+} while(0)
+#define MYSYS_PROGRAM_DONT_USE_CURSES() \
+do {\
+  ma_error_handler_hook = ma_message_no_curses; \
+  mysys_uses_curses=0; \
+} while(0)
+#define MY_INIT(name) \
+do {\
+  ma_progname= name;\
+  ma_init();\
+} while(0)
 
 #define MAXMAPS		(4)	/* Number of error message maps */
 #define ERRMOD		(1000)	/* Max number of errors in a map */
@@ -285,15 +297,15 @@ typedef int (*qsort2_cmp)(const void *, const void *, const void *);
 	/* defines for mf_iocache */
 
 	/* Test if buffer is inited */
-#define my_b_clear(info) (info)->buffer=0
-#define my_b_inited(info) (info)->buffer
+#define my_b_clear(info) do{(info)->buffer= 0;} while (0)
+#define my_b_inited(info) ((info)->buffer)
 #define my_b_EOF INT_MIN
 
 #define my_b_read(info,Buffer,Count) \
   ((info)->rc_pos + (Count) <= (info)->rc_end ?\
-   (memcpy(Buffer,(info)->rc_pos,(size_t) (Count)), \
+   (memcpy((Buffer),(info)->rc_pos,(size_t) (Count)), \
     ((info)->rc_pos+=(Count)),0) :\
-   (*(info)->read_function)((info),Buffer,Count))
+   (*(info)->read_function)((info),(Buffer),(Count)))
 
 #define my_b_get(info) \
   ((info)->rc_pos != (info)->rc_end ?\
@@ -302,18 +314,18 @@ typedef int (*qsort2_cmp)(const void *, const void *, const void *);
 
 #define my_b_write(info,Buffer,Count) \
   ((info)->rc_pos + (Count) <= (info)->rc_end ?\
-   (memcpy((info)->rc_pos,Buffer,(size_t) (Count)), \
+   (memcpy((info)->rc_pos,(Buffer),(size_t) (Count)), \
     ((info)->rc_pos+=(Count)),0) :\
-   _my_b_write(info,Buffer,Count))
+   _my_b_write((info),(Buffer),(Count)))
 
 	/* my_b_write_byte doesn't have any err-check */
 #define my_b_write_byte(info,chr) \
   (((info)->rc_pos < (info)->rc_end) ?\
    ((*(info)->rc_pos++)=(chr)) :\
-   (_my_b_write(info,0,0) , ((*(info)->rc_pos++)=(chr))))
+   (_my_b_write((info),0,0) , ((*(info)->rc_pos++)=(chr))))
 
 #define my_b_fill_cache(info) \
-  (((info)->rc_end=(info)->rc_pos),(*(info)->read_function)(info,0,0))
+  (((info)->rc_end=(info)->rc_pos),(*(info)->read_function)((info),0,0))
 
 #define my_b_tell(info) ((info)->pos_in_file + \
 			 ((info)->rc_pos - (info)->rc_request_pos))
@@ -401,7 +413,7 @@ extern void casedn_str(my_string str);
 extern void case_sort(my_string str,uint length);
 extern uint ma_dirname_part(my_string to,const char *name);
 extern uint ma_dirname_length(const char *name);
-#define base_name(A) (A+dirname_length(A))
+#define base_name(A) ((A)+dirname_length(A))
 extern int test_if_hard_path(const char *dir_name);
 extern char *ma_convert_dirname(my_string name);
 extern void to_unix_path(my_string name);

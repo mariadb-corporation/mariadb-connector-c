@@ -52,7 +52,7 @@
 #include <netinet/ip.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
-#define IS_SOCKET_EINTR(err) (err == SOCKET_EINTR)
+#define IS_SOCKET_EINTR(err) ((err) == SOCKET_EINTR)
 #else
 #include <ws2tcpip.h>
 #define O_NONBLOCK 1
