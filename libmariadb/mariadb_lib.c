@@ -1013,6 +1013,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
   }
   *prev_ptr=0;					/* last pointer is null */
   /* save status */
+  // TODO: put here strict check according to protocol and error reporting
   if (pkt_len > 1)
   {
     cp++;
@@ -2193,7 +2194,12 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
             case SESSION_TRACK_STATE_CHANGE:
             case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
             case SESSION_TRACK_SYSTEM_VARIABLES:
+#ifdef USER_VAR_TACKING
+            case SESSION_TRACK_USER_VARIABLES:
+#endif // USER_VAR_TACKING
               if (si_type != SESSION_TRACK_STATE_CHANGE)
+                // TODO: check it insead ignoring (for example one can get
+                // rid of folloowing checking types
                 net_field_length(&pos); /* ignore total length, item length will follow next */
               plen= net_field_length(&pos);
               if (pos + plen > end)
@@ -2219,27 +2225,42 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
                 memcpy(mysql->db, str->str, plen);
                 mysql->db[plen]= 0;
               }
-              else if (si_type == SESSION_TRACK_SYSTEM_VARIABLES)
+              else if ((si_type == SESSION_TRACK_SYSTEM_VARIABLES)
+#ifdef USER_VAR_TACKING
+                        || (si_type == SESSION_TRACK_USER_VARIABLES)
+#endif // USER_VAR_TACKING
+                       )
               {
                 my_bool set_charset= 0;
                 /* make sure that we update charset in case it has changed */
-                if (!strncmp(str->str, "character_set_client", str->length))
+                if (si_type == SESSION_TRACK_SYSTEM_VARIABLES &&
+                    !strncmp(str->str, "character_set_client", str->length))
                   set_charset= 1;
-                plen= net_field_length(&pos);
-                if (pos + plen > end)
-                  goto corrupted;
-                if (!(session_item= ma_multi_malloc(0,
-                                    &session_item, sizeof(LIST),
-                                    &str, sizeof(MYSQL_LEX_STRING),
-                                    &data, plen,
-                                    NULL)))
-                  goto oom;
-                str->length= plen;
-                str->str= data;
-                memcpy(str->str, (char *)pos, plen);
-                pos+= plen;
-                session_item->data= str;
-                mysql->extension->session_state[si_type].list= list_add(mysql->extension->session_state[si_type].list, session_item);
+                if ((plen= net_field_length(&pos)) == NULL_LENGTH)
+                {
+                  if(!(session_item= (LIST*)malloc(sizeof(LIST))))
+                    goto oom;
+                  session_item->data= NULL; // NULL
+                }
+                else
+                {
+                  if (pos + plen > end)
+                    goto corrupted;
+                  if (!(session_item= ma_multi_malloc(0,
+                          &session_item, sizeof(LIST),
+                          &str, sizeof(MYSQL_LEX_STRING),
+                          &data, plen,
+                          NULL)))
+                    goto oom;
+                  str->length= plen;
+                  str->str= data;
+                  memcpy(str->str, (char *)pos, plen);
+                  pos+= plen;
+                  session_item->data= str;
+                }
+                mysql->extension->session_state[si_type].list=
+                  list_add(mysql->extension->session_state[si_type].list,
+                      session_item);
                 if (set_charset && str->length < CHARSET_NAME_LEN &&
                     strncmp(mysql->charset->csname, str->str, str->length) != 0)
                 {
@@ -2339,8 +2360,17 @@ int STDCALL mysql_session_track_get_next(MYSQL *mysql, enum enum_session_state_t
   str= (MYSQL_LEX_STRING *)mysql->extension->session_state[type].current->data;
   mysql->extension->session_state[type].current= mysql->extension->session_state[type].current->next;
 
-  *data= str->str ? str->str : NULL;
-  *length= str->str ? str->length : 0;
+  if (str)
+  {
+    *data= str->str ? str->str : "";
+    *length= str->str ? str->length : 0;
+  }
+  else
+  {
+    // NULL
+    *data= 0; *length= 0;
+  }
+
   return 0;
 }
 
