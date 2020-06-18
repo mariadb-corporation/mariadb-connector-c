@@ -453,7 +453,7 @@ int check_variable(MYSQL *mysql, const char *variable, const char *value)
 MYSQL *test_connect(struct my_tests_st *test)
 {
   MYSQL *mysql;
-  int i= 0;
+  int i= 0, rc;
   int timeout= 10;
   my_bool truncation_report= 1;
   if (!(mysql = mysql_init(NULL))) {
@@ -484,6 +484,16 @@ MYSQL *test_connect(struct my_tests_st *test)
     mysql_close(mysql);
     return(NULL);
   }
+
+  /* Clear sql_mode when establishing a new connection. */
+  rc= mysql_query(mysql, "SET sql_mode=''");
+  if (rc)
+  {
+    diag("Error (%d): %s (%d) in %s line %d", rc, mysql_error(mysql),
+         mysql_errno(mysql), __FILE__, __LINE__);
+    return(NULL);
+  }
+
   return(mysql);
 }
 
