@@ -43,7 +43,7 @@
 #define WIN_SET_NONBLOCKING(mysql) do { \
     my_bool old_mode; \
     if ((mysql)->net.pvio) ma_pvio_blocking((mysql)->net.pvio, FALSE, &old_mode); \
-  } while(0)
+  } while(0);
 #else
 #define WIN_SET_NONBLOCKING(mysql)
 #endif
