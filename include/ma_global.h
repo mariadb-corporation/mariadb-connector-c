@@ -89,6 +89,9 @@
 #endif
 #endif /* THREAD */
 
+#ifdef __HAIKU__
+#include <kernel/OS.h>
+#endif
 /* Go around some bugs in different OS and compilers */
 #ifdef _AIX			/* By soren@t.dk */
 #define _H_STRINGS
@@ -614,7 +617,7 @@ typedef void	*gptr;		/* Generic pointer */
 #else
 typedef char	*gptr;		/* Generic pointer */
 #endif
-#ifndef HAVE_INT_8_16_32
+#if !defined(HAVE_INT_8_16_32) && !defined(__HAIKU__)
 typedef char	int8;		/* Signed integer >= 8	bits */
 typedef short	int16;		/* Signed integer >= 16 bits */
 #endif

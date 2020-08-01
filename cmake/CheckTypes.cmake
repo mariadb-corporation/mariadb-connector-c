@@ -97,6 +97,12 @@ IF(WIN32)
 ELSE(WIN32)
   FOREACH(CHECK_TYPE "socklen_t" "size_t" "int")
     IF (NOT SOCKET_SIZE_TYPE)
+      IF (CMAKE_SYSTEM_NAME MATCHES "SunOS")
+        SET(CMAKE_REQUIRED_LINK_OPTIONS "-lsocket;-lnsl")
+      ENDIF()
+      IF (CMAKE_SYSTEM_NAME MATCHES "Haiku")
+        SET(CMAKE_REQUIRED_LINK_OPTIONS "-lnetwork")
+      ENDIF()
       CHECK_C_SOURCE_COMPILES("
         #include <sys/socket.h>
         int main()
