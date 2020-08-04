@@ -3865,13 +3865,19 @@ my_bool STDCALL mariadb_connection(MYSQL *mysql)
           strstr(mysql->server_version, "-maria-"));
 }
 
+static my_bool xpand_connection(MYSQL *mysql)
+{
+  return (strstr(mysql->server_version, "-xpand-") != NULL);
+}
+
 const char * STDCALL
 mysql_get_server_name(MYSQL *mysql)
 {
   if (mysql->options.extension &&
       mysql->options.extension->db_driver != NULL)
     return mysql->options.extension->db_driver->name;
-  return mariadb_connection(mysql) ? "MariaDB" : "MySQL";
+  return mariadb_connection(mysql) ? "MariaDB" :
+         xpand_connection(mysql) ? "Xpand" : "MySQL";
 }
 
 static my_socket mariadb_get_socket(MYSQL *mysql)
