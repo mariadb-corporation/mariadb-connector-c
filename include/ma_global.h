@@ -90,21 +90,6 @@
 #endif /* THREAD */
 
 /* Go around some bugs in different OS and compilers */
-#ifdef _AIX			/* By soren@t.dk */
-#define _H_STRINGS
-#define _SYS_STREAM_H
-#define _AIX32_CURSES
-#define ulonglong2double(A) my_ulonglong2double(A)
-#define my_off_t2double(A)  my_ulonglong2double(A)
-#ifdef	__cplusplus
-extern "C" {
-#endif
-double my_ulonglong2double(unsigned long long A);
-#ifdef	__cplusplus
-}
-#endif
-#endif /* _AIX */
-
 #ifdef HAVE_BROKEN_SNPRINTF	/* HPUX 10.20 don't have this defined */
 #undef HAVE_SNPRINTF
 #endif
@@ -598,8 +583,8 @@ typedef void	*gptr;		/* Generic pointer */
 typedef char	*gptr;		/* Generic pointer */
 #endif
 #ifndef HAVE_INT_8_16_32
-typedef char	int8;		/* Signed integer >= 8	bits */
-typedef short	int16;		/* Signed integer >= 16 bits */
+typedef signed char	int8;	/* Signed integer >= 8	bits */
+typedef signed short	int16;	/* Signed integer >= 16 bits */
 #endif
 #ifndef HAVE_UCHAR
 typedef unsigned char	uchar;	/* Short for unsigned char */

@@ -84,6 +84,12 @@
 #define HAVE_SOCKET_EWOULDBLOCK 1
 #endif
 
+#ifdef _AIX
+#ifndef MSG_DONTWAIT
+#define MSG_DONTWAIT 0
+#endif
+#endif
+
 /* Function prototypes */
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);

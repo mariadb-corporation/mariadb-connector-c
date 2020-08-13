@@ -52,6 +52,10 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libmariadb.pc.in
 
 ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
 
+IF(CMAKE_SYSTEM_NAME MATCHES AIX)
+  TARGET_LINK_LIBRARIES(mariadb_config compat-getopt)
+ENDIF()
+
 # Installation
 #
 INSTALL(TARGETS mariadb_config
