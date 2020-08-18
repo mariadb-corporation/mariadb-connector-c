@@ -3867,7 +3867,7 @@ my_bool STDCALL mariadb_connection(MYSQL *mysql)
 
 static my_bool xpand_connection(MYSQL *mysql)
 {
-  return (strstr(mysql->server_version, "-xpand-") != NULL);
+  return (strstr(mysql->server_version, "-Xpand-") != NULL);
 }
 
 const char * STDCALL
