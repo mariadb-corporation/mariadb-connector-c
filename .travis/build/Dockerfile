@@ -63,9 +63,9 @@ RUN apt-get install -f -y
 
 RUN rm -rf /var/lib/apt/lists/* \
     	&& sed -ri 's/^user\s/#&/' /etc/mysql/my.cnf /etc/mysql/conf.d/* \
-    	&& rm -rf /var/lib/mysql && mkdir -p /var/lib/mysql /var/run/mysqld \
-    	&& chown -R mysql:mysql /var/lib/mysql /var/run/mysqld \
-    	&& chmod 777 /var/run/mysqld \
+    	&& rm -rf /var/lib/mysql && mkdir -p /var/lib/mysql /run/mysqld \
+    	&& chown -R mysql:mysql /var/lib/mysql /run/mysqld \
+    	&& chmod 777 /run/mysqld \
     	&& find /etc/mysql/ -name '*.cnf' -print0 \
     		| xargs -0 grep -lZE '^(bind-address|log)' \
     		| xargs -rt -0 sed -Ei 's/^(bind-address|log)/#&/' \
