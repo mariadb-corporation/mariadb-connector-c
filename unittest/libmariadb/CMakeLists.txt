@@ -37,7 +37,7 @@ SET(API_TESTS ${API_TESTS} "async")
 SET(MANUAL_TESTS "t_aurora" "t_conc173" "rpl_api")
 # Get finger print from server certificate
 IF(WITH_SSL)
-  IF(CERT_PATH)
+  IF(CERT_PATH AND NOT DEFINED ENV{TRAVIS})
     SET(API_TESTS ${API_TESTS} "ssl")
     IF(WIN32)
       STRING(REPLACE "\\" "\\\\" CERT_PATH ${CERT_PATH})
