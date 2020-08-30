@@ -2108,6 +2108,10 @@ mysql_close(MYSQL *mysql)
     if (mysql->extension)
       free(mysql->extension);
 
+    /* Clear pointers for better safety */
+    mysql->net.extension = NULL;
+    mysql->extension = NULL;
+
     mysql->net.pvio= 0;
     if (mysql->free_me)
       free(mysql);
