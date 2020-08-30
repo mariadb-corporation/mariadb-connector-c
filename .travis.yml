@@ -29,8 +29,6 @@ matrix:
   include:
     - env: DB=build
 # disable for now    - env: DB=mysql:8.0
-    - env: DB=mariadb:5.5
-    - env: DB=mariadb:10.0
     - env: DB=mariadb:10.1
     - env: DB=mariadb:10.2
     - env: DB=mariadb:10.3
