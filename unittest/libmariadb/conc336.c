@@ -12,6 +12,11 @@ int main(int argc, char *argv[]) {
 
   get_envvars();
 
+  if (IS_SKYSQL(hostname))
+    return 0;
+
+  diag("hostname: %s", hostname);
+
 	for (i = 0; i < MAX_COUNT; ++i) {
 
 		if (mysql_library_init(-1, NULL, NULL) != 0) {
@@ -24,6 +29,9 @@ int main(int argc, char *argv[]) {
 			diag("mysql_init failed");
 			return 1;
 		}
+
+    if (force_tls)
+      mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
 
 		if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0)) {
 			diag("mysql_real_connect failed: %s", mysql_error(mysql));

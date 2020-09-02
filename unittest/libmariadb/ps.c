@@ -3729,6 +3729,8 @@ static int test_nstmts(MYSQL *mysql)
   static uint i, total_stmts= 2000;
   MYSQL_BIND  my_bind[1];
 
+  SKIP_SKYSQL;
+
   mysql_autocommit(mysql, TRUE);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_nstmts");

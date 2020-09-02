@@ -38,6 +38,8 @@ static int test_bug28075(MYSQL *mysql)
 {
   int rc;
 
+  SKIP_SKYSQL;
+
   rc= mysql_dump_debug_info(mysql);
   check_mysql_rc(rc, mysql);
 
@@ -768,6 +770,8 @@ static int test_bug49694(MYSQL *mysql)
   int i;
   FILE *fp;
 
+  SKIP_SKYSQL;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS enclist");
   check_mysql_rc(rc, mysql);
 
@@ -805,7 +809,10 @@ static int test_conc49(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
   int i;
-  FILE *fp= fopen("./sample.csv", "w");
+  FILE *fp;
+
+  SKIP_SKYSQL;
+  fp= fopen("./sample.csv", "w");
   for (i=1; i < 4; i++)
     fprintf(fp, "\"%d\", \"%d\", \"%d\"\r\n", i, i, i);
   fclose(fp);
@@ -1014,6 +1021,7 @@ void *remote_plugin;
 static int test_remote1(MYSQL *mysql)
 {
   int rc;
+  SKIP_SKYSQL;
 
   remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MARIADB_CLIENT_REMOTEIO_PLUGIN);
   if (!remote_plugin)
@@ -1069,6 +1077,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  SKIP_SKYSQL;
   if (travis_test)
     return SKIP;
 
@@ -1353,6 +1362,7 @@ static int test_conc395(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  SKIP_SKYSQL;
   if (travis_test)
     return SKIP;
 
@@ -1391,6 +1401,8 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  SKIP_SKYSQL;
+
   if (travis_test)
     return SKIP;
 
@@ -1399,10 +1411,6 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
   setenv("HOME", env, 1);
 
   snprintf(cnf_file1, FN_REFLEN, "%s%c.my.cnf", env, FN_LIBCHAR);
-
-  if (travis_test)
-    return SKIP;
-
 
   FAIL_IF(!access(cnf_file1, R_OK), "access");
 

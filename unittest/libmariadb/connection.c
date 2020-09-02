@@ -34,6 +34,8 @@ static int test_conc66(MYSQL *my)
   FILE *fp;
   char query[1024];
 
+  SKIP_SKYSQL;
+
   if (!(fp= fopen("./my-conc66-test.cnf", "w")))
     return FAIL;
 
@@ -84,6 +86,8 @@ static int test_bug20023(MYSQL *mysql)
   int sql_big_selects_4;
   int sql_big_selects_5;
   int rc;
+
+  SKIP_SKYSQL;
 
   if (!is_mariadb)
     return SKIP;
@@ -669,7 +673,11 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
 {
   unsigned int timeout= 5;
   time_t start, elapsed;
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
+
+  SKIP_SKYSQL;
+
+  mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
   mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
   start= time(NULL);
@@ -790,6 +798,8 @@ static int test_bind_address(MYSQL *my)
   char *bind_addr= getenv("MYSQL_TEST_BINDADDR");
   char query[128];
   int rc;
+
+  SKIP_SKYSQL;
 
   if (!hostname || !strcmp(hostname, "localhost"))
   {
@@ -994,6 +1004,8 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   FILE *fp;
   int i;
 
+  SKIP_SKYSQL;
+
   if (!(fp= fopen("./dummy_sock", "w")))
   {
     diag("couldn't create dummy socket");
@@ -1003,7 +1015,7 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
 
   for (i=0; i < 10000; i++)
   {
-    mysql_real_connect(mysql, "localhost", "user", "passwd", NULL, 0, "./dummy_sock", 0);
+    my_test_connect(mysql, "localhost", "user", "passwd", NULL, 0, "./dummy_sock", 0);
     /* check if we run out of sockets */
     if (mysql_errno(mysql) == 2001)
     {
@@ -1081,6 +1093,9 @@ static int test_auth256(MYSQL *my)
   my_ulonglong num_rows= 0;
   char query[1024];
 
+  if (IS_SKYSQL(hostname))
+    return SKIP;
+
   if (!mysql_client_find_plugin(mysql, "sha256_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN))
   {
     diag("sha256_password plugin not available");
@@ -1109,7 +1124,7 @@ static int test_auth256(MYSQL *my)
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
-  if (!mysql_real_connect(mysql, hostname, "sha256user", "foo", NULL, port, socketname, 0))
+  if (!my_test_connect(mysql, hostname, "sha256user", "foo", NULL, port, socketname, 0))
   {
     diag("error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -1119,7 +1134,7 @@ static int test_auth256(MYSQL *my)
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_SERVER_PUBLIC_KEY, "rsa_public_key.pem");
-  if (!mysql_real_connect(mysql, hostname, "sha256user", "foo", NULL, port, socketname, 0))
+  if (!my_test_connect(mysql, hostname, "sha256user", "foo", NULL, port, socketname, 0))
   {
     diag("error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -1283,7 +1298,7 @@ static int test_conc276(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &val);
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &val);
 
-  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, 0))
   {
     diag("Connection failed. Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -1389,6 +1404,8 @@ static int test_conc317(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  SKIP_SKYSQL;
+
   if (travis_test)
     return SKIP;
 
@@ -1429,6 +1446,8 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
   char cnf_file2[FN_REFLEN + 1];
+
+  SKIP_SKYSQL;
 
   if (travis_test)
     return SKIP;
@@ -1587,7 +1606,7 @@ static int test_conc312(MYSQL *my)
   check_mysql_rc(rc, my);
 
   mysql= mysql_init(NULL);
-  if (!mysql_real_connect(mysql, hostname, "foo", "foo", schema, port, socketname, 0))
+  if (!my_test_connect(mysql, hostname, "foo", "foo", schema, port, socketname, 0))
   {
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
@@ -1607,6 +1626,8 @@ static int test_conc366(MYSQL *mysql)
   char query[1024];
   int rc;
   MYSQL *my;
+
+  SKIP_SKYSQL;
 
   if (!is_mariadb)
   {
@@ -1640,7 +1661,7 @@ static int test_conc366(MYSQL *mysql)
   my= mysql_init(NULL);
   if (plugindir)
     mysql_options(my, MYSQL_PLUGIN_DIR, plugindir);
-  if (!mysql_real_connect(my, hostname, "ede", "foo", schema, port, socketname, 0))
+  if (!my_test_connect(my, hostname, "ede", "foo", schema, port, socketname, 0))
   {
     diag("Error: %s", mysql_error(my));
     return FAIL;
@@ -1697,7 +1718,7 @@ static int test_conc443(MYSQL *my __attribute__((unused)))
   mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=3");
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &x);
 
-  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Connection failed. Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -1740,7 +1761,7 @@ static int test_default_auth(MYSQL *my __attribute__((unused)))
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_DEFAULT_AUTH, "mysql_clear_password");
 
-  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Connection failed. Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -1751,7 +1772,7 @@ static int test_default_auth(MYSQL *my __attribute__((unused)))
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_DEFAULT_AUTH, "caching_sha2_password");
 
-  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Connection failed. Error: %s", mysql_error(mysql));
     mysql_close(mysql);

@@ -37,6 +37,8 @@ static int test_conc75(MYSQL *my)
   int i;
   my_bool reconnect= 1;
 
+  SKIP_SKYSQL;
+
   mysql= mysql_init(NULL);
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -144,6 +146,8 @@ static int test_conc70(MYSQL *my)
 
   SKIP_CONNECTION_HANDLER;
 
+  SKIP_SKYSQL;
+
   mysql= mysql_init(NULL);
 
   rc= mysql_query(my, "SET @a:=@@max_allowed_packet");
@@ -205,6 +209,8 @@ static int test_conc68(MYSQL *my)
   MYSQL *mysql;
 
   SKIP_CONNECTION_HANDLER;
+  SKIP_SKYSQL;
+
   
   mysql= mysql_init(NULL);
 
@@ -259,8 +265,9 @@ static int basic_connect(MYSQL *unused __attribute__((unused)))
   MYSQL_RES *res;
   MYSQL_FIELD *field;
   int rc;
+  MYSQL *my;
 
-  MYSQL *my= mysql_init(NULL);
+  my= mysql_init(NULL);
   FAIL_IF(!my, "mysql_init() failed");
 
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,

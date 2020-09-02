@@ -55,6 +55,14 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 # define TRUE 1
 #endif
 
+#define IS_SKYSQL(a) ((a) && strstr((a), "db.skysql.net"))
+#define SKIP_SKYSQL \
+if (IS_SKYSQL(hostname)) \
+{ \
+  diag("Not supported by SkySQL"); \
+  return SKIP; \
+}       
+
 #define MAX_KEY MAX_INDEXES
 #define MAX_KEY_LENGTH_DECIMAL_WIDTH 4          /* strlen("4096") */
 
@@ -524,6 +532,8 @@ void get_envvars() {
 
   if (!hostname && (envvar= getenv("MYSQL_TEST_HOST")))
     hostname= envvar;
+
+
   if (!username)
   {
     if ((envvar= getenv("MYSQL_TEST_USER")))

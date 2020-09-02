@@ -2928,6 +2928,8 @@ static int test_bug6059(MYSQL *mysql)
   const char *stmt_text;
   int rc;
 
+  SKIP_SKYSQL;
+
   stmt_text= "SELECT 'foo' INTO OUTFILE 'x.3'";
 
   stmt= mysql_stmt_init(mysql);
