@@ -194,13 +194,11 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/SearchLibrary.cmake)
 IF(WITH_EXTERNAL_ZLIB)
   IF(NOT ZLIB_FOUND)
     FIND_PACKAGE(ZLIB REQUIRED)
-    IF(ZLIB_FOUND)
-      INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
-      SET(LIBZ ${ZLIB_LIBRARY})
-    ENDIF()
+    INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
+    SET(LIBZ ${ZLIB_LIBRARY})
   ELSE()
-  # ZLIB was already specified by another (parent) project
-  SET(INTERNAL_ZLIB_LIBRARY ${ZLIB_LIBRARY})
+    # ZLIB was already specified by another (parent) project
+    SET(INTERNAL_ZLIB_LIBRARY ${ZLIB_LIBRARY})
   ENDIF()
 ENDIF()
 
