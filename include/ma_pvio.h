@@ -8,6 +8,12 @@
 #define MARIADB_TLS void
 #endif
 
+/* CONC-492: Allow to buuld plugins outside of MariaDB Connector/C
+   source tree wnen ma_global.h was not included. */
+#ifndef _global_h
+typedef unsigned char uchar;
+#endif
+
 #define PVIO_SET_ERROR if (pvio->set_error) \
                         pvio->set_error
 
