@@ -457,7 +457,7 @@ typedef struct character_set
   const char *desc;                                     \
   unsigned int version[3];                              \
   const char *license;                                  \
-  void *mariadb_api;                                    \
+  void *mysql_api;                                      \
   int (*init)(char *, size_t, int, va_list);            \
   int (*deinit)(void);                                  \
   int (*options)(const char *option, const void *);
