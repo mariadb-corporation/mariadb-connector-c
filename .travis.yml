@@ -47,5 +47,5 @@ script:
   - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
   - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
   - if [ -z "$DB" ] && [ -z "$SKYSQL" ] ; then .travis/server-replace-submodule.sh; fi
-  - if [ -n "$DB" ] | [ -n "$SKYSQL" ]; then .travis/script.sh; fi
+  - if [ -n "$DB" ] || [ -n "$SKYSQL" ]; then .travis/script.sh; fi
 
