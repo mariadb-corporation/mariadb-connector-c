@@ -1783,37 +1783,7 @@ static int test_default_auth(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-static int test_conc493(MYSQL *mysql)
-{
-  MYSQL *my;
-  char long_password[300];
-  char query[512];
-  int rc;
-
-  SKIP_SKYSQL;
-
-  memset(&long_password, 'A', 299);
-  long_password[299]= 0;
-
-  sprintf(query, "GRANT ALL PRIVILEGES ON *.* TO 'foo1'@'%%' IDENTIFIED BY '%s' WITH GRANT OPTION", long_password);
-  rc= mysql_query(mysql, query);
-  check_mysql_rc(rc, mysql);
-
-  my= mysql_init(NULL);
-  if (!my_test_connect(my, hostname, "foo1", long_password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
-  {
-    diag("Connection failed. Error: %s", mysql_error(my));
-    mysql_close(my);
-    exit(1);
-    return FAIL;
-  }
-
-  mysql_close(my);
-  return OK;
-}
-
 struct my_tests_st my_tests[] = {
-  {"test_conc493", test_conc493, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_default_auth", test_default_auth, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc443", test_conc443, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc366", test_conc366, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

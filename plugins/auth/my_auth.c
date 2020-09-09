@@ -12,7 +12,7 @@ static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attr
 extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
 extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
-extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
+
 typedef struct {
   int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
   int (*write_packet)(struct st_plugin_vio *vio, const uchar *pkt, size_t pkt_len);
@@ -323,21 +323,9 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   {
     if (mysql->server_capabilities & CLIENT_SECURE_CONNECTION)
     {
-      /* CONC-493: Support for passwords > 255 characters */
-      if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)
-      {
-        unsigned char *to= mysql_net_store_length((uchar *)end, data_len);
-        if (data_len)
-          memcpy(to, data, data_len);
-        end= (char *)to + data_len;
-        printf("length encoded\n");
-      } else {
-        if (data_len > 255)
-          goto error;
-        *end++= data_len;
-        memcpy(end, data, data_len);
-        end+= data_len;
-      }
+      *end++= data_len;
+      memcpy(end, data, data_len);
+      end+= data_len;
     }
     else
     {
