@@ -30,6 +30,6 @@ IF(UNIX)
 
   # presumably this will be used for libmysql*.so symlinks
   INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/${symlink_name} DESTINATION ${install_path}
-          COMPONENT SharedLibraries)
+          COMPONENT Development)
 ENDIF()
 ENDMACRO()
