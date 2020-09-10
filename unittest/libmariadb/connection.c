@@ -955,20 +955,22 @@ static int test_sess_track_db(MYSQL *mysql)
           "session_track_get_first failed");
   FAIL_IF(strncmp(data, "test", len), "Expected new schema 'test'");
 
-  diag("charset: %s", mysql->charset->csname);
-  rc= mysql_query(mysql, "SET NAMES utf8");
-  check_mysql_rc(rc, mysql);
-  if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
-  do {
-    printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
-  } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
-  diag("charset: %s", mysql->charset->csname);
-  FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
+  if (mysql_get_server_version(mysql) >= 100300)
+  {
+    diag("charset: %s", mysql->charset->csname);
+    rc= mysql_query(mysql, "SET NAMES utf8");
+    check_mysql_rc(rc, mysql);
+    if (!mysql_session_track_get_first(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len))
+    do {
+      printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
+    } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
+    diag("charset: %s", mysql->charset->csname);
+    FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
 
-  rc= mysql_query(mysql, "SET NAMES latin1");
-  check_mysql_rc(rc, mysql);
-  FAIL_IF(strcmp(mysql->charset->csname, "latin1"), "Expected charset 'latin1'");
-
+    rc= mysql_query(mysql, "SET NAMES latin1");
+    check_mysql_rc(rc, mysql);
+    FAIL_IF(strcmp(mysql->charset->csname, "latin1"), "Expected charset 'latin1'");
+  }
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
 
