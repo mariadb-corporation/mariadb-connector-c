@@ -998,6 +998,13 @@ static int test_conc496(MYSQL *mysql)
   size_t len;
 
   rc= mysql_query(mysql, "set @@session.session_track_transaction_info=STATE");
+
+  if (rc && mysql_errno(mysql) == ER_UNKNOWN_SYSTEM_VARIABLE)
+  {
+    diag("session_track_transaction_info not supported");
+    return SKIP;
+  }
+
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "BEGIN");
@@ -1035,6 +1042,7 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   int i;
 
   SKIP_SKYSQL;
+  SKIP_TRAVIS();
 
   if (!(fp= fopen("./dummy_sock", "w")))
   {
