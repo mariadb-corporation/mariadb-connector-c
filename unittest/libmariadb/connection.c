@@ -932,8 +932,6 @@ static int test_sess_track_db(MYSQL *mysql)
   const char *data;
   size_t len;
 
-  diag("session tracking not fully supported yet in 10.2");
-  return SKIP;
 
   if (!(mysql->server_capabilities & CLIENT_SESSION_TRACKING))
   {
@@ -989,6 +987,38 @@ static int test_sess_track_db(MYSQL *mysql)
   do {
     printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
   } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
+
+  return OK;
+}
+
+static int test_conc496(MYSQL *mysql)
+{
+  int rc;
+  const char *data;
+  size_t len;
+
+  rc= mysql_query(mysql, "set @@session.session_track_transaction_info=STATE");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "BEGIN");
+  check_mysql_rc(rc, mysql);
+  if (!mysql_session_track_get_first(mysql, SESSION_TRACK_TRANSACTION_STATE, &data, &len))
+  do {
+    FAIL_IF(len != 8, "expected 8 bytes");
+    FAIL_IF(data[0] != 'T', "expected transaction");
+  } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_TRANSACTION_STATE, &data, &len));
+
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1(a int) ENGINE=InnoDB");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "COMMIT");
+  
+  check_mysql_rc(rc, mysql);
+
+  if (!mysql_session_track_get_first(mysql, SESSION_TRACK_TRANSACTION_STATE, &data, &len))
+  do {
+    FAIL_IF(len != 8, "expected 8 bytes");
+    FAIL_IF(data[0] != '_', "expected underscore");
+  } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_TRANSACTION_STATE, &data, &len));
 
   return OK;
 }
@@ -1784,6 +1814,7 @@ static int test_default_auth(MYSQL *my __attribute__((unused)))
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc496", test_conc496, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_default_auth", test_default_auth, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc443", test_conc443, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc366", test_conc366, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

@@ -310,12 +310,12 @@ enum enum_session_state_type
   /* currently not supported by MariaDB Server */
   SESSION_TRACK_GTIDS,
   SESSION_TRACK_TRANSACTION_CHARACTERISTICS,
-  SESSION_TRACK_TRANSACTION_TYPE /* make sure that SESSION_TRACK_END always points
+  SESSION_TRACK_TRANSACTION_STATE /* make sure that SESSION_TRACK_END always points
                                     to last element of enum !! */
 };
 
 #define SESSION_TRACK_BEGIN 0
-#define SESSION_TRACK_END SESSION_TRACK_TRANSACTION_TYPE
+#define SESSION_TRACK_END SESSION_TRACK_TRANSACTION_STATE
 #define SESSION_TRACK_TYPES (SESSION_TRACK_END + 1)
 
 enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,

@@ -2192,11 +2192,13 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
             size_t plen;
             char *data;
             si_type= (enum enum_session_state_type)net_field_length(&pos);
+
             switch(si_type) {
             case SESSION_TRACK_SCHEMA:
             case SESSION_TRACK_STATE_CHANGE:
             case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
             case SESSION_TRACK_SYSTEM_VARIABLES:
+            case SESSION_TRACK_TRANSACTION_STATE:
               if (si_type != SESSION_TRACK_STATE_CHANGE)
                 net_field_length(&pos); /* ignore total length, item length will follow next */
               plen= net_field_length(&pos);
