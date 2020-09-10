@@ -337,6 +337,10 @@ int ma_net_real_write(NET *net, const char *packet, size_t len)
       net->error=2;				/* Close socket */
       net->last_errno= ER_NET_ERROR_ON_WRITE;
       net->reading_or_writing=0;
+#ifdef HAVE_COMPRESS
+      if (net->compress)
+        free((char*) packet);
+#endif
       return(1);
     }
     pos+=length;
