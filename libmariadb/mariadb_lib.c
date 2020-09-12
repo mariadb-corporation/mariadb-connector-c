@@ -2199,8 +2199,16 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
             case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
             case SESSION_TRACK_SYSTEM_VARIABLES:
             case SESSION_TRACK_TRANSACTION_STATE:
+            case SESSION_TRACK_GTIDS:
               if (si_type != SESSION_TRACK_STATE_CHANGE)
+              {
                 net_field_length(&pos); /* ignore total length, item length will follow next */
+              }
+              if (si_type == SESSION_TRACK_GTIDS)
+              {
+                /* skip encoding */
+                net_field_length(&pos);
+              }
               plen= net_field_length(&pos);
               if (pos + plen > end)
                 goto corrupted;

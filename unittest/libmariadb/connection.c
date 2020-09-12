@@ -36,6 +36,9 @@ static int test_conc66(MYSQL *my)
 
   SKIP_SKYSQL;
 
+  if (!is_mariadb)
+    return SKIP;
+
   if (!(fp= fopen("./my-conc66-test.cnf", "w")))
     return FAIL;
 
@@ -1823,7 +1826,48 @@ static int test_default_auth(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_gtid(MYSQL *mysql)
+{
+  int rc;
+  const char *data;
+  size_t len;
+
+  if (is_mariadb)
+    return SKIP;
+
+  rc= mysql_query(mysql, "SET @@session.session_track_state_change=1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SET @@session.session_track_gtids=OWN_GTID");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "BEGIN");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  if (!mysql_session_track_get_first(mysql, SESSION_TRACK_GTIDS, &data, &len))
+  do {
+    printf("# SESSION_TRACK_GTIDS: %*.*s\n", (int)len, (int)len, data);
+  } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_GTIDS, &data, &len));
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  if (!mysql_session_track_get_first(mysql, SESSION_TRACK_GTIDS, &data, &len))
+  do {
+    printf("# SESSION_TRACK_GTIDS: %*.*s\n", (int)len, (int)len, data);
+  } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_GTIDS, &data, &len));
+
+  rc= mysql_query(mysql, "COMMIT");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_gtid", test_gtid, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc496", test_conc496, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_default_auth", test_default_auth, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc443", test_conc443, TEST_CONNECTION_NONE, 0, NULL, NULL},
