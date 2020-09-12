@@ -74,7 +74,7 @@
 #endif
 #include <mysql/client_plugin.h>
 #ifdef _WIN32
-#include "Shlwapi.h"
+#include "shlwapi.h"
 #define strncasecmp _strnicmp
 #endif
 
