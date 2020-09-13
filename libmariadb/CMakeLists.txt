@@ -440,8 +440,10 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/symlink.cmake)
 IF(WITH_MYSQLCOMPAT)
   create_symlink(libmysqlclient${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_LIBDIR})
   create_symlink(libmysqlclient_r${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadb ${INSTALL_LIBDIR})
-  create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
-  create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
+  IF(NOT CMAKE_SYSTEM_NAME MATCHES AIX)
+    create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
+    create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
+  ENDIF()
 ENDIF()
 
 
