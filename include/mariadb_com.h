@@ -318,6 +318,12 @@ enum enum_session_state_type
 #define SESSION_TRACK_END SESSION_TRACK_TRANSACTION_STATE
 #define SESSION_TRACK_TYPES (SESSION_TRACK_END + 1)
 
+/* SESSION_TRACK_TRANSACTION_TYPE was renamed to SESSION_TRACK_TRANSACTION_STATE
+   in 3e699a1738cdfb0a2c5b8eabfa8301b8d11cf711.
+   This is a workaround to prevent breaking of travis and buildbot tests.
+   TODO: Remove this after server fixes */
+#define SESSION_TRACK_TRANSACTION_TYPE SESSION_TRACK_TRANSACTION_STATE
+
 enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
                         MYSQL_TYPE_SHORT,  MYSQL_TYPE_LONG,
                         MYSQL_TYPE_FLOAT,  MYSQL_TYPE_DOUBLE,
