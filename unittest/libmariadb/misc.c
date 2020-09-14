@@ -1000,6 +1000,7 @@ static int test_conc117(MYSQL *unused __attribute__((unused)))
 
 static int test_read_timeout(MYSQL *unused __attribute__((unused)))
 {
+  SKIP_MAXSCALE
   int timeout= 5, rc;
   MYSQL *my= mysql_init(NULL);
   mysql_options(my, MYSQL_OPT_READ_TIMEOUT, &timeout);

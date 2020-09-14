@@ -35,6 +35,7 @@ static int test_conc66(MYSQL *my)
   char query[1024];
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   if (!is_mariadb)
     return SKIP;
@@ -91,6 +92,7 @@ static int test_bug20023(MYSQL *mysql)
   int rc;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   if (!is_mariadb)
     return SKIP;
@@ -527,6 +529,8 @@ static int test_opt_reconnect(MYSQL *mysql)
 
 static int test_compress(MYSQL *mysql)
 {
+  // maxscale doesn't support compression
+  SKIP_MAXSCALE
   MYSQL_RES *res;
   MYSQL_ROW row;
   int rc;
@@ -606,6 +610,7 @@ static int test_reconnect(MYSQL *mysql)
 
 int test_conc21(MYSQL *mysql)
 {
+  SKIP_MAXSCALE
   int rc;
   MYSQL_RES *res= NULL;
   MYSQL_ROW row;
@@ -679,6 +684,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   MYSQL *mysql;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
@@ -1136,6 +1142,7 @@ static int test_auth256(MYSQL *my)
   my_ulonglong num_rows= 0;
   char query[1024];
 
+  SKIP_MAXSCALE
   if (IS_SKYSQL(hostname))
     return SKIP;
 
@@ -1671,6 +1678,7 @@ static int test_conc366(MYSQL *mysql)
   MYSQL *my;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   if (!is_mariadb)
   {

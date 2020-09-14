@@ -513,8 +513,8 @@ static int bug30472_retrieve_charset_info(MYSQL *con,
 
 static int test_bug30472(MYSQL *mysql)
 {
+  SKIP_MAXSCALE
   int   rc;
-
   char character_set_name_1[MY_CS_NAME_SIZE];
   char character_set_client_1[MY_CS_NAME_SIZE];
   char character_set_results_1[MY_CS_NAME_SIZE];

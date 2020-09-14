@@ -38,6 +38,7 @@ static int test_conc75(MYSQL *my)
   my_bool reconnect= 1;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
 
@@ -147,6 +148,7 @@ static int test_conc70(MYSQL *my)
   SKIP_CONNECTION_HANDLER;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
 
@@ -210,7 +212,7 @@ static int test_conc68(MYSQL *my)
 
   SKIP_CONNECTION_HANDLER;
   SKIP_SKYSQL;
-
+  SKIP_MAXSCALE;
   
   mysql= mysql_init(NULL);
 

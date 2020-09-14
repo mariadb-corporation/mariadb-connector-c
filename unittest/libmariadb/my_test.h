@@ -63,6 +63,14 @@ if (IS_SKYSQL(hostname)) \
   return SKIP; \
 }       
 
+#define IS_MAXSCALE() (getenv("MAXSCALE_TEST_DISABLE")!=NULL)
+#define SKIP_MAXSCALE \
+if (IS_MAXSCALE()) \
+{ \
+  diag("test disabled with maxscale"); \
+  return SKIP; \
+}
+
 #define MAX_KEY MAX_INDEXES
 #define MAX_KEY_LENGTH_DECIMAL_WIDTH 4          /* strlen("4096") */
 
@@ -173,6 +181,7 @@ static const char *schema = 0;
 static char *hostname = 0;
 static char *password = 0;
 static unsigned int port = 0;
+static unsigned int ssl_port = 0;
 static char *socketname = 0;
 static char *username = 0;
 static int force_tls= 0;
@@ -413,6 +422,7 @@ void get_options(int argc, char **argv)
       break;
     case 'P':
       port= atoi(optarg);
+      ssl_port=port;
       break;
     case 'S':
       socketname= optarg;
@@ -508,7 +518,7 @@ MYSQL *test_connect(struct my_tests_st *test)
 static int reset_connection(MYSQL *mysql) {
   int rc;
 
-  if (is_mariadb)
+  if (is_mariadb && !IS_MAXSCALE())
     rc= mysql_change_user(mysql, username, password, schema);
   else
     rc= mysql_reset_connection(mysql);
@@ -555,6 +565,15 @@ void get_envvars() {
       port= atoi(envvar);
     diag("port: %d", port);
   }
+  if (!ssl_port)
+  {
+    if ((envvar= getenv("MYSQL_TEST_SSL_PORT")))
+      ssl_port= atoi(envvar);
+    else
+      ssl_port = port;
+    diag("ssl_port: %d", ssl_port);
+  }
+
   if (!force_tls && (envvar= getenv("MYSQL_TEST_TLS")))
     force_tls= atoi(envvar);
   if (!socketname)
