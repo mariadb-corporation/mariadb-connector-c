@@ -177,7 +177,7 @@ static void mariadb_get_install_location()
     ssize_t len= readlink("/proc/self/exe", p, PATH_MAX);
     if (len == -1 || len == PATH_MAX)
       *p= 0;
-#elif
+#else
     *p= 0;
 #endif
   }
