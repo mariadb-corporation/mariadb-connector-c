@@ -485,10 +485,10 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   /* set cert */
   if (certfile  && certfile[0] != 0)
   {
-    if (SSL_CTX_use_certificate_chain_file(ctx, certfile) != 1 ||
-        SSL_use_certificate_file(ssl, certfile, SSL_FILETYPE_PEM) != 1)
+    if (SSL_CTX_use_certificate_chain_file(ctx, certfile) != 1)
       goto error; 
   }
+
   if (keyfile && keyfile[0])
   {
     FILE *fp;
