@@ -53,10 +53,12 @@
 #include <mariadb_ctype.h>
 #include <ma_string.h>
 
+#ifdef HAVE_ICONV
 #ifdef _WIN32
 #include "../win-iconv/iconv.h"
 #else
 #include <iconv.h>
+#endif
 #endif
 
 
@@ -1385,7 +1387,7 @@ int madb_get_windows_cp(const char *charset)
 #endif
 /* }}} */
 
-
+#ifdef HAVE_ICONV
 /* {{{ map_charset_name
    Changing charset name into something iconv understands, if necessary.
    Another purpose it to avoid BOMs in result string, adding BE if necessary
@@ -1413,6 +1415,7 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
   }
 }
 /* }}} */
+#endif
 
 /* {{{ mariadb_convert_string
    Converts string from one charset to another, and writes converted string to given buffer
@@ -1426,9 +1429,17 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
 
    @return -1 in case of error, bytes used in the "to" buffer, otherwise
  */
-size_t STDCALL mariadb_convert_string(const char *from, size_t *from_len, MARIADB_CHARSET_INFO *from_cs,
-                                      char *to, size_t *to_len, MARIADB_CHARSET_INFO *to_cs, int *errorcode)
+size_t STDCALL mariadb_convert_string(const char *from __attribute__((unused)),
+                                      size_t *from_len __attribute__((unused)),
+                                      MARIADB_CHARSET_INFO *from_cs __attribute__((unused)),
+                                      char *to __attribute__((unused)),
+                                      size_t *to_len __attribute__((unused)),
+                                      MARIADB_CHARSET_INFO *to_cs __attribute__((unused)), int *errorcode)
 {
+#ifndef HAVE_ICONV
+  *errorcode= ENOTSUP;
+  return -1;
+#else
   iconv_t conv= 0;
   size_t rc= -1;
   size_t save_len= *to_len;
@@ -1462,6 +1473,7 @@ error:
   if (conv != (iconv_t)-1)
     iconv_close(conv);
   return rc;
+#endif
 }
 /* }}} */
 

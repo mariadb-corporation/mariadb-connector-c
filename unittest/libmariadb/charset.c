@@ -661,6 +661,10 @@ static int test_bug_54100(MYSQL *mysql)
 
 static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
 {
+#ifndef HAVE_ICONV
+  diag("MariaDB Connector/C was built without iconv support");
+  return SKIP;
+#else
   const char *csname[]= {"utf16", "utf16le", "utf32", "utf8"};
   MARIADB_CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
 
@@ -724,6 +728,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
   }
 
   return OK;
+#endif
 }
 
 static int charset_auto(MYSQL *my __attribute__((unused)))
