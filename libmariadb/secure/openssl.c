@@ -486,7 +486,9 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   if (certfile  && certfile[0] != 0)
   {
     if (SSL_CTX_use_certificate_chain_file(ctx, certfile) != 1)
+    {
       goto error; 
+    }
   }
 
   if (keyfile && keyfile[0])
@@ -497,7 +499,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
       EVP_PKEY *key= EVP_PKEY_new();
       PEM_read_PrivateKey(fp, &key, NULL, pw);
       fclose(fp);
-      if (SSL_use_PrivateKey(ssl, key) != 1)
+      if (SSL_CTX_use_PrivateKey(ctx, key) != 1)
       {
         unsigned long err= ERR_peek_error();
         EVP_PKEY_free(key);
@@ -513,7 +515,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
     }
   }
   /* verify key */
-  if (certfile && !SSL_check_private_key(ssl))
+  if (certfile && !SSL_CTX_check_private_key(ctx))
     goto error;
   
   if (mysql->options.extension &&
@@ -907,4 +909,3 @@ int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
 
   return SSL_version(ctls->ssl) & 0xFF;
 }
-
