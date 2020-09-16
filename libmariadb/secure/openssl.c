@@ -485,8 +485,10 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
   /* set cert */
   if (certfile  && certfile[0] != 0)
   {
-    if (SSL_CTX_use_certificate_chain_file(ctx, certfile) != 1)
+    if (SSL_use_certificate_chain_file(ssl, certfile) != 1)
+    {
       goto error; 
+    }
   }
 
   if (keyfile && keyfile[0])
@@ -527,7 +529,8 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL *ssl)
                                                mysql->options.extension->ssl_crlpath) == 0)
         goto error;
 
-      X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+      if (X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL) == 0)
+        goto error;
     }
   }
   SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
