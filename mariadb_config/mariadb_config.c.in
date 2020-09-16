@@ -6,7 +6,7 @@
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
-#if defined(HAVE_SYS_SYSCTL_H) && defined(__FreeBSD__)
+#if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
