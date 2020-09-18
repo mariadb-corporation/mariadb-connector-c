@@ -354,7 +354,8 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL_CTX *ctx)
   if ((mysql->options.ssl_cipher &&
         mysql->options.ssl_cipher[0] != 0))
   {
-    if(SSL_CTX_set_cipher_list(ctx, mysql->options.ssl_cipher) == 0)
+    if(SSL_CTX_set_ciphersuites(ctx, mysql->options.ssl_cipher) == 0 &&
+       SSL_CTX_set_cipher_list(ctx, mysql->options.ssl_cipher) == 0)
       goto error;
   }
 
