@@ -5199,7 +5199,38 @@ static int test_mdev_21920(MYSQL *mysql)
   return OK; 
 }
 
+static int test_returning(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_RES *result;
+  int rc;
+
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int not null auto_increment primary key, b json)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 (a,b) VALUES (NULL, '[incorrect json]') RETURNING a");
+  check_mysql_rc(rc, mysql);
+
+  if (!rc) diag("should have fail");
+
+  result= mysql_store_result(mysql);
+  mysql_free_result(result);
+
+  diag("Error: %s", mysql_error(mysql));
+
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO t1 (a,b) VALUES (NULL, '[incorrect json]') RETURNING a"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_returning", test_returning, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev_21920", test_mdev_21920, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_maxparam", test_maxparam, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc424", test_conc424, TEST_CONNECTION_NEW, 0, NULL, NULL},

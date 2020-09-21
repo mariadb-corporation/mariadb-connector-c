@@ -1,3 +1,4 @@
+dist: focal
 sudo: true
 language: c
 cache:
