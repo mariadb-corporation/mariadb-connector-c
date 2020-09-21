@@ -5205,6 +5205,9 @@ static int test_returning(MYSQL *mysql)
   MYSQL_RES *result;
   int rc;
 
+  diag("MDEV-23768 not fixed yet");
+  return SKIP;
+
   rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int not null auto_increment primary key, b json)");
   check_mysql_rc(rc, mysql);
 
