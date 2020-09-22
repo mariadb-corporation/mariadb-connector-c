@@ -2300,6 +2300,75 @@ corrupted:
   return -1;
 }
 
+
+static int ma_deep_copy_field(const MYSQL_FIELD *src, MYSQL_FIELD *dst,
+                              MA_MEM_ROOT *r)
+{
+#define MA_STRDUP(f)                                                          \
+  do                                                                          \
+  {                                                                           \
+    if (src->f)                                                       \
+    {                                                                         \
+      if ((dst->f= ma_strdup_root(r, src->f)) == NULL)                          \
+        return -1;                                                            \
+    }                                                                         \
+    else                                                                      \
+    {                                                                         \
+      dst->f= NULL;                                                           \
+    }                                                                         \
+  }                                                                           \
+  while (0)
+
+
+  MA_STRDUP(catalog);
+  MA_STRDUP(db);
+  MA_STRDUP(def);
+  MA_STRDUP(name);
+  MA_STRDUP(org_name);
+  MA_STRDUP(org_table);
+  MA_STRDUP(table);
+#undef MA_STRDUP
+
+  dst->catalog_length= src->catalog_length;
+  dst->charsetnr= src->charsetnr;
+  dst->db_length= src->db_length;
+  dst->decimals= src->decimals;
+  dst->def_length= src->def_length;
+  dst->extension=
+      src->extension
+          ? ma_field_extension_deep_dup(r,
+                                        src->extension)
+          : NULL;
+  dst->flags= src->flags;
+  dst->length= src->length;
+  dst->max_length = src->max_length;
+  dst->name_length= src->name_length;
+  dst->org_name_length= src->org_name_length;
+  dst->org_table_length= src->org_table_length;
+  dst->table_length= src->table_length;
+  dst->type= src->type;
+  return 0;
+}
+
+
+MYSQL_FIELD *ma_duplicate_resultset_metadata(MYSQL_FIELD *fields, size_t count,
+                                             MA_MEM_ROOT *memroot)
+{
+  size_t i;
+  MYSQL_FIELD *result=
+      (MYSQL_FIELD *) ma_alloc_root(memroot, sizeof(MYSQL_FIELD) * count);
+  if (!result)
+    return NULL;
+
+  for (i= 0; i < count; i++)
+  {
+    if (ma_deep_copy_field(&fields[i], &result[i], memroot))
+      return NULL;
+  }
+  return result;
+}
+
+
 int mthd_my_read_query_result(MYSQL *mysql)
 {
   uchar *pos;
@@ -2318,6 +2387,7 @@ int mthd_my_read_query_result(MYSQL *mysql)
   free_old_query(mysql);			/* Free old result */
 get_info:
   pos=(uchar*) mysql->net.read_pos;
+  const uchar *end= pos + length;
   if ((field_count= net_field_length(&pos)) == 0)
     return ma_read_ok_packet(mysql, pos, length);
   if (field_count == NULL_LENGTH)		/* LOAD DATA LOCAL INFILE */
@@ -2328,16 +2398,45 @@ get_info:
       return(-1);
     goto get_info;				/* Get info packet */
   }
+
+  uchar has_metadata= 1;
+  if (ma_supports_cache_metadata(mysql))
+  {
+    assert(mysql->fields == NULL);
+    if (pos < end)
+    {
+      has_metadata= *pos;
+      pos++;
+    }
+  }
+
   if (!(mysql->server_status & SERVER_STATUS_AUTOCOMMIT))
     mysql->server_status|= SERVER_STATUS_IN_TRANS;
 
-  mysql->extra_info= net_field_length_ll(&pos); /* Maybe number of rec */
-  if (!(fields=mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,
-                                            ma_result_set_rows(mysql))))
-    return(-1);
-  if (!(mysql->fields=unpack_fields(mysql, fields, &mysql->field_alloc,
-				    (uint) field_count, 1)))
-    return(-1);
+  if (has_metadata)
+  {
+    if (!(fields= mysql->methods->db_read_rows(mysql, (MYSQL_FIELD *) 0,
+                                               ma_result_set_rows(mysql))))
+      return (-1);
+    if (!(mysql->fields= unpack_fields(mysql, fields, &mysql->field_alloc,
+                                       (uint) field_count, 1)))
+      return (-1);
+  }
+  else
+  {
+    /* Read EOF, to get the status and warning count.  */
+    if ((length= ma_net_safe_read(mysql)) == packet_error)
+    {
+      return -1;
+    }
+    pos= (uchar *) mysql->net.read_pos;
+    if (length != 5 || pos[0] != 0xfe)
+    {
+      return -1;
+    }
+    mysql->warning_count= uint2korr(pos + 1);
+    mysql->server_status= uint2korr(pos + 3);
+  }
   mysql->status=MYSQL_STATUS_GET_RESULT;
   mysql->field_count=field_count;
   return(0);

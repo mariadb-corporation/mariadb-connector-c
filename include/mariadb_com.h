@@ -172,13 +172,16 @@ enum enum_server_command
 #define MARIADB_CLIENT_STMT_BULK_OPERATIONS (1ULL << 34)
 /* support of extended data type/format information, since 10.5.0 */
 #define MARIADB_CLIENT_EXTENDED_METADATA (1ULL << 35)
+/* Do not resend metadata for prepared statements, since 10.6*/
+#define MARIADB_CLIENT_CACHE_METADATA (1ULL << 36)
 
 #define IS_MARIADB_EXTENDED_SERVER(mysql)\
         (!(mysql->server_capabilities & CLIENT_MYSQL))
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
                                        MARIADB_CLIENT_STMT_BULK_OPERATIONS|\
-                                       MARIADB_CLIENT_EXTENDED_METADATA)
+                                       MARIADB_CLIENT_EXTENDED_METADATA|\
+                                       MARIADB_CLIENT_CACHE_METADATA)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_MYSQL |\
                                  CLIENT_FOUND_ROWS |\

@@ -56,6 +56,7 @@
 #include <mysql/client_plugin.h>
 #include <ma_common.h>
 #include "ma_priv.h"
+#include <assert.h>
 
 
 #define UPDATE_STMT_ERROR(stmt)\
@@ -1648,7 +1649,8 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
 
     stmt->param_count= 0;
     stmt->field_count= 0;
-    stmt->params= 0;
+    stmt->fields= NULL;
+    stmt->params= NULL;
 
     int4store(stmt_id, stmt->stmt_id);
     if (mysql->methods->db_command(mysql, COM_STMT_CLOSE, stmt_id,
@@ -1803,55 +1805,32 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
 
 static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
 {
-  uint i;
   MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+  MYSQL *mysql= stmt->mysql;
+  if (!mysql->field_count)
+    return 0;
 
-  if (stmt->mysql->field_count)
+  stmt->field_count= mysql->field_count;
+  if (mysql->fields)
   {
+    /* Column info was sent by server */
     ma_free_root(fields_ma_alloc_root, MYF(0));
-    if (!(stmt->fields= (MYSQL_FIELD *)ma_alloc_root(fields_ma_alloc_root,
-            sizeof(MYSQL_FIELD) * stmt->mysql->field_count)))
+    if (!(stmt->fields= ma_duplicate_resultset_metadata(
+              mysql->fields, mysql->field_count,
+              fields_ma_alloc_root)))
     {
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return(1);
     }
-    stmt->field_count= stmt->mysql->field_count;
-
-    for (i=0; i < stmt->field_count; i++)
-    {
-      if (stmt->mysql->fields[i].db)
-        stmt->fields[i].db= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].db);
-      if (stmt->mysql->fields[i].table)
-        stmt->fields[i].table= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].table);
-      if (stmt->mysql->fields[i].org_table)
-        stmt->fields[i].org_table= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].org_table);
-      if (stmt->mysql->fields[i].name)
-        stmt->fields[i].name= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].name);
-      if (stmt->mysql->fields[i].org_name)
-        stmt->fields[i].org_name= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].org_name);
-      if (stmt->mysql->fields[i].catalog)
-        stmt->fields[i].catalog= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].catalog);
-      stmt->fields[i].def= stmt->mysql->fields[i].def ? ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].def) : NULL;
-      stmt->fields[i].type= stmt->mysql->fields[i].type;
-      stmt->fields[i].length= stmt->mysql->fields[i].length;
-      stmt->fields[i].flags= stmt->mysql->fields[i].flags;
-      stmt->fields[i].decimals= stmt->mysql->fields[i].decimals;
-      stmt->fields[i].charsetnr= stmt->mysql->fields[i].charsetnr;
-      stmt->fields[i].max_length= stmt->mysql->fields[i].max_length;
-      stmt->fields[i].extension=
-                stmt->mysql->fields[i].extension ?
-                ma_field_extension_deep_dup(fields_ma_alloc_root,
-                                            stmt->mysql->fields[i].extension) :
-                NULL;
-    }
-    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
-    {
+    if (!(stmt->bind= (MYSQL_BIND *) ma_alloc_root(
+        fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
+     {
       SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      return(1);
-    }
-    memset(stmt->bind, 0, stmt->field_count * sizeof(MYSQL_BIND));
-    stmt->bind_result_done= 0;
+      return (1);
+     }
   }
+  memset(stmt->bind, 0, stmt->field_count * sizeof(MYSQL_BIND));
+  stmt->bind_result_done= 0;
   return(0);
 }
 
@@ -1863,11 +1842,36 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
   if (!mysql)
     return(1);
 
-  ret= test((mysql->methods->db_read_stmt_result &&
-                 mysql->methods->db_read_stmt_result(mysql)));
   /* if a reconnect occurred, our connection handle is invalid */
   if (!stmt->mysql)
-    return(1);
+    return (1);
+
+  ret= test((mysql->methods->db_read_stmt_result &&
+                 mysql->methods->db_read_stmt_result(mysql)));
+  
+  if (!ret && mysql->field_count && !mysql->fields)
+  {
+      /*
+        Column info was not sent by server, copy
+        from stmt->fields
+      */
+      assert(stmt->fields);
+      /*
+         Too bad, C/C resets stmt->field_count to 0
+         before reading SP output variables result sets.
+      */
+      if(!stmt->field_count)
+        stmt->field_count = mysql->field_count;
+      else
+        assert(mysql->field_count == stmt->field_count);
+      mysql->fields= ma_duplicate_resultset_metadata(
+          stmt->fields, stmt->field_count, &mysql->field_alloc);
+      if (!mysql->fields)
+      {
+        SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+        return (1);
+      }
+  }
 
   /* update affected rows, also if an error occurred */
   stmt->upsert_status.affected_rows= stmt->mysql->affected_rows;
