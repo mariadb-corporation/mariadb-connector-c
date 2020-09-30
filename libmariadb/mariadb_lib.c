@@ -470,7 +470,7 @@ int ma_multi_command(MYSQL *mysql, enum enum_multi_status status)
   {
     size_t len= net->write_pos - net->buff - NET_HEADER_SIZE;
 
-    if (len < NET_HEADER_SIZE) /* don't send empty COM_MULTI */
+    if (len < NET_HEADER_SIZE) /* don't send empty request */
     {
       ma_net_clear(net);
       return 1;
