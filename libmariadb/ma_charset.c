@@ -1351,7 +1351,7 @@ const char *madb_get_os_character_set()
   char *p= NULL;
 #ifdef _WIN32
   char codepage[FN_REFLEN];
-  snprintf(codepage, FN_REFLEN, "%u", GetACP());
+  snprintf(codepage, FN_REFLEN, "%u", GetConsoleCP() ? GetConsoleCP() : GetACP());
   p= codepage;
 #elif defined(HAVE_NL_LANGINFO) && defined(HAVE_SETLOCALE)
   if (setlocale(LC_CTYPE, ""))
