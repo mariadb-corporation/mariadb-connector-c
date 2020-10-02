@@ -2374,6 +2374,7 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
   }
 
   stmt->field_count= stmt->mysql->field_count;
+  stmt->result.rows= 0;
 
   return(rc);
 }

@@ -5232,7 +5232,50 @@ static int test_returning(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc504(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  const char *sp= "CREATE PROCEDURE p1()\n" \
+                  "BEGIN\n"\
+                  "  SELECT 1;\n"\
+                  "  SELECT 2;\n"\
+                  "  SELECT 3;\n"\
+                  "END";
+
+  rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, sp);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("CALL p1()"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_store_result(stmt);
+  FAIL_IF(mysql_stmt_num_rows(stmt) != 1, "Expected 1 row");
+
+  mysql_stmt_next_result(stmt);
+  mysql_stmt_store_result(stmt);
+  FAIL_IF(mysql_stmt_num_rows(stmt) != 1, "Expected 1 row");
+
+  mysql_stmt_next_result(stmt);
+  mysql_stmt_store_result(stmt);
+  FAIL_IF(mysql_stmt_num_rows(stmt) != 1, "Expected 1 row");
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP PROCEDURE p1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc504", test_conc504, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_returning", test_returning, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev_21920", test_mdev_21920, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_maxparam", test_maxparam, TEST_CONNECTION_NEW, 0, NULL, NULL},
