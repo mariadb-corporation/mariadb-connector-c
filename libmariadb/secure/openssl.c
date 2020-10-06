@@ -355,7 +355,7 @@ static int ma_tls_set_certs(MYSQL *mysql, SSL_CTX *ctx)
         mysql->options.ssl_cipher[0] != 0))
   {
     if(
-#ifdef HAVE_OPENSSL_1_1_API
+#ifdef TLS1_3_VERSION
        SSL_CTX_set_ciphersuites(ctx, mysql->options.ssl_cipher) == 0 &&
 #endif
        SSL_CTX_set_cipher_list(ctx, mysql->options.ssl_cipher) == 0)
