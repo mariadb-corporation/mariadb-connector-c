@@ -382,8 +382,17 @@ enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
 #define FIELD_TYPE_GEOMETRY MYSQL_TYPE_GEOMETRY
 #define FIELD_TYPE_BIT MYSQL_TYPE_BIT
 
-extern unsigned long max_allowed_packet;
-extern unsigned long net_buffer_length;
+#if defined(__cplusplus) && defined(__GNUC__) && !defined(__clang__)
+extern "C++" {
+    #include <atomic>
+}
+
+#define _Atomic(T) std::atomic<T>
+
+#endif
+
+extern _Atomic(unsigned long) max_allowed_packet;
+extern _Atomic(unsigned long) net_buffer_length;
 
 #define net_new_transaction(net) ((net)->pkt_nr=0)
 

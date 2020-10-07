@@ -47,10 +47,10 @@
 #undef net_buffer_length
 
 #undef max_allowed_packet
-ulong max_allowed_packet=1024L * 1024L * 1024L;
+_Atomic(ulong) max_allowed_packet=1024L * 1024L * 1024L;
 ulong net_read_timeout=  NET_READ_TIMEOUT;
 ulong net_write_timeout= NET_WRITE_TIMEOUT;
-ulong net_buffer_length= 8192;	/* Default length. Enlarged if necessary */
+_Atomic(ulong) net_buffer_length= 8192;	/* Default length. Enlarged if necessary */
 
 #if !defined(_WIN32) && !defined(MSDOS)
 #include <sys/socket.h>
