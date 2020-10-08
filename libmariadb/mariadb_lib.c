@@ -2375,6 +2375,9 @@ int mthd_my_read_query_result(MYSQL *mysql)
   ulong field_count;
   MYSQL_DATA *fields;
   ulong length;
+  const uchar *end;
+  uchar has_metadata;
+
   my_bool can_local_infile= (mysql->options.extension) && (mysql->extension->auto_local_infile != WAIT_FOR_QUERY);
 
   if (mysql->options.extension && mysql->extension->auto_local_infile == ACCEPT_FILE_REQUEST)
@@ -2387,7 +2390,7 @@ int mthd_my_read_query_result(MYSQL *mysql)
   free_old_query(mysql);			/* Free old result */
 get_info:
   pos=(uchar*) mysql->net.read_pos;
-  const uchar *end= pos + length;
+  end= pos + length;
   if ((field_count= net_field_length(&pos)) == 0)
     return ma_read_ok_packet(mysql, pos, length);
   if (field_count == NULL_LENGTH)		/* LOAD DATA LOCAL INFILE */
@@ -2399,7 +2402,7 @@ get_info:
     goto get_info;				/* Get info packet */
   }
 
-  uchar has_metadata= 1;
+  has_metadata= 1;
   if (ma_supports_cache_metadata(mysql))
   {
     assert(mysql->fields == NULL);
