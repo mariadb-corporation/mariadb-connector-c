@@ -246,7 +246,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   char passwd[MAX_PW_LEN];
   unsigned char rsa_enc_pw[MAX_PW_LEN];
 #ifdef HAVE_OPENSSL
-  int rsa_size;
+  size_t rsa_size= MAX_PW_LEN;
 #else
   ULONG rsa_size;
 #endif
@@ -258,6 +258,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #if defined(HAVE_OPENSSL)
   RSA *pubkey= NULL;
   BIO *bio;
+  EVP_PKEY_CTX *evp_ctx= NULL;
 #elif defined(HAVE_WINCRYPT)
   BCRYPT_KEY_HANDLE pubkey= 0;
   BCRYPT_OAEP_PADDING_INFO paddingInfo;
@@ -341,7 +342,19 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     bio= BIO_new_mem_buf(filebuffer ? (unsigned char *)filebuffer : packet,
                          packet_length);
     if ((pubkey= PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL)))
-      rsa_size= RSA_size(pubkey);
+    {
+       EVP_PKEY *pkey= EVP_PKEY_new();
+       EVP_PKEY_assign_RSA(pkey, pubkey);
+       evp_ctx= EVP_PKEY_CTX_new(pkey, NULL);
+       if (!evp_ctx)
+       {
+         EVP_PKEY_free(pkey);
+         goto error;
+       }
+       if (EVP_PKEY_encrypt_init(evp_ctx) <= 0  ||
+           EVP_PKEY_CTX_set_rsa_padding(evp_ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
+         goto error;
+    }
     BIO_free(bio);
     ERR_clear_error();
 #elif defined(HAVE_WINCRYPT)
@@ -380,7 +393,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
     /* encrypt scrambled password */
 #if defined(HAVE_OPENSSL)
-    if (RSA_public_encrypt(pwlen, (unsigned char *)passwd, rsa_enc_pw, pubkey, RSA_PKCS1_OAEP_PADDING) < 0)
+    if (EVP_PKEY_encrypt(evp_ctx, rsa_enc_pw, &rsa_size, (const unsigned char *)passwd, pwlen) <= 0)
       goto error;
 #elif defined(HAVE_WINCRYPT)
     ZeroMemory(&paddingInfo, sizeof(paddingInfo));
@@ -407,6 +420,8 @@ error:
 #if defined(HAVE_OPENSSL)
   if (pubkey)
     RSA_free(pubkey);
+  if (evp_ctx)
+    EVP_PKEY_CTX_free(evp_ctx);
 #elif defined(HAVE_WINCRYPT)
   if (pubkey)
     BCryptDestroyKey(pubkey);
