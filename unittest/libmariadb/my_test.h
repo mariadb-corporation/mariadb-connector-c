@@ -115,7 +115,7 @@ do {\
 do {\
   if (expr)\
   {\
-    diag("Error: %s (%s: %d)", (reason) ? reason : "", __FILE__, __LINE__);\
+    diag("Error: %s (%s: %d)", reason, __FILE__, __LINE__);\
     return FAIL;\
   }\
 } while(0)
