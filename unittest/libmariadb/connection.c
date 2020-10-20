@@ -934,6 +934,7 @@ static int test_sess_track_db(MYSQL *mysql)
   int rc;
   const char *data;
   size_t len;
+  char stmt[512];
 
 
   if (!(mysql->server_capabilities & CLIENT_SESSION_TRACKING))
@@ -950,9 +951,10 @@ static int test_sess_track_db(MYSQL *mysql)
           "session_track_get_first failed");
   FAIL_IF(strncmp(data, "mysql", len), "Expected new schema 'mysql'");
 
-  rc= mysql_query(mysql, "USE test");
+  sprintf(stmt, "USE %s", schema);
+  rc= mysql_query(mysql, stmt);
   check_mysql_rc(rc, mysql);
-  FAIL_IF(strcmp(mysql->db, "test"), "Expected new schema 'test'");
+  FAIL_IF(strcmp(mysql->db, schema), "Expected new schema 'test'");
 
   FAIL_IF(mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len),
           "session_track_get_first failed");
