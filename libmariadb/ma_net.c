@@ -87,7 +87,7 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
 
   memset(net->buff, 0, net_buffer_length);
 
-  max_allowed_packet= net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
+  net->max_packet_size= MAX(net_buffer_length, max_allowed_packet);
   net->buff_end=net->buff+(net->max_packet=net_buffer_length);
   net->pvio = pvio;
   net->error=0; net->return_status=0;

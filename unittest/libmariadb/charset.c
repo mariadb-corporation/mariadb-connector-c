@@ -100,7 +100,7 @@ int bug_10214(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   len= mysql_real_escape_string(mysql, out, "a'b\\c", 5);
-  FAIL_IF(memcmp(out, "a\\'b\\\\c", len), NULL);
+  FAIL_IF(memcmp(out, "a\\'b\\\\c", len), "wrong result");
 
   rc= mysql_query(mysql, "set sql_mode='NO_BACKSLASH_ESCAPES'");
   check_mysql_rc(rc, mysql);
