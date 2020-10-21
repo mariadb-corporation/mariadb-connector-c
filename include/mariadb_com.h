@@ -158,6 +158,7 @@ enum enum_server_command
 #define CLIENT_PS_MULTI_RESULTS  (1UL << 18)
 #define CLIENT_PLUGIN_AUTH       (1UL << 19)
 #define CLIENT_CONNECT_ATTRS     (1UL << 20)
+#define CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA (1UL << 21)
 #define CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS (1UL << 22)
 #define CLIENT_SESSION_TRACKING  (1UL << 23)
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
@@ -207,8 +208,7 @@ enum enum_server_command
                                  CLIENT_PLUGIN_AUTH |\
                                  CLIENT_SESSION_TRACKING |\
                                  CLIENT_CONNECT_ATTRS)
-
-#define CLIENT_CAPABILITIES	(CLIENT_MYSQL | \
+#define CLIENT_CAPABILITIES	    (CLIENT_MYSQL | \
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_TRANSACTIONS |\
                                  CLIENT_SECURE_CONNECTION |\
@@ -216,6 +216,7 @@ enum enum_server_command
                                  CLIENT_PS_MULTI_RESULTS |\
                                  CLIENT_PROTOCOL_41 |\
                                  CLIENT_PLUGIN_AUTH |\
+                                 CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA | \
                                  CLIENT_SESSION_TRACKING |\
                                  CLIENT_CONNECT_ATTRS)
 
