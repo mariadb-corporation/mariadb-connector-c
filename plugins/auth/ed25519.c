@@ -61,7 +61,7 @@ extern BCRYPT_ALG_HANDLE Sha512Prov;
 
 /* function prototypes */
 static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
-static int auth_ed25519_deinit();
+static int auth_ed25519_deinit(void);
 static int auth_ed25519_init(char *unused1,
     size_t unused2,
     int unused3,
@@ -132,7 +132,7 @@ static int auth_ed25519_init(char *unused1 __attribute__((unused)),
 /* }}} */
 
 /* {{{ auth_ed25519_deinit */
-static int auth_ed25519_deinit()
+static int auth_ed25519_deinit(void)
 {
 #if defined(HAVE_WINCRYPT)
   BCryptCloseAlgorithmProvider(Sha512Prov, 0);

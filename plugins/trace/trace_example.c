@@ -212,7 +212,7 @@ static int trace_init(char *errormsg,
 }
 /* }}} */
 
-static int trace_deinit()
+static int trace_deinit(void)
 {
   /* unregister plugin */
   while(trace_info)
