@@ -254,7 +254,7 @@ int main(int argc, char **argv)
       printf(PLUGIN_DIR, installation_dir);
       break;
     case 'k': /* TLS version */
-      printf(TLS_LIBRARY_VERSION);
+      printf("%s", TLS_LIBRARY_VERSION);
       break;
     case 'l': /* System libraries */
       printf(LIBS_SYS);
