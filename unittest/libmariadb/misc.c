@@ -1401,6 +1401,7 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
   const char *env= getenv("MYSQL_TMP_DIR");
   char cnf_file1[FN_REFLEN + 1];
 
+  SKIP_NOTLS;
   SKIP_SKYSQL;
 
   if (travis_test)
