@@ -110,6 +110,9 @@ IF(GSSAPI_SOURCES)
                   SOURCES ${GSSAPI_SOURCES}
                   INCLUDES ${CC_SOURCE_DIR}/plugins/auth ${GSSAPI_INCS}
                   LIBRARIES ${GSSAPI_LIBS})
+  IF(APPLE)
+    SET_SOURCE_FILES_PROPERTIES(${GSSAPI_SOURCES} PROPERTY COMPILE_FLAGS "-Wno-deprecated-declarations")
+  ENDIF()
 ENDIF()
 
 # old_password plugin
