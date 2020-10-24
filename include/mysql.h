@@ -148,7 +148,8 @@ extern const char *SQLSTATE_UNKNOWN;
     (a)->net.last_errno= 0;\
     strcpy((a)->net.sqlstate, "00000");\
     (a)->net.last_error[0]= '\0';\
-    (a)->net.extension->extended_errno= 0;\
+    if ((a)->net.extension)\
+      (a)->net.extension->extended_errno= 0;\
   } while (0)
 
 #define MYSQL_COUNT_ERROR (~(unsigned long long) 0)
