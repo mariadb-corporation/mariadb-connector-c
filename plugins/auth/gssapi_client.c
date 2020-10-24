@@ -26,7 +26,11 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
 
+#if defined(__FreeBSD__) ||  defined(SOLARIS) || defined(__sun)
 #include <gssapi/gssapi.h>
+#else
+#include <gssapi.h>
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <mysql/plugin_auth.h>

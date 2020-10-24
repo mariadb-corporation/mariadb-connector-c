@@ -36,7 +36,11 @@ static char *mariadb_progname;
 #define PLUGIN_DIR "%s/@INSTALL_PLUGINDIR@"
 #define SOCKET  "@MARIADB_UNIX_ADDR@"
 #define PORT "@MARIADB_PORT@"
+#ifdef HAVE_TLS
 #define TLS_LIBRARY_VERSION "@TLS_LIBRARY_VERSION@"
+#else
+#define TLS_LIBRARY_VERSION ""
+#endif
 #define PKG_INCLUDEDIR "%s/@INSTALL_INCLUDEDIR@"
 #define PKG_PLUGINDIR "%s/@INSTALL_PLUGINDIR@"
 #define PKG_LIBDIR "%s/@INSTALL_LIBDIR@"
@@ -250,7 +254,7 @@ int main(int argc, char **argv)
       printf(PLUGIN_DIR, installation_dir);
       break;
     case 'k': /* TLS version */
-      printf(TLS_LIBRARY_VERSION);
+      printf("%s", TLS_LIBRARY_VERSION);
       break;
     case 'l': /* System libraries */
       printf(LIBS_SYS);

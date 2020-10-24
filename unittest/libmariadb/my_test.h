@@ -61,7 +61,17 @@ if (IS_SKYSQL(hostname)) \
 { \
   diag("Not supported by SkySQL"); \
   return SKIP; \
-}       
+}
+
+#ifndef HAVE_SSL
+#define SKIP_NOTLS \
+{ \
+  diag("TLS not supported"); \
+  return SKIP;\
+}
+#else
+#define SKIP_NOTLS
+#endif
 
 #define MAX_KEY MAX_INDEXES
 #define MAX_KEY_LENGTH_DECIMAL_WIDTH 4          /* strlen("4096") */
