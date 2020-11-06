@@ -642,7 +642,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
     }
     case MYSQL_TYPE_FLOAT:
     {
-      float fval;
+      volatile float fval;
       fval= is_unsigned ? (float)(ulonglong)(val) : (float)val;
       floatstore((uchar *)r_param->buffer, fval);
       *r_param->error= (fval != ceilf(fval)) ||

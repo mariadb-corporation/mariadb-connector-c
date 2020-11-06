@@ -250,6 +250,9 @@ static int ma_net_write_buff(NET *net,const char *packet, size_t len)
 {
   size_t left_length;
 
+  if (!len)
+    return 0;
+
   if (net->max_packet > MAX_PACKET_LENGTH &&
       net->compress)
     left_length= (size_t)(MAX_PACKET_LENGTH - (net->write_pos - net->buff));
