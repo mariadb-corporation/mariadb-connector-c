@@ -5275,7 +5275,45 @@ static int test_conc504(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc512(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind;
+  float f;
+
+  rc= mysql_query(mysql, "drop table if exists t1");
+
+  rc= mysql_real_query(mysql, SL("CREATE TABLE t1 (a int)"));
+
+  rc= mysql_real_query(mysql, SL("INSERT INTO t1 VALUES (1073741825)"));
+
+  stmt=  mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a FROM t1"));
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer= &f;
+  bind.buffer_type= MYSQL_TYPE_FLOAT;
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc != 101, "Truncation expected");
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc512", test_conc512, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc504", test_conc504, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_returning", test_returning, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev_21920", test_mdev_21920, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
