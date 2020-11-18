@@ -63,12 +63,12 @@ static DWORD get_last_error()
   return ERROR_INTERNAL_ERROR;
 }
 
-#define FAIL(fmt,...) \
-  {\
-   status = get_last_error();\
-   ma_format_win32_error(errmsg, errmsg_len, status, fmt, __VA_ARGS__);\
-   goto cleanup;\
-  }
+#define FAIL(...) \
+   do{\
+     status = get_last_error();\
+     ma_format_win32_error(errmsg, errmsg_len, status, __VA_ARGS__);\
+     goto cleanup;\
+  } while (0)
 
 /*
   Load file into memory. Add null terminator at the end, so it will be a valid C string.
@@ -654,7 +654,7 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
   derbuf = LocalAlloc(0, derlen);
   if (!derbuf)
   {
-    FAIL("LocalAlloc failed")
+    FAIL("LocalAlloc failed");
   }
 
   if (!CryptStringToBinaryA(private_key_str, (DWORD)len, CRYPT_STRING_BASE64HEADER, derbuf, &derlen, NULL, NULL))

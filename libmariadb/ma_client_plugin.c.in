@@ -382,10 +382,18 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
   }
 
   /* Compile dll path */
+#ifndef WIN32
   snprintf(dlpath, sizeof(dlpath) - 1, "%s/%s%s",
            mysql->options.extension && mysql->options.extension->plugin_dir ?
            mysql->options.extension->plugin_dir : (env_plugin_dir) ? env_plugin_dir :
            MARIADB_PLUGINDIR, name, SO_EXT);
+#else
+  {
+    char *p= (mysql->options.extension && mysql->options.extension->plugin_dir) ?
+             mysql->options.extension->plugin_dir : env_plugin_dir;
+    snprintf(dlpath, sizeof(dlpath), "%s%s%s%s", p ? p : "", p ? "\\" : "", name, SO_EXT);
+  }
+#endif
 
   if (strpbrk(name, "()[]!@#$%^&/*;.,'?\\"))
   {
