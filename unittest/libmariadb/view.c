@@ -161,7 +161,7 @@ static int test_view_2where(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int rc, i;
   MYSQL_BIND      my_bind[8];
-  char            parms[8][100];
+  char            params[8][100];
   ulong           length[8];
   const char *query=
     "select relid, report, handle, log_group, username, variant, type, "
@@ -208,9 +208,9 @@ static int test_view_2where(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   memset(my_bind, '\0', sizeof(MYSQL_BIND));
   for (i=0; i < 8; i++) {
-    strcpy(parms[i], "1");
+    strcpy(params[i], "1");
     my_bind[i].buffer_type = MYSQL_TYPE_VAR_STRING;
-    my_bind[i].buffer = (char *)&parms[i];
+    my_bind[i].buffer = (char *)&params[i];
     my_bind[i].buffer_length = 1;
     my_bind[i].is_null = 0;
     length[i] = 1;
@@ -245,7 +245,7 @@ static int test_view_star(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int rc, i;
   MYSQL_BIND      my_bind[8];
-  char            parms[8][100];
+  char            params[8][100];
   ulong           length[8];
   const char *query= "SELECT * FROM vt1 WHERE a IN (?,?)";
 
@@ -259,9 +259,9 @@ static int test_view_star(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   memset(my_bind, '\0', sizeof(MYSQL_BIND));
   for (i= 0; i < 2; i++) {
-    sprintf((char *)&parms[i], "%d", i);
+    sprintf((char *)&params[i], "%d", i);
     my_bind[i].buffer_type = MYSQL_TYPE_VAR_STRING;
-    my_bind[i].buffer = (char *)&parms[i];
+    my_bind[i].buffer = (char *)&params[i];
     my_bind[i].buffer_length = 100;
     my_bind[i].is_null = 0;
     my_bind[i].length = &length[i];

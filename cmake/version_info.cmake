@@ -8,7 +8,7 @@
 FUNCTION(GET_FILE_VERSION FILE_NAME FILE_VERSION)
 
   # if we build from a git repository, we calculate the file version:
-  #  Patch number is numer of commits for given file
+  #  Patch number is number of commits for given file
   IF(GIT_EXECUTABLE AND EXISTS ${CC_SOURCE_DIR}/.git)
     EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} --git-dir=${CC_SOURCE_DIR}/.git --work-tree=${CC_SOURCE_DIR} rev-list HEAD --count -- ${FILE_NAME} 
       OUTPUT_VARIABLE FV)

@@ -46,7 +46,7 @@
 #ifdef HAVE_PWD_H
 #include <pwd.h>
 #endif
-#if !defined(MSDOS) && !defined(_WIN32)
+#if !defined(_WIN32)
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -131,7 +131,7 @@ my_string mysql_unix_port=0;
 
 struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
 
-#if defined(MSDOS) || defined(_WIN32)
+#if defined(_WIN32)
 // socket_errno is defined in ma_global.h for all platforms
 #define perror(A)
 #else
@@ -532,7 +532,7 @@ void read_user_name(char *name)
   return;
 }
 
-#else /* If MSDOS || VMS */
+#else /* WIN32 */
 
 void read_user_name(char *name)
 {
@@ -1696,7 +1696,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   return(mysql);
 
 error:
-  /* Free alloced memory */
+  /* Free allocated memory */
   end_server(mysql);
   /* only free the allocated memory, user needs to call mysql_close */
   mysql_close_memory(mysql);
@@ -1938,7 +1938,7 @@ mysql_select_db(MYSQL *mysql, const char *db)
 
 /*************************************************************************
 ** Send a QUIT to the server and close the connection
-** If handle is alloced by mysql connect free it.
+** If handle is allocated by mysql connect free it.
 *************************************************************************/
 
 static void mysql_close_options(MYSQL *mysql)
@@ -2847,7 +2847,7 @@ static size_t get_store_length(size_t length)
   #define MAX_STORE_SIZE 9
   unsigned char buffer[MAX_STORE_SIZE], *p;
 
-  /* We just store the length and substract offset of our buffer
+  /* We just store the length and subtract offset of our buffer
      to determine the length */
   p= mysql_net_store_length(buffer, length);
   return p - buffer;

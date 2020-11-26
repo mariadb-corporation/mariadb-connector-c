@@ -391,7 +391,7 @@ static int test_bug31669(MYSQL *mysql)
   memset(buff, 'a', sizeof(buff));
 
   rc= mysql_change_user(mysql, buff, buff, buff);
-  FAIL_UNLESS(rc, "Error epected");
+  FAIL_UNLESS(rc, "Error expected");
 
   rc = mysql_change_user(mysql, username, password, schema);
   check_mysql_rc(rc, mysql);

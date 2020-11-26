@@ -918,7 +918,7 @@ static int test_bug1664(MYSQL *mysql)
 
     /*
       Now we are sending other long data. It should not be
-      concatened to previous.
+      concatenated to previous.
     */
 
     data= (char *)"SomeOtherData";
@@ -3053,7 +3053,7 @@ static int test_bug8330(MYSQL *mysql)
   long lval[2]= {1,2};
 
   stmt_text= "drop table if exists t1";
-  /* in case some previos test failed */
+  /* in case some previous test failed */
   rc= mysql_real_query(mysql, SL(stmt_text));
   check_mysql_rc(rc, mysql);
   stmt_text= "create table t1 (a int, b int)";
@@ -4908,7 +4908,7 @@ static int test_conc334(MYSQL *mysql)
   result= mysql_stmt_result_metadata(stmt);
   if (!result)
   {
-    diag("Coudn't retrieve result set");
+    diag("Couldn't retrieve result set");
     mysql_stmt_close(stmt);
     return FAIL;
   }
