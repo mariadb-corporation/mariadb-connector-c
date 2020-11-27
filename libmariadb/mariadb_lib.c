@@ -1701,7 +1701,7 @@ error:
   /* only free the allocated memory, user needs to call mysql_close */
   mysql_close_memory(mysql);
   if (!(client_flag & CLIENT_REMEMBER_OPTIONS) &&
-      !mysql->options.extension->async_context)
+      !(IS_MYSQL_ASYNC(mysql)))
     mysql_close_options(mysql);
   return(0);
 }
