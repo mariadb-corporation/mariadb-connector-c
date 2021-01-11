@@ -31,7 +31,7 @@
 #define MY_CONTEXT_USE_X86_64_GCC_ASM
 #elif defined(__GNUC__) && __GNUC__ >= 3 && defined(__i386__)
 #define MY_CONTEXT_USE_I386_GCC_ASM
-#elif defined(HAVE_UCONTEXT_H)
+#elif defined(HAVE_MAKECONTEXT)
 #define MY_CONTEXT_USE_UCONTEXT
 #else
 #define MY_CONTEXT_DISABLE
@@ -52,10 +52,11 @@ struct my_context {
 
 
 #ifdef MY_CONTEXT_USE_UCONTEXT
-#if defined(__APPLE__) && !defined(_XOPEN_SOURCE)
-#define _XOPEN_SOURCE 600
-#endif
+#if defined(HAVE_SYS_UCONTEXT_H)
+#include <sys/ucontext.h>
+#elif defined(HAVE_UCONTEXT_H)
 #include <ucontext.h>
+#endif
 
 struct my_context {
   void (*user_func)(void *);
