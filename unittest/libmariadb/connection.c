@@ -881,7 +881,7 @@ static int test_get_options(MYSQL *unused __attribute__((unused)))
   const char *attr_val[] = {"bar1", "bar2", "bar3"};
   char **key, **val;
 
-  for (i=0; options_int[i]; i++)
+  for (i=0; i < sizeof(options_int)/sizeof(int); i++)
   {
     mysql_options(mysql, options_int[i], &intval[0]);
     intval[1]= 0;

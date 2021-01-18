@@ -120,7 +120,7 @@ static int test_multi_result(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_IF(mysql_stmt_field_count(stmt) != 2, "expected 2 fields");
   FAIL_IF(int_data[0] != 200 || int_data[1] != 300,
-          "expected 100 200 300");
+          "expected 200 300");
   
   FAIL_IF(mysql_stmt_next_result(stmt) != 0, "expected more results");
   FAIL_IF(mysql_stmt_field_count(stmt) != 0, "expected 0 fields");

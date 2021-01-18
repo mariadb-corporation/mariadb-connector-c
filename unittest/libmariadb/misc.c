@@ -291,7 +291,7 @@ static int test_frm_bug(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 1, "rowcount != 0");
+  FAIL_UNLESS(rc == 1, "rowcount != 1");
 
   mysql_data_seek(result, 0);
 
