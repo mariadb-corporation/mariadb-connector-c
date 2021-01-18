@@ -2195,8 +2195,11 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
     }
     if (!is_close)
       ret= madb_reset_stmt(stmt, MADB_RESET_SERVER);
+    stmt->state= MYSQL_STMT_PREPARED;
   }
-  stmt->state= MYSQL_STMT_PREPARED;
+  else
+    stmt->state= MYSQL_STMT_INITTED;
+
   stmt->upsert_status.affected_rows= mysql->affected_rows;
   stmt->upsert_status.last_insert_id= mysql->insert_id;
   stmt->upsert_status.server_status= mysql->server_status;
