@@ -49,6 +49,7 @@ static int test_conc97(MYSQL *mysql)
 
 static int test_conc83(MYSQL *unused __attribute__((unused)))
 {
+  SKIP_MAXSCALE;
   MYSQL_STMT *stmt;
   int rc;
   MYSQL *mysql= mysql_init(NULL);
@@ -99,7 +100,7 @@ static int test_conc60(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(query));
   if (rc && mysql_stmt_errno(stmt) == 1146) {
     diag("Internal test - customer data not available");
-    mysql_stmt_close(stmt);
+    free(stmt);
     return SKIP;
   }
   check_stmt_rc(rc, stmt);
@@ -458,6 +459,12 @@ static int test_prepare_syntax(MYSQL *mysql)
                          "id int, name varchar(50), extra int)");
   check_mysql_rc(rc, mysql);
 
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "START TRANSACTION");
+  check_mysql_rc(rc, mysql);
+
   strcpy(query, "INSERT INTO test_prepare_syntax VALUES(?");
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
@@ -473,7 +480,7 @@ static int test_prepare_syntax(MYSQL *mysql)
   rc= mysql_commit(mysql);
   check_mysql_rc(rc, mysql);
 
-  mysql_stmt_close(stmt);
+  free(stmt);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_syntax");
   check_mysql_rc(rc, mysql);
 
@@ -1196,8 +1203,8 @@ static int test_long_data(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
   FAIL_IF(!rc, "Error expected");
-  rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+//  rc= mysql_stmt_close(stmt);
+//  check_stmt_rc(rc, stmt);
 
   strcpy(query, "INSERT INTO test_long_data(col1, col2, col3) VALUES(?, ?, ?)");
   stmt= mysql_stmt_init(mysql);
@@ -2537,6 +2544,12 @@ static int test_pure_coverage(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE test_pure(c1 int, c2 varchar(20))");
   check_mysql_rc(rc, mysql);
 
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "START TRANSACTION");
+  check_mysql_rc(rc, mysql);
+
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL("insert into test_pure(c67788) values(10)"));
@@ -3803,6 +3816,12 @@ static int test_null(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE test_null(col1 int, col2 varchar(50))");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "START TRANSACTION");
   check_mysql_rc(rc, mysql);
 
   /* insert by prepare, wrong column name */

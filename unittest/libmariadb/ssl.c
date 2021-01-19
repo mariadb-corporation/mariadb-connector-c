@@ -140,7 +140,7 @@ static int test_ssl(MYSQL *mysql)
   create_ssl_user("ssluser", 0);
 
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
 
   mariadb_get_infov(my, MARIADB_CONNECTION_TLS_VERSION_ID, &iversion);
   diag("iversion: %d", iversion);
@@ -221,7 +221,7 @@ static int test_ssl_cipher(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(my,0, 0, sslca, 0, 0);
 
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(my, "SHOW session status like 'Ssl_version'");
   check_mysql_rc(rc, my);
@@ -254,7 +254,7 @@ static int test_conc95(MYSQL *unused __attribute__((unused)))
                 NULL);
 
   if (!mysql_real_connect(mysql, hostname, "ssluser1", sslpw, schema,
-                          port, socketname, 0))
+                          ssl_port, socketname, 0))
   {
     diag("could not establish x509 connection. Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -283,7 +283,7 @@ static int test_multi_ssl_connections(MYSQL *unused __attribute__((unused)))
   my= mysql_init(NULL);
   FAIL_IF(!my,"mysql_init() failed");
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
-           port, socketname, 0), mysql_error(my));
+           ssl_port, socketname, 0), mysql_error(my));
 
   rc= mysql_query(my, "SHOW STATUS LIKE 'Ssl_accepts'");
   check_mysql_rc(rc, my);
@@ -301,7 +301,7 @@ static int test_multi_ssl_connections(MYSQL *unused __attribute__((unused)))
     mysql_ssl_set(mysql[i], 0, 0, sslca, 0, 0);
 
     mysql_real_connect(mysql[i], hostname, ssluser, sslpw, schema,
-                         port, socketname, 0);
+                         ssl_port, socketname, 0);
     if (mysql_errno(mysql[i]))
     {
       diag("loop: %d error: %d %s", i, mysql_errno(mysql[i]), mysql_error(mysql[i]));
@@ -345,7 +345,7 @@ DWORD WINAPI ssl_thread(void *dummy)
   mysql_ssl_set(mysql, 0, 0, sslca, 0, 0);
 
   if(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-          port, socketname, 0))
+          ssl_port, socketname, 0))
   {
     diag(">Error: %s", mysql_error(mysql));
     goto end;
@@ -435,7 +435,7 @@ static int test_phpbug51647(MYSQL *unused __attribute__((unused)))
                        sslca, 0, 0);
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0), mysql_error(mysql));
+           ssl_port, socketname, 0), mysql_error(mysql));
   diag("%s", mysql_get_ssl_cipher(mysql));
   mysql_close(mysql);
 
@@ -459,7 +459,7 @@ static int test_password_protected(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MARIADB_OPT_TLS_PASSPHRASE, "qwerty");
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0), mysql_error(mysql));
+           ssl_port, socketname, 0), mysql_error(mysql));
   diag("%s", mysql_get_ssl_cipher(mysql));
   mysql_close(mysql);
 
@@ -480,7 +480,7 @@ static int test_conc50(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, "./non_exisiting_cert.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   diag("Error: %d %s", mysql_errno(mysql), mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
@@ -509,7 +509,7 @@ static int test_conc50_1(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, sslca, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   if (mysql_errno(mysql))
     diag("Error: %d %s", mysql_errno(mysql), mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql), "No error expected");
@@ -532,7 +532,7 @@ static int test_conc50_2(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, "./non_exisiting_cert.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
 
@@ -555,7 +555,7 @@ static int test_conc127(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, "./non_exisiting.pem", NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   diag("Error: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) == 0, "Error expected (invalid certificate)");
   mysql_close(mysql);
@@ -576,7 +576,7 @@ static int test_conc50_3(MYSQL *unused __attribute__((unused)))
   FAIL_IF(!mysql, "Can't allocate memory");
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   FAIL_IF(!mysql_errno(mysql), "Error expected, SSL connection required!");
   mysql_close(mysql);
 
@@ -586,7 +586,7 @@ static int test_conc50_3(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, sslca, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   diag("Error: %s<", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql), "No error expected");
   mysql_close(mysql);
@@ -607,7 +607,7 @@ static int test_conc50_4(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, sslca, NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   FAIL_IF(!mysql_errno(mysql) , "Error expected");
   mysql_close(mysql);
 
@@ -634,7 +634,7 @@ static int verify_ssl_server_cert(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
 
   FAIL_IF(!mysql_errno(mysql), "Expected error");
   diag("Error (expected): %s", mysql_error(mysql));
@@ -656,7 +656,7 @@ static int test_bug62743(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, "dummykey", NULL, NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   diag("Error: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
@@ -667,7 +667,7 @@ static int test_bug62743(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, sslkey, NULL, NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   diag("Error with key: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) != 2026, "Expected errno 2026");
   mysql_close(mysql);
@@ -679,7 +679,7 @@ static int test_bug62743(MYSQL *unused __attribute__((unused)))
                        sslcert, NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   FAIL_IF(mysql_errno(mysql) != 0, "Expected no error");
   mysql_close(mysql);
 
@@ -689,7 +689,7 @@ static int test_bug62743(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(mysql, sslkey, "blablubb", NULL, NULL, NULL);
 
   mysql_real_connect(mysql, hostname, ssluser, sslpw, schema,
-           port, socketname, 0);
+           ssl_port, socketname, 0);
   diag("Error with cert: %s", mysql_error(mysql));
   FAIL_IF(mysql_errno(mysql) == 0, "Expected error");
   mysql_close(mysql);
@@ -716,7 +716,7 @@ DWORD WINAPI thread_conc102(void)
   mysql_ssl_set(mysql,0, 0, sslca, 0, 0);
 
   if(!mysql_real_connect(mysql, hostname, username, password, schema,
-          port, socketname, 0))
+          ssl_port, socketname, 0))
   {
     diag(">Error: %s", mysql_error(mysql));
     goto end;
@@ -813,12 +813,12 @@ static int test_ssl_fp(MYSQL *unused __attribute__((unused)))
   mysql_options(my, MARIADB_OPT_SSL_FP, bad_cert_finger_print);
 
   FAIL_IF(mysql_real_connect(my, hostname, username, password, schema,
-                             port, socketname, 0), mysql_error(my));
+                             ssl_port, socketname, 0), mysql_error(my));
 
   mysql_options(my, MARIADB_OPT_SSL_FP, ssl_cert_finger_print);
 
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
   
   FAIL_IF(check_cipher(my) != 0, "Invalid cipher");
 
@@ -854,7 +854,7 @@ static int test_ssl_fp_list(MYSQL *unused __attribute__((unused)))
   mysql_options(my, MARIADB_OPT_SSL_FP_LIST, CERT_PATH "/server-cert.sha1");
 
   if(!mysql_real_connect(my, hostname, username, password, schema,
-                         port, socketname, 0))
+                         ssl_port, socketname, 0))
   {
     diag("Error: %s", mysql_error(my));
     mysql_close(my);
@@ -880,7 +880,7 @@ static int test_ssl_version(MYSQL *unused __attribute__((unused)))
 
   mysql_ssl_set(my,0, 0, sslca, 0, 0);
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
 
   diag("cipher: %s", mysql_get_ssl_cipher(my));
   mariadb_get_infov(my, MARIADB_CONNECTION_TLS_VERSION_ID, &iversion);
@@ -911,7 +911,7 @@ static int test_schannel_cipher(MYSQL *unused __attribute__((unused)))
   mysql_ssl_set(my,0, 0, sslca, 0, 0);
   mysql_options(my, MARIADB_OPT_TLS_CIPHER_STRENGTH, &cipher_strength);
   FAIL_IF(!mysql_real_connect(my, hostname, ssluser, sslpw, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
 
   diag("cipher: %s", mysql_get_ssl_cipher(my));
 
@@ -969,7 +969,7 @@ static int test_cipher_mapping(MYSQL *unused __attribute__((unused)))
     
     mysql->options.use_ssl= 1;
     FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(mysql));
+                         ssl_port, socketname, 0), mysql_error(mysql));
     if (!(cipher= mysql_get_ssl_cipher(mysql)) ||
         strcmp(ciphers[i], cipher) != 0)
     {
@@ -1038,14 +1038,14 @@ static int test_openssl_1(MYSQL *mysql)
   my= mysql_init(NULL);
   mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES128-SHA");
   FAIL_IF(!mysql_real_connect(my, hostname, "ssluser1", NULL, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
   FAIL_IF(!mysql_get_ssl_cipher(my), "No TLS connection");
   mysql_close(my);
 
   my= mysql_init(NULL);
   mysql_options(my, MYSQL_OPT_SSL_ENFORCE, &val);
   FAIL_IF(!mysql_real_connect(my, hostname, "ssluser1", NULL, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
   FAIL_IF(!mysql_get_ssl_cipher(my), "No TLS connection");
   mysql_close(my);
 
@@ -1059,7 +1059,7 @@ static int test_openssl_1(MYSQL *mysql)
   my= mysql_init(NULL);
   mysql_options(my, MYSQL_OPT_SSL_ENFORCE, &val);
   mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
-                         port, socketname, 0);
+                         ssl_port, socketname, 0);
   if (!mysql_error(my) &&
        strcmp(mysql_get_ssl_cipher(my), "AES256-SHA"))
   {
@@ -1075,7 +1075,7 @@ static int test_openssl_1(MYSQL *mysql)
     my= mysql_init(NULL);
     mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
     FAIL_IF(!mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
-                           port, socketname, 0), mysql_error(my));
+                           ssl_port, socketname, 0), mysql_error(my));
     FAIL_IF(strcmp("AES256-SHA", mysql_get_ssl_cipher(my)) != 0, "expected cipher AES256-SHA");
     mysql_close(my);
   }
@@ -1085,7 +1085,7 @@ static int test_openssl_1(MYSQL *mysql)
   my= mysql_init(NULL);
   mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES128-SHA");
   FAIL_IF(mysql_real_connect(my, hostname, "ssluser2", NULL, schema,
-                         port, socketname, 0), "Error expected");
+                         ssl_port, socketname, 0), "Error expected");
   mysql_close(my);
 
 
@@ -1100,7 +1100,7 @@ static int test_openssl_1(MYSQL *mysql)
     my= mysql_init(NULL);
     mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
     FAIL_IF(mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
-                               port, socketname, 0), "Error expected");
+                               ssl_port, socketname, 0), "Error expected");
     mysql_close(my);
 
     /* ssluser3 connect with cipher and certs */
@@ -1111,7 +1111,7 @@ static int test_openssl_1(MYSQL *mysql)
                   NULL, 
                   "AES256-SHA");
     FAIL_IF(!mysql_real_connect(my, hostname, "ssluser3", NULL, schema,
-                           port, socketname, 0), mysql_error(my));
+                           ssl_port, socketname, 0), mysql_error(my));
 
     mysql_close(my);
 
@@ -1124,7 +1124,7 @@ static int test_openssl_1(MYSQL *mysql)
     my= mysql_init(NULL);
     mysql_ssl_set(my, NULL, NULL, NULL, NULL, "AES256-SHA");
     FAIL_IF(mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
-                           port, socketname, 0), "Error expected");
+                           ssl_port, socketname, 0), "Error expected");
     mysql_close(my);
 
     /* ssluser4 connect with cipher and certs */
@@ -1135,7 +1135,7 @@ static int test_openssl_1(MYSQL *mysql)
                   NULL,
                   "AES256-SHA");
     FAIL_IF(!mysql_real_connect(my, hostname, "ssluser4", NULL, schema,
-                           port, socketname, 0), mysql_error(my));
+                           ssl_port, socketname, 0), mysql_error(my));
     mysql_close(my);
   }
   diag("drop users");
@@ -1163,7 +1163,7 @@ static int test_ssl_timeout(MYSQL *unused __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_READ_TIMEOUT, &read_timeout);
   mysql->options.use_ssl= 1;
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(mysql));
+                         ssl_port, socketname, 0), mysql_error(mysql));
   diag("cipher: %s\n", mysql_get_ssl_cipher(mysql));
   rc= mysql_query(mysql, "SELECT SLEEP(600)");
   if (!rc)
@@ -1200,7 +1200,7 @@ static int test_conc286(MYSQL *unused __attribute__((unused)))
   mysql_options(my, MARIADB_OPT_SSL_FP, ssl_cert_finger_print);
 
   FAIL_IF(!mysql_real_connect(my, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(my));
+                         ssl_port, socketname, 0), mysql_error(my));
   
   FAIL_IF(check_cipher(my) != 0, "Invalid cipher");
 
@@ -1276,7 +1276,7 @@ static int test_mdev14101(MYSQL *my __attribute__((unused)))
     mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &val);
     mysql_options(mysql, MARIADB_OPT_TLS_VERSION, combinations[i].opt_tls_version);
     FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(mysql));
+                         ssl_port, socketname, 0), mysql_error(mysql));
     mariadb_get_infov(mysql, MARIADB_CONNECTION_TLS_VERSION, &tls_version);
     diag("options: %s", combinations[i].opt_tls_version);
     diag("protocol: %s expected: %s", tls_version, combinations[i].expected);
@@ -1296,7 +1296,7 @@ static int test_conc386(MYSQL *mysql)
                 NULL,
                 NULL);
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(mysql));
+                         ssl_port, socketname, 0), mysql_error(mysql));
   FAIL_IF(check_cipher(mysql) != 0, "Invalid cipher");
   mysql_close(mysql);
   return OK;
@@ -1316,7 +1316,7 @@ static int test_ssl_verify(MYSQL *my __attribute__((unused)))
   mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
   FAIL_IF(mysql_real_connect(mysql, hostname, username, password, schema,
-                         port, socketname, 0), "Error expected");
+                         ssl_port, socketname, 0), "Error expected");
   diag("error expected: %s\n", mysql_error(mysql));
   mysql_close(mysql);
 
@@ -1338,13 +1338,13 @@ static int test_ssl_verify(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql,0, 0, sslca, 0, 0);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(mysql));
+                         ssl_port, socketname, 0), mysql_error(mysql));
   mysql_close(mysql);
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &enforce);
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
-                         port, socketname, 0), mysql_error(mysql));
+                         ssl_port, socketname, 0), mysql_error(mysql));
 
   diag("cipher: %s", mysql_get_ssl_cipher(mysql));
   mysql_close(mysql);

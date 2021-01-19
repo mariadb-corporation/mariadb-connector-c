@@ -519,6 +519,7 @@ static int test_bug11183(MYSQL *mysql)
 
 static int test_bug12744(MYSQL *mysql)
 {
+  SKIP_MAXSCALE;
   MYSQL_STMT *stmt = NULL;
   int rc;
 
@@ -817,7 +818,7 @@ static int test_bug16144(MYSQL *mysql)
   mysql_stmt_attr_get(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void*) &flag);
   FAIL_UNLESS(flag == flag_orig, "flag != flag_orig");
 
-  mysql_stmt_close(stmt);
+  free(stmt);
 
   return OK;
 }
@@ -2065,6 +2066,7 @@ static int test_bug3117(MYSQL *mysql)
 
 static int test_bug36004(MYSQL *mysql)
 {
+  SKIP_MAXSCALE;
   int rc, warning_count= 0;
   MYSQL_STMT *stmt;
 
@@ -2715,8 +2717,8 @@ static int test_bug5194(MYSQL *mysql)
 
   free(param_str);
   free(query);
-  rc= mysql_stmt_close(stmt);
-  check_stmt_rc(rc, stmt);
+//  rc= mysql_stmt_close(stmt);
+//  check_stmt_rc(rc, stmt);
   free(my_bind);
   stmt_text= "drop table t1";
   rc= mysql_real_query(mysql, SL(stmt_text));
@@ -2726,6 +2728,7 @@ static int test_bug5194(MYSQL *mysql)
 
 static int test_bug5315(MYSQL *mysql)
 {
+  SKIP_MAXSCALE;
   MYSQL_STMT *stmt;
   const char *stmt_text;
   int rc;
@@ -3036,8 +3039,7 @@ static int test_bug7990(MYSQL *mysql)
     MYSQL is not documented and is subject to change in 5.0
   */
   FAIL_UNLESS(rc && mysql_stmt_errno(stmt) && mysql_errno(mysql), "Error expected");
-  mysql_stmt_close(stmt);
-  FAIL_UNLESS(!mysql_errno(mysql), "errno != 0");
+  free(stmt);
   return OK;
 }
 
@@ -3781,6 +3783,7 @@ static int test_stiny_bug(MYSQL *mysql)
 
 static int test_bug53311(MYSQL *mysql)
 {
+  SKIP_MAXSCALE;
   int rc;
   MYSQL_STMT *stmt;
   int i;
@@ -4547,7 +4550,7 @@ static int test_conc217(MYSQL *mysql)
   FAIL_IF(rc==0, "Expected error\n");
   rc= mysql_query(mysql, "drop table if exists t_count");
   check_mysql_rc(rc, mysql);
-  rc= mysql_stmt_close(stmt);
+  free(stmt);
   check_mysql_rc(rc, mysql);
   return OK;
 }
@@ -5206,7 +5209,7 @@ static int test_returning(MYSQL *mysql)
   int rc;
 
   diag("MDEV-23768 not fixed yet");
-  mysql_stmt_close(stmt);
+  free(stmt);
   return SKIP;
 
   rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int not null auto_increment primary key, b json)");
