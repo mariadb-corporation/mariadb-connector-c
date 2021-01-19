@@ -927,6 +927,9 @@ static int test_bug9992(MYSQL *mysql)
 
 static int test_multi_statements(MYSQL *mysql)
 {
+  SKIP_SKYSQL;
+  SKIP_MAXSCALE;
+
   MYSQL *mysql_local;
   MYSQL_RES *result;
   int    rc;
