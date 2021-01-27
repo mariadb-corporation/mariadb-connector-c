@@ -101,7 +101,7 @@ static int test_conc60(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(query));
   if (rc && mysql_stmt_errno(stmt) == 1146) {
     diag("Internal test - customer data not available");
-    free(stmt);
+    mysql_stmt_close(stmt);
     return SKIP;
   }
   check_stmt_rc(rc, stmt);
@@ -481,7 +481,7 @@ static int test_prepare_syntax(MYSQL *mysql)
   rc= mysql_commit(mysql);
   check_mysql_rc(rc, mysql);
 
-  free(stmt);
+  mysql_stmt_close(stmt);
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_prepare_syntax");
   check_mysql_rc(rc, mysql);
 
@@ -1204,8 +1204,8 @@ static int test_long_data(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
   FAIL_IF(!rc, "Error expected");
-//  rc= mysql_stmt_close(stmt);
-//  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_close(stmt);
+  check_stmt_rc(rc, stmt);
 
   strcpy(query, "INSERT INTO test_long_data(col1, col2, col3) VALUES(?, ?, ?)");
   stmt= mysql_stmt_init(mysql);

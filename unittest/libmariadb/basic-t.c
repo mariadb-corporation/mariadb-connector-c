@@ -401,7 +401,7 @@ static int test_bad_union(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(query));
   FAIL_UNLESS(rc && mysql_errno(mysql) == 1222, "Error expected");
 
-  free(stmt);
+  mysql_stmt_close(stmt);
   return OK;
 }
 

@@ -161,7 +161,7 @@ static int test_bug16143(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   /* Check mysql_stmt_sqlstate return "no error" */
   FAIL_UNLESS(strcmp(mysql_stmt_sqlstate(stmt), "00000") == 0, "Expected SQLstate 000000");
-  free(stmt);
+  mysql_stmt_close(stmt);
   return OK;
 }
 

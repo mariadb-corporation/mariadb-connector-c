@@ -819,7 +819,7 @@ static int test_bug16144(MYSQL *mysql)
   mysql_stmt_attr_get(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void*) &flag);
   FAIL_UNLESS(flag == flag_orig, "flag != flag_orig");
 
-  free(stmt);
+  mysql_stmt_close(stmt);
 
   return OK;
 }
@@ -3040,7 +3040,7 @@ static int test_bug7990(MYSQL *mysql)
     MYSQL is not documented and is subject to change in 5.0
   */
   FAIL_UNLESS(rc && mysql_stmt_errno(stmt) && mysql_errno(mysql), "Error expected");
-  free(stmt);
+  mysql_stmt_close(stmt);
   return OK;
 }
 
@@ -4551,7 +4551,7 @@ static int test_conc217(MYSQL *mysql)
   FAIL_IF(rc==0, "Expected error\n");
   rc= mysql_query(mysql, "drop table if exists t_count");
   check_mysql_rc(rc, mysql);
-  free(stmt);
+  mysql_stmt_close(stmt);
   check_mysql_rc(rc, mysql);
   return OK;
 }
@@ -5210,7 +5210,7 @@ static int test_returning(MYSQL *mysql)
   int rc;
 
   diag("MDEV-23768 not fixed yet");
-  free(stmt);
+  mysql_stmt_close(stmt);
   return SKIP;
 
   rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int not null auto_increment primary key, b json)");
