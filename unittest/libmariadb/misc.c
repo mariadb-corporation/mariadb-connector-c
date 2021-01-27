@@ -173,8 +173,8 @@ static int bug31418_impl()
 
 static int test_bug31418(MYSQL *unused __attribute__((unused)))
 {
-  SKIP_MAXSCALE;
   int i;
+  SKIP_MAXSCALE;
 
   if (!is_mariadb)
     return SKIP;
@@ -808,14 +808,13 @@ static int test_bug49694(MYSQL *mysql)
 
 static int test_conc49(MYSQL *mysql)
 {
-
-  SKIP_LOAD_INFILE_DISABLE;
-  SKIP_SKYSQL;
-
   int rc;
   MYSQL_RES *res;
   int i;
   FILE *fp;
+
+  SKIP_LOAD_INFILE_DISABLE;
+  SKIP_SKYSQL;
 
   fp= fopen("./sample.csv", "w");
   for (i=1; i < 4; i++)
@@ -988,9 +987,9 @@ static int test_conc_114(MYSQL *mysql)
 /* run with valgrind */
 static int test_conc117(MYSQL *unused __attribute__((unused)))
 {
-  SKIP_MAXSCALE;
   my_bool reconnect= 1;
   MYSQL *my= mysql_init(NULL);
+  SKIP_MAXSCALE;
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
   
@@ -1006,9 +1005,9 @@ static int test_conc117(MYSQL *unused __attribute__((unused)))
 
 static int test_read_timeout(MYSQL *unused __attribute__((unused)))
 {
-  SKIP_MAXSCALE;
   int timeout= 5, rc;
   MYSQL *my= mysql_init(NULL);
+  SKIP_MAXSCALE;
   mysql_options(my, MYSQL_OPT_READ_TIMEOUT, &timeout);
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));

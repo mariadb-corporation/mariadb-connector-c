@@ -513,7 +513,6 @@ static int bug30472_retrieve_charset_info(MYSQL *con,
 
 static int test_bug30472(MYSQL *mysql)
 {
-  SKIP_MAXSCALE;
   int   rc;
 
   char character_set_name_1[MY_CS_NAME_SIZE];
@@ -535,6 +534,8 @@ static int test_bug30472(MYSQL *mysql)
   char character_set_client_4[MY_CS_NAME_SIZE];
   char character_set_results_4[MY_CS_NAME_SIZE];
   char collation_connnection_4[MY_CS_NAME_SIZE];
+
+  SKIP_MAXSCALE;
 
   if (mysql_get_server_version(mysql) < 50100 || !is_mariadb) 
   {

@@ -519,9 +519,10 @@ static int test_bug11183(MYSQL *mysql)
 
 static int test_bug12744(MYSQL *mysql)
 {
-  SKIP_MAXSCALE;
   MYSQL_STMT *stmt = NULL;
   int rc;
+
+  SKIP_MAXSCALE;
 
   stmt = mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
@@ -2066,9 +2067,9 @@ static int test_bug3117(MYSQL *mysql)
 
 static int test_bug36004(MYSQL *mysql)
 {
-  SKIP_MAXSCALE;
   int rc, warning_count= 0;
   MYSQL_STMT *stmt;
+  SKIP_MAXSCALE;
 
 
   if (mysql_get_server_version(mysql) < 60000) {
@@ -2728,10 +2729,10 @@ static int test_bug5194(MYSQL *mysql)
 
 static int test_bug5315(MYSQL *mysql)
 {
-  SKIP_MAXSCALE;
   MYSQL_STMT *stmt;
   const char *stmt_text;
   int rc;
+  SKIP_MAXSCALE;
 
   if (!is_mariadb)
     return SKIP;
@@ -3783,11 +3784,11 @@ static int test_stiny_bug(MYSQL *mysql)
 
 static int test_bug53311(MYSQL *mysql)
 {
-  SKIP_MAXSCALE;
   int rc;
   MYSQL_STMT *stmt;
   int i;
   const char *query= "INSERT INTO bug53311 VALUES (1)";
+  SKIP_MAXSCALE;
 
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);

@@ -49,13 +49,14 @@ static int test_conc97(MYSQL *mysql)
 
 static int test_conc83(MYSQL *unused __attribute__((unused)))
 {
-  SKIP_MAXSCALE;
   MYSQL_STMT *stmt;
   int rc;
   MYSQL *mysql= mysql_init(NULL);
   my_bool reconnect= 1;
 
   const char *query= "SELECT 1,2,3 FROM DUAL";
+
+  SKIP_MAXSCALE;
 
   stmt= mysql_stmt_init(mysql);
 

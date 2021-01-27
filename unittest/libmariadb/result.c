@@ -927,9 +927,6 @@ static int test_bug9992(MYSQL *mysql)
 
 static int test_multi_statements(MYSQL *mysql)
 {
-  SKIP_SKYSQL;
-  SKIP_MAXSCALE;
-
   MYSQL *mysql_local;
   MYSQL_RES *result;
   int    rc;
@@ -951,6 +948,9 @@ DROP TABLE IF EXISTS test_multi_tab";
   uint count, exp_value;
   uint rows[]= {0, 0, 2, 1, 3, 2, 2, 1, 1, 0, 0, 1, 0};
   my_bool reconnect= 1;
+
+  SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   /*
     First test that we get an error for multi statements
