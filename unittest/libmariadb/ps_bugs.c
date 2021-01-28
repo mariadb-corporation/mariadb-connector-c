@@ -2718,8 +2718,8 @@ static int test_bug5194(MYSQL *mysql)
 
   free(param_str);
   free(query);
-//  rc= mysql_stmt_close(stmt);
-//  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_close(stmt);
+  check_stmt_rc(rc, stmt);
   free(my_bind);
   stmt_text= "drop table t1";
   rc= mysql_real_query(mysql, SL(stmt_text));
