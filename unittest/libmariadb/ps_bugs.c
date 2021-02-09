@@ -5316,49 +5316,7 @@ static int test_conc512(MYSQL *mysql)
   return OK;
 }
 
-static int test_conc407(MYSQL *mysql)
-{
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
-  int rc;
-  MYSQL_BIND bind;
-  char data[20];
-  unsigned long length;
-
-  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a smallint(5) unsigned zerofill)");
-  check_mysql_rc(rc, mysql);
-
-  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (27)");
-  check_mysql_rc(rc, mysql);
-
-  for (int i=1; i < 7; i++)
-  {
-    rc= mysql_stmt_prepare(stmt, SL("SELECT a FROM t1"));
-    check_stmt_rc(rc, stmt);
-
-    rc= mysql_stmt_execute(stmt);
-    check_stmt_rc(rc, stmt);
-
-    memset(&bind, 0, sizeof(MYSQL_BIND));
-    bind.buffer= data;
-    bind.buffer_type= MYSQL_TYPE_STRING;
-    bind.buffer_length= i;
-    bind.length= &length;
-
-    rc= mysql_stmt_bind_result(stmt, &bind);
-    check_stmt_rc(rc, stmt);
-
-    rc= mysql_stmt_fetch(stmt);
-    if (!rc)
-      diag("rc: %d buffer: %s", rc, data);
-    else
-      diag("rc: %d  len: %d", rc, i);
-  }
-  mysql_stmt_close(stmt);
-  return OK;
-}
-
 struct my_tests_st my_tests[] = {
-  {"test_conc407", test_conc407, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc512", test_conc512, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc504", test_conc504, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_returning", test_returning, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
