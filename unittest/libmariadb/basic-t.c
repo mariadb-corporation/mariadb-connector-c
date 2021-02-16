@@ -38,6 +38,7 @@ static int test_conc75(MYSQL *my)
   my_bool reconnect= 1;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
 
@@ -147,6 +148,7 @@ static int test_conc70(MYSQL *my)
   SKIP_CONNECTION_HANDLER;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
 
@@ -210,7 +212,7 @@ static int test_conc68(MYSQL *my)
 
   SKIP_CONNECTION_HANDLER;
   SKIP_SKYSQL;
-
+  SKIP_MAXSCALE;
   
   mysql= mysql_init(NULL);
 
@@ -420,9 +422,26 @@ static int test_mysql_insert_id(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "drop table if exists t2");
   check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "drop table if exists t3");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "drop table if exists t4");
+  check_mysql_rc(rc, mysql);
   /* table without auto_increment column */
   rc= mysql_query(mysql, "create table t1 (f1 int, f2 varchar(255), key(f1))");
   check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "create table t2 (f1 int not null primary key auto_increment, f2 varchar(255))");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "create table t3 (f1 int not null primary key auto_increment, f2 varchar(255)) engine=MyISAM");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "create table t4 (f1 int not null primary key "
+                  "auto_increment, f2 varchar(200), unique (f2)) engine=MyISAM");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "START TRANSACTION");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_query(mysql, "insert into t1 values (1,'a')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
@@ -440,17 +459,12 @@ static int test_mysql_insert_id(MYSQL *mysql)
     Test for bug #34889: mysql_client_test::test_mysql_insert_id test fails
     sporadically
   */
-  rc= mysql_query(mysql, "create table t2 (f1 int not null primary key auto_increment, f2 varchar(255))");
-  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "insert into t2 values (null,'b')");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "insert into t1 select 5,'c'");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
-  rc= mysql_query(mysql, "drop table t2");
-  check_mysql_rc(rc, mysql);
-  
   rc= mysql_query(mysql, "insert into t1 select null,'d'");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
@@ -470,9 +484,7 @@ static int test_mysql_insert_id(MYSQL *mysql)
   FAIL_UNLESS(res == 400, "");
 
   /* table with auto_increment column */
-  rc= mysql_query(mysql, "create table t2 (f1 int not null primary key auto_increment, f2 varchar(255)) engine=MyISAM");
-  check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "insert into t2 values (1,'a')");
+  rc= mysql_query(mysql, "insert into t3 values (1,'a')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 1, "");
@@ -482,11 +494,11 @@ static int test_mysql_insert_id(MYSQL *mysql)
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
 
-  rc= mysql_query(mysql, "insert into t2 values (null,'b')");
+  rc= mysql_query(mysql, "insert into t3 values (null,'b')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 2, "");
-  rc= mysql_query(mysql, "insert into t2 select 5,'c'");
+  rc= mysql_query(mysql, "insert into t3 select 5,'c'");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   /*
@@ -495,16 +507,16 @@ static int test_mysql_insert_id(MYSQL *mysql)
     0. We try to be consistent with INSERT VALUES.
   */
   FAIL_UNLESS(res == 5, "");
-  rc= mysql_query(mysql, "insert into t2 select null,'d'");
+  rc= mysql_query(mysql, "insert into t3 select null,'d'");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 6, "");
   /* with more than one row */
-  rc= mysql_query(mysql, "insert into t2 values (10,'a'),(11,'b')");
+  rc= mysql_query(mysql, "insert into t3 values (10,'a'),(11,'b')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 11, "");
-  rc= mysql_query(mysql, "insert into t2 select 12,'a' union select 13,'b'");
+  rc= mysql_query(mysql, "insert into t3 select 12,'a' union select 13,'b'");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   /*
@@ -513,34 +525,34 @@ static int test_mysql_insert_id(MYSQL *mysql)
     return 0. We try to be consistent with INSERT VALUES.
   */
   FAIL_UNLESS(res == 13, "");
-  rc= mysql_query(mysql, "insert into t2 values (null,'a'),(null,'b')");
+  rc= mysql_query(mysql, "insert into t3 values (null,'a'),(null,'b')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 14, "");
-  rc= mysql_query(mysql, "insert into t2 select null,'a' union select null,'b'");
+  rc= mysql_query(mysql, "insert into t3 select null,'a' union select null,'b'");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 16, "");
-  rc= mysql_query(mysql, "insert into t2 select 12,'a' union select 13,'b'");
+  rc= mysql_query(mysql, "insert into t3 select 12,'a' union select 13,'b'");
   FAIL_IF(!rc, "Error expected");
-  rc= mysql_query(mysql, "insert ignore into t2 select 12,'a' union select 13,'b'");
+  rc= mysql_query(mysql, "insert ignore into t3 select 12,'a' union select 13,'b'");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
-  rc= mysql_query(mysql, "insert into t2 values (12,'a'),(13,'b')");
+  rc= mysql_query(mysql, "insert into t3 values (12,'a'),(13,'b')");
   FAIL_IF(!rc, "Error expected");
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
-  rc= mysql_query(mysql, "insert ignore into t2 values (12,'a'),(13,'b')");
+  rc= mysql_query(mysql, "insert ignore into t3 values (12,'a'),(13,'b')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
   /* mixing autogenerated and explicit values */
-  rc= mysql_query(mysql, "insert into t2 values (null,'e'),(12,'a'),(13,'b')");
+  rc= mysql_query(mysql, "insert into t3 values (null,'e'),(12,'a'),(13,'b')");
   FAIL_IF(!rc, "Error expected");
-  rc= mysql_query(mysql, "insert into t2 values (null,'e'),(12,'a'),(13,'b'),(25,'g')");
+  rc= mysql_query(mysql, "insert into t3 values (null,'e'),(12,'a'),(13,'b'),(25,'g')");
   FAIL_IF(!rc, "Error expected");
-  rc= mysql_query(mysql, "insert into t2 values (null,last_insert_id(300))");
+  rc= mysql_query(mysql, "insert into t3 values (null,last_insert_id(300))");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   /*
@@ -550,20 +562,15 @@ static int test_mysql_insert_id(MYSQL *mysql)
   diag("res: %lld", res);
   FAIL_UNLESS(res == 20, "");
   /* If first autogenerated number fails and 2nd works: */
-  rc= mysql_query(mysql, "drop table t2");
-  check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "create table t2 (f1 int not null primary key "
-                  "auto_increment, f2 varchar(200), unique (f2)) engine=MyISAM");
-  check_mysql_rc(rc, mysql);
-  rc= mysql_query(mysql, "insert into t2 values (null,'e')");
+  rc= mysql_query(mysql, "insert into t4 values (null,'e')");
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 1, "");
-  rc= mysql_query(mysql, "insert ignore into t2 values (null,'e'),(null,'a'),(null,'e')");
+  rc= mysql_query(mysql, "insert ignore into t4 values (null,'e'),(null,'a'),(null,'e')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 2, "");
   /* If autogenerated fails and explicit works: */
-  rc= mysql_query(mysql, "insert ignore into t2 values (null,'e'),(12,'c'),(null,'d')");
+  rc= mysql_query(mysql, "insert ignore into t4 values (null,'e'),(12,'c'),(null,'d')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   /*
@@ -572,24 +579,24 @@ static int test_mysql_insert_id(MYSQL *mysql)
   */
   FAIL_UNLESS(res == 13, "");
   /* UPDATE may update mysql_insert_id() if it uses LAST_INSERT_ID(#) */
-  rc= mysql_query(mysql, "update t2 set f1=14 where f1=12");
+  rc= mysql_query(mysql, "update t4 set f1=14 where f1=12");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
-  rc= mysql_query(mysql, "update t2 set f1=0 where f1=14");
+  rc= mysql_query(mysql, "update t4 set f1=0 where f1=14");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
-  rc= mysql_query(mysql, "update t2 set f2=last_insert_id(372) where f1=0");
+  rc= mysql_query(mysql, "update t4 set f2=last_insert_id(372) where f1=0");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 372, "");
   /* check that LAST_INSERT_ID() does not update mysql_insert_id(): */
-  rc= mysql_query(mysql, "insert into t2 values (null,'g')");
+  rc= mysql_query(mysql, "insert into t4 values (null,'g')");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 15, "");
-  rc= mysql_query(mysql, "update t2 set f2=(@li:=last_insert_id()) where f1=15");
+  rc= mysql_query(mysql, "update t4 set f2=(@li:=last_insert_id()) where f1=15");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 0, "");
@@ -598,13 +605,13 @@ static int test_mysql_insert_id(MYSQL *mysql)
     mysql_insert_id() returns the id of the row, instead of not being
     affected.
   */
-  rc= mysql_query(mysql, "insert into t2 values (null,@li) on duplicate key "
+  rc= mysql_query(mysql, "insert into t4 values (null,@li) on duplicate key "
                   "update f2=concat('we updated ',f2)");
   check_mysql_rc(rc, mysql);
   res= mysql_insert_id(mysql);
   FAIL_UNLESS(res == 15, "");
 
-  rc= mysql_query(mysql, "drop table t1,t2");
+  rc= mysql_query(mysql, "drop table t1,t2,t3,t4");
   check_mysql_rc(rc, mysql);
   return OK;
 }

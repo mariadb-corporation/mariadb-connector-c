@@ -23,17 +23,19 @@ before_install:
   - export SSLCERT=$PROJ_PATH/tmp
 matrix:
   allow_failures:
-#    - env: DB=build
 #    - env: SERVER_BRANCH=10.5
 #    - env: SERVER_BRANCH=10.5 TEST_OPTION=--ps-protocol
   include:
-    - env: DB=build
+    - env: DB=build:10.6
     - env: SKYSQL=true
+    - env: SKYSQL_HA=true MAXSCALE_TEST_DISABLE=true
 # disable for now    - env: DB=mysql:8.0
     - env: DB=mariadb:10.1
     - env: DB=mariadb:10.2
     - env: DB=mariadb:10.3
     - env: DB=mariadb:10.4
+    - env: DB=mariadb:10.5
+    - env: DB=mariadb:10.5 MAXSCALE_VERSION=2.5.3 MAXSCALE_TEST_DISABLE=true
     - env: SERVER_BRANCH=10.2
     - env: SERVER_BRANCH=10.2 TEST_OPTION=--ps-protocol
     - env: SERVER_BRANCH=10.3
@@ -44,8 +46,8 @@ matrix:
     - env: SERVER_BRANCH=10.5 TEST_OPTION=--ps-protocol
 
 script:
-  - if [ "$DB" = "build" ] ; then .travis/build/build.sh; fi
-  - if [ "$DB" = "build" ] ; then docker build -t build:latest --label build .travis/build/; fi
-  - if [ -z "$DB" ] && [ -z "$SKYSQL" ] ; then .travis/server-replace-submodule.sh; fi
-  - if [ -n "$DB" ] || [ -n "$SKYSQL" ]; then .travis/script.sh; fi
+  - if [[ "$DB" == build* ]] ; then .travis/build/build.sh; fi
+  - if [[ "$DB" == build* ]] ; then docker build -t build:10.6 --label build .travis/build/; fi
+  - if [ -z "$DB" ] && [ -z "$SKYSQL" ] && [ -z "$SKYSQL_HA" ] ; then .travis/server-replace-submodule.sh; fi
+  - if [ -n "$DB" ] || [ -n "$SKYSQL" ] || [ -n "$SKYSQL_HA" ]; then .travis/script.sh; fi
 

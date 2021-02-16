@@ -146,22 +146,6 @@ do {\
 #define my_afree(PTR) ma_free(PTR)
 #endif /* HAVE_ALLOCA */
 
-#ifdef MSDOS
-#ifdef __ZTC__
-void * __CDECL halloc(long count,size_t length);
-void   __CDECL hfree(void *ptr);
-#endif
-#if defined(USE_HALLOC)
-#if defined(_VCM_) || defined(M_IC80386)
-#undef USE_HALLOC
-#endif
-#endif
-#ifdef USE_HALLOC
-#define malloc(a) halloc((long) (a),1)
-#define free(a) hfree(a)
-#endif
-#endif /* MSDOS */
-
 #ifndef errno
 #ifdef HAVE_ERRNO_AS_DEFINE
 #include <errno.h>			/* errno is a define */

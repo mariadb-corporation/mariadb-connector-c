@@ -46,7 +46,7 @@
 void ma_randominit(struct rand_struct *rand_st,ulong seed1, ulong seed2)
 {						/* For mysql 3.21.# */
 #ifdef HAVE_purify
-  memset((char*) rand_st, 0m sizeof(*rand_st));		/* Avoid UMC varnings */
+  memset((char*) rand_st, 0m sizeof(*rand_st));		/* Avoid UMC warnings */
 #endif
   rand_st->max_value= 0x3FFFFFFFL;
   rand_st->max_value_dbl=(double) rand_st->max_value;
@@ -81,7 +81,7 @@ void ma_hash_password(ulong *result, const char *password, size_t len)
 }
 
 /*
- * Genererate a new message based on message and password
+ * Generate a new message based on message and password
  * The same thing is done in client and server and the results are checked.
  */
 
@@ -134,7 +134,7 @@ void ma_make_scrambled_password(char *to,const char *password)
 }
 
 /*
- * Genererate a new message based on message and password
+ * Generate a new message based on message and password
  * The same thing is done in client and server and the results are checked.
  */
 char *ma_scramble_323(char *to, const char *message, const char *password)

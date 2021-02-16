@@ -93,7 +93,7 @@ static int ma_sha256_scramble(unsigned char *scramble, size_t scramble_len,
 #endif
   size_t i;
 
-  /* check if all specified lenghts are valid */
+  /* check if all specified lengtht are valid */
   if (!scramble_len || !source_len || !salt_len)
     return 1;
 

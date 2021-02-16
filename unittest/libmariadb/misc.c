@@ -39,6 +39,7 @@ static int test_bug28075(MYSQL *mysql)
   int rc;
 
   SKIP_SKYSQL;
+  SKIP_MAXSCALE;
 
   rc= mysql_dump_debug_info(mysql);
   check_mysql_rc(rc, mysql);
@@ -173,6 +174,7 @@ static int bug31418_impl()
 static int test_bug31418(MYSQL *unused __attribute__((unused)))
 {
   int i;
+  SKIP_MAXSCALE;
 
   if (!is_mariadb)
     return SKIP;
@@ -811,7 +813,9 @@ static int test_conc49(MYSQL *mysql)
   int i;
   FILE *fp;
 
+  SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
+
   fp= fopen("./sample.csv", "w");
   for (i=1; i < 4; i++)
     fprintf(fp, "\"%d\", \"%d\", \"%d\"\r\n", i, i, i);
@@ -985,6 +989,7 @@ static int test_conc117(MYSQL *unused __attribute__((unused)))
 {
   my_bool reconnect= 1;
   MYSQL *my= mysql_init(NULL);
+  SKIP_MAXSCALE;
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
   
@@ -1002,6 +1007,7 @@ static int test_read_timeout(MYSQL *unused __attribute__((unused)))
 {
   int timeout= 5, rc;
   MYSQL *my= mysql_init(NULL);
+  SKIP_MAXSCALE;
   mysql_options(my, MYSQL_OPT_READ_TIMEOUT, &timeout);
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(my));
@@ -1206,12 +1212,12 @@ static int test_server_status(MYSQL *mysql)
 {
   int rc;
   unsigned int server_status;
-  MYSQL_STMT *stmt;
+//  MYSQL_STMT *stmt;
 
   if (mysql_get_server_version(mysql) < 100200)
     return SKIP;
 
-  stmt= mysql_stmt_init(mysql);
+//  stmt= mysql_stmt_init(mysql);
 
   rc= mysql_autocommit(mysql, 1);
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_STATUS, &server_status);
@@ -1252,7 +1258,7 @@ static int test_server_status(MYSQL *mysql)
   rc= mysql_select_db(mysql, schema);
   check_mysql_rc(rc, mysql);
 
-  mysql_stmt_close(stmt);
+//  mysql_stmt_close(stmt);
 
   return OK;
 }
@@ -1478,7 +1484,7 @@ struct my_tests_st my_tests[] = {
   {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc_114", test_conc_114, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_connect_attrs", test_connect_attrs, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
-  {"test_conc49", test_conc49, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
+  {"test_conc49", test_conc49, TEST_CONNECTION_NEW, 0,  NULL, NULL},
   {"test_bug28075", test_bug28075, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_bug28505", test_bug28505, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_debug_example", test_debug_example, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

@@ -56,6 +56,8 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
 
   const char *query= "SELECT 1,2,3 FROM DUAL";
 
+  SKIP_MAXSCALE;
+
   stmt= mysql_stmt_init(mysql);
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -456,6 +458,12 @@ static int test_prepare_syntax(MYSQL *mysql)
 
   rc= mysql_query(mysql, "CREATE TABLE test_prepare_syntax("
                          "id int, name varchar(50), extra int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "START TRANSACTION");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "INSERT INTO test_prepare_syntax VALUES(?");
@@ -2537,6 +2545,12 @@ static int test_pure_coverage(MYSQL *mysql)
   rc= mysql_query(mysql, "CREATE TABLE test_pure(c1 int, c2 varchar(20))");
   check_mysql_rc(rc, mysql);
 
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "START TRANSACTION");
+  check_mysql_rc(rc, mysql);
+
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL("insert into test_pure(c67788) values(10)"));
@@ -3803,6 +3817,12 @@ static int test_null(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE test_null(col1 int, col2 varchar(50))");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "START TRANSACTION");
   check_mysql_rc(rc, mysql);
 
   /* insert by prepare, wrong column name */

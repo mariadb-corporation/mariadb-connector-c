@@ -110,7 +110,7 @@ IF(GSSAPI_SOURCES)
                   SOURCES ${GSSAPI_SOURCES}
                   INCLUDES ${CC_SOURCE_DIR}/plugins/auth ${GSSAPI_INCS}
                   LIBRARIES ${GSSAPI_LIBS})
-  IF(APPLE)
+  IF(CMAKE_C_COMPILER_ID MATCHES "Clang")
     SET_SOURCE_FILES_PROPERTIES(${GSSAPI_SOURCES} PROPERTY COMPILE_FLAGS "-Wno-deprecated-declarations")
   ENDIF()
 ENDIF()

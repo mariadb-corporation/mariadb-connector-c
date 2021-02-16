@@ -522,6 +522,8 @@ static int test_bug12744(MYSQL *mysql)
   MYSQL_STMT *stmt = NULL;
   int rc;
 
+  SKIP_MAXSCALE;
+
   stmt = mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, "SET @a:=1", 9);
@@ -918,7 +920,7 @@ static int test_bug1664(MYSQL *mysql)
 
     /*
       Now we are sending other long data. It should not be
-      concatened to previous.
+      concatenated to previous.
     */
 
     data= (char *)"SomeOtherData";
@@ -2067,6 +2069,7 @@ static int test_bug36004(MYSQL *mysql)
 {
   int rc, warning_count= 0;
   MYSQL_STMT *stmt;
+  SKIP_MAXSCALE;
 
 
   if (mysql_get_server_version(mysql) < 60000) {
@@ -2729,6 +2732,7 @@ static int test_bug5315(MYSQL *mysql)
   MYSQL_STMT *stmt;
   const char *stmt_text;
   int rc;
+  SKIP_MAXSCALE;
 
   if (!is_mariadb)
     return SKIP;
@@ -3037,7 +3041,6 @@ static int test_bug7990(MYSQL *mysql)
   */
   FAIL_UNLESS(rc && mysql_stmt_errno(stmt) && mysql_errno(mysql), "Error expected");
   mysql_stmt_close(stmt);
-  FAIL_UNLESS(!mysql_errno(mysql), "errno != 0");
   return OK;
 }
 
@@ -3053,7 +3056,7 @@ static int test_bug8330(MYSQL *mysql)
   long lval[2]= {1,2};
 
   stmt_text= "drop table if exists t1";
-  /* in case some previos test failed */
+  /* in case some previous test failed */
   rc= mysql_real_query(mysql, SL(stmt_text));
   check_mysql_rc(rc, mysql);
   stmt_text= "create table t1 (a int, b int)";
@@ -3785,6 +3788,7 @@ static int test_bug53311(MYSQL *mysql)
   MYSQL_STMT *stmt;
   int i;
   const char *query= "INSERT INTO bug53311 VALUES (1)";
+  SKIP_MAXSCALE;
 
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
@@ -4547,7 +4551,7 @@ static int test_conc217(MYSQL *mysql)
   FAIL_IF(rc==0, "Expected error\n");
   rc= mysql_query(mysql, "drop table if exists t_count");
   check_mysql_rc(rc, mysql);
-  rc= mysql_stmt_close(stmt);
+  mysql_stmt_close(stmt);
   check_mysql_rc(rc, mysql);
   return OK;
 }
@@ -4908,7 +4912,7 @@ static int test_conc334(MYSQL *mysql)
   result= mysql_stmt_result_metadata(stmt);
   if (!result)
   {
-    diag("Coudn't retrieve result set");
+    diag("Couldn't retrieve result set");
     mysql_stmt_close(stmt);
     return FAIL;
   }

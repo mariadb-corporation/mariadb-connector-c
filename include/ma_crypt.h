@@ -113,7 +113,7 @@ void ma_hash_result(MA_HASH_CTX *ctx, unsigned char *digest);
 
   @param[in] hash algorithm
 
-  @retuns digest size or 0 on error
+  @returns digest size or 0 on error
 */
 static inline size_t ma_hash_digest_size(unsigned int hash_alg)
 {

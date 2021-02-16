@@ -157,15 +157,11 @@ static int test_server_errors(MYSQL *mysql)
 static int test_bug16143(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
-
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
-
   /* Check mysql_stmt_sqlstate return "no error" */
   FAIL_UNLESS(strcmp(mysql_stmt_sqlstate(stmt), "00000") == 0, "Expected SQLstate 000000");
-
   mysql_stmt_close(stmt);
-
   return OK;
 }
 
@@ -179,13 +175,17 @@ static int test_cuted_rows(MYSQL *mysql)
   if (!is_mariadb)
     return SKIP;
 
-  mysql_query(mysql, "DROP TABLE if exists t1");
+  rc= mysql_query(mysql, "DROP TABLE if exists t1");
+  check_mysql_rc(rc, mysql);
   mysql_query(mysql, "DROP TABLE if exists t2");
-
+  check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE t1(c1 tinyint)");
   check_mysql_rc(rc, mysql);
-
   rc= mysql_query(mysql, "CREATE TABLE t2(c1 int not null)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "START TRANSACTION");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "INSERT INTO t1 values(10), (NULL), (NULL)");
