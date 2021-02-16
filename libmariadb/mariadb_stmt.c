@@ -1713,6 +1713,15 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
     }
     memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
   }
+  if ((mysql->options.client_flag & CLIENT_LOCAL_FILES) &&
+      mysql->options.extension &&
+      mysql->extension->auto_local_infile == WAIT_FOR_QUERY &&
+      (query[0] == 'l' || query[0] == 'L'))
+  {
+    if (strncasecmp(query, "load", 4) == 0)
+      mysql->extension->auto_local_infile= ACCEPT_FILE_REQUEST;
+  }
+
   stmt->state = MYSQL_STMT_PREPARED;
   return(0);
 
