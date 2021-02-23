@@ -5316,7 +5316,72 @@ static int test_conc512(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc525(MYSQL *mysql)
+{
+  FILE *fp;
+  MYSQL_STMT *stmt;
+  int rc;
+
+  rc= mysql_query(mysql, "create temporary table t1 (a blob)");
+  check_mysql_rc(rc, mysql);
+
+  /* create a dummy import file */
+  if (!(fp= fopen("./test.csv", "w")))
+  {
+    diag("couldn't create file './test.csv'");
+    return FAIL;
+  }
+  fprintf(fp, "1\n2\n");
+  fclose(fp);
+
+  /* Test: prepare and execute
+     should fail due to non existing file */
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("LOAD DATA LOCAL INFILE './test.notexist' INTO table t1"));
+
+  if (rc && mysql_stmt_errno(stmt) == ER_UNSUPPORTED_PS)
+  {
+    diag("Server doesn't support LOAD LOCAL INFILE in binary protocol.");
+    return SKIP;
+  }
+
+  rc= mysql_stmt_execute(stmt);
+  FAIL_IF(!rc, "Error expected (file does not exist)");
+
+  mysql_stmt_close(stmt);
+
+  /* Test: prepare and execute
+     2 rows should be inserted */
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("LOAD DATA LOCAL INFILE './test.csv' INTO table t1"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_affected_rows(stmt) != 2, "Expected 2 inserted rows");
+
+  mysql_stmt_close(stmt);
+  stmt= mysql_stmt_init(mysql);
+
+  /* Test: execute_direct
+     2 rows should be inserted */
+  rc= mariadb_stmt_execute_direct(stmt,  SL("LOAD DATA LOCAL INFILE './test.csv' INTO table t1"));
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_affected_rows(stmt) != 2, "Expected 2 inserted rows");
+
+  /* Cleanup */
+  mysql_stmt_close(stmt);
+  unlink("./test.csv");
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc525", test_conc525, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc512", test_conc512, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc504", test_conc504, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_returning", test_returning, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
