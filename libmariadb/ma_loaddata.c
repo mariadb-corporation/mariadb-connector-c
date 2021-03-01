@@ -190,7 +190,6 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename, my_bool can
   int bufread;
   unsigned char *buf= NULL;
   void *info= NULL;
-  my_bool result= 1;
 
   /* check if all callback functions exist */
   if (!conn->options.local_infile_init || !conn->options.local_infile_end ||
@@ -200,14 +199,46 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename, my_bool can
     mysql_set_local_infile_default(conn);
   }
 
-  if (!(conn->options.client_flag & CLIENT_LOCAL_FILES) ||
-      !can_local_infile)
- {
+  if ((!(conn->options.client_flag & CLIENT_LOCAL_FILES) ||
+      !can_local_infile) &&
+      !conn->options.extension->local_file &&
+      !conn->options.extension->local_dir)
+  {
     my_set_error(conn, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, "Load data local infile forbidden");
-    /* write empty packet to server */
-    ma_net_write(&conn->net, (unsigned char *)"", 0);
-    ma_net_flush(&conn->net);
-    goto infile_error;
+    goto infile_error1;
+  }
+
+  if (conn->options.extension->local_file)
+  {
+    char rpath[PATH_MAX];
+
+    if (ma_realpath(filename, rpath, PATH_MAX) ||
+        strcmp(conn->options.extension->local_file, rpath) != 0)
+    {
+      my_set_error(conn, CR_LOCAL_FILE_MISMATCH, SQLSTATE_UNKNOWN, NULL);
+      goto infile_error1;
+    }
+  }
+
+  if (conn->options.extension->local_dir)
+  {
+    char rpath[PATH_MAX];
+    int rc;
+
+    if ((rc= ma_realpath(filename, rpath, PATH_MAX)))
+    {
+      my_set_error(conn, CR_FILE_NOT_FOUND, SQLSTATE_UNKNOWN, NULL, filename, rc);
+      goto infile_error1;
+    }
+
+    /* check if given file name starts with specified local_dir follwed by
+       FN_LIBCHAR (slash or backslash) */
+    if (strncmp(conn->options.extension->local_dir, rpath, strlen(conn->options.extension->local_dir)) != 0 ||
+        rpath[strlen(conn->options.extension->local_dir)] != FN_LIBCHAR)
+    {
+      my_set_error(conn, CR_LOCAL_DIR_MISMATCH, SQLSTATE_UNKNOWN, NULL, rpath);
+      goto infile_error1;
+    }
   }
 
   /* allocate buffer for reading data */
@@ -222,9 +253,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename, my_bool can
 
     tmp_errno= conn->options.local_infile_error(info, tmp_buf, sizeof(tmp_buf));
     my_set_error(conn, tmp_errno, SQLSTATE_UNKNOWN, tmp_buf);
-    ma_net_write(&conn->net, (unsigned char *)"", 0);
-    ma_net_flush(&conn->net);
-    goto infile_error;
+    goto infile_error1;
   }
 
   /* read data */
@@ -233,7 +262,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename, my_bool can
     if (ma_net_write(&conn->net, (unsigned char *)buf, bufread))
     {
       my_set_error(conn, CR_SERVER_LOST, SQLSTATE_UNKNOWN, NULL);
-      goto infile_error;
+      goto infile_error2;
     }
   }
 
@@ -242,7 +271,7 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename, my_bool can
       ma_net_flush(&conn->net))
   {
     my_set_error(conn, CR_SERVER_LOST, SQLSTATE_UNKNOWN, NULL);
-    goto infile_error;
+    goto infile_error2;
   }
 
   /* error during read occurred */
@@ -251,15 +280,26 @@ my_bool mysql_handle_local_infile(MYSQL *conn, const char *filename, my_bool can
     char tmp_buf[MYSQL_ERRMSG_SIZE];
     int tmp_errno= conn->options.local_infile_error(info, tmp_buf, sizeof(tmp_buf));
     my_set_error(conn, tmp_errno, SQLSTATE_UNKNOWN, tmp_buf);
-    goto infile_error;
+    goto infile_error2;
   }
 
-  result = 0;
+  /* After file was loaded, clear local_file */
+  if (conn->options.extension->local_file)
+  {
+    free(conn->options.extension->local_file);
+    conn->options.extension->local_file= NULL;
+  }
 
-infile_error:
+  return 0;
+
+infile_error1:
+  /* write empty packet to server */
+  ma_net_write(&conn->net, (unsigned char *)"", 0);
+  ma_net_flush(&conn->net);
+infile_error2:
   conn->options.local_infile_end(info);
   free(buf);
-  return(result);
+  return 1;
 }
 /* }}} */
 

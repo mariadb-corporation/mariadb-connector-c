@@ -1892,7 +1892,170 @@ static int test_gtid(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc515(MYSQL *mysql)
+{
+  int rc;
+  FILE *fp;
+  char *dir;
+  MYSQL *my;
+  unsigned int local_infile= 0;
+#ifdef _WIN32
+  char *tmp= getenv("TEMP");
+#else
+  const char *tmp= "/tmp";
+#endif
+
+  /* create a csv file for testing purposes */
+  fp= fopen("./test.csv", "w");
+  fprintf(fp, "1\n2\n");
+  fclose(fp);
+
+  /* Disable local infile, this should be ignored if one of the
+   * options MARIADB_OPT_INFILE or MARIADB_OPT_INFILE_DIR was set 
+   */
+  mysql_options(mysql, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  /* Test 1:
+   * Since LOCAL INFILE is disabled, and neither MARIADB_OPT_INFILE
+   * or MARIADB_OPT_INFILE_DIR was specified, the execution of
+   * LOAD DATA LOCAL INFILE statement should fail with error 2000,
+   * "load data local infile forbidden". 
+   */
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+  FAIL_IF(!rc, "expected error");
+  FAIL_IF(mysql_errno(mysql) != CR_UNKNOWN_ERROR, "Expected errno= CR_UNKNOWN_ERROR");
+
+  /* Test 2:
+   * Specify a non existing file. Since this file doesn't exist, mysql_options 
+     should return an error
+   */
+  rc= mysql_options(mysql, MARIADB_OPT_LOCAL_FILE, "otherfile.csv");
+  FAIL_IF(!rc, "expected error");
+  FAIL_IF(mysql_errno(mysql) != CR_INVALID_LOCAL_FILE, "Expected errno= CR_INVALID_LOCAL_FILE");
+
+  /* Test 3:
+   * create a new temporary file, pass the filename as LOCAL_FILE and try to load
+   * a different file. This should fail with error= CR_LOCAL_FILE_MISMATCH.
+   */
+  fp= fopen("otherfile.csv", "w");
+  fclose(fp);
+  rc= mysql_options(mysql, MARIADB_OPT_LOCAL_FILE, "otherfile.csv");
+  check_mysql_rc(rc, mysql);
+  /* remove file */
+  unlink("otherfile.csv");
+
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+  FAIL_IF(!rc, "Error expected");
+  FAIL_IF(mysql_errno(mysql) != CR_LOCAL_FILE_MISMATCH, "Expected errno= CR_LOCAL_FILE_MISMATCH");
+
+  /* Test 4: 
+   * Load filename which was specified via MARIADB_OPT_LOCAL_FILE.
+   * This is expected to work
+   */
+  mysql_options(mysql, MARIADB_OPT_LOCAL_FILE, "./test.csv");
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  /* Test 5:
+     After execution of previous LOAD DATA LOCAL INFILE statment, the filename
+     previously specified by MARIADB_OPT_LOCAL_FILE was unset, so another 
+     attempt to execute a LOAD DATA LOCAL INFILE statement should fail.
+   */
+
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+  FAIL_IF(!rc, "expected error");
+  FAIL_IF(mysql_errno(mysql) != CR_UNKNOWN_ERROR, "Expected errno= CR_UNKNOWN_ERROR");
+ 
+
+  /* Test 6:
+   * The directory of the file specified in LOAD DATA LOCAL INFILE statement differs
+   * from the directory specified via MARIADB_OPT_LOCAL_DIR. Expected error is
+   * CR_LOCAL_DIR_MISMATCH
+   */
+  mysql_options(mysql, MARIADB_OPT_LOCAL_DIR, tmp);
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+  FAIL_IF(!rc, "expected error");
+  FAIL_IF(mysql_errno(mysql) != CR_LOCAL_DIR_MISMATCH, "Expected errno= CR_LOCAL_DIR_MISMATCH");
+
+  /* Test 7:
+   * Create a directory 'tes' and try to import 'test.csv'. Since test.csv is not
+   *  in 'tes' directory, statement should return error CR_LOCAL_DIR_MISMACH
+   */
+#ifdef _WIN32
+  _mkdir("./tes");
+#else
+  mkdir("./tes", 700);
+#endif
+  mysql_options(mysql, MARIADB_OPT_LOCAL_DIR, "./tes");
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+
+  rmdir("./tes");
+
+  FAIL_IF(!rc, "expected error");
+  FAIL_IF(mysql_errno(mysql) != CR_LOCAL_DIR_MISMATCH, "Expected errno= CR_LOCAL_DIR_MISMATCH");
+  
+  /* Test 8:
+   * Specify a relative path and check if mysql_options() convert it to
+   * absolute path, afterwards import the file. 
+   */
+  mysql_options(mysql, MARIADB_OPT_LOCAL_DIR, ".");
+  /* check local dir, it must be an absolue path */
+  mysql_get_option(mysql, MARIADB_OPT_LOCAL_DIR, &dir);
+  FAIL_IF(!strcmp(dir, "."), "expected absolute path");
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  /* Test 9:
+   * When specify a non exisiting directory, mysql_options should fail with
+   * error CR_INVALID_LOCAL_DIR 
+   */
+  rc= mysql_options(mysql, MARIADB_OPT_LOCAL_DIR, "/notexisting/directory");
+  FAIL_IF(!rc, "Error expected");
+  FAIL_IF(mysql_errno(mysql) != CR_INVALID_LOCAL_DIR, "Expected errno= CR_INVALID_LOCAL_DIR");
+
+  /* Test 10:
+   * create a configuration file, which contains settings for local directory and create a 
+   * new connection which loads this configuration file:
+   * - mysql_get_option should return an absolute path
+   * - load data local infile statement should succeed.
+   */
+  fp= fopen("./conc515.cnf", "w");
+  fprintf(fp, "[conc515]\n");
+  fprintf(fp, "local_dir=.\n");
+  fclose(fp);
+
+  my= mysql_init(NULL);
+  mysql_options(my, MYSQL_OPT_LOCAL_INFILE, &local_infile);
+  rc= mysql_options(my, MYSQL_READ_DEFAULT_GROUP, "conc515");
+  check_mysql_rc(rc, my);
+  rc= mysql_options(my, MYSQL_READ_DEFAULT_FILE, "./conc515.cnf");
+  check_mysql_rc(rc, my);
+
+  if (!my_test_connect(my, hostname, username, password,
+                       schema, port, socketname, 0))
+  {
+    diag("connection failed: %s", mysql_error(my));
+    return FAIL;
+  }
+  unlink("./conc515.cnf");
+  mysql_get_option(mysql, MARIADB_OPT_LOCAL_DIR, &dir);
+  FAIL_IF(!strcmp(dir, ".") || !dir, "expected absolute path");
+
+  rc= mysql_query(mysql, "LOAD DATA LOCAL INFILE './test.csv' INTO TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  /* clean up */
+  mysql_close(my);
+  unlink("./test.csv");
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc515", test_conc515, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_gtid", test_gtid, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc496", test_conc496, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_default_auth", test_default_auth, TEST_CONNECTION_NONE, 0, NULL, NULL},

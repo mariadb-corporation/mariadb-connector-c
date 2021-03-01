@@ -76,6 +76,7 @@
 #ifdef _WIN32
 #include "shlwapi.h"
 #define strncasecmp _strnicmp
+#include <malloc.h>
 #endif
 
 #define ASYNC_CONTEXT_DEFAULT_STACK_SIZE (4096*15)
@@ -366,6 +367,19 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 {
   NET *net= &mysql->net;
   int result= -1;
+
+  if (command == COM_QUERY ||
+      command == COM_STMT_PREPARE)
+  {
+    if ((mysql->options.client_flag & CLIENT_LOCAL_FILES) &&
+         mysql->options.extension && mysql->extension->auto_local_infile == WAIT_FOR_QUERY &&
+         arg && (*arg == 'l' || *arg == 'L'))
+    {
+      if (strncasecmp(arg, "load", 4) == 0)
+        mysql->extension->auto_local_infile= ACCEPT_FILE_REQUEST;
+    }
+  }
+
   if (mysql->net.pvio == 0)
   {
     /* Do reconnect if possible */
@@ -664,6 +678,7 @@ struct st_default_options mariadb_defaults[] =
   {MYSQL_SERVER_PUBLIC_KEY, MARIADB_OPTION_STR, "server-public-key"},
   {MYSQL_OPT_BIND, MARIADB_OPTION_STR, "bind-address"},
   {MYSQL_OPT_SSL_ENFORCE, MARIADB_OPTION_BOOL, "ssl-enforce"},
+  {MARIADB_OPT_LOCAL_DIR, MARIADB_OPTION_STR, "local-dir"},
   {0, 0, NULL}
 };
 
@@ -1997,6 +2012,8 @@ static void mysql_close_options(MYSQL *mysql)
       hash_free(&mysql->options.extension->connect_attrs);
     if (hash_inited(&mysql->options.extension->userdata))
       hash_free(&mysql->options.extension->userdata);
+    free(mysql->options.extension->local_file);
+    free(mysql->options.extension->local_dir);
 
   }
   free(mysql->options.extension);
@@ -3362,6 +3379,45 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     CHECK_OPT_EXTENSION_SET(&mysql->options);
     mysql->options.extension->io_wait = (int(*)(my_socket, my_bool, int))arg1;
     break;
+  case MARIADB_OPT_LOCAL_FILE:
+    {
+      char *rpath= NULL;
+      if (arg1)
+      {
+        char buffer[PATH_MAX];
+        rpath= buffer;
+
+        /* Get absolute path and check if the file exists */
+        if (!MA_IS_FILE((char *)arg1) ||
+            ma_realpath((char *)arg1, rpath, PATH_MAX))
+        {
+          my_set_error(mysql, CR_INVALID_LOCAL_FILE, SQLSTATE_UNKNOWN, NULL, (char *)arg1);
+          return 1;
+        }
+      }
+      OPT_SET_EXTENDED_VALUE_STR(&mysql->options, local_file, rpath);
+    }
+    break;
+  case MARIADB_OPT_LOCAL_DIR:
+    {
+      char *rpath= NULL;
+
+      if (arg1)
+      {
+        char buffer[PATH_MAX];
+        rpath= buffer;
+
+        /* Get absolute path and check if it is a directory */
+        if (!MA_IS_DIR((char *)arg1) ||
+            ma_realpath((char *)arg1, rpath, PATH_MAX))
+        {
+          my_set_error(mysql, CR_INVALID_LOCAL_DIR, SQLSTATE_UNKNOWN, NULL, (char*) arg1);
+          return 1;
+        }
+      }
+      OPT_SET_EXTENDED_VALUE_STR(&mysql->options, local_dir, rpath);
+    }
+    break;
   default:
     va_end(ap);
     SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
@@ -3576,6 +3632,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MARIADB_OPT_IO_WAIT:
     *((int(**)(my_socket, my_bool, int))arg) = mysql->options.extension ? mysql->options.extension->io_wait : NULL;
+    break;
+  case MARIADB_OPT_LOCAL_DIR:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->local_dir : NULL;
     break;
   default:
     va_end(ap);

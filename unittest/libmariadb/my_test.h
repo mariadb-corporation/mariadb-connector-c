@@ -30,6 +30,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <string.h>
 #include <errmsg.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <ma_server_error.h>
 #include <mysql/client_plugin.h>
 
@@ -37,6 +38,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <pthread.h>
 #else
 #include <io.h>
+#include <direct.h>
 #endif
 
 #ifndef OK

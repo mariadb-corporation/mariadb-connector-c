@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+#include <sys/stat.h>
+
 #ifdef HAVE_AIOWAIT
 #include <sys/asynch.h>			/* Used by record-cache */
 typedef struct my_aio_result {
@@ -177,6 +179,13 @@ extern MARIADB_CHARSET_INFO *get_charset_by_nr(uint cs_number);
 
 /* string functions */
 char *ma_strmake(register char *dst, register const char *src, size_t length);
+
+/* file help functions/macros */
+extern int ma_check_file_type(const char *pathname, int flag);
+int ma_realpath(const char *pathname, char *buffer, size_t buflen);
+
+#define MA_IS_DIR(pathname) ma_check_file_type(pathname, S_IFDIR)
+#define MA_IS_FILE(pathname) ma_check_file_type(pathname, S_IFREG)
 
 /* statistics */
 #ifdef TBR

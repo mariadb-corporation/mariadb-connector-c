@@ -272,6 +272,7 @@ SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
 ${CC_SOURCE_DIR}/plugins/auth/my_auth.c
 ma_array.c
 ma_charset.c
+ma_file.c
 ma_hash.c
 ma_net.c
 mariadb_charset.c

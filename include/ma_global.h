@@ -33,7 +33,10 @@
 #define snprintf _snprintf
 #endif
 #endif
-#define STDCALL __stdcall 
+#define STDCALL __stdcall
+#if !defined(PATH_MAX)
+#define PATH_MAX MAX_PATH
+#endif
 #endif
 
 #include <ma_config.h>
