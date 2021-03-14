@@ -2606,6 +2606,7 @@ static int test_bug5194(MYSQL *mysql)
   const int uint16_max= 65535;
   int nrows, i;
 
+  SKIP_MAXSCALE;
 
   stmt_text= "drop table if exists t1";
   rc= mysql_real_query(mysql, SL(stmt_text));
@@ -4547,6 +4548,7 @@ static int test_conc217(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
 
+  SKIP_MAXSCALE;
   rc= mariadb_stmt_execute_direct(stmt, "SELECT 1 FROM nonexisting_table", -1);
   FAIL_IF(rc==0, "Expected error\n");
   rc= mysql_query(mysql, "drop table if exists t_count");
