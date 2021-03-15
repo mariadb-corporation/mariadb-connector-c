@@ -47,9 +47,7 @@ FUNCTION(REGISTER_PLUGIN)
     set(PLUGIN_${CC_PLUGIN_TARGET}_TYPE ${CC_PLUGIN_TYPE})
 
     if(${CC_PLUGIN_DEFAULT} STREQUAL "DYNAMIC")
-      set_source_files_properties(${CC_PLUGIN_SOURCES}
-                                 PROPERTIES COMPILE_FLAGS
-                                 "-DPLUGIN_DYNAMIC=1 ${CC_PLUGIN_COMPILE_OPTIONS}")
+
       set(PLUGINS_DYNAMIC ${PLUGINS_DYNAMIC} ${CC_PLUGIN_TARGET} PARENT_SCOPE)
       if(WIN32)
         set(target ${CC_PLUGIN_TARGET})
@@ -65,6 +63,9 @@ FUNCTION(REGISTER_PLUGIN)
       add_library(${CC_PLUGIN_TARGET} MODULE ${CC_PLUGIN_SOURCES})
       target_link_libraries(${CC_PLUGIN_TARGET} ${CC_PLUGIN_LIBRARIES})
       set_target_properties(${CC_PLUGIN_TARGET} PROPERTIES PREFIX "")
+      set_target_properties(${CC_PLUGIN_TARGET}
+                                 PROPERTIES COMPILE_FLAGS
+                                 "-DPLUGIN_DYNAMIC=1 ${CC_PLUGIN_COMPILE_OPTIONS}")
       if (NOT "${CC_PLUGIN_INCLUDES}" STREQUAL "")
         if(CMAKE_VERSION VERSION_LESS 2.8.11)
           include_directories(${CC_PLUGIN_INCLUDES})
