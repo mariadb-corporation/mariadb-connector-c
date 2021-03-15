@@ -5345,6 +5345,7 @@ static int test_conc525(MYSQL *mysql)
   if (rc && mysql_stmt_errno(stmt) == ER_UNSUPPORTED_PS)
   {
     diag("Server doesn't support LOAD LOCAL INFILE in binary protocol.");
+    mysql_stmt_close(stmt);
     return SKIP;
   }
 
