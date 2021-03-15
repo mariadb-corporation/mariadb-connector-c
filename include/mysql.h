@@ -248,7 +248,8 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_OPT_PROXY_HEADER,
     MARIADB_OPT_IO_WAIT,
     MARIADB_OPT_LOCAL_FILE,
-    MARIADB_OPT_LOCAL_DIR
+    MARIADB_OPT_LOCAL_DIR,
+    MARIADB_OPT_SKIP_READ_RESPONSE,
   };
 
   enum mariadb_value {
@@ -874,6 +875,7 @@ struct st_mariadb_methods {
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
   void (*invalidate_stmts)(MYSQL *mysql, const char *function_name);
   struct st_mariadb_api *api;
+  int (*stmt_read_execute_response)(MYSQL_STMT *stmt);
 };
 
 /* synonyms/aliases functions */

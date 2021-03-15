@@ -81,6 +81,7 @@ struct st_mysql_options_extension {
   int (*io_wait)(my_socket handle, my_bool is_read, int timeout);
   char *local_file;
   char *local_dir;
+  my_bool skip_read_response;
 };
 
 typedef struct st_connection_handler
