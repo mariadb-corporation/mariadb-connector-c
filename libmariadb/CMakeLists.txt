@@ -29,6 +29,7 @@ SET(MARIADB_LIB_SYMBOLS
  mariadb_rpl_fetch
  mariadb_rpl_optionsv
  mariadb_rpl_get_optionsv
+ mariadb_rpl_init_ex
  mariadb_free_rpl_event
  mariadb_field_attr
 )
