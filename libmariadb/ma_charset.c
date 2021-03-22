@@ -536,7 +536,7 @@ static unsigned int check_mb_gb18030_valid(const char * start, const char * end)
 /* }}} */
 
 /*
-  The server compiles sometimes the full utf-8 (the mb4) as utf8m4, and the old as utf8,
+  The server compiles sometimes the full utf-8 (the mb4) as utf8mb4, and the old as utf8,
   for BC reasons. Sometimes, utf8mb4 is just utf8 but the old charsets are utf8mb3.
   Change easily now, with a macro, could be made compilastion dependable.
 */
