@@ -235,7 +235,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= db_len + 1; /* zero terminated */
 
       /* calculate statement size: buffer + buffer_size - current_ofs (ev) - crc_size */
-      len= (size_t)(rpl->buffer + rpl->buffer_size - ev - 4);
+      len= (size_t)(rpl->buffer + rpl->buffer_size - ev - (rpl->use_checksum ? 4 : 0));
       if (rpl_alloc_string(rpl_event, &rpl_event->event.query.statement, ev, len))
         goto mem_error;
       break;
@@ -302,7 +302,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       rpl_event->event.encryption.nonce= (char *)ev;
       break;
     case ANNOTATE_ROWS_EVENT:
-      len= (uint32)(rpl->buffer + rpl->buffer_size - (unsigned char *)ev - 4);
+      len= (uint32)(rpl->buffer + rpl->buffer_size - (unsigned char *)ev - (rpl->use_checksum ? 4 : 0));
       if (rpl_alloc_string(rpl_event, &rpl_event->event.annotate_rows.statement, ev, len))
         goto mem_error;
       break;
