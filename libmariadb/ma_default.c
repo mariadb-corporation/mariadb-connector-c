@@ -124,13 +124,11 @@ char **get_default_configuration_dirs()
     goto error;
 #endif
 #endif
-/* This differs from https://mariadb.com/kb/en/mariadb/configuring-mariadb-with-mycnf/ where MYSQL_HOME is not specified for Windows */
-  if ((env= getenv("MYSQL_HOME")) &&
-      add_cfg_dir(configuration_dirs, env))
-    goto error;
-  /* CONC-449: Check $MARIADB_HOME/my.cnf in addition to $MYSQL_HOME/my.cnf */
-  if ((env= getenv("MARIADB_HOME")) &&
-      add_cfg_dir(configuration_dirs, env))
+  /* CONC-537: Read configuration files from MYSQL_HOME directory only if
+     MARIADB_HOME was not set */
+  if (!(env= getenv("MARIADB_HOME")))
+    env= getenv("MYSQL_HOME");
+  if (env && add_cfg_dir(configuration_dirs, env))
     goto error;
 end:
   return configuration_dirs;
