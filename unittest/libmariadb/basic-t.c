@@ -310,7 +310,8 @@ static int use_utf8(MYSQL *my)
 
   while ((row= mysql_fetch_row(res)) != NULL)
   {
-    FAIL_IF(strcmp(row[0], "utf8"), "wrong character set");
+    FAIL_IF(strcmp(row[0], get_utf8_name(mysql_get_server_version(my),"utf8")),
+                   "wrong character set");
   }
   FAIL_IF(mysql_errno(my), mysql_error(my));
   mysql_free_result(res);

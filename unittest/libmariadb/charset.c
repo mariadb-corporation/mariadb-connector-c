@@ -71,14 +71,20 @@ int bug_8378(MYSQL *mysql) {
 int test_client_character_set(MYSQL *mysql)
 {
   MY_CHARSET_INFO cs;
+  char collation_name[19];
   char *csname= (char*) "utf8";
   char *csdefault= (char*)mysql_character_set_name(mysql);
+
+  strcpy(collation_name,(const char*)get_utf8_name(mysql_get_server_version(mysql),
+                                                   "utf8_general_ci"));
 
   FAIL_IF(mysql_set_character_set(mysql, csname), mysql_error(mysql));
 
   mysql_get_character_set_info(mysql, &cs);
 
-  FAIL_IF(strcmp(cs.csname, "utf8") || strcmp(cs.name, "utf8_general_ci"), "Character set != UTF8");
+  FAIL_IF(strcmp(cs.csname, get_utf8_name(mysql_get_server_version(mysql),"utf8")) ||
+                            strcmp(cs.name, collation_name),
+          "Wrong UTF8 characterset");
   FAIL_IF(mysql_set_character_set(mysql, csdefault), mysql_error(mysql));
 
   return OK;
@@ -514,6 +520,7 @@ static int bug30472_retrieve_charset_info(MYSQL *con,
 static int test_bug30472(MYSQL *mysql)
 {
   int   rc;
+  char collation_name[19];
 
   char character_set_name_1[MY_CS_NAME_SIZE];
   char character_set_client_1[MY_CS_NAME_SIZE];
@@ -537,6 +544,9 @@ static int test_bug30472(MYSQL *mysql)
 
   SKIP_MAXSCALE;
 
+  strcpy(collation_name,(const char*)get_utf8_name(mysql_get_server_version(mysql),
+                                                   "utf8_general_ci"));
+
   if (mysql_get_server_version(mysql) < 50100 || !is_mariadb) 
   {
     diag("Test requires MySQL Server version 5.1 or above");
@@ -553,7 +563,8 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Switch client character set. */
 
-  FAIL_IF(mysql_set_character_set(mysql, "utf8"), "Setting cs to utf8 failed");
+  FAIL_IF(mysql_set_character_set(mysql, get_utf8_name(mysql_get_server_version(mysql),"utf8")),
+          "Setting cs to correct utf8 characterset for current version failed");
 
   /* Retrieve character set information. */
 
@@ -569,10 +580,14 @@ static int test_bug30472(MYSQL *mysql)
       2) new character set is different from the original one.
   */
 
-  FAIL_UNLESS(strcmp(character_set_name_2, "utf8") == 0, "cs_name != utf8");
-  FAIL_UNLESS(strcmp(character_set_client_2, "utf8") == 0, "cs_client != utf8");
-  FAIL_UNLESS(strcmp(character_set_results_2, "utf8") == 0, "cs_result != ut8");
-  FAIL_UNLESS(strcmp(collation_connnection_2, "utf8_general_ci") == 0, "collation != utf8_general_ci");
+  FAIL_UNLESS(strcmp(character_set_name_2, get_utf8_name(mysql_get_server_version(mysql),"utf8")) == 0,
+              "Wrong utf8 characterset for cs_name for current version");
+  FAIL_UNLESS(strcmp(character_set_client_2, get_utf8_name(mysql_get_server_version(mysql),"utf8")) == 0,
+              "Wrong utf8 characterset for cs_client for current version");
+  FAIL_UNLESS(strcmp(character_set_results_2, get_utf8_name(mysql_get_server_version(mysql),"utf8")) == 0,
+              "Wrong utf8 characterset for cs_result for current version");
+  FAIL_UNLESS(strcmp(collation_connnection_2, collation_name) == 0,
+              "Wrong utf8 named collation for current version");
 
   diag("%s %s", character_set_name_1, character_set_name_2);
   FAIL_UNLESS(strcmp(character_set_name_1, character_set_name_2) != 0, "cs_name1 = cs_name2");
@@ -623,10 +638,14 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Check that we have UTF8 on the server and on the client. */
 
-  FAIL_UNLESS(strcmp(character_set_name_4, "utf8") == 0, "cs_name != utf8");
-  FAIL_UNLESS(strcmp(character_set_client_4, "utf8") == 0, "cs_client != utf8");
-  FAIL_UNLESS(strcmp(character_set_results_4, "utf8") == 0, "cs_result != utf8");
-  FAIL_UNLESS(strcmp(collation_connnection_4, "utf8_general_ci") == 0, "collation_connection != utf8_general_ci");
+  FAIL_UNLESS(strcmp(character_set_name_4, get_utf8_name(mysql_get_server_version(mysql),"utf8")) == 0,
+              "Wrong utf8 characterset for cs_name for current version");
+  FAIL_UNLESS(strcmp(character_set_client_4, get_utf8_name(mysql_get_server_version(mysql),"utf8")) == 0,
+              "Wrong utf8 characterset for cs_client for current version");
+  FAIL_UNLESS(strcmp(character_set_results_4, get_utf8_name(mysql_get_server_version(mysql),"utf8")) == 0,
+              "Wrong utf8 characterset for cs_result for current version");
+  FAIL_UNLESS(strcmp(collation_connnection_4, collation_name) == 0,
+              "Wrong utf8 named collation for current version");
 
   /* That's it. Cleanup. */
 
@@ -667,7 +686,7 @@ static int test_utf16_utf32_noboms(MYSQL *mysql __attribute__((unused)))
   diag("MariaDB Connector/C was built without iconv support");
   return SKIP;
 #else
-  const char *csname[]= {"utf16", "utf16le", "utf32", "utf8"};
+  const char *csname[]= {"utf16", "utf16le", "utf32", "utf8", "utf8mb3"};
   MARIADB_CHARSET_INFO  *csinfo[sizeof(csname)/sizeof(char*)];
 
   const int     UTF8= sizeof(csname)/sizeof(char*) - 1;

@@ -701,3 +701,23 @@ void run_tests(struct my_tests_st *test) {
   }
 }
 
+static inline const char* get_utf8_name(unsigned long server_version,
+                                        const char* name)
+{
+  const char *csname= server_version >= 100600 ? "utf8mb3" : "utf8";
+  char *corrected_name= malloc(19*sizeof(char));
+  corrected_name[18]='\0';
+
+  if (!strchr(name, '_'))
+  {
+    strcpy(corrected_name,csname);
+    corrected_name[strlen(csname)]='\0';
+  }
+  else
+  {
+    strcpy(corrected_name,csname);
+    strcat(corrected_name,"_general_ci");
+    corrected_name[strlen(csname)+11]= '\0';
+  }
+  return (const char*)corrected_name;
+}
