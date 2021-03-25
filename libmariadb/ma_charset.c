@@ -542,7 +542,7 @@ static unsigned int check_mb_gb18030_valid(const char * start, const char * end)
 */
 
 #define UTF8_MB4 "utf8mb4"
-#define UTF8_MB3 "utf8"
+#define UTF8_MB3 "utf8mb3"
 
 /* {{{ mysql_charsets */
 const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
@@ -961,6 +961,9 @@ MARIADB_CHARSET_INFO * mysql_find_charset_name(const char *name)
     csname= madb_get_os_character_set();
   else
     csname= (char *)name;
+
+  if (!strcasecmp("utf8",csname))
+    csname= "utf8mb3";
 
   do {
     if (!strcasecmp(c->csname, csname)) {

@@ -71,14 +71,16 @@ int bug_8378(MYSQL *mysql) {
 int test_client_character_set(MYSQL *mysql)
 {
   MY_CHARSET_INFO cs;
-  char *csname= (char*) "utf8";
+  char *csname= (char*) "latin2";
   char *csdefault= (char*)mysql_character_set_name(mysql);
+
 
   FAIL_IF(mysql_set_character_set(mysql, csname), mysql_error(mysql));
 
   mysql_get_character_set_info(mysql, &cs);
 
-  FAIL_IF(strcmp(cs.csname, "utf8") || strcmp(cs.name, "utf8_general_ci"), "Character set != UTF8");
+  FAIL_IF(strcmp(cs.csname, "latin2") || strcmp(cs.name, "latin2_general_ci"),
+          "Character set != latin2");
   FAIL_IF(mysql_set_character_set(mysql, csdefault), mysql_error(mysql));
 
   return OK;
@@ -553,7 +555,8 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Switch client character set. */
 
-  FAIL_IF(mysql_set_character_set(mysql, "utf8"), "Setting cs to utf8 failed");
+  FAIL_IF(mysql_set_character_set(mysql, "ascii"),
+          "Setting cs to ascii failed");
 
   /* Retrieve character set information. */
 
@@ -569,10 +572,11 @@ static int test_bug30472(MYSQL *mysql)
       2) new character set is different from the original one.
   */
 
-  FAIL_UNLESS(strcmp(character_set_name_2, "utf8") == 0, "cs_name != utf8");
-  FAIL_UNLESS(strcmp(character_set_client_2, "utf8") == 0, "cs_client != utf8");
-  FAIL_UNLESS(strcmp(character_set_results_2, "utf8") == 0, "cs_result != ut8");
-  FAIL_UNLESS(strcmp(collation_connnection_2, "utf8_general_ci") == 0, "collation != utf8_general_ci");
+  FAIL_UNLESS(strcmp(character_set_name_2, "ascii") == 0, "cs_name != ascii");
+  FAIL_UNLESS(strcmp(character_set_client_2, "ascii") == 0, "cs_client != ascii");
+  FAIL_UNLESS(strcmp(character_set_results_2, "ascii") == 0, "cs_result != ascii");
+  FAIL_UNLESS(strcmp(collation_connnection_2, "ascii_general_ci") == 0,
+              "collation != ascii_general_ci");
 
   diag("%s %s", character_set_name_1, character_set_name_2);
   FAIL_UNLESS(strcmp(character_set_name_1, character_set_name_2) != 0, "cs_name1 = cs_name2");
@@ -603,7 +607,7 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Change connection-default character set in the client. */
 
-  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "latin2");
 
   /*
     Call mysql_change_user() in order to check that new connection will
@@ -623,10 +627,11 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Check that we have UTF8 on the server and on the client. */
 
-  FAIL_UNLESS(strcmp(character_set_name_4, "utf8") == 0, "cs_name != utf8");
-  FAIL_UNLESS(strcmp(character_set_client_4, "utf8") == 0, "cs_client != utf8");
-  FAIL_UNLESS(strcmp(character_set_results_4, "utf8") == 0, "cs_result != utf8");
-  FAIL_UNLESS(strcmp(collation_connnection_4, "utf8_general_ci") == 0, "collation_connection != utf8_general_ci");
+  FAIL_UNLESS(strcmp(character_set_name_4, "latin2") == 0, "cs_name != latin2");
+  FAIL_UNLESS(strcmp(character_set_client_4, "latin2") == 0, "cs_client != latin2");
+  FAIL_UNLESS(strcmp(character_set_results_4, "latin2") == 0, "cs_result != latin2");
+  FAIL_UNLESS(strcmp(collation_connnection_4, "latin2_general_ci") == 0,
+              "collation_connection != latin2_general_ci");
 
   /* That's it. Cleanup. */
 
@@ -751,8 +756,6 @@ static int charset_auto(MYSQL *my __attribute__((unused)))
   csname1= mysql_character_set_name(mysql);
   diag("Character set: %s os charset: %s", csname1, osname);
 
-  FAIL_IF(strcmp(osname, csname1), "character set is not os character set");
-
   if (strcmp(osname, "utf8"))
   {
     rc= mysql_set_character_set(mysql, "utf8");
@@ -770,6 +773,9 @@ static int charset_auto(MYSQL *my __attribute__((unused)))
     diag("Character set: %s", csname2);
     FAIL_IF(strcmp(csname2, osname), "Wrong charset: expected os charset");
   }
+  else
+    FAIL_IF(strcmp(osname, csname1), "character set is not os character set");
+
   mysql_close(mysql);
   return OK;
 }
