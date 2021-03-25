@@ -3796,6 +3796,8 @@ int STDCALL mysql_set_character_set(MYSQL *mysql, const char *csname)
 
   if (!csname)
     goto error;
+  if (!strcasecmp("utf8",csname))
+    csname= "utf8mb4";
 
   if ((cs= mysql_find_charset_name(csname)))
   {

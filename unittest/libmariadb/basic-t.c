@@ -121,7 +121,7 @@ static int test_conc71(MYSQL *my)
   mysql= mysql_init(NULL);
 
 
-  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8mb3");
   mysql_options(mysql, MYSQL_OPT_COMPRESS, 0);
   mysql_options(mysql, MYSQL_INIT_COMMAND, "/*!40101 SET SQL_MODE='' */");
   mysql_options(mysql, MYSQL_INIT_COMMAND, "/*!40101 set @@session.wait_timeout=28800 */");
@@ -310,7 +310,7 @@ static int use_utf8(MYSQL *my)
 
   while ((row= mysql_fetch_row(res)) != NULL)
   {
-    FAIL_IF(strcmp(row[0], "utf8"), "wrong character set");
+    FAIL_IF(strcmp(row[0], "utf8mb3"), "wrong character set");
   }
   FAIL_IF(mysql_errno(my), mysql_error(my));
   mysql_free_result(res);

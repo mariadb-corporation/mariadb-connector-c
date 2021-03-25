@@ -78,7 +78,7 @@ int test_client_character_set(MYSQL *mysql)
 
   mysql_get_character_set_info(mysql, &cs);
 
-  FAIL_IF(strcmp(cs.csname, "utf8") || strcmp(cs.name, "utf8_general_ci"), "Character set != UTF8");
+  FAIL_IF(strcmp(cs.csname, "utf8mb3") || strcmp(cs.name, "utf8mb3_general_ci"), "Character set != UTF8MB3");
   FAIL_IF(mysql_set_character_set(mysql, csdefault), mysql_error(mysql));
 
   return OK;
@@ -553,7 +553,7 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Switch client character set. */
 
-  FAIL_IF(mysql_set_character_set(mysql, "utf8"), "Setting cs to utf8 failed");
+  FAIL_IF(mysql_set_character_set(mysql, "utf8mb3"), "Setting cs to utf8mb3 failed");
 
   /* Retrieve character set information. */
 
@@ -569,10 +569,10 @@ static int test_bug30472(MYSQL *mysql)
       2) new character set is different from the original one.
   */
 
-  FAIL_UNLESS(strcmp(character_set_name_2, "utf8") == 0, "cs_name != utf8");
-  FAIL_UNLESS(strcmp(character_set_client_2, "utf8") == 0, "cs_client != utf8");
-  FAIL_UNLESS(strcmp(character_set_results_2, "utf8") == 0, "cs_result != ut8");
-  FAIL_UNLESS(strcmp(collation_connnection_2, "utf8_general_ci") == 0, "collation != utf8_general_ci");
+  FAIL_UNLESS(strcmp(character_set_name_2, "utf8mb3") == 0, "cs_name != utf8mb3");
+  FAIL_UNLESS(strcmp(character_set_client_2, "utf8mb3") == 0, "cs_client != utf8mb3");
+  FAIL_UNLESS(strcmp(character_set_results_2, "utf8mb3") == 0, "cs_result != ut8mb3");
+  FAIL_UNLESS(strcmp(collation_connnection_2, "utf8mb3_general_ci") == 0, "collation != utf8mb3_general_ci");
 
   diag("%s %s", character_set_name_1, character_set_name_2);
   FAIL_UNLESS(strcmp(character_set_name_1, character_set_name_2) != 0, "cs_name1 = cs_name2");
@@ -603,7 +603,7 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Change connection-default character set in the client. */
 
-  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8mb3");
 
   /*
     Call mysql_change_user() in order to check that new connection will
@@ -623,10 +623,10 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Check that we have UTF8 on the server and on the client. */
 
-  FAIL_UNLESS(strcmp(character_set_name_4, "utf8") == 0, "cs_name != utf8");
-  FAIL_UNLESS(strcmp(character_set_client_4, "utf8") == 0, "cs_client != utf8");
-  FAIL_UNLESS(strcmp(character_set_results_4, "utf8") == 0, "cs_result != utf8");
-  FAIL_UNLESS(strcmp(collation_connnection_4, "utf8_general_ci") == 0, "collation_connection != utf8_general_ci");
+  FAIL_UNLESS(strcmp(character_set_name_4, "utf8mb3") == 0, "cs_name != utf8mb3");
+  FAIL_UNLESS(strcmp(character_set_client_4, "utf8mb3") == 0, "cs_client != utf8mb3");
+  FAIL_UNLESS(strcmp(character_set_results_4, "utf8mb3") == 0, "cs_result != utf8mb3");
+  FAIL_UNLESS(strcmp(collation_connnection_4, "utf8mb3_general_ci") == 0, "collation_connection != utf8mb3_general_ci");
 
   /* That's it. Cleanup. */
 

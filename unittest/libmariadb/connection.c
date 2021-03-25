@@ -640,13 +640,13 @@ int test_conc21(MYSQL *mysql)
 int test_conc26(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
-  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8mb3");
 
   FAIL_IF(my_test_connect(mysql, hostname, "notexistinguser", "password", schema, port, NULL, CLIENT_REMEMBER_OPTIONS), 
           "Error expected");
 
-  FAIL_IF(!mysql->options.charset_name || strcmp(mysql->options.charset_name, "utf8") != 0, 
-          "expected charsetname=utf8");
+  FAIL_IF(!mysql->options.charset_name || strcmp(mysql->options.charset_name, "utf8mb3") != 0, 
+          "expected charsetname=utf8mb3");
   mysql_close(mysql);
 
   mysql= mysql_init(NULL);
@@ -981,7 +981,7 @@ static int test_sess_track_db(MYSQL *mysql)
       printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
     } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
     diag("charset: %s", mysql->charset->csname);
-    FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
+    FAIL_IF(strcmp(mysql->charset->csname, "utf8mb3"), "Expected charset 'utf8mb3'");
 
     rc= mysql_query(mysql, "SET NAMES latin1");
     check_mysql_rc(rc, mysql);
