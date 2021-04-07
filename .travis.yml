@@ -42,8 +42,6 @@ matrix:
     - env: SERVER_BRANCH=10.4 TEST_OPTION=--ps-protocol
     - env: SERVER_BRANCH=10.5
     - env: SERVER_BRANCH=10.5 TEST_OPTION=--ps-protocol
-    - env: SERVER_BRANCH=10.6
-    - env: SERVER_BRANCH=10.6 TEST_OPTION=--ps-protocol
 
 script:
   - if [[ "$DB" == build* ]] ; then .travis/build/build.sh; fi
