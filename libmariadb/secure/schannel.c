@@ -152,6 +152,18 @@ cipher_map[] =
     PROT_TLS1_2,
     "TLS_DHE_RSA_WITH_AES_256_GCM_SHA384", "DHE-RSA-AES256-GCM-SHA384",
     { CALG_DH_EPHEM, CALG_AES_256, CALG_SHA_384, CALG_RSA_SIGN }
+  },
+  {
+    0xC027,
+    PROT_TLS1_2,
+    "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256", "ECDHE-RSA-AES128-SHA256",
+    { CALG_ECDH, CALG_AES_128, CALG_SHA_256, CALG_RSA_SIGN }
+  },
+  {
+    0xC028,
+    PROT_TLS1_2,
+    "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384", "ECDHE-RSA-AES256-SHA384",
+    { CALG_ECDH, CALG_AES_256, CALG_SHA_384, CALG_RSA_SIGN }
   }
 };
 
@@ -254,6 +266,74 @@ static struct _tls_version {
     {"TLSv1.2", PROT_TLS1_2},
     {"TLSv1.3", PROT_TLS1_3},
     {"SSLv3",   PROT_SSL3}
+};
+
+/* The following list was produced with OpenSSL 1.1.1j
+   by executing `openssl ciphers -V`.  */
+static struct {
+  DWORD dwCipherSuite;
+  const char *openssl_name;
+} openssl_ciphers[] = {
+  {0x002F, "AES128-SHA"},
+  {0x0033, "DHE-RSA-AES128-SHA"},
+  {0x0035, "AES256-SHA"},
+  {0x0039, "DHE-RSA-AES256-SHA"},
+  {0x003C, "AES128-SHA256"},
+  {0x003D, "AES256-SHA256"},
+  {0x0067, "DHE-RSA-AES128-SHA256"},
+  {0x006B, "DHE-RSA-AES256-SHA256"},
+  {0x008C, "PSK-AES128-CBC-SHA"},
+  {0x008D, "PSK-AES256-CBC-SHA"},
+  {0x0090, "DHE-PSK-AES128-CBC-SHA"},
+  {0x0091, "DHE-PSK-AES256-CBC-SHA"},
+  {0x0094, "RSA-PSK-AES128-CBC-SHA"},
+  {0x0095, "RSA-PSK-AES256-CBC-SHA"},
+  {0x009C, "AES128-GCM-SHA256"},
+  {0x009D, "AES256-GCM-SHA384"},
+  {0x009E, "DHE-RSA-AES128-GCM-SHA256"},
+  {0x009F, "DHE-RSA-AES256-GCM-SHA384"},
+  {0x00A8, "PSK-AES128-GCM-SHA256"},
+  {0x00A9, "PSK-AES256-GCM-SHA384"},
+  {0x00AA, "DHE-PSK-AES128-GCM-SHA256"},
+  {0x00AB, "DHE-PSK-AES256-GCM-SHA384"},
+  {0x00AC, "RSA-PSK-AES128-GCM-SHA256"},
+  {0x00AD, "RSA-PSK-AES256-GCM-SHA384"},
+  {0x00AE, "PSK-AES128-CBC-SHA256"},
+  {0x00AF, "PSK-AES256-CBC-SHA384"},
+  {0x00B2, "DHE-PSK-AES128-CBC-SHA256"},
+  {0x00B3, "DHE-PSK-AES256-CBC-SHA384"},
+  {0x00B6, "RSA-PSK-AES128-CBC-SHA256"},
+  {0x00B7, "RSA-PSK-AES256-CBC-SHA384"},
+  {0x1301, "TLS_AES_128_GCM_SHA256"},
+  {0x1302, "TLS_AES_256_GCM_SHA384"},
+  {0x1303, "TLS_CHACHA20_POLY1305_SHA256"},
+  {0xC009, "ECDHE-ECDSA-AES128-SHA"},
+  {0xC00A, "ECDHE-ECDSA-AES256-SHA"},
+  {0xC013, "ECDHE-RSA-AES128-SHA"},
+  {0xC014, "ECDHE-RSA-AES256-SHA"},
+  {0xC01D, "SRP-AES-128-CBC-SHA"},
+  {0xC01E, "SRP-RSA-AES-128-CBC-SHA"},
+  {0xC020, "SRP-AES-256-CBC-SHA"},
+  {0xC021, "SRP-RSA-AES-256-CBC-SHA"},
+  {0xC023, "ECDHE-ECDSA-AES128-SHA256"},
+  {0xC024, "ECDHE-ECDSA-AES256-SHA384"},
+  {0xC027, "ECDHE-RSA-AES128-SHA256"},
+  {0xC028, "ECDHE-RSA-AES256-SHA384"},
+  {0xC02B, "ECDHE-ECDSA-AES128-GCM-SHA256"},
+  {0xC02C, "ECDHE-ECDSA-AES256-GCM-SHA384"},
+  {0xC02F, "ECDHE-RSA-AES128-GCM-SHA256"},
+  {0xC030, "ECDHE-RSA-AES256-GCM-SHA384"},
+  {0xC035, "ECDHE-PSK-AES128-CBC-SHA"},
+  {0xC036, "ECDHE-PSK-AES256-CBC-SHA"},
+  {0xC037, "ECDHE-PSK-AES128-CBC-SHA256"},
+  {0xC038, "ECDHE-PSK-AES256-CBC-SHA384"},
+  {0xCCA8, "ECDHE-RSA-CHACHA20-POLY1305"},
+  {0xCCA9, "ECDHE-ECDSA-CHACHA20-POLY1305"},
+  {0xCCAA, "DHE-RSA-CHACHA20-POLY1305"},
+  {0xCCAB, "PSK-CHACHA20-POLY1305"},
+  {0xCCAC, "ECDHE-PSK-CHACHA20-POLY1305"},
+  {0xCCAD, "DHE-PSK-CHACHA20-POLY1305"},
+  {0xCCAE, "RSA-PSK-CHACHA20-POLY1305"}
 };
 
 static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t arr_size)
@@ -444,10 +524,10 @@ static const char *cipher_name(const SecPkgContext_CipherInfo *CipherInfo)
 {
   size_t i;
 
-  for(i = 0; i < sizeof(cipher_map)/sizeof(cipher_map[0]) ; i++)
+  for(i = 0; i < sizeof(openssl_ciphers)/sizeof(openssl_ciphers[0]) ; i++)
   {
-    if (CipherInfo->dwCipherSuite == cipher_map[i].cipher_id)
-      return cipher_map[i].openssl_name;
+    if (CipherInfo->dwCipherSuite == openssl_ciphers[i].dwCipherSuite)
+      return openssl_ciphers[i].openssl_name;
   }
   return "";
 };
