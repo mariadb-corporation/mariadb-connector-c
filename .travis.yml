@@ -23,6 +23,8 @@ before_install:
   - export SSLCERT=$PROJ_PATH/tmp
 matrix:
   allow_failures:
+    - env: SERVER_BRANCH=10.6
+    - env: SERVER_BRANCH=10.6 TEST_OPTION=--ps-protocol
   include:
     - env: SKYSQL=true
     - env: SKYSQL_HA=true MAXSCALE_TEST_DISABLE=true
