@@ -1174,13 +1174,13 @@ char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer)
     buffer= (unsigned char *)mysql_net_store_length((unsigned char *)buffer, (mysql->options.extension) ?
                              mysql->options.extension->connect_attrs_len : 0);
     if (mysql->options.extension &&
-        hash_inited(&mysql->options.extension->connect_attrs))
+        ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
     {
       uint i;
       for (i=0; i < mysql->options.extension->connect_attrs.records; i++)
       {
         size_t len;
-        uchar *p= hash_element(&mysql->options.extension->connect_attrs, i);
+        uchar *p= ma_hashtbl_element(&mysql->options.extension->connect_attrs, i);
 
         len= strlen((char *)p);
         buffer= mysql_net_store_length(buffer, len);
@@ -1989,10 +1989,10 @@ static void mysql_close_options(MYSQL *mysql)
     free(mysql->options.extension->tls_version);
     free(mysql->options.extension->url);
     free(mysql->options.extension->connection_handler);
-    if(hash_inited(&mysql->options.extension->connect_attrs))
-      hash_free(&mysql->options.extension->connect_attrs);
-    if (hash_inited(&mysql->options.extension->userdata))
-      hash_free(&mysql->options.extension->userdata);
+    if(ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
+      ma_hashtbl_free(&mysql->options.extension->connect_attrs);
+    if (ma_hashtbl_inited(&mysql->options.extension->userdata))
+      ma_hashtbl_free(&mysql->options.extension->userdata);
 
   }
   free(mysql->options.extension);
@@ -3044,8 +3044,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     {
       uchar *h;
       CHECK_OPT_EXTENSION_SET(&mysql->options);
-      if (hash_inited(&mysql->options.extension->connect_attrs) &&
-          (h= (uchar *)hash_search(&mysql->options.extension->connect_attrs, (uchar *)arg1,
+      if (ma_hashtbl_inited(&mysql->options.extension->connect_attrs) &&
+          (h= (uchar *)ma_hashtbl_search(&mysql->options.extension->connect_attrs, (uchar *)arg1,
                       arg1 ? (uint)strlen((char *)arg1) : 0)))
       {
         uchar *p= h;
@@ -3054,16 +3054,16 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         p+= key_len + 1;
         key_len= strlen((char *)p);
         mysql->options.extension->connect_attrs_len-= key_len + get_store_length(key_len);
-        hash_delete(&mysql->options.extension->connect_attrs, h);
+        ma_hashtbl_delete(&mysql->options.extension->connect_attrs, h);
       }
 
     }
     break;
   case MYSQL_OPT_CONNECT_ATTR_RESET:
     CHECK_OPT_EXTENSION_SET(&mysql->options);
-    if (hash_inited(&mysql->options.extension->connect_attrs))
+    if (ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
     {
-      hash_free(&mysql->options.extension->connect_attrs);
+      ma_hashtbl_free(&mysql->options.extension->connect_attrs);
       mysql->options.extension->connect_attrs_len= 0;
     }
     break;
@@ -3115,9 +3115,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       }
 
       CHECK_OPT_EXTENSION_SET(&mysql->options);
-      if (!hash_inited(&mysql->options.extension->userdata))
+      if (!ma_hashtbl_inited(&mysql->options.extension->userdata))
       {
-        if (_hash_init(&mysql->options.extension->userdata,
+        if (_ma_hashtbl_init(&mysql->options.extension->userdata,
                        0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -3125,7 +3125,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         }
       }
       /* check if key is already in buffer */
-      p= (uchar *)hash_search(&mysql->options.extension->userdata, 
+      p= (uchar *)ma_hashtbl_search(&mysql->options.extension->userdata,
                               (uchar *)key,
                               (uint)strlen(key));
       if (p)
@@ -3146,7 +3146,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       p+= strlen(key) + 1;
       memcpy(p, &data, sizeof(void *));
 
-      if (hash_insert(&mysql->options.extension->userdata, buffer))
+      if (ma_hashtbl_insert(&mysql->options.extension->userdata, buffer))
       {
         free(buffer);
         SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
@@ -3182,9 +3182,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         goto end;
       }
 
-      if (!hash_inited(&mysql->options.extension->connect_attrs))
+      if (!ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
       {
-        if (_hash_init(&mysql->options.extension->connect_attrs,
+        if (_ma_hashtbl_init(&mysql->options.extension->connect_attrs,
                        0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -3199,7 +3199,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         if (arg2)
           strcpy((char *)p, arg2);
 
-        if (hash_insert(&mysql->options.extension->connect_attrs, buffer))
+        if (ma_hashtbl_insert(&mysql->options.extension->connect_attrs, buffer))
         {
           free(buffer);
           SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
@@ -3398,7 +3398,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
       *elements= 0;
 
       if (!mysql->options.extension ||
-          !hash_inited(&mysql->options.extension->connect_attrs))
+          !ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
         break;
 
       *elements= mysql->options.extension->connect_attrs.records;
@@ -3407,7 +3407,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
       {
         for (i=0; i < *elements; i++)
         {
-          uchar *p= hash_element(&mysql->options.extension->connect_attrs, i);
+          uchar *p= ma_hashtbl_element(&mysql->options.extension->connect_attrs, i);
           if (key)
             key[i]= (char *)p;
           p+= strlen((char *)p) + 1;
@@ -3453,8 +3453,8 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
       uchar *p;
       void *data= va_arg(ap, void *);
       char *key= (char *)arg;
-      if (key && data && mysql->options.extension && hash_inited(&mysql->options.extension->userdata) &&
-          (p= (uchar *)hash_search(&mysql->options.extension->userdata, (uchar *)key,
+      if (key && data && mysql->options.extension && ma_hashtbl_inited(&mysql->options.extension->userdata) &&
+          (p= (uchar *)ma_hashtbl_search(&mysql->options.extension->userdata, (uchar *)key,
                       (uint)strlen((char *)key))))
       {
         p+= strlen(key) + 1;

@@ -64,7 +64,7 @@
 #include <ma_global.h>
 #include <ma_sys.h>
 #include <ma_string.h>
-#include <ma_hash.h>
+//#include <ma_hashtbl.h>
 #include <mariadb_dyncol.h>
 #include <mysql.h>
 
