@@ -66,6 +66,11 @@ IF(CRYPTO_PLUGIN)
      SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146")
   ENDIF()
 
+  IF(CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION LESS 11)
+    SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS
+                                -fno-sanitize=shift)
+  ENDIF()
+
   # SHA256 caching plugin for MySQL 8.0 connection
   REGISTER_PLUGIN(TARGET caching_sha2_password
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
@@ -85,11 +90,6 @@ IF(CRYPTO_PLUGIN)
                     SOURCES ${AUTH_DIR}/sha256_pw.c
                     LIBRARIES ${CRYPT_LIBS})
   ENDIF()
-ENDIF()
-
-#GSSAPI client authentication plugin
-IF(NOT WIN32)
-  INCLUDE(${CC_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
 ENDIF()
 
 #GSSAPI client authentication plugin
