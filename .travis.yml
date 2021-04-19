@@ -25,9 +25,9 @@ matrix:
   allow_failures:
     - env: SERVER_BRANCH=10.6
     - env: SERVER_BRANCH=10.6 TEST_OPTION=--ps-protocol
+    - env: SKYSQL_HA=true MAXSCALE_TEST_DISABLE=true
   include:
     - env: SKYSQL=true
-    - env: SKYSQL_HA=true MAXSCALE_TEST_DISABLE=true
 # disable for now    - env: DB=mysql:8.0
 # eoled    - env: DB=mariadb:10.1
     - env: DB=mariadb:10.2
