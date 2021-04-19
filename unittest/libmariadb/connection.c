@@ -981,7 +981,7 @@ static int test_sess_track_db(MYSQL *mysql)
       printf("# SESSION_TRACK_VARIABLES: %*.*s\n", (int)len, (int)len, data);
     } while (!mysql_session_track_get_next(mysql, SESSION_TRACK_SYSTEM_VARIABLES, &data, &len));
     diag("charset: %s", mysql->charset->csname);
-    FAIL_IF(strcmp(mysql->charset->csname, "utf8"), "Expected charset 'utf8'");
+    FAIL_IF(strcmp(mysql->charset->csname, MARIADB_DEFAULT_CHARSET), "Expected default charset");
 
     rc= mysql_query(mysql, "SET NAMES latin1");
     check_mysql_rc(rc, mysql);
