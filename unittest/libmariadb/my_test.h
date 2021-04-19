@@ -700,4 +700,3 @@ void run_tests(struct my_tests_st *test) {
     mysql_close(mysql_default);
   }
 }
-
