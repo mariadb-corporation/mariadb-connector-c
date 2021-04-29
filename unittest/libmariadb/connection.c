@@ -1892,7 +1892,22 @@ static int test_gtid(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc490(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, NULL, port, socketname, CLIENT_CONNECT_WITH_DB))
+  {
+    diag("error: %s\n", mysql_error(mysql));
+    return FAIL;
+  }
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc490", test_conc490, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_gtid", test_gtid, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc496", test_conc496, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_default_auth", test_default_auth, TEST_CONNECTION_NONE, 0, NULL, NULL},
