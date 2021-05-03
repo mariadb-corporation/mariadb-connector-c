@@ -231,6 +231,10 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 #endif /* HAVE_TLS && !EMBEDDED_LIBRARY*/
   if (mpvio->db)
     mysql->client_flag|= CLIENT_CONNECT_WITH_DB;
+  else
+    /* See CONC-490: If no database was specified, we need
+       to unset CLIENT_CONNECT_WITH_DB flag */
+    mysql->client_flag&= ~CLIENT_CONNECT_WITH_DB;
 
   /* if server doesn't support SSL and verification of server certificate
      was set to mandatory, we need to return an error */
