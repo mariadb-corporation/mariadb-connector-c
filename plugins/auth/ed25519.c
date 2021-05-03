@@ -108,7 +108,7 @@ static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_SERVER_HANDSHAKE_ERR;
 
   /* Sign nonce: the crypto_sign function is part of ref10 */
-  crypto_sign(signature, packet, NONCE_BYTES, (unsigned char*)mysql->passwd, strlen(mysql->passwd));
+  ma_crypto_sign(signature, packet, NONCE_BYTES, (unsigned char*)mysql->passwd, strlen(mysql->passwd));
 
   /* send signature to server */
   if (vio->write_packet(vio, signature, CRYPTO_BYTES))

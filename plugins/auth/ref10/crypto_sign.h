@@ -2,7 +2,7 @@ int crypto_sign_keypair(
   unsigned char *pk,
   unsigned char *pw, unsigned long long pwlen
 );
-int crypto_sign(
+int ma_crypto_sign(
   unsigned char *sm,
   const unsigned char *m, unsigned long long mlen,
   const unsigned char *pw, unsigned long long pwlen

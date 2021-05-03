@@ -4,7 +4,7 @@
 #include "ge.h"
 #include "sc.h"
 
-int crypto_sign(
+int ma_crypto_sign(
   unsigned char *sm,
   const unsigned char *m,unsigned long long mlen,
   const unsigned char *pw,unsigned long long pwlen
