@@ -44,7 +44,7 @@
 #define MA_MAX_HASH_SIZE 64
 /** \typedef MRL hash context */
 
-#if defined(WIN32)
+#if defined(_WIN32)
 #include <windows.h>
 #include <bcrypt.h>
 typedef struct {
@@ -153,7 +153,7 @@ static inline void ma_hash(unsigned int algorithm,
                            unsigned char *digest)
 {
   MA_HASH_CTX *ctx= NULL;
-#ifdef HAVE_SCHANNEL
+#ifdef _WIN32
   MA_HASH_CTX dctx;
   ctx= &dctx;
 #endif
