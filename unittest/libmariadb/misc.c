@@ -1463,7 +1463,65 @@ static int test_conc458(MYSQL *my __attribute__((unused)))
 }
 
 
+static int test_conc533(MYSQL *mysql)
+{
+  my_bool skip= 1;
+  int rc;
+  MYSQL_RES *result;
+  MYSQL_ROW row;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[1];
+  char buffer[10];
+
+  rc= mysql_options(mysql, MARIADB_OPT_SKIP_READ_RESPONSE, &skip);
+
+  rc= mysql_real_query(mysql, SL("SELECT 1"));
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql->methods->db_read_query_result(mysql);
+  check_mysql_rc(rc, mysql);
+
+  result= mysql_store_result(mysql);
+  row= mysql_fetch_row(result);
+
+  FAIL_IF(strcmp(row[0], "1"), "Expected value \"1\"");
+  mysql_free_result(result);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT 1"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql->methods->db_read_prepare_response(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_field_count(stmt) != 1, "Expected field_count= 1");
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql->methods->db_read_execute_response(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer= buffer;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer_length= 10;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(strcmp(buffer, "1"), "Expected value \"1\"");
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc457", test_conc457, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},

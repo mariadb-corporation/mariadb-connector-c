@@ -322,10 +322,13 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
     result->data= 0;
     result->rows= 0;
 
-    if (stmt->mysql->methods->db_stmt_read_all_rows(stmt))
-      return(1);
+    if (!stmt->mysql->options.extension->skip_read_response)
+    {
+      if (stmt->mysql->methods->db_stmt_read_all_rows(stmt))
+        return(1);
 
-    return(stmt_buffered_fetch(stmt, row));
+      return(stmt_buffered_fetch(stmt, row));
+    }
   }
   /* no more cursor data available */
   *row= NULL;
@@ -1575,6 +1578,52 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
   p++;
   /* for backward compatibility we also update mysql->warning_count */
   stmt->mysql->warning_count= stmt->upsert_status.warning_count= uint2korr(p);
+
+/* metadata not supported yet */
+
+  if (stmt->param_count &&
+      stmt->mysql->methods->db_stmt_get_param_metadata(stmt))
+  {
+    return 1;
+  }
+
+  /* allocated bind buffer for parameters */
+  if (stmt->field_count &&
+      stmt->mysql->methods->db_stmt_get_result_metadata(stmt))
+  {
+    return 1;
+  }
+  if (stmt->param_count)
+  {
+    if (stmt->prebind_params)
+    {
+      if (stmt->prebind_params != stmt->param_count)
+      {
+        SET_CLIENT_STMT_ERROR(stmt, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        return 1;
+      }
+    } else {
+      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
+      {
+        SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+        return 1;
+      }
+      memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
+    }
+  }
+  /* allocated bind buffer for result */
+  if (stmt->field_count)
+  {
+    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
+    {
+      SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      return 1;
+    }
+    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
+  }
+  stmt->state = MYSQL_STMT_PREPARED;
+
   return(0);
 }
 
@@ -1663,57 +1712,14 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
   if (!is_multi && mysql->net.extension->multi_status == COM_MULTI_ENABLED)
     ma_multi_command(mysql, COM_MULTI_END);
   
-  if (mysql->net.extension->multi_status > COM_MULTI_OFF)
+  if (mysql->net.extension->multi_status > COM_MULTI_OFF ||
+      mysql->options.extension->skip_read_response)
     return 0;
 
   if (mysql->methods->db_read_prepare_response &&
       mysql->methods->db_read_prepare_response(stmt))
     goto fail;
 
-  /* metadata not supported yet */
-
-  if (stmt->param_count &&
-      stmt->mysql->methods->db_stmt_get_param_metadata(stmt))
-  {
-    goto fail;
-  }
-
-  /* allocated bind buffer for parameters */
-  if (stmt->field_count &&
-      stmt->mysql->methods->db_stmt_get_result_metadata(stmt))
-  {
-    goto fail;
-  }
-  if (stmt->param_count)
-  {
-    if (stmt->prebind_params)
-    {
-      if (stmt->prebind_params != stmt->param_count)
-      {
-        SET_CLIENT_STMT_ERROR(stmt, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
-        goto fail;
-      }
-    } else {
-      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
-      {
-        SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-        goto fail;
-      }
-      memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
-    }
-  }
-  /* allocated bind buffer for result */
-  if (stmt->field_count)
-  {
-    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
-    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
-    {
-      SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      goto fail;
-    }
-    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
-  }
-  stmt->state = MYSQL_STMT_PREPARED;
   return(0);
 
 fail:
@@ -1834,7 +1840,7 @@ static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
   return(0);
 }
 
-int stmt_read_execute_response(MYSQL_STMT *stmt)
+int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
 {
   MYSQL *mysql= stmt->mysql;
   int ret;
@@ -2070,10 +2076,11 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
     return(1);
   }
 
-  if (mysql->net.extension->multi_status > COM_MULTI_OFF)
+  if (mysql->net.extension->multi_status > COM_MULTI_OFF ||
+      mysql->options.extension->skip_read_response)
     return(0);
 
-  return(stmt_read_execute_response(stmt));
+  return(mthd_stmt_read_execute_response(stmt));
 }
 
 static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
@@ -2475,43 +2482,18 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   if (ma_multi_command(mysql, COM_MULTI_END))
     goto fail;
 
-  /* read prepare response */
-  if (mysql->methods->db_read_prepare_response &&
-    mysql->methods->db_read_prepare_response(stmt))
-  goto fail;
-
-  clear_result= 0;
-
-  /* metadata not supported yet */
-
-  if (stmt->param_count &&
-      stmt->mysql->methods->db_stmt_get_param_metadata(stmt))
+  if (!mysql->options.extension->skip_read_response)
   {
+    /* read prepare response */
+    if (mysql->methods->db_read_prepare_response &&
+      mysql->methods->db_read_prepare_response(stmt))
     goto fail;
-  }
 
-  /* allocated bind buffer for parameters */
-  if (stmt->field_count &&
-      stmt->mysql->methods->db_stmt_get_result_metadata(stmt))
-  {
-    goto fail;
-  }
+    clear_result= 0;
 
-  /* allocated bind buffer for result */
-  if (stmt->field_count)
-  {
-    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
-    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
-    {
-      SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      goto fail;
-    }
-    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
+    /* read execute response packet */
+    return mthd_stmt_read_execute_response(stmt);
   }
-  stmt->state = MYSQL_STMT_PREPARED;
-
-  /* read execute response packet */
-  return stmt_read_execute_response(stmt);
 fail:
   /* check if we need to set error message */
   if (!mysql_stmt_errno(stmt))

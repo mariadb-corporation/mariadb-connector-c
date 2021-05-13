@@ -103,8 +103,6 @@ static long ma_tls_version_options(const char *version)
   if (!version)
     return 0;
 
-  if (strstr(version, "TLSv1.0"))
-    protocol_options&= ~SSL_OP_NO_TLSv1;
   if (strstr(version, "TLSv1.1"))
     protocol_options&= ~SSL_OP_NO_TLSv1_1;
   if (strstr(version, "TLSv1.2"))
@@ -445,7 +443,8 @@ void *ma_tls_init(MYSQL *mysql)
   SSL_CTX *ctx= NULL;
   long options= SSL_OP_ALL |
                 SSL_OP_NO_SSLv2 |
-                SSL_OP_NO_SSLv3;
+                SSL_OP_NO_SSLv3 |
+                SSL_OP_NO_TLSv1;
   pthread_mutex_lock(&LOCK_openssl_config);
 
   #if OPENSSL_VERSION_NUMBER >= 0x10100000L

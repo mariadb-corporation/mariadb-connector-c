@@ -112,6 +112,7 @@ extern my_bool mthd_supported_buffer_type(enum enum_field_types type);
 extern my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt);
 extern my_bool mthd_stmt_get_param_metadata(MYSQL_STMT *stmt);
 extern my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt);
+extern int mthd_stmt_read_execute_response(MYSQL_STMT *stmt);
 extern int mthd_stmt_fetch_row(MYSQL_STMT *stmt, unsigned char **row);
 extern int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row);
 extern int mthd_stmt_read_all_rows(MYSQL_STMT *stmt);
@@ -2489,7 +2490,7 @@ mysql_real_query(MYSQL *mysql, const char *query, unsigned long length)
 
   if (ma_simple_command(mysql, COM_QUERY,query,length,1,0))
     return(-1);
-  if (!skip_result)
+  if (!skip_result && !mysql->options.extension->skip_read_response)
     return(mysql->methods->db_read_query_result(mysql));
   return(0);
 }
@@ -3362,6 +3363,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     CHECK_OPT_EXTENSION_SET(&mysql->options);
     mysql->options.extension->io_wait = (int(*)(my_socket, my_bool, int))arg1;
     break;
+  case MARIADB_OPT_SKIP_READ_RESPONSE:
+    OPT_SET_EXTENDED_VALUE_INT(&mysql->options, skip_read_response, *(my_bool *)arg1);
+    break;
   default:
     va_end(ap);
     SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
@@ -3576,6 +3580,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MARIADB_OPT_IO_WAIT:
     *((int(**)(my_socket, my_bool, int))arg) = mysql->options.extension ? mysql->options.extension->io_wait : NULL;
+    break;
+  case MARIADB_OPT_SKIP_READ_RESPONSE:
+    *((my_bool*)arg)= mysql->options.extension ? mysql->options.extension->skip_read_response : 0;
     break;
   default:
     va_end(ap);
@@ -4509,5 +4516,7 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS = {
   /* invalidate statements */
   ma_invalidate_stmts,
   /* API functions */
-  &MARIADB_API
+  &MARIADB_API,
+  /* read execute response */
+  mthd_stmt_read_execute_response
 };
