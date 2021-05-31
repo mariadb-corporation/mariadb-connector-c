@@ -338,7 +338,12 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     bio= BIO_new_mem_buf(filebuffer ? (unsigned char *)filebuffer : packet,
                          packet_length);
     if ((pubkey= PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL)))
-      rsa_size= RSA_size(pubkey);
+    {
+      EVP_PKEY *pkey= EVP_PKEY_new();
+      EVP_PKEY_assign_RSA(pkey, pubkey);
+      rsa_size= EVP_PKEY_size(pkey);
+      EVP_PKEY_free(pkey);
+    }
     BIO_free(bio);
     ERR_clear_error();
 #elif defined(HAVE_WINCRYPT)
