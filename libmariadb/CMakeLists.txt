@@ -386,6 +386,9 @@ IF(CMAKE_GENERATOR MATCHES Xcode)
   SET(EMPTY_FILE ${CC_BINARY_DIR}/libmariadb/empty.c)
 ENDIF()
 
+#* create file with list of functions */
+FILE(WRITE ${CC_BINARY_DIR}/manpages.list "${MARIADB_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS}")
+
 IF(WIN32)
   SET_VERSION_INFO("TARGET:libmariadb"
                    "FILE_TYPE:VFT_DLL"
