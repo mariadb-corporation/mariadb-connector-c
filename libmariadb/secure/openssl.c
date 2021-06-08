@@ -443,9 +443,10 @@ void *ma_tls_init(MYSQL *mysql)
 {
   SSL *ssl= NULL;
   SSL_CTX *ctx= NULL;
-  long options= SSL_OP_ALL |
-                SSL_OP_NO_SSLv2 |
-                SSL_OP_NO_SSLv3;
+  long default_options= SSL_OP_ALL |
+                        SSL_OP_NO_SSLv2 |
+                        SSL_OP_NO_SSLv3;
+  long options= 0;
   pthread_mutex_lock(&LOCK_openssl_config);
 
   #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -454,9 +455,9 @@ void *ma_tls_init(MYSQL *mysql)
   if (!(ctx= SSL_CTX_new(SSLv23_client_method())))
 #endif
     goto error;
-  if (mysql->options.extension)
-    options|= ma_tls_version_options(mysql->options.extension->tls_version);
-  SSL_CTX_set_options(ctx, options);
+  if (mysql->options.extension) 
+    options= ma_tls_version_options(mysql->options.extension->tls_version);
+  SSL_CTX_set_options(ctx, options ? options : default_options);
 
 
   if (ma_tls_set_certs(mysql, ctx))
