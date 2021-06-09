@@ -569,9 +569,9 @@ static int test_bug30472(MYSQL *mysql)
       2) new character set is different from the original one.
   */
 
-  FAIL_UNLESS(strcmp(character_set_name_2, "utf8") == 0, "cs_name != utf8");
-  FAIL_UNLESS(strcmp(character_set_client_2, "utf8") == 0, "cs_client != utf8");
-  FAIL_UNLESS(strcmp(character_set_results_2, "utf8") == 0, "cs_result != ut8");
+  FAIL_UNLESS(strncmp(character_set_name_2, "utf8", 4) == 0, "cs_name != utf8");
+  FAIL_UNLESS(strncmp(character_set_client_2, "utf8", 4) == 0, "cs_client != utf8");
+  FAIL_UNLESS(strncmp(character_set_results_2, "utf8", 4) == 0, "cs_result != ut8");
   FAIL_UNLESS(strcmp(collation_connnection_2, "utf8_general_ci") == 0, "collation != utf8_general_ci");
 
   diag("%s %s", character_set_name_1, character_set_name_2);
