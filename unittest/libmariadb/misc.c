@@ -475,6 +475,9 @@ static int test_wl4166_2(MYSQL *mysql)
                   "alter table t1 change column c_int c_int varchar(11)");
   check_mysql_rc(rc, mysql);
 
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
@@ -507,6 +510,9 @@ static int test_wl4166_2(MYSQL *mysql)
 
   /* alter table and increase the number of columns */
   rc= mysql_query(mysql, "alter table t1 add column d_int int");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_execute(stmt);
@@ -769,10 +775,25 @@ static int test_wl4284_1(MYSQL *mysql)
 static int test_bug49694(MYSQL *mysql)
 {
   int rc;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
   int i;
   FILE *fp;
 
+  diag("Load local infile server : %ld", (mysql->server_capabilities & CLIENT_LOCAL_FILES));
+  diag("Load local infile client : %ld", (mysql->client_flag & CLIENT_LOCAL_FILES));
+
+  SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
+
+  rc= mysql_query(mysql, "select @@LOCAL_INFILE");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  if (atol(row[0]) == 0) {
+      diag("Load local infile disable");
+      return SKIP;
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS enclist");
   check_mysql_rc(rc, mysql);
@@ -803,6 +824,7 @@ static int test_bug49694(MYSQL *mysql)
 
   rc= mysql_query(mysql, "DROP TABLE enclist");
   check_mysql_rc(rc, mysql);
+  mysql_free_result(res);
   return OK;
 }
 
@@ -810,11 +832,22 @@ static int test_conc49(MYSQL *mysql)
 {
   int rc;
   MYSQL_RES *res;
+  MYSQL_ROW row;
+
   int i;
   FILE *fp;
 
   SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
+
+  rc= mysql_query(mysql, "select @@LOCAL_INFILE");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  if (atol(row[0]) == 0) {
+      diag("Load local infile disable");
+      return SKIP;
+  }
 
   fp= fopen("./sample.csv", "w");
   for (i=1; i < 4; i++)
@@ -846,6 +879,9 @@ static int test_ldi_path(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
   check_mysql_rc(rc, mysql);
 
 #ifdef _WIN32
@@ -1028,6 +1064,8 @@ static int test_remote1(MYSQL *mysql)
 {
   int rc;
   SKIP_SKYSQL;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
 
   remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MARIADB_CLIENT_REMOTEIO_PLUGIN);
   if (!remote_plugin)
@@ -1036,6 +1074,18 @@ static int test_remote1(MYSQL *mysql)
     diag("error: %s", mysql_error(mysql));
     return SKIP;
   }
+
+  SKIP_LOAD_INFILE_DISABLE;
+
+  rc= mysql_query(mysql, "select @@LOCAL_INFILE");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  if (atol(row[0]) == 0) {
+      diag("Load local infile disable");
+      return SKIP;
+  }
+  mysql_free_result(res);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
