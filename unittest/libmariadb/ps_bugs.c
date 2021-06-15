@@ -674,6 +674,7 @@ static int test_bug1500(MYSQL *mysql)
 
 static int test_bug15510(MYSQL *mysql)
 {
+  SKIP_MYSQL(mysql);
   MYSQL_STMT *stmt;
   int rc;
   const char *query= "select 1 from dual where 1/0";
@@ -2070,7 +2071,7 @@ static int test_bug36004(MYSQL *mysql)
   int rc, warning_count= 0;
   MYSQL_STMT *stmt;
   SKIP_MAXSCALE;
-
+  SKIP_MYSQL(mysql); // don't send expected warnings
 
   if (mysql_get_server_version(mysql) < 60000) {
     diag("Test requires MySQL Server version 6.0 or above");
