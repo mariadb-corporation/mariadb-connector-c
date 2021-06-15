@@ -22,7 +22,14 @@ if [ -n "$server_branch" ] ; then
   # skip to build some storage engines to speed up the build
   cmake -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
   cd libmariadb
-  git checkout ${TRAVIS_COMMIT}
+  if [ -z "$TRAVIS_PULL_REQUEST" ] ; then
+    # fetching pull request
+    git fetch origin pull/${TRAVIS_PULL_REQUEST}/head:PR_${TRAVIS_PULL_REQUEST}
+    git checkout PR_${TRAVIS_PULL_REQUEST}
+  else
+    git checkout ${TRAVIS_COMMIT}
+  fi
+
   cd ..
   git add libmariadb
   make -j9
