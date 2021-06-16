@@ -1520,7 +1520,44 @@ static int test_conc533(MYSQL *mysql)
   return OK;
 }
 
+int display_extended_field_attribute(MYSQL *mysql)
+{
+  MYSQL_RES *result;
+  MYSQL_FIELD *fields;
+
+  if (mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a POINT)"))
+    return 1;
+
+  if (mysql_query(mysql, "SELECT a FROM t1"))
+    return 1;
+
+  if (!(result= mysql_store_result(mysql)))
+    return 1;
+
+  if ((fields= mysql_fetch_fields(result)))
+  {
+    MARIADB_CONST_STRING field_attr;
+
+    if (!mariadb_field_attr(&field_attr, &fields[0],
+                            MARIADB_FIELD_ATTR_DATA_TYPE_NAME))
+    {
+      printf("Extended field attribute: %s\n", field_attr.str);
+    }
+  }
+  mysql_free_result(result);
+  return 0;
+}
+
+
+static int test_ext_field_attr(MYSQL *mysql)
+{
+  display_extended_field_attribute(mysql);
+  
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_ext_field_attr", test_ext_field_attr, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc457", test_conc457, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

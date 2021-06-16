@@ -39,6 +39,7 @@ funcs= func_list.split(";")
 for function in funcs:
 
     try:
+        print("%s/%s.md" % (args.docs, function))
         content= read_content("%s/%s.md" % (args.docs, function))
         
     except:

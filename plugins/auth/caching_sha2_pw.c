@@ -340,7 +340,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     if ((pubkey= PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL)))
     {
       EVP_PKEY *pkey= EVP_PKEY_new();
-      EVP_PKEY_assign_RSA(pkey, pubkey);
+      EVP_PKEY_set1_RSA(pkey, pubkey);
       rsa_size= EVP_PKEY_size(pkey);
       EVP_PKEY_free(pkey);
     }
