@@ -28,6 +28,9 @@ static int execute_direct(MYSQL *mysql)
   rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE t1 (a int)", -1);
   check_stmt_rc(rc, stmt);
 
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
   memset(&bind, 0, sizeof(MYSQL_BIND));
 
   bind.buffer= &i;
@@ -42,6 +45,9 @@ static int execute_direct(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   rc= mariadb_stmt_execute_direct(stmt, "INSERT INTO t1 VALUES (?)", -1);
   check_stmt_rc(rc, stmt);
+
+  rc= mysql_query(mysql, "START TRANSACTION");
+  check_mysql_rc(rc, mysql);
 
   for (i=1; i < 1000; i++)
   {
@@ -58,6 +64,8 @@ static int execute_direct(MYSQL *mysql)
   FAIL_IF(mysql_num_rows(res) != 1000, "Expected 1000 rows");
 
   mysql_free_result(res);
+  rc= mysql_query(mysql, "COMMIT");
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "DROP TABLE t1");
   check_mysql_rc(rc, mysql);
