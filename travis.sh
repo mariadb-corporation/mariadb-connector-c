@@ -22,7 +22,8 @@ if [ -n "$server_branch" ] ; then
   # skip to build some storage engines to speed up the build
   cmake -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
   cd libmariadb
-  if [ -z "$TRAVIS_PULL_REQUEST" ] ; then
+  echo "PR:${TRAVIS_PULL_REQUEST} TRAVIS_COMMIT:${TRAVIS_COMMIT}"
+  if [ -z "$TRAVIS_PULL_REQUEST" ] && [ "$TRAVIS_PULL_REQUEST" != "false" ] ; then
     # fetching pull request
     git fetch origin pull/${TRAVIS_PULL_REQUEST}/head:PR_${TRAVIS_PULL_REQUEST}
     git checkout PR_${TRAVIS_PULL_REQUEST}
