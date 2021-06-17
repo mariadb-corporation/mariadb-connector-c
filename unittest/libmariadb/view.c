@@ -426,8 +426,7 @@ static int test_view_insert_fields(MYSQL *mysql)
                   "F7F8 double NOT NULL default '0',"
                   "F8F8 double NOT NULL default '0',"
                   "F9D8 decimal(8,2) NOT NULL default '0.00',"
-                  "PRIMARY KEY (K1C4,K2C4,K3C4,K4N4)) "
-                  "CHARSET=latin1 COLLATE latin1_bin");
+                  "PRIMARY KEY (K1C4,K2C4,K3C4,K4N4))");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql,
                   "CREATE VIEW v1 AS select sql_no_cache "

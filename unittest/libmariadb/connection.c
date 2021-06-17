@@ -1633,6 +1633,9 @@ static int test_conc351(MYSQL *unused __attribute__((unused)))
     diag("Server doesn't support session tracking (cap=%lu)", mysql->server_capabilities);
     return SKIP;
   }
+  rc= mysql_query(mysql, "USE mysql");
+  check_mysql_rc(rc, mysql);
+  FAIL_IF(strcmp(mysql->db, "mysql"), "Expected new schema 'mysql'");
 
   FAIL_IF(mysql_session_track_get_first(mysql, SESSION_TRACK_SCHEMA, &data, &len), "expected session track schema");
 
@@ -1712,8 +1715,11 @@ static int test_conc366(MYSQL *mysql)
     return SKIP;
   }
 
-
-  sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING 'vubFBzIrapbfHct1/J72dnUryz5VS7lA6XHH8sIx4TI'", this_host);
+  if (mysql_get_server_version(mysql) < 100400) {
+    sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING '6aW9C7ENlasUfymtfMvMZZtnkCVlcb1ssxOLJ0kj/AA'", this_host);
+  } else {
+    sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING PASSWORD('MySup8%rPassw@ord')", this_host);
+  }
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
 
@@ -1724,7 +1730,7 @@ static int test_conc366(MYSQL *mysql)
   my= mysql_init(NULL);
   if (plugindir)
     mysql_options(my, MYSQL_PLUGIN_DIR, plugindir);
-  if (!my_test_connect(my, hostname, "ede", "foo", schema, port, socketname, 0))
+  if (!my_test_connect(my, hostname, "ede", "MySup8%rPassw@ord", schema, port, socketname, 0))
   {
     diag("Error: %s", mysql_error(my));
     return FAIL;
@@ -1743,6 +1749,7 @@ static int test_conc366(MYSQL *mysql)
 
 static int test_conc392(MYSQL *mysql)
 {
+  SKIP_MYSQL(mysql);
   int rc;
   const char *data;
   size_t len;
