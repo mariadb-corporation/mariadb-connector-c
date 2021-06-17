@@ -62,6 +62,7 @@ libmariadb/ma_client_plugin.c
 libmariadb/mariadbclient.def
 mariadb_config/mariadb_config
 mariadb_config/mariadb_config.c
+manpages.list
 unittest/libmariadb/async
 unittest/libmariadb/basic-t
 unittest/libmariadb/bulk1
