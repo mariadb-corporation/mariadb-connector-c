@@ -2,20 +2,21 @@ version: 3.0.8;{build}
 branches:
   only:
   - 3.1
+  - 3.2
 environment:
   matrix:
     - DB: '10.2.38'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_PARAM: 'Visual Studio 16 2019'
     - DB: '10.3.29'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_PARAM: 'Visual Studio 16 2019'
     - DB: '10.4.19'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_PARAM: 'Visual Studio 16 2019'
     - DB: '10.5.10'
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      CMAKE_PARAM: 'Visual Studio 15 2017 Win64'
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      CMAKE_PARAM: 'Visual Studio 16 2019'
 
 
 configuration: RelWithDebInfo
