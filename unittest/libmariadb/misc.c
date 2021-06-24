@@ -242,6 +242,8 @@ static int test_frm_bug(MYSQL *mysql)
   char       test_frm[1024];
   int        rc;
 
+  SKIP_MYSQL(mysql);
+
   mysql_autocommit(mysql, TRUE);
 
   rc= mysql_query(mysql, "drop table if exists test_frm_bug");
@@ -1157,7 +1159,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1441,7 +1443,7 @@ static int test_conc395(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1481,7 +1483,7 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 

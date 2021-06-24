@@ -1486,7 +1486,7 @@ static int test_conc317(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1534,11 +1534,12 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
   remove(cnf_file2);
 
+  diag("new charset: %s", mysql->options.charset_name);
   FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
   mysql_get_optionv(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_IF(reconnect != 1, "expected reconnect=1");
@@ -1557,7 +1558,7 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, cnf_file2);
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
   remove(cnf_file2);
