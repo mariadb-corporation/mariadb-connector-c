@@ -674,11 +674,11 @@ static int test_bug1500(MYSQL *mysql)
 
 static int test_bug15510(MYSQL *mysql)
 {
-  SKIP_MYSQL(mysql);
   MYSQL_STMT *stmt;
   int rc;
   const char *query= "select 1 from dual where 1/0";
 
+  SKIP_MYSQL(mysql);
 
   rc= mysql_query(mysql, "set @@sql_mode='ERROR_FOR_DIVISION_BY_ZERO'");
   check_mysql_rc(rc, mysql);

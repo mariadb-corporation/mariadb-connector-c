@@ -283,11 +283,11 @@ static int test_cursors_with_union(MYSQL *mysql)
 
 static int test_cursors_with_procedure(MYSQL *mysql)
 {
-  SKIP_MYSQL(mysql);
   const char *queries[]=
   {
     "SELECT * FROM t1 procedure analyse()"
   };
+  SKIP_MYSQL(mysql);
   FAIL_IF(fetch_n(mysql, queries, sizeof(queries)/sizeof(*queries), USE_ROW_BY_ROW_FETCH), "fetch_n failed");
   FAIL_IF(fetch_n(mysql, queries, sizeof(queries)/sizeof(*queries), USE_STORE_RESULT), "fetch_n failed");
 
