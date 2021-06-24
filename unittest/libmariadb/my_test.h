@@ -556,6 +556,13 @@ static int reset_connection(MYSQL *mysql) {
 void get_envvars() {
   char  *envvar;
 
+  if (!getenv("MYSQLTEST_VARDIR") &&
+      !getenv("MARIADB_CC_TEST"))
+  {
+    skip_all("Tests skipped.\nFor running unittest suite outside of MariaDB server tests,\nplease specify MARIADB_CC_TEST environment variable.");
+    exit(0);
+  }
+
   if (getenv("TRAVIS_JOB_ID"))
     travis_test= 1;
 

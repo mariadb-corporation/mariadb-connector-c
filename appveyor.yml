@@ -24,6 +24,7 @@ before_build:
   - cmd: appveyor-download.bat
   - cmd: msiexec /i server.msi INSTALLDIR=c:\projects\server SERVICENAME=mariadb ALLOWREMOTEROOTACCESS=true /qn
   - cmd: "\"c:\\projects\\server\\bin\\mysql.exe\" -e \"create database testc\" --user=root"
+  - cmd: set MARIADB_CC_TEST=1
   - cmd: set MYSQL_TEST_USER=root
   - cmd: set MYSQL_TEST_HOST=127.0.0.1
   - cmd: set MYSQL_TEST_PASSWD=
