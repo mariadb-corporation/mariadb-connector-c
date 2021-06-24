@@ -1718,7 +1718,7 @@ static int test_conc366(MYSQL *mysql)
   if (mysql_get_server_version(mysql) < 100400) {
     sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING '6aW9C7ENlasUfymtfMvMZZtnkCVlcb1ssxOLJ0kj/AA'", this_host);
   } else {
-    sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING PASSWORD('MySup8%rPassw@ord')", this_host);
+    sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING PASSWORD('MySup8%%rPassw@ord')", this_host);
   }
   rc= mysql_query(mysql, query);
   check_mysql_rc(rc, mysql);
@@ -1749,11 +1749,12 @@ static int test_conc366(MYSQL *mysql)
 
 static int test_conc392(MYSQL *mysql)
 {
-  SKIP_MYSQL(mysql);
   int rc;
   const char *data;
   size_t len;
   ulong capabilities= 0;
+
+  SKIP_MYSQL(mysql);
 
   mariadb_get_infov(mysql, MARIADB_CONNECTION_SERVER_CAPABILITIES, &capabilities);
   if (!(capabilities & CLIENT_SESSION_TRACKING))
