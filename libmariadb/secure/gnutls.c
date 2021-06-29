@@ -1053,7 +1053,7 @@ static int ma_gnutls_set_ciphers(gnutls_session_t ssl,
 
   token= strtok((char *)cipher_str, ":");
 
-  strcpy(prio, "NONE:+VERS-TLS-ALL:+SIGN-ALL:+COMP-NULL");
+  strcpy(prio, "NONE:+VERS-TLS-ALL:+SIGN-ALL:+COMP-NULL:+CURVE-ALL");
 
   while (token)
   {
