@@ -848,8 +848,10 @@ static int test_conc49(MYSQL *mysql)
   row= mysql_fetch_row(res);
   if (atol(row[0]) == 0) {
       diag("Load local infile disable");
+      mysql_free_result(res);
       return SKIP;
   }
+  mysql_free_result(res);
 
   fp= fopen("./sample.csv", "w");
   for (i=1; i < 4; i++)
