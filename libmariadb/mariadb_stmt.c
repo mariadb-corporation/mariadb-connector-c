@@ -1122,7 +1122,7 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       stmt->state= MYSQL_STMT_INITTED;
       stmt->params= 0;
     }
-    stmt->prebind_params= *(unsigned int *)value;
+    stmt->prebind_params= stmt->param_count= *(unsigned int *)value;
     break;
   case STMT_ATTR_ARRAY_SIZE:
     stmt->array_size= *(unsigned int *)value;
