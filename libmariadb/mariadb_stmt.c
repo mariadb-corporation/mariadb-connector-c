@@ -2444,11 +2444,6 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   /* check if we have to clear results */
   if (stmt->state > MYSQL_STMT_INITTED)
   {
-    /* We need to semi-close the prepared statement:
-       reset stmt and free all buffers and close the statement
-       on server side. Statement handle will get a new stmt_id */
-    char stmt_id[STMT_ID_LENGTH];
-
     if (mysql_stmt_internal_reset(stmt, 1))
       goto fail;
 
@@ -2457,13 +2452,12 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
     stmt->field_count= 0;
     stmt->param_count= 0;
     stmt->params= 0;
-
-    int4store(stmt_id, stmt->stmt_id);
-    if (mysql->methods->db_command(mysql, COM_STMT_CLOSE, stmt_id,
-                                         sizeof(stmt_id), 1, stmt))
-      goto fail;
   }
-  stmt->stmt_id= -1;
+  else
+    /* Since we can't determine stmt_id here, we need to set it to -1, so server will know that the
+     * execute command belongs to previous prepare */
+    stmt->stmt_id= -1;
+
   if (mysql->methods->db_command(mysql, COM_STMT_PREPARE, stmt_str, length, 1, stmt))
     goto fail;
 
@@ -2472,9 +2466,6 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   clear_result= 1;
 
   stmt->state= MYSQL_STMT_PREPARED;
-  /* Since we can't determine stmt_id here, we need to set it to -1, so server will know that the
-   * execute command belongs to previous prepare */
-  stmt->stmt_id= -1;
   if (mysql_stmt_execute(stmt))
     goto fail;
 
