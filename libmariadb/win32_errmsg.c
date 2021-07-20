@@ -117,7 +117,7 @@ void ma_format_win32_error(char* buf, size_t buflen, DWORD code, _Printf_format_
     return;
   if (entry)
   {
-    sprintf_s(cur, end - cur, "%s. Error 0x%08lX(%s)", entry->msg, code, entry->sym);
+    snprintf(cur, end - cur, "%s. Error 0x%08lX(%s)", entry->msg, code, entry->sym);
   }
   else
   {
@@ -131,7 +131,8 @@ void ma_format_win32_error(char* buf, size_t buflen, DWORD code, _Printf_format_
       cur++;
       *cur = 0;
     }
-    sprintf_s(cur, end - cur, ". Error %lu/0x%08lX", code, code);
+    snprintf(cur, end - cur, ". Error %lu/0x%08lX", code, code);
   }
+  end[-1] = 0;
 }
 
