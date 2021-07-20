@@ -1063,9 +1063,9 @@ void *remote_plugin;
 static int test_remote1(MYSQL *mysql)
 {
   int rc;
-  SKIP_SKYSQL;
   MYSQL_RES *res;
   MYSQL_ROW row;
+  SKIP_SKYSQL;
 
   remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MARIADB_CLIENT_REMOTEIO_PLUGIN);
   if (!remote_plugin)
