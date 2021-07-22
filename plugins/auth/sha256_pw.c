@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2017 MariaDB Corporation AB
+  Copyright (C) 2017, 2021, MariaDB Corporation AB
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -232,16 +232,15 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #if defined(HAVE_OPENSSL)
   bio= BIO_new_mem_buf(filebuffer ? (unsigned char *)filebuffer : packet,
                        packet_length);
-  if ((pubkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
-  {
-    if (!(ctx= EVP_PKEY_CTX_new(pubkey, NULL)))
-      goto error;
-    if (EVP_PKEY_encrypt_init(ctx) <= 0)
-      goto error;
-    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
-      goto error;
-    rsa_size= EVP_PKEY_size(pubkey);
-  }
+  if (!(pubkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
+    goto error;
+  if (!(ctx= EVP_PKEY_CTX_new(pubkey, NULL)))
+    goto error;
+  if (EVP_PKEY_encrypt_init(ctx) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
+    goto error;
+  rsa_size= EVP_PKEY_size(pubkey);
   BIO_free(bio);
   bio= NULL;
   ERR_clear_error();
