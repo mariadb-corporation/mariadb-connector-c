@@ -104,6 +104,7 @@ extern int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
                            const char *data_plugin, const char *db);
 extern int net_add_multi_command(NET *net, uchar command, const uchar *packet,
                                  size_t length);
+extern unsigned char* ma_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *request_len, my_bool internal);
 
 extern LIST *pvio_callback;
 
@@ -117,7 +118,7 @@ extern int mthd_stmt_fetch_row(MYSQL_STMT *stmt, unsigned char **row);
 extern int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row);
 extern int mthd_stmt_read_all_rows(MYSQL_STMT *stmt);
 extern void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt);
-extern my_bool _mariadb_read_options(MYSQL *mysql, const char *dir, const char *config_file, char *group, unsigned int recursion);
+extern my_bool _mariadb_read_options(MYSQL *mysql, const char *dir, const char *config_file, const char *group, unsigned int recursion);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
 
 extern void
@@ -4518,5 +4519,7 @@ struct st_mariadb_methods MARIADB_DEFAULT_METHODS = {
   /* API functions */
   &MARIADB_API,
   /* read execute response */
-  mthd_stmt_read_execute_response
+  mthd_stmt_read_execute_response,
+  /* generate execute request */
+  ma_stmt_execute_generate_request,
 };

@@ -161,46 +161,6 @@ typedef struct st_mysql_error_info
   char sqlstate[SQLSTATE_LENGTH + 1];
 } mysql_error_info;
 
-
-struct st_mysqlnd_stmt_methods
-{
-  my_bool (*prepare)(const MYSQL_STMT * stmt, const char * const query, size_t query_len);
-  my_bool (*execute)(const MYSQL_STMT * stmt);
-  MYSQL_RES * (*use_result)(const MYSQL_STMT * stmt);
-  MYSQL_RES * (*store_result)(const MYSQL_STMT * stmt);
-  MYSQL_RES * (*get_result)(const MYSQL_STMT * stmt);
-  my_bool (*free_result)(const MYSQL_STMT * stmt);
-  my_bool (*seek_data)(const MYSQL_STMT * stmt, unsigned long long row);
-  my_bool (*reset)(const MYSQL_STMT * stmt);
-  my_bool (*close)(const MYSQL_STMT * stmt); /* private */
-  my_bool (*dtor)(const MYSQL_STMT * stmt); /* use this for mysqlnd_stmt_close */
-
-  my_bool (*fetch)(const MYSQL_STMT * stmt, my_bool * const fetched_anything);
-
-  my_bool (*bind_param)(const MYSQL_STMT * stmt, const MYSQL_BIND bind);
-  my_bool (*refresh_bind_param)(const MYSQL_STMT * stmt);
-  my_bool (*bind_result)(const MYSQL_STMT * stmt, const MYSQL_BIND *bind);
-  my_bool (*send_long_data)(const MYSQL_STMT * stmt, unsigned int param_num,
-                            const char * const data, size_t length);
-  MYSQL_RES *(*get_parameter_metadata)(const MYSQL_STMT * stmt);
-  MYSQL_RES *(*get_result_metadata)(const MYSQL_STMT * stmt);
-  unsigned long long (*get_last_insert_id)(const MYSQL_STMT * stmt);
-  unsigned long long (*get_affected_rows)(const MYSQL_STMT * stmt);
-  unsigned long long (*get_num_rows)(const MYSQL_STMT * stmt);
-
-  unsigned int (*get_param_count)(const MYSQL_STMT * stmt);
-  unsigned int (*get_field_count)(const MYSQL_STMT * stmt);
-  unsigned int (*get_warning_count)(const MYSQL_STMT * stmt);
-
-  unsigned int (*get_error_no)(const MYSQL_STMT * stmt);
-  const char * (*get_error_str)(const MYSQL_STMT * stmt);
-  const char * (*get_sqlstate)(const MYSQL_STMT * stmt);
-
-  my_bool (*get_attribute)(const MYSQL_STMT * stmt, enum enum_stmt_attr_type attr_type, const void * value);
-  my_bool (*set_attribute)(const MYSQL_STMT * stmt, enum enum_stmt_attr_type attr_type, const void * value);
-  void (*set_error)(MYSQL_STMT *stmt, unsigned int error_nr, const char *sqlstate, const char *format, ...);
-};
-
 typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row);
 typedef void (*ps_result_callback)(void *data, unsigned int column, unsigned char **row);
 typedef my_bool *(*ps_param_callback)(void *data, MYSQL_BIND *bind, unsigned int row_nr);
@@ -239,13 +199,14 @@ struct st_mysql_stmt
   mysql_stmt_fetch_row_func fetch_row_func;
   unsigned int             execute_count;/* count how many times the stmt was executed */
   mysql_stmt_use_or_store_func default_rset_handler;
-  struct st_mysqlnd_stmt_methods  *m;
+  unsigned char            *request_buffer;
   unsigned int             array_size;
   size_t row_size;
   unsigned int prebind_params;
   void *user_data;
   ps_result_callback result_callback;
   ps_param_callback param_callback;
+  size_t request_length;
 };
 
 typedef void (*ps_field_fetch_func)(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row);

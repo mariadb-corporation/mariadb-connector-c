@@ -673,8 +673,8 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   return 0;
 }
 
-/* {{{ mysqlnd_stmt_execute_generate_simple_request */
-unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t *request_len)
+/* {{{ ma_stmt_execute_generate_simple_request */
+unsigned char* ma_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
      Offset   Length      Description
@@ -854,8 +854,8 @@ my_bool mysql_stmt_skip_paramset(MYSQL_STMT *stmt, uint row)
 }
 /* }}} */
 
-/* {{{ mysql_stmt_execute_generate_bulk_request */
-unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
+/* {{{ ma_stmt_execute_generate_bulk_request */
+unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
      Offset   Length      Description
@@ -1046,6 +1046,40 @@ mem_error:
   return NULL;
 }
 /* }}} */
+
+
+unsigned char* ma_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *request_len, my_bool internal)
+{
+  unsigned char *buf;
+
+
+  if (stmt->request_buffer)
+  {
+    *request_len= stmt->request_length;
+    buf= stmt->request_buffer;
+    /* store actual stmt id */
+    int4store(buf, stmt->stmt_id);
+    /* clear buffer, memory will be freed in execute */
+    stmt->request_buffer= NULL;
+    stmt->request_length= 0;
+    return buf;
+  }
+  if (stmt->array_size > 0)
+    buf= ma_stmt_execute_generate_bulk_request(stmt, request_len);
+  else
+    buf= ma_stmt_execute_generate_simple_request(stmt, request_len);
+
+  if (internal)
+  {
+    if (stmt->request_buffer)
+      free(stmt->request_buffer);
+    stmt->request_buffer= buf;
+    stmt->request_length= *request_len;
+  }
+  return buf;
+}
+
+
 /*!
  *******************************************************************************
 
@@ -2056,11 +2090,8 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   }
   /* CONC-344: set row count to zero */
   stmt->result.rows= 0;
-  if (stmt->array_size > 0)
-    request= (char *)mysql_stmt_execute_generate_bulk_request(stmt, &request_len);
-  else
-    request= (char *)mysql_stmt_execute_generate_simple_request(stmt, &request_len);
 
+  request= (char *)ma_stmt_execute_generate_request(stmt, &request_len, 0);
   if (!request)
     return 1;
 
