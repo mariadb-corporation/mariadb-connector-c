@@ -846,7 +846,10 @@ static int test_conc49(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
   row= mysql_fetch_row(res);
-  if (atol(row[0]) == 0) {
+
+  i= !atol(row[0]);
+  mysql_free_result(res);
+  if (i) {
       diag("Load local infile disable");
       mysql_free_result(res);
       return SKIP;
@@ -1069,6 +1072,7 @@ static int test_remote1(MYSQL *mysql)
   int rc;
   MYSQL_RES *res;
   MYSQL_ROW row;
+  SKIP_SKYSQL;
 
   SKIP_SKYSQL;
 
