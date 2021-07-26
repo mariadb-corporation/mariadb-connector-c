@@ -848,7 +848,6 @@ static int test_conc49(MYSQL *mysql)
   row= mysql_fetch_row(res);
 
   i= !atol(row[0]);
-  mysql_free_result(res);
   if (i) {
       diag("Load local infile disable");
       mysql_free_result(res);
