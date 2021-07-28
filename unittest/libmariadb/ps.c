@@ -5124,6 +5124,7 @@ static int test_conc565(MYSQL *mysql)
   MYSQL_FIELD *fields_binary, *fields_text;
   MYSQL_RES *result;
   int rc;
+  unsigned int i;
   my_bool x=1;
   my_bool error= 0;
 
@@ -5149,7 +5150,7 @@ static int test_conc565(MYSQL *mysql)
   result= mysql_store_result(mysql);
   fields_text= mysql_fetch_fields(result);
 
-  for (unsigned int i=0; i < mysql_field_count(mysql); i++)
+  for (i=0; i < mysql_field_count(mysql); i++)
   {
      if (fields_binary[i].length != fields_text[i].length ||
          fields_binary[i].max_length != fields_text[i].max_length)
