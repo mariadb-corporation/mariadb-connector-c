@@ -152,7 +152,7 @@ static inline void ma_hash(unsigned int algorithm,
                            unsigned char *digest)
 {
   MA_HASH_CTX *ctx= NULL;
-#ifdef _WIN32
+#ifdef HAVE_SCHANNEL
   MA_HASH_CTX dctx;
   ctx= &dctx;
 #endif
