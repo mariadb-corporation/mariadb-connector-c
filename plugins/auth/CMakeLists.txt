@@ -54,7 +54,7 @@ IF(CRYPTO_PLUGIN)
   REGISTER_PLUGIN(TARGET client_ed25519
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
-                DEFAULT DYNAMIC
+		DEFAULT STATIC
                 SOURCES ${CC_SOURCE_DIR}/plugins/auth/ed25519.c 
                         ${REF10_SOURCES}
                         ${CRYPT_SOURCE}
@@ -76,7 +76,7 @@ IF(CRYPTO_PLUGIN)
   REGISTER_PLUGIN(TARGET caching_sha2_password
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
-                DEFAULT DYNAMIC
+		DEFAULT STATIC
                 SOURCES ${CC_SOURCE_DIR}/plugins/auth/caching_sha2_pw.c 
                         ${CRYPT_SOURCE}
                 LIBRARIES ${CRYPT_LIBS})
@@ -87,7 +87,7 @@ IF(CRYPTO_PLUGIN)
     REGISTER_PLUGIN(TARGET sha256_password
                     TYPE MARIADB_CLIENT_PLUGIN_AUTH
                     CONFIGURATIONS DYNAMIC STATIC OFF
-                    DEFAULT DYNAMIC
+		    DEFAULT STATIC
                     SOURCES ${AUTH_DIR}/sha256_pw.c
                     LIBRARIES ${CRYPT_LIBS})
   ENDIF()
