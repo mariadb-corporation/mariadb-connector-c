@@ -19,6 +19,10 @@
 #include <ma_global.h>
 #include <ma_crypt.h>
 #include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/pem.h>
+#include <openssl/err.h>
+#include <openssl/bio.h>
 
 static const EVP_MD *ma_hash_get_algorithm(unsigned int alg)
 {
