@@ -40,7 +40,7 @@
 #include <dlfcn.h>
 #endif
 
-#if defined(WIN32)
+#if defined(HAVE_SCHANNEL)
 #include <wincrypt.h>
 #elif defined(HAVE_OPENSSL)
 #include <openssl/rsa.h>
