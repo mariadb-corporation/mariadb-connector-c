@@ -49,6 +49,7 @@ extern BCRYPT_ALG_HANDLE Sha512Prov;
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #elif defined(HAVE_GNUTLS)
 #include <gnutls/gnutls.h>
 #endif

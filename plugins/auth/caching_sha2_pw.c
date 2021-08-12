@@ -44,6 +44,8 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
 #elif defined(HAVE_GNUTLS)
 #include <gnutls/gnutls.h>
 #elif defined(HAVE_WINCRYPT)
