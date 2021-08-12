@@ -44,6 +44,8 @@ jobs:
     - env: srv=mariadb v=10.5
       os: windows
       language: shell
+      before_script:
+        - choco install openssl
     - env: srv=mariadb v=10.2 local=1
       dist: bionic
     - env: srv=mariadb v=10.3 local=1
