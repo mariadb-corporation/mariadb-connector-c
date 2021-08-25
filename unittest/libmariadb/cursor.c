@@ -1502,6 +1502,8 @@ static int test_bug38486(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t10");
+  check_mysql_rc(rc, mysql);
   mysql_stmt_close(stmt);
 
   return OK;
