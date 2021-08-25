@@ -210,12 +210,6 @@ int fetch_n(MYSQL *mysql, const char **query_list, unsigned query_count,
       }
     }
   }
-  if (!error_count)
-  {
-    unsigned total_row_count= 0;
-    for (fetch= fetch_array; fetch < fetch_array + query_count; ++fetch)
-      total_row_count+= fetch->row_count;
-  }
   for (fetch= fetch_array; fetch < fetch_array + query_count; ++fetch)
     stmt_fetch_close(fetch);
   free(fetch_array);
