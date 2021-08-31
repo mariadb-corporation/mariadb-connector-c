@@ -96,7 +96,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
 
 
   /* Allocate data buffer */
-  if (!(IoBuffer = LocalAlloc(LMEM_FIXED, SC_IO_BUFFER_SIZE)))
+  if (!(IoBuffer = malloc(SC_IO_BUFFER_SIZE)))
     return SEC_E_INSUFFICIENT_MEMORY;
 
   cbIoBuffer = 0;
@@ -245,7 +245,7 @@ loopend:
     ma_schannel_set_sec_error(pvio, rc);
     DeleteSecurityContext(&sctx->hCtxt);
   }
-  LocalFree(IoBuffer);
+  free(IoBuffer);
 
   return rc;
 }
