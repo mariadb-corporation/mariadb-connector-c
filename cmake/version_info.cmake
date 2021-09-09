@@ -35,6 +35,17 @@ MACRO(SET_VERSION_INFO)
       STRING(REPLACE "FILE_DESCRIPTION:" "" FILE_DESCRIPTION ${PROPERTY})
     ENDIF()
   ENDFOREACH()
+  # Connector can be packaged with server, so set the "file version"
+  # to the server version
+  # In this case, numeric file version should be consistent with server
+  # Only this way MSI minor upgrade can work.
+  # The product version string  will still refer to Connectors own version
+  IF((NOT DEFINED MAJOR_VERSION) OR (NOT DEFINED MINOR_VERSION) OR (NOT DEFINED PATCH_VERSION) OR (NOT DEFINED TINY_VERSION))
+    SET(MAJOR_VERSION ${CPACK_PACKAGE_VERSION_MAJOR})
+    SET(MINOR_VERSION ${CPACK_PACKAGE_VERSION_MINOR})
+    SET(PATCH_VERSION ${CPACK_PACKAGE_VERSION_PATCH})
+    SET(TINY_VERSION  ${FILE_VERSION})
+  ENDIF()
   CONFIGURE_FILE(${CC_SOURCE_DIR}/win/resource.rc.in
                  ${CC_BINARY_DIR}/win/${TARGET}.rc)
   SET(${TARGET}_RC ${CC_BINARY_DIR}/win/${TARGET}.rc)
