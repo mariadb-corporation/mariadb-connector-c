@@ -20,10 +20,9 @@
 #define _GNU_SOURCE 1
 #endif
 
-#ifdef _WIN32
+#ifdef HAVE_WINCRYPT
 #undef HAVE_GNUTLS
 #undef HAVE_OPENSSL
-#define HAVE_WINCRYPT
 #endif
 
 #if defined(HAVE_OPENSSL) || defined(HAVE_WINCRYPT)
@@ -42,7 +41,7 @@
 #include <dlfcn.h>
 #endif
 
-#if defined(WIN32)
+#if defined(HAVE_WINCRYPT)
 #include <wincrypt.h>
 #elif defined(HAVE_OPENSSL)
 #include <openssl/rsa.h>
