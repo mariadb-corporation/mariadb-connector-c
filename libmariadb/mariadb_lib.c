@@ -666,6 +666,7 @@ struct st_default_options mariadb_defaults[] =
   {MYSQL_SERVER_PUBLIC_KEY, MARIADB_OPTION_STR, "server-public-key"},
   {MYSQL_OPT_BIND, MARIADB_OPTION_STR, "bind-address"},
   {MYSQL_OPT_SSL_ENFORCE, MARIADB_OPTION_BOOL, "ssl-enforce"},
+  {MARIADB_OPT_RESTRICTED_AUTH, MARIADB_OPTION_STR, "restricted-auth"},
   {0, 0, NULL}
 };
 
@@ -1999,6 +2000,7 @@ static void mysql_close_options(MYSQL *mysql)
       ma_hashtbl_free(&mysql->options.extension->connect_attrs);
     if (ma_hashtbl_inited(&mysql->options.extension->userdata))
       ma_hashtbl_free(&mysql->options.extension->userdata);
+    free(mysql->options.extension->restricted_auth);
 
   }
   free(mysql->options.extension);
@@ -3366,6 +3368,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MARIADB_OPT_SKIP_READ_RESPONSE:
     OPT_SET_EXTENDED_VALUE_INT(&mysql->options, skip_read_response, *(my_bool *)arg1);
+    break;
+  case MARIADB_OPT_RESTRICTED_AUTH:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, restricted_auth, (char *)arg1);
     break;
   default:
     va_end(ap);

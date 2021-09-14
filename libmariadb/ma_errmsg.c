@@ -103,6 +103,8 @@ const char *mariadb_client_errors[] =
   /* 5006 */ "Bulk operation without parameters is not supported",
   /* 5007 */ "Invalid statement handle",
   /* 5008 */ "Unsupported version %d. Supported versions are in the range %d - %d",
+  /* 5009 */ "Invalid or missing parameter '%s'.",
+  /* 5010 */ "Authentication plugin '%s' couldn't be found in restricted_auth plugin list.",
   ""
 };
 

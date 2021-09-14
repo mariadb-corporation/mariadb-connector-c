@@ -571,6 +571,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   ulong		pkt_length;
   int           res;
 
+
   /* determine the default/initial plugin to use */
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
   {
@@ -612,6 +613,17 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
 
 retry:
   mpvio.plugin= auth_plugin;
+
+  if (auth_plugin_name &&
+     mysql->options.extension &&
+     mysql->options.extension->restricted_auth)
+  {
+    if (!strstr(mysql->options.extension->restricted_auth, auth_plugin_name))
+    {
+      my_set_error(mysql, CR_PLUGIN_NOT_ALLOWED, SQLSTATE_UNKNOWN, 0, data_plugin);
+      return 1;
+    }
+  }
 
   mysql->net.read_pos[0]= 0;
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);

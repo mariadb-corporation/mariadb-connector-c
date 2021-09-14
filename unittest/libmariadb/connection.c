@@ -1915,7 +1915,72 @@ static int test_conc490(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_conc544(MYSQL *mysql)
+{
+  int rc;
+  MYSQL *my= mysql_init(NULL);
+  char query[1024];
+
+  if (!mysql_client_find_plugin(mysql, "client_ed25519", MYSQL_CLIENT_AUTHENTICATION_PLUGIN))
+  {
+    diag("client_ed25519 plugin not available");
+    return SKIP;
+  }
+
+  rc= mysql_query(mysql, "INSTALL SONAME 'auth_ed25519'");
+  if (rc)
+  {
+    diag("feature not supported, ed25519 plugin not available");
+    return SKIP;
+  }
+
+  rc= mysql_optionsv(my, MARIADB_OPT_RESTRICTED_AUTH, "client_ed25519");
+  check_mysql_rc(rc, mysql);
+
+  if (my_test_connect(my, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("error expected (restricted auth)");
+    return FAIL;
+  }
+  mysql_close(my);
+
+  if (mysql_get_server_version(mysql) < 100400) {
+    sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING '6aW9C7ENlasUfymtfMvMZZtnkCVlcb1ssxOLJ0kj/AA'", this_host);
+  } else {
+    sprintf(query, "CREATE OR REPLACE USER 'ede'@'%s' IDENTIFIED VIA ed25519 USING PASSWORD('MySup8%%rPassw@ord')", this_host);
+  }
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  sprintf(query, "GRANT ALL ON %s.* TO 'ede'@'%s'", schema, this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  my= mysql_init(NULL);
+  if (plugindir)
+    mysql_optionsv(my, MYSQL_PLUGIN_DIR, plugindir);
+  mysql_optionsv(my, MARIADB_OPT_RESTRICTED_AUTH, "client_ed25519, mysql_native_password");
+  if (!my_test_connect(my, hostname, "ede", "MySup8%rPassw@ord", schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(my));
+    return FAIL;
+  }
+  mysql_close(my);
+
+  sprintf(query, "DROP USER 'ede'@'%s'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  sprintf(query, "UNINSTALL SONAME 'auth_ed25519'");
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc544", test_conc544, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc490", test_conc490, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_gtid", test_gtid, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc496", test_conc496, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
