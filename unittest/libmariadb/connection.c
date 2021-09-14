@@ -1921,6 +1921,9 @@ static int test_conc544(MYSQL *mysql)
   MYSQL *my= mysql_init(NULL);
   char query[1024];
 
+  SKIP_SKYSQL;
+  SKIP_MAXSCALE;
+
   if (!mysql_client_find_plugin(mysql, "client_ed25519", MYSQL_CLIENT_AUTHENTICATION_PLUGIN))
   {
     diag("client_ed25519 plugin not available");
