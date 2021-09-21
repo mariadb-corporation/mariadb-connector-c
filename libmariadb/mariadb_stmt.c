@@ -251,13 +251,24 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
             {
               if (stmt->fields[i].flags & ZEROFILL_FLAG)
               {
-                size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len);
+                /* The -1 is because a ZEROFILL:ed field is always unsigned */
+                size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len-1);
                 if (len > stmt->fields[i].max_length)
                   stmt->fields[i].max_length= (unsigned long)len;
               }
               else if (!stmt->fields[i].max_length)
               {
                 stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
+                if (stmt->fields[i].flags & UNSIGNED_FLAG &&
+                    stmt->fields[i].type != MYSQL_TYPE_INT24 &&
+                    stmt->fields[i].type != MYSQL_TYPE_LONGLONG)
+                {
+                  /*
+                    Unsigned integers has one character less than signed integers
+                    as '-' is counted as part of max_length
+                  */
+                  stmt->fields[i].max_length--;
+                }
               }
               cp+= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
             }
