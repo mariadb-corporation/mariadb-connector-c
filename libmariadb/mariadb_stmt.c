@@ -1961,7 +1961,8 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
       /* Only cursor read */
       stmt->default_rset_handler = _mysql_stmt_use_result;
 
-    } else if (stmt->flags & CURSOR_TYPE_READ_ONLY)
+    } else if (stmt->flags & CURSOR_TYPE_READ_ONLY &&
+               !(stmt->upsert_status.server_status & SERVER_MORE_RESULTS_EXIST))
     {
       /*
          We have asked for CURSOR but got no cursor, because the condition

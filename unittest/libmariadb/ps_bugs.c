@@ -5319,7 +5319,34 @@ static int test_conc512(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc566(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt = mysql_stmt_init(mysql);
+  unsigned long cursor = CURSOR_TYPE_READ_ONLY;
+  const char* query= "call sp()";
+
+  rc= mysql_query(mysql,"drop procedure if exists sp");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql,"create procedure sp() select 1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt,query,-1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, &cursor);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc566", test_conc566, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc512", test_conc512, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc504", test_conc504, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_returning", test_returning, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
