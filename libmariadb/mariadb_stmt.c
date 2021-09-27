@@ -809,7 +809,7 @@ unsigned char* ma_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t 
         case MYSQL_TYPE_ENUM:
         case MYSQL_TYPE_BIT:
         case MYSQL_TYPE_SET:
-          size+= 5; /* max 8 bytes for size */
+          size+= 9; /* max 8 bytes for size */
           size+= (size_t)ma_get_length(stmt, i, 0);
           break;
         default:
