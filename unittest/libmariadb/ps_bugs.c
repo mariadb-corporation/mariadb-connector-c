@@ -5342,6 +5342,9 @@ static int test_conc566(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql,"drop procedure sp");
+  check_mysql_rc(rc, mysql);
   return OK;
 }
 
