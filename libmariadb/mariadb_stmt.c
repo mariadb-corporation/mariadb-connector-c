@@ -1645,6 +1645,7 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
       if (stmt->prebind_params != stmt->param_count)
       {
         SET_CLIENT_STMT_ERROR(stmt, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        stmt->param_count= stmt->prebind_params;
         return 1;
       }
     } else {
@@ -1931,6 +1932,13 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
   {
     SET_CLIENT_STMT_ERROR(stmt, mysql->net.last_errno, mysql->net.sqlstate,
        mysql->net.last_error);
+    /* if mariadb_stmt_execute_direct was used, we need to send the number
+       of parameters to the specified prebinded value to prevent possible
+       memory overrun */
+    if (stmt->prebind_params)
+    {
+      stmt->param_count= stmt->prebind_params;
+    }
     stmt->state= MYSQL_STMT_PREPARED;
     return(1);
   }

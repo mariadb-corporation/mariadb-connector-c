@@ -1063,7 +1063,7 @@ static int test_read_timeout(MYSQL *unused __attribute__((unused)))
 
   return OK;
 }
-
+#if __has_feature(memory_sanitizer)
 #ifdef HAVE_REMOTEIO
 void *remote_plugin;
 static int test_remote1(MYSQL *mysql)
@@ -1130,6 +1130,7 @@ static int test_remote2(MYSQL *my)
   mysql_close(mysql);
   return OK;
 }
+#endif
 #endif
 
 #ifndef _WIN32
@@ -1499,6 +1500,7 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 }
 #endif
 
+#if !__has_feature(memory_sanitizer)
 static int test_conc457(MYSQL *mysql)
 {
   MYSQL_RES *result;
@@ -1511,6 +1513,7 @@ static int test_conc457(MYSQL *mysql)
   mysql_free_result(result);
   return OK;
 }
+#endif
 
 static int test_conc458(MYSQL *my __attribute__((unused)))
 {
@@ -1618,7 +1621,9 @@ struct my_tests_st my_tests[] = {
   {"test_ext_field_attr", test_ext_field_attr, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
+#if !__has_feature(memory_sanitizer)
   {"test_conc457", test_conc457, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+#endif
   {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef _WIN32
   {"test_mdev12965", test_mdev12965, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
@@ -1629,9 +1634,11 @@ struct my_tests_st my_tests[] = {
   {"test_server_status", test_server_status, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_read_timeout", test_read_timeout, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_zerofill", test_zerofill, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+#if !__has_feature(memory_sanitizer)
 #ifdef HAVE_REMOTEIO
   {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL},
+#endif
 #endif
   {"test_get_info", test_get_info, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
