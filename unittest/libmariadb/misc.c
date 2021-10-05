@@ -1063,7 +1063,11 @@ static int test_read_timeout(MYSQL *unused __attribute__((unused)))
 
   return OK;
 }
-#if __has_feature(memory_sanitizer)
+
+#ifndef __has_feature
+# define __has_feature(x) 0
+#endif
+#if !__has_feature(memory_sanitizer)
 #ifdef HAVE_REMOTEIO
 void *remote_plugin;
 static int test_remote1(MYSQL *mysql)
