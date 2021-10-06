@@ -5453,7 +5453,7 @@ static int test_mdev19838(MYSQL *mysql)
   {
     bind[i].buffer = charvalue;
     bind[i].buffer_type = MYSQL_TYPE_STRING;
-    bind[i].buffer_length = strlen(charvalue) + 1;
+    bind[i].buffer_length = sizeof charvalue;
     bind[i].length = &bind[i].length_value;
     bind[i].length_value = bind[i].buffer_length - 1;
   }
