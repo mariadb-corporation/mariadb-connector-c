@@ -4060,7 +4060,7 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
       *((char **)arg)= (char *)ma_pvio_tls_cipher(mysql->net.pvio->ctls);
     else
     #endif
-      goto error;
+      *((char **)arg)= NULL;
     break;
   case MARIADB_CLIENT_ERRORS:
     *((char ***)arg)= (char **)client_errors;
