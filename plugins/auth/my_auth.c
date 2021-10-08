@@ -85,6 +85,7 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (mysql && mysql->passwd[0])
   {
     char scrambled[SCRAMBLE_LENGTH + 1];
+    memset(scrambled, 0, SCRAMBLE_LENGTH + 1);
     ma_scramble_41((uchar *)scrambled, (char*)pkt, mysql->passwd);
     if (vio->write_packet(vio, (uchar*)scrambled, SCRAMBLE_LENGTH))
       return CR_ERROR;
