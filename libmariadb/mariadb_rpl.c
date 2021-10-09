@@ -112,6 +112,18 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   return 0;
 }
 
+static int ma_set_rpl_filename(MARIADB_RPL *rpl, const unsigned char *filename, size_t len)
+{
+  if (!rpl)
+    return 1;
+  free(rpl->filename);
+  if (!(rpl->filename= (char *)malloc(len)))
+    return 1;
+  memcpy(rpl->filename, filename, len);
+  rpl->filename_length= len;
+  return 0;
+}
+
 MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *event)
 {
   unsigned char *ev;
@@ -207,13 +219,9 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     case BINLOG_CHECKPOINT_EVENT:
       len= uint4korr(ev);
       ev+= 4;
-      if (rpl_alloc_string(rpl_event, &rpl_event->event.checkpoint.filename, ev, len))
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.checkpoint.filename, ev, len) ||
+          ma_set_rpl_filename(rpl, ev, len))
         goto mem_error;
-      free(rpl->filename);
-      if (!(rpl->filename= (char *)malloc(len)))
-        goto mem_error;
-      memcpy(rpl->filename, ev, len);
-      rpl->filename_length= len;
       break;
     case FORMAT_DESCRIPTION_EVENT:
       rpl_event->event.format_description.format = uint2korr(ev);
@@ -321,9 +329,10 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       break;
     case ROTATE_EVENT:
       rpl_event->event.rotate.position= uint8korr(ev);
+      len= rpl_event->event_length - (ev - rpl->mysql->net.read_pos) - 8;
       ev+= 8;
-      len= rpl_event->event_length - rpl->fd_header_len - 8;
-      if (rpl_alloc_string(rpl_event, &rpl_event->event.rotate.filename, ev, len))
+      if (rpl_alloc_string(rpl_event, &rpl_event->event.rotate.filename, ev, len) ||
+          ma_set_rpl_filename(rpl, ev, len))
         goto mem_error;
       break;
     case XID_EVENT:
