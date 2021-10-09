@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 MariaDB Corporation AB 
+/* Copyright (C) 2018-2021 MariaDB Corporation AB
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -38,6 +38,9 @@ extern "C" {
 
 #define LOG_EVENT_ARTIFICIAL_F 0x20
 
+/* SEMI SYNCHRONOUS REPLICATION */
+#define SEMI_SYNC_INDICATOR 0xEF
+#define SEMI_SYNC_ACK_REQ   0x01
 
 /* Options */
 enum mariadb_rpl_option {
@@ -266,6 +269,9 @@ typedef struct st_mariadb_rpl_event
   unsigned int event_length;
   unsigned int next_event_pos;
   unsigned short flags;
+  /* Added in C/C 3.3.0 */
+  uint8_t is_semi_sync;
+  uint8_t semi_sync_flags;
   /****************/
   union {
     struct st_mariadb_rpl_rotate_event rotate;

@@ -28,10 +28,47 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "mariadb_rpl.h"
 
-static int test_rpl_01(MYSQL *mysql)
+static int test_rpl_async(MYSQL *my __attribute__((unused)))
 {
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *result;
+  MYSQL_ROW row;
   MARIADB_RPL_EVENT *event= NULL;
-  MARIADB_RPL *rpl= mariadb_rpl_init(mysql);
+  MARIADB_RPL *rpl;
+  int events= 0, rc;
+
+  SKIP_SKYSQL;
+  SKIP_MAXSCALE;
+
+  if (!is_mariadb)
+    return SKIP;
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  rc= mysql_query(mysql, "SELECT @@log_bin");
+  check_mysql_rc(rc, mysql);
+
+  result= mysql_store_result(mysql);
+  row= mysql_fetch_row(result);
+  if (!atoi(row[0]))
+    rc= SKIP;
+  mysql_free_result(result);
+
+  if (rc == SKIP)
+  {
+    diag("binary log disabled -> skip");
+    mysql_close(mysql);
+    return SKIP;
+  }
+
+  rpl = mariadb_rpl_init(mysql);
+
   mysql_query(mysql, "SET @mariadb_slave_capability=4");
   mysql_query(mysql, "SET NAMES latin1");
   mysql_query(mysql, "SET @slave_gtid_strict_mode=1");
@@ -45,18 +82,90 @@ static int test_rpl_01(MYSQL *mysql)
   if (mariadb_rpl_open(rpl))
     return FAIL;
 
-  while((event= mariadb_rpl_fetch(rpl, event)))
+  /* We run rpl_api as very last test, too make sure
+     binary log contains > 10000 events.
+   */
+  while((event= mariadb_rpl_fetch(rpl, event)) && events < 10000)
   {
-    diag("event: %d\n", event->event_type);
+    events++;
   }
   mariadb_free_rpl_event(event);
   mariadb_rpl_close(rpl);
+  mysql_close(mysql);
   return OK;
 }
 
+static int test_rpl_semisync(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *result;
+  MYSQL_ROW row;
+  MARIADB_RPL_EVENT *event= NULL;
+  MARIADB_RPL *rpl;
+  int events= 0, rc;
+
+  SKIP_SKYSQL;
+  SKIP_MAXSCALE;
+
+  if (!is_mariadb)
+    return SKIP;
+
+  if (!my_test_connect(mysql, hostname, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  rc= mysql_query(mysql, "SELECT @@log_bin");
+  check_mysql_rc(rc, mysql);
+
+  result= mysql_store_result(mysql);
+  row= mysql_fetch_row(result);
+  if (!atoi(row[0]))
+    rc= SKIP;
+  mysql_free_result(result);
+
+  if (rc == SKIP)
+  {
+    diag("binary log disabled -> skip");
+    mysql_close(mysql);
+    return SKIP;
+  }
+
+  rpl = mariadb_rpl_init(mysql);
+
+  mysql_query(mysql, "SET @mariadb_slave_capability=4");
+  mysql_query(mysql, "SET NAMES latin1");
+  mysql_query(mysql, "SET @slave_gtid_strict_mode=1");
+  mysql_query(mysql, "SET @slave_gtid_ignore_duplicates=1");
+  mysql_query(mysql, "SET NAMES utf8");
+  mysql_query(mysql, "SET @master_binlog_checksum= @@global.binlog_checksum");
+  mysql_query(mysql, "SET @rpl_semi_sync_slave=1");
+  rpl->server_id= 12;
+  rpl->start_position= 4;
+  rpl->flags= MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS;
+
+  if (mariadb_rpl_open(rpl))
+    return FAIL;
+
+  /* We run rpl_api as very last test, too make sure
+     binary log contains > 10000 events.
+   */
+  while((event= mariadb_rpl_fetch(rpl, event)) && events < 10000)
+  {
+    events++;
+  }
+  mariadb_free_rpl_event(event);
+  mariadb_rpl_close(rpl);
+  mysql_close(mysql);
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
-  {"test_rpl_01", test_rpl_01, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_rpl_async", test_rpl_async, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_rpl_semisync", test_rpl_semisync, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

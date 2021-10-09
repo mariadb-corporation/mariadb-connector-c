@@ -1,5 +1,5 @@
 /************************************************************************************
-    Copyright (C) 2018 MariaDB Corpoeation AB
+    Copyright (C) 2018-2021 MariaDB Corpoeation AB
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -93,7 +93,7 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   */
   ptr= buf= 
 #ifdef WIN32
-          (unsigned char *)_alloca(rpl->filename_length + 11);
+    (unsigned char *)_alloca(rpl->filename_length + 11);
 #else
 	  (unsigned char *)alloca(rpl->filename_length + 11);
 #endif
@@ -171,6 +171,14 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     rpl_event->checksum= uint4korr(rpl->buffer + rpl->buffer_size - 4);
 
     rpl_event->ok= rpl->buffer[0];
+
+    /* CONC-470: add support for semi snychronous replication */
+    if ((rpl_event->is_semi_sync= (rpl->buffer[1] == SEMI_SYNC_INDICATOR)))
+    {
+      rpl_event->semi_sync_flags= rpl->buffer[2];
+      rpl->buffer+= 2;
+    }
+
     rpl_event->timestamp= uint4korr(rpl->buffer + 1);
     rpl_event->event_type= (unsigned char)*(rpl->buffer + 5);
     rpl_event->server_id= uint4korr(rpl->buffer + 6);
@@ -201,6 +209,11 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= 4;
       if (rpl_alloc_string(rpl_event, &rpl_event->event.checkpoint.filename, ev, len))
         goto mem_error;
+      free(rpl->filename);
+      if (!(rpl->filename= (char *)malloc(len)))
+        goto mem_error;
+      memcpy(rpl->filename, ev, len);
+      rpl->filename_length= len;
       break;
     case FORMAT_DESCRIPTION_EVENT:
       rpl_event->event.format_description.format = uint2korr(ev);
@@ -391,11 +404,34 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       return NULL;
       break;
     }
+
+    /* check if we have to send acknoledgement to primary
+       when semi sync replication is used */
+    if (rpl_event->is_semi_sync &&
+        rpl_event->semi_sync_flags == SEMI_SYNC_ACK_REQ)
+    {
+      size_t buf_size= rpl->filename_length + 1 + 9;
+      uchar *buffer= alloca(buf_size);
+
+      buffer[0]= SEMI_SYNC_INDICATOR;
+      int8store(buffer + 1, (int64_t)rpl_event->next_event_pos);
+      memcpy(buffer + 9, rpl->filename, rpl->filename_length);
+      buffer[buf_size - 1]= 0;
+
+      if (ma_net_write(&rpl->mysql->net, buffer, buf_size) ||
+         (ma_net_flush(&rpl->mysql->net)))
+        goto net_error;
+    }
+
     return rpl_event;
   }
 mem_error:
   free(rpl_event);
   SET_CLIENT_ERROR(rpl->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+  return 0;
+net_error:
+  free(rpl_event);
+  SET_CLIENT_ERROR(rpl->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0);
   return 0;
 }
 
