@@ -269,9 +269,6 @@ typedef struct st_mariadb_rpl_event
   unsigned int event_length;
   unsigned int next_event_pos;
   unsigned short flags;
-  /* Added in C/C 3.3.0 */
-  uint8_t is_semi_sync;
-  uint8_t semi_sync_flags;
   /****************/
   union {
     struct st_mariadb_rpl_rotate_event rotate;
@@ -290,6 +287,9 @@ typedef struct st_mariadb_rpl_event
     struct st_mariadb_rpl_rows_event rows;
     struct st_mariadb_rpl_heartbeat_event heartbeat;
   } event;
+  /* Added in C/C 3.3.0 */
+  uint8_t is_semi_sync;
+  uint8_t semi_sync_flags;
 } MARIADB_RPL_EVENT;
 
 #define mariadb_rpl_init(a) mariadb_rpl_init_ex((a), MARIADB_RPL_VERSION)
