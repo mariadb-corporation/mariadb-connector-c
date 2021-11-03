@@ -143,26 +143,6 @@ static void ma_tls_set_error(MYSQL *mysql)
 }
 
 #ifndef HAVE_OPENSSL_1_1_API
-/*
-   thread safe callbacks for OpenSSL
-   Crypto call back functions will be
-   set during ssl_initialization
- */
-#if OPENSSL_VERSION_NUMBER < 0x10000000L
-static unsigned long my_cb_threadid(void)
-{
-  /* cast pthread_t to unsigned long */
-  return (unsigned long) pthread_self();
-}
-#else
-static void my_cb_threadid(CRYPTO_THREADID *id)
-{
-  CRYPTO_THREADID_set_numeric(id, (unsigned long)pthread_self());
-}
-#endif
-#endif
-
-#ifndef HAVE_OPENSSL_1_1_API
 static void my_cb_locking(int mode, int n,
                           const char *file __attribute__((unused)),
                           int line __attribute__((unused)))
@@ -175,25 +155,18 @@ static void my_cb_locking(int mode, int n,
 
 static int ssl_thread_init()
 {
-  if (!CRYPTO_THREADID_get_callback()
-#ifndef OPENSSL_NO_DEPRECATED
-      && !CRYPTO_get_id_callback()
-#endif
-      )
+  if (LOCK_crypto == NULL)
   {
     int i, max= CRYPTO_num_locks();
 
-    if (LOCK_crypto == NULL)
-    {
-      if (!(LOCK_crypto=
-            (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
-        return 1;
+    if (!(LOCK_crypto=
+           (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
+      return 1;
 
-      for (i=0; i < max; i++)
-        pthread_mutex_init(&LOCK_crypto[i], NULL);
-    }
+    for (i=0; i < max; i++)
+      pthread_mutex_init(&LOCK_crypto[i], NULL);
+
     CRYPTO_set_locking_callback(my_cb_locking);
-    CRYPTO_THREADID_set_callback(my_cb_threadid);
   }
   return 0;
 }
