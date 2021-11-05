@@ -1982,7 +1982,79 @@ static int test_conc544(MYSQL *mysql)
   return OK;
 }
 
+static int test_conn_str(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  char conn_str[1024];
+  int rc=OK;
+
+  snprintf(conn_str, sizeof(conn_str)-1, "host=%s;user=%s;password={%s};db=%s;port=%d",
+                hostname ? hostname : "localhost", username ? username : "", 
+                password ? password : "", 
+                schema ? schema : "", port);
+
+  /* SkySQL requires secure connection */
+  if (IS_SKYSQL(hostname))
+  {
+    strcat(conn_str, ";ssl_enforce=1");
+  }
+
+  diag("connection string: %s", conn_str);
+  
+  if (mariadb_connect(mysql, conn_str))
+  {
+    diag("host: %s", mysql->host);
+    diag("user: %s", mysql->user);
+    diag("cipher: %s", mysql_get_ssl_cipher(mysql));
+  } else
+  {
+    diag("error: %s", mysql_error(mysql));
+    rc= FAIL;
+  }
+  mysql_close(mysql);
+  return rc;
+}
+
+static int test_conn_str_1(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql;
+  FILE *fp;
+  int rc;
+  mysql= mysql_init(NULL);
+  if (!(fp= fopen("./conc274.cnf", "w")))
+    return FAIL;
+
+  fprintf(fp, "[client]\n");
+  fprintf(fp, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1\n", hostname, username, password, port);
+
+  fclose(fp);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./conc274.cnf");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
+  check_mysql_rc(rc, mysql);
+
+  if (!my_test_connect(mysql, NULL, NULL, NULL, NULL, 0, NULL, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    remove("./conc274.cnf");
+    return FAIL;
+  }
+  remove("./conc274.cnf");
+
+  if (!mysql_get_ssl_cipher(mysql))
+  {
+    diag("Error: No TLS connection");
+    return FAIL;
+  }
+  diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conn_str", test_conn_str, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_conn_str_1", test_conn_str_1, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc544", test_conc544, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc490", test_conc490, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_gtid", test_gtid, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

@@ -882,6 +882,7 @@ struct st_mariadb_methods {
 #define mysql_reload(mysql) mysql_refresh((mysql),REFRESH_GRANT)
 #define mysql_library_init mysql_server_init
 #define mysql_library_end mysql_server_end
+#define mariadb_connect(hdl, conn_str) mysql_real_connect((hdl),(conn_str), NULL, NULL, NULL, 0, NULL, 0)
 
 /* new api functions */
 

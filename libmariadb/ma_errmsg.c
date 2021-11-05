@@ -105,6 +105,7 @@ const char *mariadb_client_errors[] =
   /* 5008 */ "Unsupported version %d. Supported versions are in the range %d - %d",
   /* 5009 */ "Invalid or missing parameter '%s'.",
   /* 5010 */ "Authentication plugin '%s' couldn't be found in restricted_auth plugin list.",
+  /* 5011 */ "Parse error in connection string (offset %d)",
   ""
 };
 
