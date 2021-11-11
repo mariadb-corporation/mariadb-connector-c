@@ -1485,6 +1485,44 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
 #endif
 }
 
+struct st_host {
+  char *host;
+  int port;
+};
+
+static void ma_get_host_list(char *host_list, struct st_host *host_info, int default_port)
+{
+  char *token, *start, *save;
+  int host_nr= 0;
+
+  start= host_list;
+  while ((token= strtok_r(start, ",", &save)))
+  {
+    char *p;
+
+    /* ipv6 hostname */
+    if ((p= strchr(token, ']')))
+    {
+      host_info[host_nr].host= token + 1;
+      *p++= 0;
+      token= p;
+    }
+    else
+      host_info[host_nr].host= token;
+    /* check if port was specified */
+    if ((p= strchr(token, ':')))
+    {
+      *p++= 0;
+      host_info[host_nr].port= atoi(p);
+    }
+    else
+      host_info[host_nr].port= default_port;
+    host_nr++;
+    start= NULL;
+  }
+  return;
+}
+
 MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
 		   const char *passwd, const char *db,
 		   uint port, const char *unix_socket, unsigned long client_flag)
@@ -1498,6 +1536,10 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   const char *scramble_plugin;
   uint pkt_length, scramble_len, pkt_scramble_len= 0;
   NET	*net= &mysql->net;
+  my_bool is_multi= 0;
+  char *host_copy= NULL;
+  struct st_host *host_list= NULL;
+  int connect_attempts= 0;
 
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
@@ -1518,6 +1560,54 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
     free(mysql->options.my_cnf_file);
     free(mysql->options.my_cnf_group);
     mysql->options.my_cnf_file=mysql->options.my_cnf_group=0;
+  }
+
+  if (!port)
+    port=mysql->options.port;
+  if (!host || !host[0])
+    host= mysql->options.host;
+
+  /* check if we have multi hosts */
+  if (host && host[0] && strchr(host, ','))
+  {
+    char *p;
+    size_t host_count= 1;
+
+    is_multi= 1;
+
+    /* don't change original entry, so let's make a copy */
+    if (!(host_copy= strdup(host)))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      goto error;
+    }
+
+    p= host_copy;
+
+    while ((p = strchr(p, ',')))
+    {
+      host_count++;
+      p++;
+    }
+
+    if (!(host_list= (struct st_host *)calloc(host_count + 1, sizeof(struct st_host))))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      goto error;
+    }
+
+    ma_get_host_list(host_copy, host_list, port);
+  }
+
+restart:
+  /* check if we reached end of list */
+  if (is_multi)
+  {
+    if (!host_list[connect_attempts].host)
+      goto error;
+
+    host= host_list[connect_attempts].host;
+    port= host_list[connect_attempts].port;
   }
 
   ma_set_connect_attrs(mysql, host);
@@ -1545,8 +1635,6 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   }
   if (!db || !db[0])
     db=mysql->options.db;
-  if (!port)
-    port=mysql->options.port;
   if (!unix_socket)
     unix_socket=mysql->options.unix_socket;
 
@@ -1609,6 +1697,11 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (ma_pvio_connect(pvio, &cinfo) != 0)
   {
     ma_pvio_close(pvio);
+    if (is_multi)
+    {
+      connect_attempts++;
+      goto restart;
+    }
     goto error;
   }
 
@@ -1846,10 +1939,16 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   /* connection established, apply timeouts */
   ma_pvio_set_timeout(mysql->net.pvio, PVIO_READ_TIMEOUT, mysql->options.read_timeout);
   ma_pvio_set_timeout(mysql->net.pvio, PVIO_WRITE_TIMEOUT, mysql->options.write_timeout);
+
+  free(host_list);
+  free(host_copy);
+
   return(mysql);
 
 error:
   /* Free allocated memory */
+  free(host_list);
+  free(host_copy);
   end_server(mysql);
   /* only free the allocated memory, user needs to call mysql_close */
   mysql_close_memory(mysql);

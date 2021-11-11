@@ -1999,8 +1999,6 @@ static int test_conn_str(MYSQL *my __attribute__((unused)))
     strcat(conn_str, ";ssl_enforce=1");
   }
 
-  diag("connection string: %s", conn_str);
-  
   if (mariadb_connect(mysql, conn_str))
   {
     diag("host: %s", mysql->host);
@@ -2025,7 +2023,9 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
     return FAIL;
 
   fprintf(fp, "[client]\n");
-  fprintf(fp, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1\n", hostname, username, password, port);
+  fprintf(fp, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1\n",
+                hostname ? hostname : "localhost", username ? username : "", 
+                password ? password : "", port);
 
   fclose(fp);
 
@@ -2052,7 +2052,95 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_conc365(MYSQL *my __attribute__((unused)))
+{
+  int rc= OK;
+  MYSQL *mysql= mysql_init(NULL);
+  char tmp[1024];
+
+  snprintf(tmp, sizeof(tmp) - 1,
+   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d",
+   hostname ? hostname : "localhost", username ? username : "", password ? password : "",
+   port);
+
+ if (IS_SKYSQL(hostname))
+   strcat(tmp, ";ssl_enforce=1");
+
+ if (!mariadb_connect(mysql, tmp))
+   rc= FAIL;
+
+  mysql_close(mysql);
+
+  if (rc)
+    return rc;
+
+  mysql= mysql_init(NULL);
+  snprintf(tmp, sizeof(tmp) -1, "127.0.0.1:3300,%s:%d", hostname ? hostname : "localhost", port);
+  if (!my_test_connect(mysql, tmp, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    rc= FAIL;
+  }
+
+  mysql_close(mysql);
+
+  if (rc)
+    return rc;
+  
+  mysql= mysql_init(NULL);
+  mysql_options(mysql, MARIADB_OPT_HOST, tmp);
+  if (!my_test_connect(mysql, NULL, username,
+                             password, schema, port, socketname, 0))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    rc= FAIL;
+  }
+
+  mysql_close(mysql);
+  return rc;
+}
+
+static int test_conc365_reconnect(MYSQL *my)
+{
+  int rc= OK;
+  MYSQL *mysql= mysql_init(NULL);
+  char tmp[1024];
+  my_bool reconnect= 1;
+
+  mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
+
+  snprintf(tmp, sizeof(tmp) - 1,
+   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d",
+   hostname ? hostname : "localhost", username ? username : "", password ? password : "",
+   port);
+
+ if (IS_SKYSQL(hostname))
+   strcat(tmp, ";ssl_enforce=1");
+
+  if (!my_test_connect(mysql, tmp, username,
+                             password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    rc= FAIL;
+  }
+
+  sprintf(tmp, "KILL %ld", mysql_thread_id(mysql));
+
+  rc= mysql_query(my, tmp);
+  check_mysql_rc(rc, my);
+
+  sleep(3);
+  rc= mysql_ping(mysql);
+  check_mysql_rc(rc, my);
+
+  mysql_close(mysql);
+  return rc;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc365", test_conc365, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_conc365_reconnect", test_conc365_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conn_str", test_conn_str, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conn_str_1", test_conn_str_1, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc544", test_conc544, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
