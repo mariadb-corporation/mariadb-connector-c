@@ -5391,6 +5391,8 @@ static int test_conc566(MYSQL *mysql)
   unsigned long cursor = CURSOR_TYPE_READ_ONLY;
   const char* query= "call sp()";
 
+  SKIP_SKYSQL;
+
   rc= mysql_query(mysql,"drop procedure if exists sp");
   check_mysql_rc(rc, mysql);
 

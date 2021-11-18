@@ -50,6 +50,7 @@ jobs:
     - env: srv=mariadb v=10.4 local=1
     - env: srv=mariadb v=10.5 local=1
     - env: srv=mariadb v=10.6 local=1
+    - env: srv=mariadb v=10.7 local=1
     - if: type = push AND fork = false
       env: srv=mariadb-es v=10.5
     - if: type = push AND fork = false
@@ -64,5 +65,7 @@ jobs:
       env: srv=skysql-ha
     - env: server_branch=10.6
     - env: server_branch=10.6 TEST_OPTION=--ps-protocol
+    - env: server_branch=10.7
+    - env: server_branch=10.7 TEST_OPTION=--ps-protocol
 
 script: ./travis.sh
