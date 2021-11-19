@@ -387,14 +387,14 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       }
       break;
     default:
-      free(rpl_event);
+      mariadb_free_rpl_event(rpl_event);
       return NULL;
       break;
     }
     return rpl_event;
   }
 mem_error:
-  free(rpl_event);
+  mariadb_free_rpl_event(rpl_event);
   SET_CLIENT_ERROR(rpl->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
   return 0;
 }
