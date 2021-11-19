@@ -309,7 +309,31 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     case ROTATE_EVENT:
       rpl_event->event.rotate.position= uint8korr(ev);
       ev+= 8;
-      len= rpl_event->event_length - rpl->fd_header_len - 8;
+      if (rpl_event->timestamp == 0)
+      {
+        /* Fake ROTATE_EVENT: https://mariadb.com/kb/en/fake-rotate_event/
+           This is sent before FORMAT_DESCRIPTION. So we can't use
+           rpl->use_checksum and rpl->fd_header_len here.
+         */
+        const uint8_t header_size = 19;
+        len= rpl_event->event_length - header_size - 8;
+        /*
+          How can we detect whether checksum is used or not?
+          Can we assume that checksum is used here?
+          Here is a heuristic check. The last 4 bytes of filename should be
+          digit.
+        */
+        if (!('0' <= ev[len - 4] && ev[len - 4] <= '9') ||
+            !('0' <= ev[len - 3] && ev[len - 3] <= '9') ||
+            !('0' <= ev[len - 2] && ev[len - 2] <= '9') ||
+            !('0' <= ev[len - 1] && ev[len - 1] <= '9')) {
+          len-= 4; /* For checksum */
+        }
+      }
+      else
+      {
+        len= rpl_event->event_length - rpl->fd_header_len - 8;
+      }
       if (rpl_alloc_string(rpl_event, &rpl_event->event.rotate.filename, ev, len))
         goto mem_error;
       break;
