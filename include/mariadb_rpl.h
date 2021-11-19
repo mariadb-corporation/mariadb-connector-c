@@ -245,6 +245,8 @@ struct st_mariadb_rpl_rows_event {
   char *column_update_bitmap;
   size_t row_data_size;
   void *row_data;
+  size_t extra_data_size;
+  void *extra_data;
 };
 
 struct st_mariadb_rpl_heartbeat_event {
