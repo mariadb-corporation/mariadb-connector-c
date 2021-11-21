@@ -439,7 +439,7 @@ mem_error:
   SET_CLIENT_ERROR(rpl->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
   return 0;
 net_error:
-  free(rpl_event);
+  mariadb_free_rpl_event(rpl_event);
   SET_CLIENT_ERROR(rpl->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0);
   return 0;
 }
