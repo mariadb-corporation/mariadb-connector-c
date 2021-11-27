@@ -446,6 +446,7 @@ IF(WITH_MYSQLCOMPAT)
   IF(NOT CMAKE_SYSTEM_NAME MATCHES AIX)
     create_symlink(libmysqlclient${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
     create_symlink(libmysqlclient_r${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
+    create_symlink(libmariadb${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
   ENDIF()
 ENDIF()
 
@@ -459,12 +460,16 @@ IF(NOT WIN32)
 ENDIF()
 
 INSTALL(TARGETS mariadbclient
-          COMPONENT Development
-          DESTINATION ${INSTALL_LIBDIR})
-INSTALL(TARGETS libmariadb
-          COMPONENT SharedLibraries
+        COMPONENT Development
         DESTINATION ${INSTALL_LIBDIR})
 
+INSTALL(FILES libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX}
+        COMPONENT Development
+        DESTINATION ${INSTALL_LIBDIR})
+
+INSTALL(FILES libmariadb${CMAKE_SHARED_LIBRARY_SUFFIX}.${CPACK_PACKAGE_VERSION_MAJOR} 
+        COMPONENT SharedLibraries
+        DESTINATION ${INSTALL_LIBDIR})
 
 IF(MSVC)
    # On Windows, install PDB
