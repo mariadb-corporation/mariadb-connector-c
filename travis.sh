@@ -14,7 +14,7 @@ if [ -n "$server_branch" ] ; then
   sudo tail /etc/hosts
 
   # get latest server
-  git clone -b ${server_branch} https://github.com/mariadb/server ../workdir-server
+  git clone -b ${server_branch} https://github.com/mariadb/server ../workdir-server --depth=1
 
   cd ../workdir-server
   # don't pull in submodules. We want the latest C/C as libmariadb
