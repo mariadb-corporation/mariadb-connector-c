@@ -455,8 +455,8 @@ void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl)
 }
 
 int mariadb_rpl_optionsv(MARIADB_RPL *rpl,
-                        enum mariadb_rpl_option option,
-                        ...)
+                         enum mariadb_rpl_option option,
+                         ...)
 {
   va_list ap;
   int rc= 0;
@@ -510,8 +510,8 @@ end:
 }
 
 int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
-                        enum mariadb_rpl_option option,
-                        ...)
+                             enum mariadb_rpl_option option,
+                             ...)
 {
   va_list ap;
 
