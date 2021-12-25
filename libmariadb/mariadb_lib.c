@@ -1557,6 +1557,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       goto error;
     }
+    is_maria= mariadb_connection(mysql);
   }
   end+= strlen(end) + 1;
 
