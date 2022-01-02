@@ -84,6 +84,8 @@ struct st_ma_pvio {
   PVIO_METHODS *methods;
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
   void (*callback)(MARIADB_PVIO *pvio, my_bool is_read, const uchar *buffer, size_t length);
+  size_t bytes_read;
+  size_t bytes_sent;
 };
 
 typedef struct st_ma_pvio_cinfo

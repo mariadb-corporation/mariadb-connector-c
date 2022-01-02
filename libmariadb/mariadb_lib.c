@@ -4495,6 +4495,12 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
     else
       goto error;
     break;
+  case MARIADB_CONNECTION_BYTES_READ:
+    *((size_t *)arg)= mysql->net.pvio->bytes_read;
+    break;
+  case MARIADB_CONNECTION_BYTES_SENT:
+    *((size_t *)arg)= mysql->net.pvio->bytes_sent;
+    break;
   default:
     va_end(ap);
     return(-1);

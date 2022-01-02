@@ -265,6 +265,8 @@ end:
       p= p->next;
     }
   }
+  if (r > 0)
+    pvio->bytes_read+= r;
   return r;
 }
 /* }}} */
@@ -391,6 +393,8 @@ end:
       p= p->next;
     }
   }
+  if (r > 0)
+    pvio->bytes_sent+= r;
   return r;
 }
 /* }}} */
