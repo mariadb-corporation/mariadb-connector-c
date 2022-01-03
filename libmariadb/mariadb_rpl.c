@@ -28,6 +28,10 @@
 #include <zlib.h>
 #include <mariadb_rpl.h>
 
+#ifdef WIN32
+#define alloca _alloca
+#endif
+
 static int rpl_alloc_string(MARIADB_RPL_EVENT *event,
                             MARIADB_STRING *s,
                             unsigned char *buffer,
@@ -120,7 +124,7 @@ static int ma_set_rpl_filename(MARIADB_RPL *rpl, const unsigned char *filename, 
   if (!(rpl->filename= (char *)malloc(len)))
     return 1;
   memcpy(rpl->filename, filename, len);
-  rpl->filename_length= len;
+  rpl->filename_length= (uint32_t)len;
   return 0;
 }
 
