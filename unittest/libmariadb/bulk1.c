@@ -925,7 +925,7 @@ static int bulk_null_null(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, "INSERT INTO bulk_null VALUES (?,?,?,?,?)", -1);
   check_stmt_rc(rc, stmt);
 
-  memset(bind, 0, sizeof(MYSQL_BIND)*2);
+  memset(bind, 0, sizeof(MYSQL_BIND)*5);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
@@ -1011,6 +1011,7 @@ static int test_mdev16593(MYSQL *mysql)
   diag("waiting for server fix");
   return SKIP;
 
+  memset(&bind, 0, 2 * sizeof(MYSQL_BIND));
   for (i=0; i < 3; i++)
   {
     MYSQL_RES *res;
@@ -1018,8 +1019,6 @@ static int test_mdev16593(MYSQL *mysql)
     MYSQL_STMT *stmt= mysql_stmt_init(mysql);
     rc= mysql_query(mysql, "CREATE OR REPLACE TABLE t1 (a int not null auto_increment primary key, b int)");
     check_mysql_rc(rc, mysql);
-
-    memset(&bind, 0, sizeof(MYSQL_BIND));
     switch (i) {
     case 0:
       bind[0].buffer_type= MYSQL_TYPE_LONG;

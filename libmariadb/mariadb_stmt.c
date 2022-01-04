@@ -252,13 +252,24 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
             {
               if (stmt->fields[i].flags & ZEROFILL_FLAG)
               {
-                size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len);
+                /* The -1 is because a ZEROFILL:ed field is always unsigned */
+                size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len-1);
                 if (len > stmt->fields[i].max_length)
                   stmt->fields[i].max_length= (unsigned long)len;
               }
               else if (!stmt->fields[i].max_length)
               {
                 stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
+                if (stmt->fields[i].flags & UNSIGNED_FLAG &&
+                    stmt->fields[i].type != MYSQL_TYPE_INT24 &&
+                    stmt->fields[i].type != MYSQL_TYPE_LONGLONG)
+                {
+                  /*
+                    Unsigned integers has one character less than signed integers
+                    as '-' is counted as part of max_length
+                  */
+                  stmt->fields[i].max_length--;
+                }
               }
               cp+= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
             }
@@ -673,8 +684,8 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   return 0;
 }
 
-/* {{{ mysqlnd_stmt_execute_generate_simple_request */
-unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t *request_len)
+/* {{{ ma_stmt_execute_generate_simple_request */
+unsigned char* ma_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
      Offset   Length      Description
@@ -798,7 +809,7 @@ unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size
         case MYSQL_TYPE_ENUM:
         case MYSQL_TYPE_BIT:
         case MYSQL_TYPE_SET:
-          size+= 5; /* max 8 bytes for size */
+          size+= 9; /* max 8 bytes for size */
           size+= (size_t)ma_get_length(stmt, i, 0);
           break;
         default:
@@ -854,8 +865,8 @@ my_bool mysql_stmt_skip_paramset(MYSQL_STMT *stmt, uint row)
 }
 /* }}} */
 
-/* {{{ mysql_stmt_execute_generate_bulk_request */
-unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
+/* {{{ ma_stmt_execute_generate_bulk_request */
+unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
      Offset   Length      Description
@@ -1046,6 +1057,40 @@ mem_error:
   return NULL;
 }
 /* }}} */
+
+
+unsigned char* ma_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *request_len, my_bool internal)
+{
+  unsigned char *buf;
+
+
+  if (stmt->request_buffer)
+  {
+    *request_len= stmt->request_length;
+    buf= stmt->request_buffer;
+    /* store actual stmt id */
+    int4store(buf, stmt->stmt_id);
+    /* clear buffer, memory will be freed in execute */
+    stmt->request_buffer= NULL;
+    stmt->request_length= 0;
+    return buf;
+  }
+  if (stmt->array_size > 0)
+    buf= ma_stmt_execute_generate_bulk_request(stmt, request_len);
+  else
+    buf= ma_stmt_execute_generate_simple_request(stmt, request_len);
+
+  if (internal)
+  {
+    if (stmt->request_buffer)
+      free(stmt->request_buffer);
+    stmt->request_buffer= buf;
+    stmt->request_length= *request_len;
+  }
+  return buf;
+}
+
+
 /*!
  *******************************************************************************
 
@@ -1122,7 +1167,7 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       stmt->state= MYSQL_STMT_INITTED;
       stmt->params= 0;
     }
-    stmt->prebind_params= *(unsigned int *)value;
+    stmt->prebind_params= stmt->param_count= *(unsigned int *)value;
     break;
   case STMT_ATTR_ARRAY_SIZE:
     stmt->array_size= *(unsigned int *)value;
@@ -1600,6 +1645,7 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
       if (stmt->prebind_params != stmt->param_count)
       {
         SET_CLIENT_STMT_ERROR(stmt, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        stmt->param_count= stmt->prebind_params;
         return 1;
       }
     } else {
@@ -1886,6 +1932,13 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
   {
     SET_CLIENT_STMT_ERROR(stmt, mysql->net.last_errno, mysql->net.sqlstate,
        mysql->net.last_error);
+    /* if mariadb_stmt_execute_direct was used, we need to send the number
+       of parameters to the specified prebinded value to prevent possible
+       memory overrun */
+    if (stmt->prebind_params)
+    {
+      stmt->param_count= stmt->prebind_params;
+    }
     stmt->state= MYSQL_STMT_PREPARED;
     return(1);
   }
@@ -1960,7 +2013,8 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
       /* Only cursor read */
       stmt->default_rset_handler = _mysql_stmt_use_result;
 
-    } else if (stmt->flags & CURSOR_TYPE_READ_ONLY)
+    } else if (stmt->flags & CURSOR_TYPE_READ_ONLY &&
+               !(stmt->upsert_status.server_status & SERVER_MORE_RESULTS_EXIST))
     {
       /*
          We have asked for CURSOR but got no cursor, because the condition
@@ -2056,11 +2110,8 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   }
   /* CONC-344: set row count to zero */
   stmt->result.rows= 0;
-  if (stmt->array_size > 0)
-    request= (char *)mysql_stmt_execute_generate_bulk_request(stmt, &request_len);
-  else
-    request= (char *)mysql_stmt_execute_generate_simple_request(stmt, &request_len);
 
+  request= (char *)ma_stmt_execute_generate_request(stmt, &request_len, 0);
   if (!request)
     return 1;
 

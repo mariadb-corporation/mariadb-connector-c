@@ -206,7 +206,7 @@ static int test_view_2where(MYSQL *mysql)
                   " AENAME,T0001.DEPENDVARS AS DEPENDVARS,T0001.INACTIVE AS "
                   " INACTIVE from LTDX T0001 where (T0001.SRTF2 = 0)");
   check_mysql_rc(rc, mysql);
-  memset(my_bind, '\0', sizeof(MYSQL_BIND));
+  memset(my_bind, '\0', 8 * sizeof(MYSQL_BIND));
   for (i=0; i < 8; i++) {
     strcpy(params[i], "1");
     my_bind[i].buffer_type = MYSQL_TYPE_VAR_STRING;
@@ -257,7 +257,7 @@ static int test_view_star(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE VIEW vt1 AS SELECT a FROM t1");
   check_mysql_rc(rc, mysql);
-  memset(my_bind, '\0', sizeof(MYSQL_BIND));
+  memset(my_bind, '\0', 8 * sizeof(MYSQL_BIND));
   for (i= 0; i < 2; i++) {
     sprintf((char *)&params[i], "%d", i);
     my_bind[i].buffer_type = MYSQL_TYPE_VAR_STRING;
@@ -426,8 +426,7 @@ static int test_view_insert_fields(MYSQL *mysql)
                   "F7F8 double NOT NULL default '0',"
                   "F8F8 double NOT NULL default '0',"
                   "F9D8 decimal(8,2) NOT NULL default '0.00',"
-                  "PRIMARY KEY (K1C4,K2C4,K3C4,K4N4)) "
-                  "CHARSET=latin1 COLLATE latin1_bin");
+                  "PRIMARY KEY (K1C4,K2C4,K3C4,K4N4))");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql,
                   "CREATE VIEW v1 AS select sql_no_cache "
@@ -439,7 +438,7 @@ static int test_view_insert_fields(MYSQL *mysql)
   memset(my_bind, '\0', sizeof(my_bind));
   for (i= 0; i < 11; i++)
   {
-    l[i]= 20;
+    l[i]= 2;
     my_bind[i].buffer_type= MYSQL_TYPE_STRING;
     my_bind[i].is_null= 0;
     my_bind[i].buffer= (char *)&parm[i];

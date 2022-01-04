@@ -210,12 +210,6 @@ int fetch_n(MYSQL *mysql, const char **query_list, unsigned query_count,
       }
     }
   }
-  if (!error_count)
-  {
-    unsigned total_row_count= 0;
-    for (fetch= fetch_array; fetch < fetch_array + query_count; ++fetch)
-      total_row_count+= fetch->row_count;
-  }
   for (fetch= fetch_array; fetch < fetch_array + query_count; ++fetch)
     stmt_fetch_close(fetch);
   free(fetch_array);
@@ -287,6 +281,7 @@ static int test_cursors_with_procedure(MYSQL *mysql)
   {
     "SELECT * FROM t1 procedure analyse()"
   };
+  SKIP_MYSQL(mysql);
   FAIL_IF(fetch_n(mysql, queries, sizeof(queries)/sizeof(*queries), USE_ROW_BY_ROW_FETCH), "fetch_n failed");
   FAIL_IF(fetch_n(mysql, queries, sizeof(queries)/sizeof(*queries), USE_STORE_RESULT), "fetch_n failed");
 
@@ -1493,23 +1488,22 @@ static int test_bug38486(MYSQL *mysql)
   int rc;
   unsigned long type= CURSOR_TYPE_READ_ONLY;
 
-  stmt= mysql_stmt_init(mysql);
-  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, (void*)&type);
-  check_stmt_rc(rc, stmt);
-  stmt_text= "CREATE TABLE t1 (a INT)";
-  rc= mysql_stmt_prepare(stmt, SL(stmt_text));
-  check_stmt_rc(rc, stmt);
-  rc= mysql_stmt_execute(stmt);
-  mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t10");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t10 (a INT)");
+  check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, (void*)&type);
   check_stmt_rc(rc, stmt);
-  stmt_text= "INSERT INTO t1 VALUES (1)";
+  stmt_text= "INSERT INTO t10 VALUES (1)";
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t10");
+  check_mysql_rc(rc, mysql);
   mysql_stmt_close(stmt);
 
   return OK;

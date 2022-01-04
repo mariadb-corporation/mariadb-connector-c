@@ -330,6 +330,7 @@ struct st_mysql_client_plugin * STDCALL
 mysql_client_register_plugin(MYSQL *mysql,
                              struct st_mysql_client_plugin *plugin)
 {
+  struct st_mysql_client_plugin *found_plugin= NULL;
   va_list unused;
   LINT_INIT_STRUCT(unused);
 
@@ -339,18 +340,11 @@ mysql_client_register_plugin(MYSQL *mysql,
   pthread_mutex_lock(&LOCK_load_client_plugin);
 
   /* make sure the plugin wasn't loaded meanwhile */
-  if (find_plugin(plugin->name, plugin->type))
-  {
-    my_set_error(mysql, CR_AUTH_PLUGIN_CANNOT_LOAD,
-                 SQLSTATE_UNKNOWN, ER(CR_AUTH_PLUGIN_CANNOT_LOAD),
-                 plugin->name, "it is already loaded");
-    plugin= NULL;
-  }
-  else
-    plugin= add_plugin(mysql, plugin, 0, 0, unused);
+  if (!(found_plugin= find_plugin(plugin->name, plugin->type)))
+    found_plugin= add_plugin(mysql, plugin, 0, 0, unused);
 
   pthread_mutex_unlock(&LOCK_load_client_plugin);
-  return plugin;
+  return found_plugin;
 }
 
 

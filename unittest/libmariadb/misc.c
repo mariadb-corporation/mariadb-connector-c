@@ -242,6 +242,8 @@ static int test_frm_bug(MYSQL *mysql)
   char       test_frm[1024];
   int        rc;
 
+  SKIP_MYSQL(mysql);
+
   mysql_autocommit(mysql, TRUE);
 
   rc= mysql_query(mysql, "drop table if exists test_frm_bug");
@@ -475,6 +477,9 @@ static int test_wl4166_2(MYSQL *mysql)
                   "alter table t1 change column c_int c_int varchar(11)");
   check_mysql_rc(rc, mysql);
 
+  rc= mysql_query(mysql, "FLUSH TABLES");
+  check_mysql_rc(rc, mysql);
+
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
@@ -507,6 +512,9 @@ static int test_wl4166_2(MYSQL *mysql)
 
   /* alter table and increase the number of columns */
   rc= mysql_query(mysql, "alter table t1 add column d_int int");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_execute(stmt);
@@ -769,10 +777,25 @@ static int test_wl4284_1(MYSQL *mysql)
 static int test_bug49694(MYSQL *mysql)
 {
   int rc;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
   int i;
   FILE *fp;
 
+  diag("Load local infile server : %ld", (mysql->server_capabilities & CLIENT_LOCAL_FILES));
+  diag("Load local infile client : %ld", (mysql->client_flag & CLIENT_LOCAL_FILES));
+
+  SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
+
+  rc= mysql_query(mysql, "select @@LOCAL_INFILE");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  if (atol(row[0]) == 0) {
+      diag("Load local infile disable");
+      return SKIP;
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS enclist");
   check_mysql_rc(rc, mysql);
@@ -803,6 +826,7 @@ static int test_bug49694(MYSQL *mysql)
 
   rc= mysql_query(mysql, "DROP TABLE enclist");
   check_mysql_rc(rc, mysql);
+  mysql_free_result(res);
   return OK;
 }
 
@@ -810,11 +834,26 @@ static int test_conc49(MYSQL *mysql)
 {
   int rc;
   MYSQL_RES *res;
+  MYSQL_ROW row;
+
   int i;
   FILE *fp;
 
   SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
+
+  rc= mysql_query(mysql, "select @@LOCAL_INFILE");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+
+  i= !atol(row[0]);
+  if (i) {
+      diag("Load local infile disable");
+      mysql_free_result(res);
+      return SKIP;
+  }
+  mysql_free_result(res);
 
   fp= fopen("./sample.csv", "w");
   for (i=1; i < 4; i++)
@@ -846,6 +885,9 @@ static int test_ldi_path(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "FLUSH TABLES");
   check_mysql_rc(rc, mysql);
 
 #ifdef _WIN32
@@ -1022,11 +1064,19 @@ static int test_read_timeout(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+#ifndef __has_feature
+# define __has_feature(x) 0
+#endif
+#if !__has_feature(memory_sanitizer)
 #ifdef HAVE_REMOTEIO
 void *remote_plugin;
 static int test_remote1(MYSQL *mysql)
 {
   int rc;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+  SKIP_SKYSQL;
+
   SKIP_SKYSQL;
 
   remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MARIADB_CLIENT_REMOTEIO_PLUGIN);
@@ -1036,6 +1086,18 @@ static int test_remote1(MYSQL *mysql)
     diag("error: %s", mysql_error(mysql));
     return SKIP;
   }
+
+  SKIP_LOAD_INFILE_DISABLE;
+
+  rc= mysql_query(mysql, "select @@LOCAL_INFILE");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  row= mysql_fetch_row(res);
+  if (atol(row[0]) == 0) {
+      diag("Load local infile disable");
+      return SKIP;
+  }
+  mysql_free_result(res);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -1073,6 +1135,7 @@ static int test_remote2(MYSQL *my)
   return OK;
 }
 #endif
+#endif
 
 #ifndef _WIN32
 static int test_mdev12965(MYSQL *unused __attribute__((unused)))
@@ -1107,7 +1170,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1391,7 +1454,7 @@ static int test_conc395(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1431,7 +1494,7 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1441,6 +1504,7 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 }
 #endif
 
+#if !__has_feature(memory_sanitizer)
 static int test_conc457(MYSQL *mysql)
 {
   MYSQL_RES *result;
@@ -1453,6 +1517,7 @@ static int test_conc457(MYSQL *mysql)
   mysql_free_result(result);
   return OK;
 }
+#endif
 
 static int test_conc458(MYSQL *my __attribute__((unused)))
 {
@@ -1520,10 +1585,49 @@ static int test_conc533(MYSQL *mysql)
   return OK;
 }
 
+int display_extended_field_attribute(MYSQL *mysql)
+{
+  MYSQL_RES *result;
+  MYSQL_FIELD *fields;
+
+  if (mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a POINT)"))
+    return 1;
+
+  if (mysql_query(mysql, "SELECT a FROM t1"))
+    return 1;
+
+  if (!(result= mysql_store_result(mysql)))
+    return 1;
+
+  if ((fields= mysql_fetch_fields(result)))
+  {
+    MARIADB_CONST_STRING field_attr;
+
+    if (!mariadb_field_attr(&field_attr, &fields[0],
+                            MARIADB_FIELD_ATTR_DATA_TYPE_NAME))
+    {
+      printf("Extended field attribute: %s\n", field_attr.str);
+    }
+  }
+  mysql_free_result(result);
+  return 0;
+}
+
+
+static int test_ext_field_attr(MYSQL *mysql)
+{
+  display_extended_field_attribute(mysql);
+  
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_ext_field_attr", test_ext_field_attr, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
+#if !__has_feature(memory_sanitizer)
   {"test_conc457", test_conc457, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+#endif
   {"test_conc384", test_conc384, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef _WIN32
   {"test_mdev12965", test_mdev12965, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
@@ -1534,9 +1638,11 @@ struct my_tests_st my_tests[] = {
   {"test_server_status", test_server_status, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_read_timeout", test_read_timeout, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_zerofill", test_zerofill, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+#if !__has_feature(memory_sanitizer)
 #ifdef HAVE_REMOTEIO
   {"test_remote1", test_remote1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_remote2", test_remote2, TEST_CONNECTION_NEW, 0, NULL, NULL},
+#endif
 #endif
   {"test_get_info", test_get_info, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_conc117", test_conc117, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},

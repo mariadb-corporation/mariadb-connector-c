@@ -5118,7 +5118,60 @@ static int test_conc349(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc565(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_FIELD *fields_binary, *fields_text;
+  MYSQL_RES *result;
+  int rc;
+  unsigned int i;
+  my_bool x=1;
+  my_bool error= 0;
+
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a year, b tinyint unsigned, c smallint unsigned, d mediumint unsigned, e int unsigned, f bigint unsigned)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (2020, 127, 0xFFFF, 0xFFFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt, "select a,b,c,d,e,f from t1", -1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void *)&x);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_store_result(stmt);
+  fields_binary= mariadb_stmt_fetch_fields(stmt);
+
+  rc= mysql_query(mysql, "SELECT a,b,c,d,e,f FROM t1");
+  result= mysql_store_result(mysql);
+  fields_text= mysql_fetch_fields(result);
+
+  for (i=0; i < mysql_field_count(mysql); i++)
+  {
+     if (fields_binary[i].length != fields_text[i].length ||
+         fields_binary[i].max_length != fields_text[i].max_length)
+     {
+       diag("Sizes differ for column %d (type= %d)", i, fields_binary[i].type);
+       diag("Binary (length=%ld max_length=%ld) != Text(length=%ld max_length=%ld",
+             fields_binary[i].length, fields_binary[i].max_length,
+             fields_text[i].length, fields_text[i].max_length);
+       error= 1;
+       goto end; 
+     }
+  }
+end:
+  mysql_free_result(result);
+  mysql_stmt_close(stmt);
+
+  return error ? FAIL : OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc565", test_conc565, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc349", test_conc349, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_prepare_error", test_prepare_error, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_reexecute", test_reexecute, TEST_CONNECTION_NEW, 0, NULL, NULL},

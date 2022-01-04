@@ -678,6 +678,7 @@ static int test_bug15510(MYSQL *mysql)
   int rc;
   const char *query= "select 1 from dual where 1/0";
 
+  SKIP_MYSQL(mysql);
 
   rc= mysql_query(mysql, "set @@sql_mode='ERROR_FOR_DIVISION_BY_ZERO'");
   check_mysql_rc(rc, mysql);
@@ -2070,7 +2071,7 @@ static int test_bug36004(MYSQL *mysql)
   int rc, warning_count= 0;
   MYSQL_STMT *stmt;
   SKIP_MAXSCALE;
-
+  SKIP_MYSQL(mysql); // don't send expected warnings
 
   if (mysql_get_server_version(mysql) < 60000) {
     diag("Test requires MySQL Server version 6.0 or above");
@@ -5383,8 +5384,177 @@ static int test_conc525(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc566(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt = mysql_stmt_init(mysql);
+  unsigned long cursor = CURSOR_TYPE_READ_ONLY;
+  const char* query= "call sp()";
+
+  rc= mysql_query(mysql,"drop procedure if exists sp");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql,"create procedure sp() select 1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_stmt_prepare(stmt,query,-1);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, &cursor);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql,"drop procedure sp");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
+#define MDEV19838_MAX_PARAM_COUNT 32
+#define MDEV19838_FIELDS_COUNT 17
+
+static int test_mdev19838(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_BIND bind[MDEV19838_MAX_PARAM_COUNT];
+  unsigned int i, paramCount = 1;
+  char charvalue[] = "012345678901234567890123456789012345";
+  MYSQL_STMT *stmt;
+
+  rc = mysql_query(mysql, "CREATE temporary TABLE mdev19838("
+          "f1  char(36),"
+          "f2  char(36),"
+          "f3  char(36),"
+          "f4  char(36),"
+          "f5  char(36),"
+          "f6  char(36),"
+          "f7  char(36),"
+          "f8  char(36),"
+          "f9  char(36),"
+          "f10 char(36),"
+          "f11 char(36),"
+          "f12 char(36),"
+          "f13 char(36),"
+          "f14 char(36),"
+          "f15 char(36),"
+          "f16 char(36),"
+          "f17 char(36)"
+    ")");
+  check_mysql_rc(rc, mysql);
+
+  stmt = mysql_stmt_init(mysql);
+
+  memset(bind, 0, sizeof(bind));
+
+  for (i = 0; i < MDEV19838_MAX_PARAM_COUNT; ++i)
+  {
+    bind[i].buffer = charvalue;
+    bind[i].buffer_type = MYSQL_TYPE_STRING;
+    bind[i].buffer_length = sizeof charvalue;
+    bind[i].length = &bind[i].length_value;
+    bind[i].length_value = bind[i].buffer_length - 1;
+  }
+
+  for (paramCount = 1; paramCount < MDEV19838_FIELDS_COUNT; ++paramCount)
+  {
+    mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramCount);
+
+    rc = mysql_stmt_bind_param(stmt, bind);
+    check_stmt_rc(rc, stmt);
+
+    rc = mariadb_stmt_execute_direct(stmt, "INSERT INTO mdev19838"
+      "(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17)"
+      " VALUES "
+      "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", -1);
+
+    /* Expecting an error */
+    FAIL_UNLESS(rc != 0, "rc!=0");
+
+    mysql_stmt_close(stmt);
+    stmt = mysql_stmt_init(mysql);
+  }
+
+  paramCount = 0;
+  mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramCount);
+  rc = mariadb_stmt_execute_direct(stmt, "INSERT INTO mdev19838(f1)"
+    " VALUES (?)", -1);
+  /* Expecting an error */
+  FAIL_UNLESS(rc != 0, "rc!=0");
+  mysql_stmt_close(stmt);
+
+  stmt = mysql_stmt_init(mysql);
+  /* Correct number of parameters */
+  paramCount = MDEV19838_FIELDS_COUNT;
+  mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramCount);
+  mysql_stmt_bind_param(stmt, bind);
+
+  rc = mariadb_stmt_execute_direct(stmt, "INSERT INTO mdev19838"
+    "(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17)"
+    " VALUES "
+    "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", -1);
+  check_stmt_rc(rc, stmt);
+
+  /* MYSQL_TYPE_TINY = 1. This parameter byte can be read as "parameters send" flag byte.
+     Checking that wrong packet is still detected */
+  bind[0].buffer_type = MYSQL_TYPE_TINY;
+  bind[0].length_value = 1;
+  bind[0].buffer_length = 1;
+
+  for (paramCount = 8; paramCount > 0; --paramCount)
+  {
+    mysql_stmt_close(stmt);
+    stmt = mysql_stmt_init(mysql);
+
+    mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramCount);
+
+    rc = mysql_stmt_bind_param(stmt, bind);
+
+    rc = mariadb_stmt_execute_direct(stmt, "INSERT INTO mdev19838"
+      "(f1, f2, f3, f4, f5, f6, f7, f8, f9)"
+      " VALUES "
+      "(?, ?, ?, ?, ?, ?, ?, ?, ?)", -1);
+
+    /* Expecting an error */
+    FAIL_UNLESS(rc != 0, "rc");
+  }
+
+  /* Test of query w/out parameters, with parameter sent and not sent */
+  for (paramCount = MDEV19838_MAX_PARAM_COUNT; paramCount != (unsigned int)-1; --paramCount)
+  {
+    mysql_stmt_close(stmt);
+    stmt = mysql_stmt_init(mysql);
+
+    mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramCount);
+
+    if (paramCount > 0)
+    {
+      rc = mysql_stmt_bind_param(stmt, bind);
+      check_stmt_rc(rc, stmt);
+    }
+
+    rc = mariadb_stmt_execute_direct(stmt, "INSERT INTO mdev19838"
+      "(f1)"
+      " VALUES "
+      "(0x1111111111111111)", -1);
+
+    /*
+      We allow junk at the end of the packet in case of
+      no parameters. So it will succeed.
+    */
+    FAIL_UNLESS(rc == 0, "");
+  }
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev19838", test_mdev19838, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc525", test_conc525, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc566", test_conc566, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc512", test_conc512, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc504", test_conc504, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_returning", test_returning, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

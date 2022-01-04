@@ -37,7 +37,7 @@ static int test_async(MYSQL *mysql)
   if (type > MARIADB_CONNECTION_TCP)
   {
     skip_async= 1;
-    diag("Asnyc IO not supported");
+    diag("Async IO not supported");
   }
   return OK;
 }

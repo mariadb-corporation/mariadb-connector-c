@@ -1248,11 +1248,11 @@ void mysql_init_ps_subsystem(void)
 
   mysql_ps_fetch_functions[MYSQL_TYPE_YEAR].func    = ps_fetch_int16;
   mysql_ps_fetch_functions[MYSQL_TYPE_YEAR].pack_len  = 2;
-  mysql_ps_fetch_functions[MYSQL_TYPE_YEAR].max_len  = 6;
+  mysql_ps_fetch_functions[MYSQL_TYPE_YEAR].max_len  = 4;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_INT24].func    = ps_fetch_int32;
   mysql_ps_fetch_functions[MYSQL_TYPE_INT24].pack_len  = 4;
-  mysql_ps_fetch_functions[MYSQL_TYPE_INT24].max_len  = 9;
+  mysql_ps_fetch_functions[MYSQL_TYPE_INT24].max_len  = 8;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_LONG].func    = ps_fetch_int32;
   mysql_ps_fetch_functions[MYSQL_TYPE_LONG].pack_len  = 4;
@@ -1260,7 +1260,7 @@ void mysql_init_ps_subsystem(void)
 
   mysql_ps_fetch_functions[MYSQL_TYPE_LONGLONG].func  = ps_fetch_int64;
   mysql_ps_fetch_functions[MYSQL_TYPE_LONGLONG].pack_len= 8;
-  mysql_ps_fetch_functions[MYSQL_TYPE_LONGLONG].max_len  = 21;
+  mysql_ps_fetch_functions[MYSQL_TYPE_LONGLONG].max_len  = 20;
 
   mysql_ps_fetch_functions[MYSQL_TYPE_FLOAT].func    = ps_fetch_float;
   mysql_ps_fetch_functions[MYSQL_TYPE_FLOAT].pack_len  = 4;

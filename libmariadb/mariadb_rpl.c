@@ -348,9 +348,19 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       break;
     }
     case WRITE_ROWS_EVENT_V1:
+    case WRITE_ROWS_EVENT:
     case UPDATE_ROWS_EVENT_V1:
+    case UPDATE_ROWS_EVENT:
     case DELETE_ROWS_EVENT_V1:
-      rpl_event->event.rows.type= rpl_event->event_type - WRITE_ROWS_EVENT_V1;
+    case DELETE_ROWS_EVENT:
+      if (rpl_event->event_type >= WRITE_ROWS_EVENT)
+      {
+        rpl_event->event.rows.type= rpl_event->event_type - WRITE_ROWS_EVENT;
+      }
+      else
+      {
+        rpl_event->event.rows.type= rpl_event->event_type - WRITE_ROWS_EVENT_V1;
+      }
       if (rpl->fd_header_len == 6)
       {
         rpl_event->event.rows.table_id= uint4korr(ev);
@@ -361,6 +371,25 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       }
       rpl_event->event.rows.flags= uint2korr(ev);
       ev+= 2;
+      /* ROWS_EVENT V2 has the extra-data field.
+         See also: https://dev.mysql.com/doc/internals/en/rows-event.html
+      */
+      if (rpl_event->event_type >= WRITE_ROWS_EVENT)
+      {
+        rpl_event->event.rows.extra_data_size= uint2korr(ev) - 2;
+        ev+= 2;
+        if (rpl_event->event.rows.extra_data_size > 0)
+        {
+          if (!(rpl_event->event.rows.extra_data =
+                (char *)ma_alloc_root(&rpl_event->memroot,
+                                      rpl_event->event.rows.extra_data_size)))
+            goto mem_error;
+          memcpy(rpl_event->event.rows.extra_data,
+                 ev,
+                 rpl_event->event.rows.extra_data_size);
+          ev+= rpl_event->event.rows.extra_data_size;
+        }
+      }
       len= rpl_event->event.rows.column_count= mysql_net_field_length(&ev);
       if (!len)
         break;
@@ -369,7 +398,8 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         goto mem_error;
       memcpy(rpl_event->event.rows.column_bitmap, ev, (len + 7) / 8);
       ev+= (len + 7) / 8;
-      if (rpl_event->event_type == UPDATE_ROWS_EVENT_V1)
+      if (rpl_event->event_type == UPDATE_ROWS_EVENT_V1 ||
+          rpl_event->event_type == UPDATE_ROWS_EVENT)
       {
         if (!(rpl_event->event.rows.column_update_bitmap =
             (char *)ma_alloc_root(&rpl_event->memroot, (len + 7) / 8)))
@@ -382,19 +412,19 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       {
         if (!(rpl_event->event.rows.row_data =
             (char *)ma_alloc_root(&rpl_event->memroot, rpl_event->event.rows.row_data_size)))
-        goto mem_error;
+          goto mem_error;
         memcpy(rpl_event->event.rows.row_data, ev, rpl_event->event.rows.row_data_size);
       }
       break;
     default:
-      free(rpl_event);
+      mariadb_free_rpl_event(rpl_event);
       return NULL;
       break;
     }
     return rpl_event;
   }
 mem_error:
-  free(rpl_event);
+  mariadb_free_rpl_event(rpl_event);
   SET_CLIENT_ERROR(rpl->mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
   return 0;
 }
@@ -410,8 +440,8 @@ void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl)
 }
 
 int mariadb_rpl_optionsv(MARIADB_RPL *rpl,
-                        enum mariadb_rpl_option option,
-                        ...)
+                         enum mariadb_rpl_option option,
+                         ...)
 {
   va_list ap;
   int rc= 0;
@@ -465,8 +495,8 @@ end:
 }
 
 int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
-                        enum mariadb_rpl_option option,
-                        ...)
+                             enum mariadb_rpl_option option,
+                             ...)
 {
   va_list ap;
 

@@ -73,7 +73,7 @@ if (IS_SKYSQL(hostname)) \
 #define SKIP_NOTLS
 #endif
 
-#define IS_MAXSCALE() (getenv("MAXSCALE_TEST_DISABLE")!=NULL)
+#define IS_MAXSCALE() (getenv("srv")!=NULL && (strcmp(getenv("srv"), "maxscale") == 0 || strcmp(getenv("srv"), "skysql-ha") == 0))
 #define SKIP_MAXSCALE \
 if (IS_MAXSCALE()) \
 { \
@@ -496,6 +496,8 @@ MYSQL *test_connect(struct my_tests_st *test)
   }
   mysql_options(mysql, MYSQL_REPORT_DATA_TRUNCATION, &truncation_report);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
+  if (plugindir)
+    mysql_options(mysql, MYSQL_PLUGIN_DIR, plugindir);
 
   /* option handling */
   if (test && test->options) {
@@ -554,7 +556,14 @@ static int reset_connection(MYSQL *mysql) {
 void get_envvars() {
   char  *envvar;
 
-  if (getenv("MYSQL_TEST_TRAVIS"))
+  if (!getenv("MYSQLTEST_VARDIR") &&
+      !getenv("MARIADB_CC_TEST"))
+  {
+    skip_all("Tests skipped.\nFor running unittest suite outside of MariaDB server tests,\nplease specify MARIADB_CC_TEST environment variable.");
+    exit(0);
+  }
+
+  if (getenv("TRAVIS_JOB_ID"))
     travis_test= 1;
 
   if (!hostname && (envvar= getenv("MYSQL_TEST_HOST")))

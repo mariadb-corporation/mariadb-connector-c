@@ -96,7 +96,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
 
 
   /* Allocate data buffer */
-  if (!(IoBuffer = LocalAlloc(LMEM_FIXED, SC_IO_BUFFER_SIZE)))
+  if (!(IoBuffer = malloc(SC_IO_BUFFER_SIZE)))
     return SEC_E_INSUFFICIENT_MEMORY;
 
   cbIoBuffer = 0;
@@ -245,7 +245,7 @@ loopend:
     ma_schannel_set_sec_error(pvio, rc);
     DeleteSecurityContext(&sctx->hCtxt);
   }
-  LocalFree(IoBuffer);
+  free(IoBuffer);
 
   return rc;
 }
@@ -272,7 +272,6 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   MARIADB_PVIO *pvio;
   SECURITY_STATUS sRet;
   DWORD OutFlags;
-  DWORD r;
   SC_CTX *sctx;
   SecBuffer ExtraData;
   DWORD SFlags= ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT |
@@ -318,7 +317,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
     return sRet;
   }
 
-  /* send client hello packaet */
+  /* send client hello */
   if(BuffersOut.cbBuffer != 0 && BuffersOut.pvBuffer != NULL)
   {
     ssize_t nbytes = (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
@@ -328,7 +327,6 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
       sRet= SEC_E_INTERNAL_ERROR;
       goto end;
     }
-    r = (DWORD)nbytes;
   }
   sRet= ma_schannel_handshake_loop(pvio, TRUE, &ExtraData);
 
@@ -564,8 +562,6 @@ ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   SECURITY_STATUS scRet;
   SecBufferDesc Message;
   SecBuffer Buffers[4];
-  DWORD cbMessage;
-  PBYTE pbMessage;
   SC_CTX *sctx= (SC_CTX *)pvio->ctls->ssl;
   size_t payload;
   ssize_t nbytes;
@@ -574,8 +570,6 @@ ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   payload= MIN(WriteBufferSize, sctx->Sizes.cbMaximumMessage);
 
   memcpy(&sctx->IoBuffer[sctx->Sizes.cbHeader], WriteBuffer, payload);
-  pbMessage = sctx->IoBuffer + sctx->Sizes.cbHeader; 
-  cbMessage = (DWORD)payload;
   
   Buffers[0].pvBuffer     = sctx->IoBuffer;
   Buffers[0].cbBuffer     = sctx->Sizes.cbHeader;
@@ -589,10 +583,9 @@ ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
   Buffers[2].cbBuffer     = sctx->Sizes.cbTrailer;
   Buffers[2].BufferType   = SECBUFFER_STREAM_TRAILER;
 
-  Buffers[3].pvBuffer     = SECBUFFER_EMPTY;                    // Pointer to buffer 4
-  Buffers[3].cbBuffer     = SECBUFFER_EMPTY;                    // length of buffer 4
-  Buffers[3].BufferType   = SECBUFFER_EMPTY;                    // Type of the buffer 4
-
+  Buffers[3].pvBuffer     = SECBUFFER_EMPTY;
+  Buffers[3].cbBuffer     = SECBUFFER_EMPTY;
+  Buffers[3].BufferType   = SECBUFFER_EMPTY;
 
   Message.ulVersion       = SECBUFFER_VERSION;
   Message.cBuffers        = 4;

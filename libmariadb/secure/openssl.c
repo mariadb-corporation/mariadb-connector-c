@@ -103,6 +103,8 @@ static long ma_tls_version_options(const char *version)
   if (!version)
     return 0;
 
+  if (strstr(version, "TLSv1.0"))
+    protocol_options&= ~SSL_OP_NO_TLSv1;
   if (strstr(version, "TLSv1.1"))
     protocol_options&= ~SSL_OP_NO_TLSv1_1;
   if (strstr(version, "TLSv1.2"))
@@ -141,26 +143,6 @@ static void ma_tls_set_error(MYSQL *mysql)
 }
 
 #ifndef HAVE_OPENSSL_1_1_API
-/*
-   thread safe callbacks for OpenSSL
-   Crypto call back functions will be
-   set during ssl_initialization
- */
-#if OPENSSL_VERSION_NUMBER < 0x10000000L
-static unsigned long my_cb_threadid(void)
-{
-  /* cast pthread_t to unsigned long */
-  return (unsigned long) pthread_self();
-}
-#else
-static void my_cb_threadid(CRYPTO_THREADID *id)
-{
-  CRYPTO_THREADID_set_numeric(id, (unsigned long)pthread_self());
-}
-#endif
-#endif
-
-#ifndef HAVE_OPENSSL_1_1_API
 static void my_cb_locking(int mode, int n,
                           const char *file __attribute__((unused)),
                           int line __attribute__((unused)))
@@ -173,25 +155,18 @@ static void my_cb_locking(int mode, int n,
 
 static int ssl_thread_init()
 {
-  if (!CRYPTO_THREADID_get_callback()
-#ifndef OPENSSL_NO_DEPRECATED
-      && !CRYPTO_get_id_callback()
-#endif
-      )
+  if (LOCK_crypto == NULL)
   {
     int i, max= CRYPTO_num_locks();
 
-    if (LOCK_crypto == NULL)
-    {
-      if (!(LOCK_crypto=
-            (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
-        return 1;
+    if (!(LOCK_crypto=
+           (pthread_mutex_t *)ma_malloc(sizeof(pthread_mutex_t) * max, MYF(0))))
+      return 1;
 
-      for (i=0; i < max; i++)
-        pthread_mutex_init(&LOCK_crypto[i], NULL);
-    }
+    for (i=0; i < max; i++)
+      pthread_mutex_init(&LOCK_crypto[i], NULL);
+
     CRYPTO_set_locking_callback(my_cb_locking);
-    CRYPTO_THREADID_set_callback(my_cb_threadid);
   }
   return 0;
 }
@@ -441,10 +416,10 @@ void *ma_tls_init(MYSQL *mysql)
 {
   SSL *ssl= NULL;
   SSL_CTX *ctx= NULL;
-  long options= SSL_OP_ALL |
-                SSL_OP_NO_SSLv2 |
-                SSL_OP_NO_SSLv3 |
-                SSL_OP_NO_TLSv1;
+  long default_options= SSL_OP_ALL |
+                        SSL_OP_NO_SSLv2 |
+                        SSL_OP_NO_SSLv3;
+  long options= 0;
   pthread_mutex_lock(&LOCK_openssl_config);
 
   #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -453,10 +428,9 @@ void *ma_tls_init(MYSQL *mysql)
   if (!(ctx= SSL_CTX_new(SSLv23_client_method())))
 #endif
     goto error;
-  if (mysql->options.extension)
-    options|= ma_tls_version_options(mysql->options.extension->tls_version);
-  SSL_CTX_set_options(ctx, options);
-
+  if (mysql->options.extension) 
+    options= ma_tls_version_options(mysql->options.extension->tls_version);
+  SSL_CTX_set_options(ctx, options ? options : default_options);
 
   if (ma_tls_set_certs(mysql, ctx))
   {

@@ -710,7 +710,9 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
   cert_key_context.cbSize = sizeof(cert_key_context);
 
   /* assign private key to certificate context */
-  if (!CertSetCertificateContextProperty(cert, CERT_KEY_CONTEXT_PROP_ID, 0, &cert_key_context))
+  if (!CertSetCertificateContextProperty(cert, CERT_KEY_CONTEXT_PROP_ID,
+                                         CERT_STORE_NO_CRYPT_RELEASE_FLAG,
+                                         &cert_key_context))
   {
     FAIL("CertSetCertificateContextProperty failed");
   }
@@ -838,18 +840,15 @@ void schannel_free_cert_context(const CERT_CONTEXT* cert)
   CERT_KEY_CONTEXT cert_key_context = { 0 };
   cert_key_context.cbSize = sizeof(cert_key_context);
   DWORD cbData = sizeof(CERT_KEY_CONTEXT);
+  HCRYPTPROV hProv = 0;
 
   if (CertGetCertificateContextProperty(cert, CERT_KEY_CONTEXT_PROP_ID, &cert_key_context, &cbData))
   {
-    CryptReleaseContext(cert_key_context.hCryptProv, 0);
-  }
-  else
-  {
-    /*
-      At this point, there are serious doubts the context was created by
-      channel_create_cert_context().
-    */
-    assert(0);
+    hProv = cert_key_context.hCryptProv;
   }
   CertFreeCertificateContext(cert);
+  if (hProv)
+  {
+    CryptReleaseContext(cert_key_context.hCryptProv, 0);
+  }
 }

@@ -874,6 +874,7 @@ struct st_mariadb_methods {
   void (*invalidate_stmts)(MYSQL *mysql, const char *function_name);
   struct st_mariadb_api *api;
   int (*db_read_execute_response)(MYSQL_STMT *stmt);
+  unsigned char* (*db_execute_generate_request)(MYSQL_STMT *stmt, size_t *request_len, my_bool internal);
 };
 
 /* synonyms/aliases functions */
