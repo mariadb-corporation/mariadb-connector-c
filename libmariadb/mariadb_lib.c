@@ -841,6 +841,7 @@ static int parse_connection_string(MYSQL *mysql, const char *unused __attribute_
           {
             pos++;
             val= pos;
+            continue;
           }
         }
         break;

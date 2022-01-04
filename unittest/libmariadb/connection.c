@@ -1988,10 +1988,10 @@ static int test_conn_str(MYSQL *my __attribute__((unused)))
   char conn_str[1024];
   int rc=OK;
 
-  snprintf(conn_str, sizeof(conn_str)-1, "host=%s;user=%s;password={%s};db=%s;port=%d",
+  snprintf(conn_str, sizeof(conn_str)-1, "host=%s;user=%s;password={%s};port=%d;socket=%s",
                 hostname ? hostname : "localhost", username ? username : "", 
                 password ? password : "", 
-                schema ? schema : "", port);
+                port, socketname ? socketname : "");
 
   /* SkySQL requires secure connection */
   if (IS_SKYSQL(hostname))
@@ -2023,9 +2023,9 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
     return FAIL;
 
   fprintf(fp, "[client]\n");
-  fprintf(fp, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1\n",
+  fprintf(fp, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1;socket=%s\n",
                 hostname ? hostname : "localhost", username ? username : "", 
-                password ? password : "", port);
+                password ? password : "", port, socketname ? socketname : "");
 
   fclose(fp);
 
@@ -2059,9 +2059,9 @@ static int test_conc365(MYSQL *my __attribute__((unused)))
   char tmp[1024];
 
   snprintf(tmp, sizeof(tmp) - 1,
-   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d",
+   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s",
    hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-   port);
+   port, socketname ? socketname : "");
 
  if (IS_SKYSQL(hostname))
    strcat(tmp, ";ssl_enforce=1");
@@ -2111,9 +2111,9 @@ static int test_conc365_reconnect(MYSQL *my)
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
   snprintf(tmp, sizeof(tmp) - 1,
-   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d",
+   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s",
    hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-   port);
+   port, socketname ? socketname : "");
 
  if (IS_SKYSQL(hostname))
    strcat(tmp, ";ssl_enforce=1");
