@@ -2018,14 +2018,24 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
   MYSQL *mysql;
   FILE *fp;
   int rc;
+  char conn_str[1024];
   mysql= mysql_init(NULL);
+
   if (!(fp= fopen("./conc274.cnf", "w")))
     return FAIL;
 
-  fprintf(fp, "[client]\n");
-  fprintf(fp, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1;socket=%s\n",
+  sprintf(conn_str, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1;socket=%s",
                 hostname ? hostname : "localhost", username ? username : "", 
                 password ? password : "", port, socketname ? socketname : "");
+
+  /* SkySQL requires secure connection */
+  if (IS_SKYSQL(hostname))
+  {
+    strcat(conn_str, ";ssl_enforce=1");
+  }
+
+  fprintf(fp, "[client]\n");
+  fprintf(fp, "%s\n", conn_str);
 
   fclose(fp);
 
