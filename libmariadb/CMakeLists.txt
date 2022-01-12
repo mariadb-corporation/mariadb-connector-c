@@ -449,6 +449,7 @@ IF(WITH_MYSQLCOMPAT)
   ENDIF()
 ENDIF()
 
+create_symlink(libmariadb${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbclient ${INSTALL_LIBDIR})
 
 SET_TARGET_PROPERTIES(libmariadb PROPERTIES VERSION
  ${CPACK_PACKAGE_VERSION_MAJOR}
@@ -461,10 +462,14 @@ ENDIF()
 INSTALL(TARGETS mariadbclient
           COMPONENT Development
           DESTINATION ${INSTALL_LIBDIR})
-INSTALL(TARGETS libmariadb
-          COMPONENT SharedLibraries
-        DESTINATION ${INSTALL_LIBDIR})
-
+# in cmake 3.12+ we can use
+#INSTALL(TARGETS libmariadb LIBRARY DESTINATION ${INSTALL_LIBDIR}
+#        COMPONENT SharedLibraries NAMELINK_COMPONENT Development)
+# but as long as we build on CentOS 7 with its cmake 2.8.12.2 we have to use
+INSTALL(TARGETS libmariadb LIBRARY DESTINATION ${INSTALL_LIBDIR}
+        COMPONENT SharedLibraries NAMELINK_SKIP)
+INSTALL(TARGETS libmariadb LIBRARY DESTINATION ${INSTALL_LIBDIR}
+        COMPONENT Development NAMELINK_ONLY)
 
 IF(MSVC)
    # On Windows, install PDB
