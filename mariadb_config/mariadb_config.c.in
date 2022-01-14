@@ -45,6 +45,10 @@ static char *mariadb_progname;
 #define PKG_PLUGINDIR "%s/@INSTALL_PLUGINDIR@"
 #define PKG_LIBDIR "%s/@INSTALL_LIBDIR@"
 
+#ifdef HAVE_EMBEDDED
+#define EMBEDDED_LIBS "-L@CMAKE_INSTALL_PREFIX@/@INSTALL_LIBDIR@/ -lmariadbd @extra_dynamic_LDFLAGS@"
+#endif
+
 #if defined(SOLARIS) || defined(__sun)
 #define OPT_STRING_TYPE (char *)
 #else
@@ -65,6 +69,11 @@ static struct option long_options[]=
   {OPT_STRING_TYPE "plugindir", no_argument, 0, 'j'},
   {OPT_STRING_TYPE "tlsinfo", no_argument, 0, 'k'},
   {OPT_STRING_TYPE "variable", 2, 0, 'm'},
+#ifdef HAVE_EMBEDDED
+  {OPT_STRING_TYPE "libmysqld-libs", no_argument, 0, 'n' },
+  {OPT_STRING_TYPE "embedded-libs", no_argument, 0, 'n' },
+  {OPT_STRING_TYPE "embedded", no_argument, 0, 'n' },
+#endif
   {NULL, 0, 0, 0}
 };
 
@@ -95,6 +104,9 @@ static const char *values[]=
   PLUGIN_DIR,
   TLS_LIBRARY_VERSION,
   "VAR  VAR is one of:"
+#ifdef HAVE_EMBEDDED
+  ,EMBEDDED_LIBS
+#endif
 };
 
 void usage(void)
@@ -232,7 +244,7 @@ int main(int argc, char **argv)
   while(1)
   {
     int option_index= 0;
-    c= getopt_long(argc, argv, "abcdefghijkl", long_options, &option_index);
+    c= getopt_long(argc, argv, "abcdefghijklmno", long_options, &option_index);
 
     switch(c) {
     case 'a': /* CFLAGS and Include directories */
@@ -288,6 +300,11 @@ int main(int argc, char **argv)
       }
       break;
     }
+#ifdef HAVE_EMBEDDED
+    case 'n':
+      puts(EMBEDDED_LIBS);
+      break;
+#endif
     default:
       exit((c != -1));
     }
