@@ -118,6 +118,11 @@ IF(MSVC)
     ENDFOREACH()
   ENDIF()
 ENDIF()
+ELSE()
+  # MDEV-16383
+  IF(WITH_EMBEDDED_SERVER)
+    ADD_DEFINITIONS(-DHAVE_EMBEDDED)
+  ENDIF()
 ENDIF(NOT IS_SUBPROJECT)
 
 # Disable dbug information for release builds
