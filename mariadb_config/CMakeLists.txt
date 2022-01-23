@@ -59,7 +59,7 @@ ENDIF()
 # Installation
 #
 INSTALL(TARGETS mariadb_config
-        DESTINATION "bin"
+        DESTINATION "${INSTALL_BINDIR}"
         COMPONENT Development)
 
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmariadb.pc
