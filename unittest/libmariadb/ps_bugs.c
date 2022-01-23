@@ -449,7 +449,7 @@ static int test_bug11037(MYSQL *mysql)
 
   /* expected error */
   rc = mysql_stmt_fetch(stmt);
-  FAIL_UNLESS(rc==1, "Error expedted");
+  FAIL_UNLESS(rc==1, "Error expected");
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
@@ -543,7 +543,7 @@ static int test_bug12744(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_close(stmt);
-  check_mysql_rc(rc, mysql);
+  check_stmt_rc(rc, stmt);
 
   return OK;
 }
@@ -726,7 +726,7 @@ static int test_bug15518(MYSQL *mysql)
     succeeds
   */
   rc= mysql_stmt_prepare(stmt, "SHOW STATUS", 12);
-  FAIL_UNLESS(!rc || mysql_stmt_errno(stmt) || mysql_errno(mysql), "Error expected");
+  FAIL_UNLESS(!rc || mysql_stmt_errno(stmt) || mysql_errno(mysql), "Error not expected");
 
   rc= mysql_stmt_close(stmt);
   check_mysql_rc(rc, mysql);
@@ -789,7 +789,7 @@ static int test_bug15613(MYSQL *mysql)
   metadata= mysql_stmt_result_metadata(stmt);
   field= mysql_fetch_fields(metadata);
   FAIL_UNLESS(field[0].length == 65535, "length != 65535");
-  FAIL_UNLESS(field[1].length == 255, "length != 244");
+  FAIL_UNLESS(field[1].length == 255, "length != 255");
   FAIL_UNLESS(field[2].length == 16777215, "length != 166777215");
   FAIL_UNLESS(field[3].length == 4294967295UL, "length != 4294967295UL");
   FAIL_UNLESS(field[4].length == 255, "length != 255");
@@ -4322,7 +4322,7 @@ static int test_conc182(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_close(stmt);
-  check_mysql_rc(rc, mysql);
+  check_stmt_rc(rc, stmt);
 
   rc= mysql_query(mysql, "SELECT row_count()");
   result= mysql_store_result(mysql);
@@ -4530,8 +4530,8 @@ static int test_conc205(MYSQL *mysql)
   FAIL_IF(length[2] != 4, "Wrong fetched int length");
 
   FAIL_IF(strncmp(data, "data2", length[0] + 1) != 0, "Wrong string value");
-  FAIL_IF(smint_col != -25734, "Expected 21893");
-  FAIL_IF(int_col != -1857802040, "Expected 1718038908");
+  FAIL_IF(smint_col != -25734, "Expected -25734");
+  FAIL_IF(int_col != -1857802040, "Expected -1857802040");
 
   rc= mysql_stmt_fetch(stmt);
   FAIL_IF(rc != MYSQL_NO_DATA, "Expected MYSQL_NO_DATA");
@@ -4843,9 +4843,6 @@ static int test_codbc138(MYSQL *mysql)
   {"SELECT '00:60:00'",
   {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
   },
-  {"SELECT '00:60:00'",
-  {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
-  },
   {"SELECT '839:00:00'",
   {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
   },
@@ -4987,8 +4984,8 @@ static int test_conc_fraction(MYSQL *mysql)
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
 
+    rc = mysql_stmt_store_result(stmt);
     check_stmt_rc(rc, stmt);
-    rc= mysql_stmt_store_result(stmt);
 
     memset(bind, 0, sizeof(MYSQL_BIND));
     bind[0].buffer_type= MYSQL_TYPE_DATETIME;
