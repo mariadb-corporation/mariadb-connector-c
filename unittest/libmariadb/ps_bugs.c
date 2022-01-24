@@ -5001,9 +5001,11 @@ static int test_conc_fraction(MYSQL *mysql)
 
     expected= i > 6 ? 123456 : frac * (unsigned int)powl(10, (6 - i));
 
-    diag("tm.second_part=%ld expected=%ld", tm.second_part, expected);
-    FAIL_IF(tm.second_part != expected, "expected fractional part to be 900000");
-
+    if (tm.second_part != expected)
+    {
+      diag("Error: tm.second_part=%ld expected=%ld", tm.second_part, expected);
+      return FAIL;
+    }
   }
   mysql_stmt_close(stmt);
   return OK;
