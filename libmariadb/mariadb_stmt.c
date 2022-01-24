@@ -808,6 +808,16 @@ unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size
           size+= 9; /* max 8 bytes for size */
           size+= (size_t)ma_get_length(stmt, i, 0);
           break;
+        case MYSQL_TYPE_TIME:
+          size+= MAX_TIME_STR_LEN;
+          break;
+        case MYSQL_TYPE_DATE:
+          size+= MAX_DATE_STR_LEN;
+          break;
+        case MYSQL_TYPE_DATETIME:
+        case MYSQL_TYPE_TIMESTAMP:
+          size+= MAX_DATETIME_STR_LEN;
+          break;
         default:
           size+= mysql_ps_fetch_functions[stmt->params[i].buffer_type].pack_len;
           break;
