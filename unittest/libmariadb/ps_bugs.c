@@ -5411,6 +5411,15 @@ static int test_mdev19838(MYSQL *mysql)
     stmt = mysql_stmt_init(mysql);
   }
 
+  // skipping for MAXSCALE 6.1 version due to MXS-3956
+  // SkySQL is using Maxscale 6.1.1 for now
+  if (strstr(mysql_get_server_info(mysql), "maxScale-6.1.")
+     || (getenv("srv")!=NULL && strcmp(getenv("srv"), "skysql-ha") == 0))
+  {
+    diag("test disabled for maxscale 6.1");
+    return SKIP;
+  }
+
   paramCount = 0;
   mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramCount);
   rc = mariadb_stmt_execute_direct(stmt, "INSERT INTO mdev19838(f1)"
