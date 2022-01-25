@@ -1895,8 +1895,32 @@ restart:
                              scramble_plugin, db))
     goto error;
 
-  if (mysql->client_flag & CLIENT_COMPRESS)
+  if (mysql->client_flag & CLIENT_COMPRESS ||
+      mysql->client_flag & CLIENT_ZSTD_COMPRESSION)
+  {
+    int alg;
+
+    if (mysql->server_capabilities & CLIENT_ZSTD_COMPRESSION)
+      alg= COMPRESSION_ZSTD;
+    else
+      alg= COMPRESSION_ZLIB;
+
+    compression_plugin(net)= 
+        (MARIADB_COMPRESSION_PLUGIN *)mysql_client_find_plugin(mysql,
+                                      _mariadb_compression_algorithm_str(alg),
+                                      MARIADB_CLIENT_COMPRESSION_PLUGIN);
+
+    if (!compression_plugin(net) ||
+        (!(compression_ctx(net) = compression_plugin(net)->init_ctx(COMPRESSION_LEVEL_DEFAULT))))
+    {
+      compression_plugin(net)= NULL;
+      my_set_error(mysql, CR_ERR_LOAD_PLUGIN, SQLSTATE_UNKNOWN, NULL,
+                   _mariadb_compression_algorithm_str(alg));
+      goto error;
+    }
     net->compress= 1;
+  }
+    
 
   /* last part: select default db */
   if (!(mysql->server_capabilities & CLIENT_CONNECT_WITH_DB) &&
@@ -2353,7 +2377,11 @@ mysql_close(MYSQL *mysql)
     ma_clear_session_state(mysql);
 
     if (mysql->net.extension)
+    {
+      if (compression_plugin(&mysql->net))
+        compression_plugin(&mysql->net)->free_ctx(compression_ctx(&mysql->net));
       free(mysql->net.extension);
+    }
 
     mysql->host_info=mysql->user=mysql->passwd=mysql->db=0;
 

@@ -104,7 +104,8 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_INVALID_PARAMETER 5009
 #define CR_PLUGIN_NOT_ALLOWED 5010
 #define CR_CONNSTR_PARSE_ERROR 5011
+#define CR_ERR_LOAD_PLUGIN 5012
 /* Always last, if you add new error codes please update the
    value for CR_MARIADB_LAST_ERROR */
-#define CR_MARIADB_LAST_ERROR CR_CONNSTR_PARSE_ERROR
+#define CR_MARIADB_LAST_ERROR CR_ERR_LOAD_PLUGIN
 #endif

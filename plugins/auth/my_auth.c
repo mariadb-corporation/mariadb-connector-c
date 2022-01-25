@@ -255,12 +255,20 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   /* Remove options that server doesn't support */
   mysql->client_flag= mysql->client_flag &
-                       (~(CLIENT_COMPRESS | CLIENT_SSL | CLIENT_PROTOCOL_41) 
+                       (~(CLIENT_COMPRESS | CLIENT_ZSTD_COMPRESSION | CLIENT_SSL | CLIENT_PROTOCOL_41) 
                        | mysql->server_capabilities);
 
-#ifndef HAVE_COMPRESS
-  mysql->client_flag&= ~CLIENT_COMPRESS;
-#endif
+  /* save compress for reconnect */
+  if (mysql->client_flag & CLIENT_COMPRESS)
+    mysql->options.compress= 1;
+
+  /* For MySQL 8.0 we will use zstd copression */
+  if ((mysql->options.compress) &&
+      (mysql->server_capabilities & CLIENT_ZSTD_COMPRESSION))
+  {
+    mysql->client_flag|= CLIENT_ZSTD_COMPRESSION;
+    mysql->client_flag&= ~CLIENT_COMPRESS;
+  }
 
   if (mysql->client_flag & CLIENT_PROTOCOL_41)
   {
@@ -367,6 +375,16 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     end= ma_strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
 
   end= ma_send_connect_attr(mysql, (unsigned char *)end);
+
+  /* MySQL 8.0: 
+     If zstd compresson was specified, the server expects
+     1 byte for compression level
+  */
+  if (mysql->client_flag & CLIENT_ZSTD_COMPRESSION)
+  {
+    int4store(end, (unsigned int)3);
+    end+= 4;
+  }
 
   /* Write authentication package */
   if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))

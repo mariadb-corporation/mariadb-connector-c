@@ -260,7 +260,8 @@ SET(MARIADB_NONBLOCK_SYMBOLS
 
 # handle static plugins
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_PLUGIN_SOURCES})
-SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBMARIADB_PLUGIN_LIBS} ${INTERNAL_ZLIB_LIBRARY})
+SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBMARIADB_PLUGIN_LIBS} ${INTERNAL_ZLIB_LIBRARY} ${ZSTD_LIBRARY} ${ZLIB_LIBRARY})
+MESSAGE(STATUS "SYSTEM_LIBS: ${SYSTEM_LIBS}")
 ADD_DEFINITIONS(${LIBMARIADB_PLUGIN_DEFS})
 FOREACH(plugin ${PLUGINS_STATIC})
   SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin ${plugin}_client_plugin;\n")
@@ -323,25 +324,7 @@ ENDIF()
 IF(ZLIB_FOUND AND WITH_EXTERNAL_ZLIB)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 ELSE()
-  SET(ZLIB_SOURCES
-    ../zlib/adler32.c 
-    ../zlib/compress.c
-    ../zlib/crc32.c
-    ../zlib/deflate.c
-    ../zlib/gzclose.c
-    ../zlib/gzlib.c
-    ../zlib/gzread.c
-    ../zlib/gzwrite.c
-    ../zlib/infback.c
-    ../zlib/inffast.c
-    ../zlib/inflate.c
-    ../zlib/inftrees.c
-    ../zlib/trees.c
-    ../zlib/uncompr.c
-    ../zlib/zutil.c
-  )
-  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
-  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/zlib)
+  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/external/zlib)
 ENDIF()
 
 IF(WITH_DYNCOL)

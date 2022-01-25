@@ -112,7 +112,7 @@ do {\
 	/* Some constants */
 #define MY_WAIT_FOR_USER_TO_FIX_PANIC	60	/* in seconds */
 #define MY_WAIT_GIVE_USER_A_MESSAGE	10	/* Every 10 times of prev */
-#define MIN_COMPRESS_LENGTH		50	/* Don't compress small bl. */
+#define MIN_COMPRESS_LENGTH		150	/* Don't compress small bl. */
 #define KEYCACHE_BLOCK_SIZE		1024
 
 	/* root_alloc flags */
@@ -527,9 +527,6 @@ char *ma_strdup_root(MA_MEM_ROOT *root,const char *str);
 char *ma_memdup_root(MA_MEM_ROOT *root,const char *str, size_t len);
 void ma_free_defaults(char **argv);
 void ma_print_defaults(const char *conf_file, const char **groups);
-my_bool _mariadb_compress(unsigned char *, size_t *, size_t *);
-my_bool _mariadb_uncompress(unsigned char *, size_t *, size_t *);
-unsigned char *_mariadb_compress_alloc(const unsigned char *packet, size_t *len, size_t *complen);
 ulong checksum(const unsigned char *mem, uint count);
 
 #if defined(_MSC_VER) && !defined(_WIN32)

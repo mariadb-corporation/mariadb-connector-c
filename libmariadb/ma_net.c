@@ -320,7 +320,7 @@ int ma_net_real_write(NET *net, const char *packet, size_t len)
     }
     memcpy(b+header_length,packet,len);
 
-    if (_mariadb_compress((unsigned char*) b+header_length,&len,&complen))
+    if (_mariadb_compress(net, (unsigned char*) b+header_length,&len,&complen))
     {
       complen=0;
     }
@@ -554,7 +554,7 @@ ulong ma_net_read(NET *net)
 
       if ((packet_length = ma_real_read(net,(size_t *)&complen)) == packet_error)
         return packet_error;
-      if (_mariadb_uncompress((unsigned char*) net->buff + net->where_b, &packet_length, &complen))
+      if (_mariadb_uncompress(net, (unsigned char*) net->buff + net->where_b, &packet_length, &complen))
       {
         net->error=2;			/* caller will close socket */
         net->last_errno=ER_NET_UNCOMPRESS_ERROR;

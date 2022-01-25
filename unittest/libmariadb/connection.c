@@ -541,8 +541,6 @@ static int test_compress(MYSQL *mysql)
   /* use compressed protocol */
   rc= mysql_options(mysql, MYSQL_OPT_COMPRESS, NULL);
 
-
-
   if (!(my_test_connect(mysql, hostname, username,
                            password, schema, port,
                            socketname, 0)))
