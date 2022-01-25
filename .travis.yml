@@ -36,10 +36,9 @@ env: local=0
 jobs:
   fast_finish: true
   allow_failures:
-    - env: srv=build v=10.6
-    - env: srv=mariadb v=10.5
-      os: windows
-      language: shell
+    - env: srv=maxscale
+    - env: srv=skysql
+    - env: srv=skysql-ha
   include:
     - env: srv=mariadb v=10.5
       os: windows
@@ -63,9 +62,7 @@ jobs:
       env: srv=skysql
     - if: type = push AND fork = false
       env: srv=skysql-ha
-    - env: server_branch=10.6
-    - env: server_branch=10.6 TEST_OPTION=--ps-protocol
-    - env: server_branch=10.7
-    - env: server_branch=10.7 TEST_OPTION=--ps-protocol
+    - env: server_branch=10.8
+    - env: server_branch=10.8 TEST_OPTION=--ps-protocol
 
 script: ./travis.sh
