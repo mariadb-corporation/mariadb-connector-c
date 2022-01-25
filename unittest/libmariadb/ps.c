@@ -139,9 +139,6 @@ static int test_prepare_insert_update(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
-  check_mysql_rc(rc, mysql);
-
   for (cur_query= testcase; *cur_query; cur_query++)
   {
     char query[MAX_TEST_QUERY_LENGTH];
@@ -183,7 +180,7 @@ static int test_prepare_insert_update(MYSQL *mysql)
 static int test_bind_date_conv(MYSQL *mysql, uint row_count)
 {
   MYSQL_STMT   *stmt= 0;
-  uint         rc, i, count= row_count;
+  uint         rc, i, count;
   MYSQL_BIND   my_bind[4];
   my_bool      is_null[4]= {0,0,0,0};
   MYSQL_TIME   tm[4];
@@ -1020,7 +1017,7 @@ static int test_select_show(MYSQL *mysql)
 
   strcpy(query, "show columns from test_show");
   stmt= mysql_stmt_init(mysql);
-  FAIL_IF(!stmt, mysql_error(mysql));
+  FAIL_IF(!stmt, mysql_stmt_error(stmt));
   rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
@@ -3004,7 +3001,7 @@ static int test_create_drop(MYSQL *mysql)
     check_stmt_rc(rc, stmt_drop);
 
     rc= mysql_stmt_execute(stmt_create_select);
-    check_stmt_rc(rc, stmt_create);
+    check_stmt_rc(rc, stmt_create_select);
 
     rc= mysql_stmt_execute(stmt_select);
     check_stmt_rc(rc, stmt_select);
