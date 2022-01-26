@@ -140,7 +140,7 @@ struct st_mysql_client_plugin_TRACE
 
 typedef struct st_mariadb_client_plugin_COMPRESS
 {
-  MYSQL_CLIENT_PLUGIN_HEADER;
+  MYSQL_CLIENT_PLUGIN_HEADER
   ma_compress_ctx *(*init_ctx)(int compression_level);
   void (*free_ctx)(ma_compress_ctx *ctx);
   my_bool (*compress)(ma_compress_ctx *ctx, void *dst, size_t *dst_len, void *source, size_t source_len);
