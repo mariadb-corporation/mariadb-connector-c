@@ -1,33 +1,39 @@
-PROJECT(zstd C ASM)
+PROJECT(zstd C)
 
+SET(SOURCE_FILES
+lib/common/debug.c
+lib/common/pool.c
+lib/common/entropy_common.c
+lib/common/threading.c
+lib/common/error_private.c
+lib/common/xxhash.c
+lib/common/fse_decompress.c
+lib/common/zstd_common.c
 
-file(GLOB CommonSources lib/common/*.c)
-file(GLOB CompressSources lib/compress/*.c)
-file(GLOB DecompressSources lib/decompress/*.c ${LIBRARY_DIR}/decompress/*.S)
-file(GLOB DictBuilderSources lib/dictBuilder/*.c)
+lib/compress/fse_compress.c
+lib/compress/zstd_double_fast.c
+lib/compress/hist.c
+lib/compress/zstd_fast.c
+lib/compress/huf_compress.c
+lib/compress/zstd_lazy.c
+lib/compress/zstd_compress.c
+lib/compress/zstd_ldm.c
+lib/compress/zstd_compress_literals.c
+lib/compress/zstdmt_compress.c
+lib/compress/zstd_compress_sequences.c
+lib/compress/zstd_opt.c
+lib/compress/zstd_compress_superblock.c
 
-set(zstd_sources
-        ${CommonSources}
-        ${CompressSources}
-        ${DecompressSources}
-        ${DictBuilderSources})
+lib/decompress/huf_decompress.c
+lib/decompress/zstd_decompress_block.c
+lib/decompress/zstd_ddict.c
+lib/decompress/zstd_decompress.c
 
-INCLUDE_DIRECTORIES(lib)
+lib/dictBuilder/cover.c
+lib/dictBuilder/fastcover.c
+lib/dictBuilder/divsufsort.c
+lib/dictBuilder/zdict.c)
+
 INCLUDE_DIRECTORIES(lib/common)
-INCLUDE_DIRECTORIES(lib/compress)
-INCLUDE_DIRECTORIES(lib/decompress)
-INCLUDE_DIRECTORIES(lib/dictBuilder)
 
-file(GLOB CommonHeaders lib/common/*.h)
-file(GLOB CompressHeaders lib/compress/*.h)
-file(GLOB DecompressHeaders lib/decompress/*.h)
-file(GLOB DictBuilderHeaders lib/dictBuilder/*.h)
-
-set(zstd_headers
-        lib/zstd.h
-        ${CommonHeaders}
-        ${CompressHeaders}
-        ${DecompressHeaders}
-        ${DictBuilderHeaders})
-
-ADD_LIBRARY(zstd STATIC ${zstd_sources} ${zstd_headers})
+ADD_LIBRARY(zstd STATIC ${SOURCE_FILES})
