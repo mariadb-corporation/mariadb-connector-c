@@ -21,6 +21,11 @@
    is freely available from http://www.php.net
 *************************************************************************************/
 
+/**
+ @file mariadb_lib.c
+ @description MariaDB Connector/C generic API
+*/
+
 #include <ma_global.h>
 
 #include <ma_sys.h>
@@ -581,6 +586,29 @@ void mthd_my_skip_result(MYSQL *mysql)
   return;
 }
 
+/**
+  @brief      Frees the memory of a result set.
+
+  @param[in]  result - result set identifier
+
+  @return     void
+
+  @details    mysql_free_result frees the memory of a result set which was previously allocated
+              by mysql_store_result() or mysql_use_result(). As soon as the content of a result set
+              is no longer required, it should be freed immediately.
+
+  @note       
+              - Row values obtained by a prior mysql_fetch_row() call will become invalid after 
+                calling mysql_free_result.
+              - (Deprecated) functions like mysql_list_fields(), mysql_list_processes() etc. also 
+                return a result set which must be closed with mysql_free_result().
+
+  @see        
+              - mysql_use_result()
+              - mysql_store_result()
+
+  @version    1.0
+*/
 void STDCALL
 mysql_free_result(MYSQL_RES *result)
 {
@@ -1230,6 +1258,32 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
 ** Init MySQL structure or allocate one
 ****************************************************************************/
 
+/**
+  @brief      Prepares and initialize a MYSQL handlle
+
+  @param[in]  mysql - NULL or pointer to a MYSQL handle
+
+  @return     an address of MYSQL handle or NULL in case of memory allocation
+              error.
+
+  @details    Prepares and initializes a MYSQL handle to be used with mysql_real_connect.
+              If an address of a MYSQL structure was passed as parameter, the structure 
+              will be initialized, if NULL was passed, a new structure will be allocated
+              and initialized.
+
+  @note       
+              - if parameter mysql is not NULL, mysql_close() will not release memory
+              - Any subsequent call to any function (except mysql_optionsv) will fail
+                until mysql_real_connect() was called.
+              - Memory allocated with mysql_init() must be freed with mysql_close().
+
+  @see
+              - mysql_close()
+              - mysql_real_connect()
+
+  @version    1.0
+*/
+
 MYSQL * STDCALL
 mysql_init(MYSQL *mysql)
 {
@@ -1274,7 +1328,38 @@ error:
     free(mysql);
   return 0;
 }
+/**
+  @brief      Set TLS options
 
+  @param[in]  mysql - Pointer to a MYSQL handle
+  @param[in]  key - Path to key file
+  @param[in]  cert - Path to certificate file
+  @param[in]  ca - Path to certificate authority file
+  @param[in]  capath - Path to the directory containing the trusted TLS CA certificates in PEM format.
+  @param[in]  cipher - list of permitted cipher suites to use for TLS encryption.
+
+  @return     Always returns zero. If one or more of the supplied parameters are incorrect, mysql_real_connect()
+              will return an error when trying to establish a secure connection.
+
+  @details    Used for establishing a secure TLS connection. It must be called before attempting to use
+              mysql_real_connect(). TLS support must be enabled in the client library in order for the
+              function to have any effect.
+
+              Except for MYSQL handle, NULL values can be used for unused parameters.
+
+  @note       
+              - mysql_ssl_set must be called before mysql_real_connect().
+              - mysql_real_connect() will return an error if attempting to connect and TLS is incorrectly set up.
+              - Even if Connector/C supports TLSv1.3 protocol, it is not possible yet to specify 
+                TLSv1.3 cipher suites via cipher parameter.
+              - When passing NULL values for all TLS parameters a TLS connection with system defaults will be established.
+
+  @see
+              - mysql_get_ssl_cipher()
+              - mysql_real_connect()
+
+  @version    1.0
+*/
 int STDCALL
 mysql_ssl_set(MYSQL *mysql __attribute__((unused)),
               const char *key __attribute__((unused)),
@@ -1298,7 +1383,31 @@ mysql_ssl_set(MYSQL *mysql __attribute__((unused)),
 
 /**************************************************************************
 **************************************************************************/
+/**
+  @brief      Get the current cipher in use
 
+  @param[in]  mysql - Pointer to a MYSQL handle
+
+  @return     Returns a zero terminate string containing the cipher suite in use for a
+              secure connection or NULL if connection doesn't use TLS.
+
+  @details    Returns the cipher suite in use for the current connection.
+
+  @note
+
+              - For using mysql_get_ssl_cipher() MariaDB Connector/C must be built with TLS/SSL support,
+                otherwise the function will return NULL.
+              - mysql_get_ssl_cipher() can be used to determine if the client server connection is secure.
+              - Depending on the TLS library in use (OpenSSL, GnuTLS or Windows Schannel) the name of the cipher
+                suites may differ. For example the cipher suite 0x002F (TLS_RSA_WITH_AES_128_CBC_SHA) has 
+                different names: AES128-SHA for OpenSSL and Schannel and TLS_RSA_AES_128_CBC_SHA1 for GnuTLS.
+
+  @see
+              - mysql_set_ssl_cipher()
+              - mysql_real_connect()
+
+  @version    1.0
+*/
 const char * STDCALL
 mysql_get_ssl_cipher(MYSQL *mysql __attribute__((unused)))
 {
@@ -2349,6 +2458,27 @@ static void ma_clear_session_state(MYSQL *mysql)
   memset(mysql->extension->session_state, 0, sizeof(struct st_mariadb_session_state) * SESSION_TRACK_TYPES);
 }
 
+/**
+  @brief      Closes a connection
+
+  @param[in]  mysql - Pointer to a MYSQL handle
+
+  @return     void
+
+  @details    Closes a connection to a database server and frees allocated memory.
+
+  @note       
+              - To reuse a connection handle after mysql_close() the handle must be
+                initialized again by mysql_init().
+              - If the connection to a database server was not established by mysql_real_connect,
+                or the attempt to connect failed, only allocated memory will be freed.
+
+  @see
+              - mysql_init()
+              - mysql_real_connect()
+
+  @version    1.0
+*/
 void STDCALL
 mysql_close(MYSQL *mysql)
 {
