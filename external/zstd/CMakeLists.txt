@@ -37,3 +37,4 @@ lib/dictBuilder/zdict.c)
 INCLUDE_DIRECTORIES(lib/common)
 
 ADD_LIBRARY(zstd STATIC ${SOURCE_FILES})
+set_property(TARGET zstd PROPERTY POSITION_INDEPENDENT_CODE ON)
