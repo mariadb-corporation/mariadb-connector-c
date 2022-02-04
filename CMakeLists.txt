@@ -24,7 +24,7 @@ get_directory_property(IS_SUBPROJECT PARENT_DIRECTORY)
 # do not inherit include directories from the parent project
 SET_PROPERTY(DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
 FOREACH(V WITH_MYSQLCOMPAT WITH_MSI WITH_SIGNCODE WITH_RTC WITH_UNIT_TESTS
-    WITH_DYNCOL WITH_EXTERNAL_ZLIB WITH_EXTERNAL_ZSTD WITH_CURL WITH_SQLITE WITH_SSL WITH_ICONV
+    WITH_DYNCOL WITH_EXTERNAL_ZLIB WITH_CURL WITH_SQLITE WITH_SSL WITH_ICONV
     DEFAULT_CHARSET INSTALL_LAYOUT WITH_TEST_SRCPKG)
   SET(${V} ${${OPT}${V}})
 ENDFOREACH()
@@ -63,7 +63,6 @@ ENDIF()
 ADD_OPTION(WITH_UNIT_TESTS "build test suite" ON)
 ADD_OPTION(WITH_DYNCOL "Enables support of dynamic columns" ON)
 ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
-ADD_OPTION(WITH_EXTERNAL_ZSTD "Enables use of external zstd" OFF)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
 ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
 ###############
@@ -218,16 +217,9 @@ SET(DEFAULT_CHARSET_HOME "${CMAKE_INSTALL_PREFIX}")
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/SearchLibrary.cmake)
 
-IF(WITH_EXTERNAL_ZSTD)
-  INCLUDE(${CC_SOURCE_DIR}/cmake/zstd.cmake)
-  IF(NOT ZSTD_FOUND)
-    MESSAGE(FATAL_ERROR "Zstd not found")
-  ENDIF()
-ELSE()
-  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/external/zstd/lib)
-  ADD_SUBDIRECTORY(external/zstd)
-  SET(ZSTD_LIBRARY zstd)
-ENDIF()
+# Compression plugins: ZSTD, ZLIB
+
+INCLUDE(${CC_SOURCE_DIR}/cmake/FindZStd.cmake)
 
 IF(WITH_EXTERNAL_ZLIB)
   IF(NOT ZLIB_FOUND)
@@ -259,7 +251,7 @@ IF(UNIX)
   SEARCH_LIBRARY(LIBSOCKET setsockopt socket)
   FIND_PACKAGE(Threads)
   SET(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${LIBNSL} ${LIBBIND} ${LIBICONV} ${ZLIB_LIBRARY} 
-      ${ZSTD_LIBRARY} ${LIBSOCKET} ${CMAKE_DL_LIBS} ${LIBM} ${LIBPTHREAD})
+      ${LIBSOCKET} ${CMAKE_DL_LIBS} ${LIBM} ${LIBPTHREAD})
   SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBNSL} ${LIBBIND} ${LIBICONV} 
     ${LIBSOCKET} ${CMAKE_DL_LIBS} ${LIBM} ${LIBPTHREAD})
   #remove possible dups from required libraries
@@ -546,6 +538,7 @@ MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- CPack generation: ${CPACK_GENERATOR}
 -- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
 -- Zlib support: ${zlib_status}
+-- ZStd support: ${ZSTD_FOUND}
 -- Installation layout: ${INSTALL_LAYOUT}
 -- Include files will be installed in ${INSTALL_INCLUDEDIR}
 -- Libraries will be installed in ${INSTALL_LIBDIR}

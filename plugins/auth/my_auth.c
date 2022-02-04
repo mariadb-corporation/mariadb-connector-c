@@ -262,12 +262,29 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->client_flag & CLIENT_COMPRESS)
     mysql->options.compress= 1;
 
-  /* For MySQL 8.0 we will use zstd copression */
-  if ((mysql->options.compress) &&
-      (mysql->server_capabilities & CLIENT_ZSTD_COMPRESSION))
+  if (mysql->options.compress)
   {
-    mysql->client_flag|= CLIENT_ZSTD_COMPRESSION;
-    mysql->client_flag&= ~CLIENT_COMPRESS;
+    /* For MySQL 8.0 we will use zstd copression */
+    if (mysql->server_capabilities & CLIENT_ZSTD_COMPRESSION)
+    {
+      if ((compression_plugin(net) = (MARIADB_COMPRESSION_PLUGIN *)mysql_client_find_plugin(mysql, 
+                                    _mariadb_compression_algorithm_str(COMPRESSION_ZSTD),
+                                    MARIADB_CLIENT_COMPRESSION_PLUGIN)))
+      {
+        mysql->client_flag|= CLIENT_ZSTD_COMPRESSION;
+        mysql->client_flag&= ~CLIENT_COMPRESS;
+      }
+    }
+    /* load zlib compression as default */
+    if (!compression_plugin(net))
+    {
+      if ((compression_plugin(net) = (MARIADB_COMPRESSION_PLUGIN *)mysql_client_find_plugin(mysql, 
+                                    _mariadb_compression_algorithm_str(COMPRESSION_ZLIB),
+                                    MARIADB_CLIENT_COMPRESSION_PLUGIN)))
+      {
+        mysql->client_flag|= CLIENT_COMPRESS;
+      }
+    }
   }
 
   if (mysql->client_flag & CLIENT_PROTOCOL_41)
