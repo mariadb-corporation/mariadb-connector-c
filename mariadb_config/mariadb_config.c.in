@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mariadb_version.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif
