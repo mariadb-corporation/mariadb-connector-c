@@ -1358,7 +1358,7 @@ error:
               - mysql_get_ssl_cipher()
               - mysql_real_connect()
 
-  @version    1.0
+  @version    1.1
 */
 int STDCALL
 mysql_ssl_set(MYSQL *mysql __attribute__((unused)),
@@ -1381,8 +1381,6 @@ mysql_ssl_set(MYSQL *mysql __attribute__((unused)),
 #endif
 }
 
-/**************************************************************************
-**************************************************************************/
 /**
   @brief      Get the current cipher in use
 
@@ -1406,7 +1404,7 @@ mysql_ssl_set(MYSQL *mysql __attribute__((unused)),
               - mysql_set_ssl_cipher()
               - mysql_real_connect()
 
-  @version    1.0
+  @version    1.1
 */
 const char * STDCALL
 mysql_get_ssl_cipher(MYSQL *mysql __attribute__((unused)))
@@ -1492,10 +1490,58 @@ ma_set_connect_attrs(MYSQL *mysql, const char *host)
   return(test(rc>0));
 }
 
-/*
-** Note that the mysql argument must be initialized with mysql_init()
-** before calling mysql_real_connect !
+/**
+  @brief      Establishes a connection to a database server
+
+  @param[in]  mysql    Pointer to a MYSQL handle, which was previously initialized by mysql_init()
+  @param[in]  host     Can be either a host name or an IPV4/6 IP address. Passing the NULL value 
+                       or the string "localhost" to this parameter, the local host is assumed.
+                       When possible, a unix socket will be used instead of the TCP/IP protocol.
+                       Since version 3.3.0 is is also possible to provide a comma separated list 
+                       of hosts for providing simple fail over in case of one or more hosts are
+                       not available.
+  @param[in]  user     The user name.
+  @param[in]  password If provided or NULL, the server will attempt to authenticate the user
+                       against those user records which have no password only. This allows one
+                       username to be used with different permissions (depending on if a 
+                       password as provided or not). 
+  @param[in]  database If provided will specify the default database to be used when performing
+                       statements.
+  @param[in]  port     Specifies the port number to attempt to connect to the server.
+  @param[in]  unix_socket Specifies the socket file or named pipe that should be used.
+  @param[in]  flags    client capability flags
+
+  @return     Returns a connection handle (same as passed for 1st parameter) or NULL on error.
+              On error, please check mysql_errno() and mysql_error() functions for more information.
+
+  @details    mysql_real_connect() attempts to establish a connection to a database server. It must
+              complete successfully before any other function (beside mysql_optionsv()) can be executed.
+              
+  @note
+         - The password doesn't need to be encrypted before executing mysql_real_connect().
+           This will be handled in the client server protocol.
+         - The connection handle can't be reused for establishing a new connection.
+           It must be closed and reinitialized before.
+         - mysql_real_connect() must complete successfully before you can execute any other API
+           functions beside mysql_optionsv().
+         - Host parameter may contain multiple host/port combinations (supported since version 3.3.0). 
+           The following syntax is required:
+             - hostname and port must be seperated by a colon (:)
+             - IPv6 addresses must be enclosed within square brackets
+             - hostname:port pairs must be be seperated by a comma (,)
+             - if only one host:port was specified, the host string needs to end with a comma.
+             - if no port was specified, the default port will be used.
+         - The following client capability flags are supported: CLIENT_FOUND_ROWS, CLIENT_NO_SCHEMA,
+           CLIENT_COMPRESS, CLIENT_IGNORE_SPACE, CLIENT_LOCAL_FILES, CLIENT_MULTI_STATEMENTS,
+           CLIENT_MULTI_RESULTS, CLIENT_REMEMBER_OPTIONS
+
+  @see
+         - mysql_init()
+         - mariadb_reconnect()
+
+  @version    1.0
 */
+
 
 MYSQL * STDCALL
 mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
@@ -2116,6 +2162,26 @@ my_suspend_hook(my_bool suspend, void *data)
     hook_data->orig_mysql->net.pvio= hook_data->orig_pvio;
 }
 
+/**
+  @brief  Reconnect to a database server
+
+  @param[in] mysql  A mysql handle, which was previously allocated by mysql_init() and connected
+                    to a database server by mysql_real_connect()
+
+  @return Returns zero on success, a non zero value on error.
+
+  @details mariadb_reconnect() tries to reconnect to a server in case the 
+           connection died due to timeout or other errors. 
+           It uses the same credentials which were specified in mysql_real_connect().
+
+  @note  mariadb_reconnect() will return an error, if the option MYSQL_OPT_RECONNECT was not set.
+
+  @see
+        - mysql_real_connect()
+        - mysql_optionsv()
+
+  @version  3.0
+*/
 my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
 {
   MYSQL tmp_mysql;
@@ -2251,7 +2317,39 @@ mysql_get_timeout_value_ms(const MYSQL *mysql)
 /**************************************************************************
 ** Change user and database
 **************************************************************************/
+/**
+  @brief Changes user and database
+  
+  @param[in] mysql  a connection identifier, which was previously allocated by mysql_init()
+                    and connected by mysql_real_connect().
+  @param[in] user   the user name for server authentication
+  @param[in] passwd the password for server authentication
+  @param[in] db     the default database. If desired, the NULL value may be passed resulting 
+                    in only changing the user and not selecting a database. 
+                    To select a database in this case use the mysql_select_db() function.
 
+  @return    Returns zero on success, non zero if an error occured.
+
+  @details   Changes the user and default database of the current connection.
+
+  In order to successfully change users a valid username and password
+  parameters must be provided and that user must have sufficient permissions
+  to access the desired database. If for any reason authorization fails,
+  the current user authentication will remain.
+
+  @note
+
+    - mysql_change_user() will always cause the current database connection
+      to behave as if was a completely new database connection, regardless 
+      of if the operation was completed successfully. This includes performing
+      a rollback on any active transactions, closing all temporary tables
+      and unlocking all locked tables.
+    - To prevent denial of service and brute-force attacks the server will
+      block the connection if mysql_change_user() failed three times in a row.
+             
+  @version  1.0
+
+*/
 my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
 				  const char *passwd, const char *db)
 {
@@ -2301,11 +2399,29 @@ my_bool	STDCALL mysql_change_user(MYSQL *mysql, const char *user,
   return(rc);
 }
 
+/**
+  @brief  selects a database as default
 
-/**************************************************************************
-** Set current database
-**************************************************************************/
+  @param[in] mysql  a connection identifier, which was previously allocated by mysql_init()
+                    and connected by mysql_real_connect().
+  @param[in] db     the name of default database
 
+  @return    Zero on success, non zero value if an error occured.
+
+  @details   Sets the active database on the server associated with the specified connection.
+             Each subsequent statement execution will operate on this active database.
+
+  @note
+    - To retrieve the name of the default database either execute the SQL command SELECT DATABASE()
+      or retrieve the value via mariadb_get_infov() API function.
+    - The default database can also be set by the db parameter in mysql_real_connect().
+
+  @see
+    - mysql_real_connect()
+    - mysql_optionsv()
+
+  @version  1.0
+*/
 int STDCALL
 mysql_select_db(MYSQL *mysql, const char *db)
 {
@@ -2327,7 +2443,6 @@ mysql_select_db(MYSQL *mysql, const char *db)
 ** Send a QUIT to the server and close the connection
 ** If handle is allocated by mysql connect free it.
 *************************************************************************/
-
 static void mysql_close_options(MYSQL *mysql)
 {
   if (mysql->options.init_command)
@@ -2461,8 +2576,8 @@ static void ma_clear_session_state(MYSQL *mysql)
 /**
   @brief      Closes a connection
 
-  @param[in]  mysql - Pointer to a MYSQL handle
-
+  @param[in]  mysql a connection identifier, which was previously allocated by mysql_init()
+                    and connected by mysql_real_connect().
   @return     void
 
   @details    Closes a connection to a database server and frees allocated memory.
@@ -2533,23 +2648,68 @@ mysql_close(MYSQL *mysql)
 }
 
 
-/**************************************************************************
-** Do a query. If query returned rows, free old rows.
-** Read data by mysql_store_result or by repeating calls to mysql_fetch_row
-**************************************************************************/
+/**
+  @brief  executes a zero terminated statement string
 
+  @param[in] mysql a connection identifier, which was previously allocated by mysql_init()
+                   and connected by mysql_real_connect().
+  @param[in] query a zero terminated string containing a SQL statement to be performed.
+
+  @return    Zero on success, non zero if an error occured.
+
+  @details   Performs a statement pointed to by the null terminate string query against the database.
+             Contrary to mysql_real_query(), mysql_query() is not binary safe and can't contain null
+             characters.
+             The function mysql_field_count() should be used to determine if a statement returns
+             a result set.
+
+  @note
+    - For executing multi statements the statements within the null terminated string statements
+      must be separated by a semicolon and CLIENT_MULTI_STATEMENTS flag must be specified when connecting
+      via mysql_real_connect().
+    - If the statement contains binary data mysql_real_query() should be used or data needs to be escaped
+      by mysql_hex_string(). If the statements contains special characters like backslash, linefeed, quotes 
+      etc. the string must be escaped by mysql_real_escape_string().
+
+  @see
+    - mysql_real_query()
+    - mysql_real_escape_string()
+    - mysql_hex_string()
+    - mysql_use_result()
+    - mysql_store_result()
+    - mysql_field_count()
+
+  @version 1.0
+*/
 int STDCALL
 mysql_query(MYSQL *mysql, const char *query)
 {
   return mysql_real_query(mysql,query, (unsigned long) strlen(query));
 }
 
-/*
-  Send the query and return so we can do something else.
-  Needs to be followed by mysql_read_query_result() when we want to
-  finish processing it.
-*/
+/**
+  @brief  executes a zero terminated statement string without waiting for result
 
+  @param[in] mysql a connection identifier, which was previously allocated by mysql_init()
+             and connected by mysql_real_connect().
+  @param[in] query a zero terminated string containing a SQL statement to be performed.
+
+  @return    Zero on success, non zero if an error occured.
+
+  @detals    mysql_send_query() executes a statement like mysql_query, with the difference
+             that it does not wait for a response from the server.
+
+  @note
+    - The OK and result set package must be retrieved from the mysql_read_query_result() function.
+    - mysql_send_query() can be used for semi-asynchronous operations. While the function itself is 
+      blocking, an event-driven application can perform other tasks until the result set is available.
+
+  @see
+    - mysql_read_query_result()
+    - mysql_query
+
+  @version 1.0
+*/
 int STDCALL
 mysql_send_query(MYSQL* mysql, const char* query, unsigned long length)
 {
@@ -2858,6 +3018,30 @@ get_info:
   return(0);
 }
 
+/**
+  @brief Retrieves next session status information
+
+  @param[in] mysql    mysql handle, which was previously allocated by mysql_init() and connected 
+                      by mysql_real_connect().
+  @param[in] type     type of information. Valid values are
+    - SESSION_TRACK_SYSTEM_VARIABLES
+    - SESSION_TRACK_SCHEMA
+    - SESSION_TRACK_STATE_CHANGE
+    - SESSION_TRACK_GTIDS
+  @param[inout] data   pointer to data, which must be declared as const char *
+  @param[inout] length pointer to a size_t variable, which will contain the length of data
+
+  @return   Zero on success, non zero if an error occured.
+
+  @details  mysql_session_track_get_next() retrieves the session status change information
+            received from the server after a successful call to mysql_session_track_get_first().
+            mysql_session_track_get_next() needs to be called repeatedly until a non zero
+            return value indicates end of data.
+
+  @version  3.0
+
+  @see      - mysql_session_track_get_first()
+*/
 int STDCALL mysql_session_track_get_next(MYSQL *mysql, enum enum_session_state_type type,
                                          const char **data, size_t *length)
 {
@@ -2873,6 +3057,40 @@ int STDCALL mysql_session_track_get_next(MYSQL *mysql, enum enum_session_state_t
   return 0;
 }
 
+/**
+  @brief Retrieves first session status information
+
+  @param[in] mysql    mysql handle, which was previously allocated by mysql_init() and connected 
+                      by mysql_real_connect().
+  @param[in] type     type of information. Valid values are
+    - SESSION_TRACK_SYSTEM_VARIABLES
+    - SESSION_TRACK_SCHEMA
+    - SESSION_TRACK_STATE_CHANGE
+    - SESSION_TRACK_GTIDS
+  @param[inout] data   pointer to data, which must be declared as const char *
+  @param[inout] length pointer to a size_t variable, which will contain the length of data
+
+  @return   Zero on success, non zero if an error occured.
+
+  @details  mysql_session_track_get_first() retrieves the first session status change information 
+            received from the server.
+
+            Depending on the specified type the read only data pointer will contain the following
+            information:
+            - SESSION_TRACK_SCHEMA: The name of the default schema (database)
+            - SESSION_TRACK_SYSTEM_VARIABLES: If a session system variable is changed, the first call contains
+                the name of the changed system variable, the second call contains the new value.
+                Both name and value are represented as strings.
+            - SESSION_TRACK_STATE_CHANGE: shows whether the session status has changed. The value is changed
+                 as string "1" (changed) or "0" (unchanged).
+
+            Further data needs to be obtained by calling mysql_session_track_get_next().
+
+  @version  3.0
+
+  @see      - mysql_session_track_get_next()
+*/
+
 int STDCALL mysql_session_track_get_first(MYSQL *mysql, enum enum_session_state_type type,
                                           const char **data, size_t *length)
 {
@@ -2880,12 +3098,49 @@ int STDCALL mysql_session_track_get_first(MYSQL *mysql, enum enum_session_state_
   return mysql_session_track_get_next(mysql, type, data, length);
 }
 
+/*
+ @brief waits for a server result or response package
+
+ @param[in] mysql  a mysql handle, which was previously allocated by mysql_init() and 
+                   connected by mysql_real_connect().
+
+ @return    Zero on success, 1 on error.
+
+ @details   Waits for a server result set or response package from a previously executed
+            mysql_send_query().
+
+ @version   1.0
+
+ @see       mysql_send_query()
+**/
 my_bool STDCALL
 mysql_read_query_result(MYSQL *mysql)
 {
   return test(mysql->methods->db_read_query_result(mysql)) ? 1 : 0;
 }
 
+/**
+ @brief  executes a SQL statement (binary safe)
+
+ @param[in] mysql  a mysql handle, which was previously allocated by mysql_init() and 
+                   connected by mysql_real_connect().
+ @param[in] query  a string containing the SQL statement to be performed
+ @paran[in] length length of string
+
+ @return    zero on success, non zero on error
+
+ @details   Executes a SQL statement. Contrary to mysql_query() this function is binary safe,
+            which means the statement string might contain a null ('\0') character.
+
+ @note      To determine if mysql_real_query returns a result set use the
+            mysql_field_count() function.
+
+ @version   1.0
+
+ @see
+            - mysql_query()
+            - mysql_field_count()
+*/
 int STDCALL
 mysql_real_query(MYSQL *mysql, const char *query, unsigned long length)
 {
@@ -2903,11 +3158,33 @@ mysql_real_query(MYSQL *mysql, const char *query, unsigned long length)
   return(0);
 }
 
-/**************************************************************************
-** Alloc result struct for buffered results. All rows are read to buffer.
-** mysql_data_seek may be used.
-**************************************************************************/
+/**
+ @brief  returns a buffered result set
 
+ @param[in] mysql  a mysql handle, which was previously allocated by mysql_init() and 
+                   connected by mysql_real_connect().
+
+ @return    Returns a buffered result set from the last executed statement or NULL if the
+            statement didn't return a result set or an error occured.
+
+ @details   mysql_store_result() returns a buffered result set from the last executed statement.
+            In contrast to mysql_use_result(), mysql_store_result allocates memory for the 
+            complete result. This allows navigating within the result set and calculating the
+            number of records.
+
+ @note
+            - mysql_field_count() indicates if there will be a result set available.
+            - The memory allocated by mysql_store_result() needs to be released by calling
+              the function mysql_free_result().
+            
+ @version   1.0
+
+ @see
+            - mysql_free_result()
+            - mysql_use_result()
+            - mysql_field_count()
+            - mysql_data_seek()
+*/
 MYSQL_RES * STDCALL
 mysql_store_result(MYSQL *mysql)
 {
@@ -2945,17 +3222,32 @@ mysql_store_result(MYSQL *mysql)
   return(result);				/* Data fetched */
 }
 
+/**
+  @brief  returns an unbuffered result set
 
-/**************************************************************************
-** Alloc struct for use with unbuffered reads. Data is fetched by domand
-** when calling to mysql_fetch_row.
-** mysql_data_seek is a noop.
-**
-** No other queries may be specified with the same MYSQL handle.
-** There shouldn't be much processing per row because mysql server shouldn't
-** have to wait for the client (and will not wait more than 30 sec/packet).
-**************************************************************************/
+  @param[in] mysql  a mysql handle, which was previously allocated by mysql_init() and 
+                   connected by mysql_real_connect().
 
+  @return    Returns a buffered result set from the last executed statement or NULL if the
+             statement didn't return a result set or an error occured.
+
+  @details   The mysql_use_result() function does not transfer the entire result set. 
+             Hence several functions like mysql_num_rows() or mysql_data_seek() cannot be used.
+             mysql_use_result() will block the current connection until all result sets are
+             retrieved or result set was released by mysql_free_result().
+
+  @note      
+            - mysql_field_count() indicates if there will be a result set available.
+            - The memory allocated by mysql_store_result() needs to be released by calling
+              the function mysql_free_result().
+
+  @version   1.0
+
+  @see
+             - mysql_field_count()
+             - mysql_free_result()
+             - mysql_store_result()
+*/
 MYSQL_RES * STDCALL
 mysql_use_result(MYSQL *mysql)
 {
@@ -2992,6 +3284,28 @@ mysql_use_result(MYSQL *mysql)
 /**************************************************************************
 ** Return next field of the query results
 **************************************************************************/
+/**
+  @brief   Returns metadata information of one column of a result set
+
+  @param[in] result  A result set identifier returned by mysql_use_result() or
+                     mysql_store_result().
+
+  @return  metada information of one column of a result set as MYSQL_FIELD structure pointer.
+
+  @details Returns the definition of one column of a result set as a pointer to a 
+           MYSQL_FIELD structure.
+           This function must be called repeatedly to retrieve information about all
+           columns in the result set.
+
+  @version 1.0
+
+  @see
+    - mysql_field_seek()
+    - mysql_field_tell()
+    - mysql_fetch_field_direct()
+    - mysql_store_result()
+    - mysql_use_result()
+*/
 MYSQL_FIELD * STDCALL
 mysql_fetch_field(MYSQL_RES *result)
 {
@@ -3000,10 +3314,26 @@ mysql_fetch_field(MYSQL_RES *result)
   return &result->fields[result->current_field++];
 }
 
+/**
+  @brief   returns extended field attribute for a specified column
 
-/**************************************************************************
-** Return mysql field metadata
-**************************************************************************/
+  @param[in/out] attr   buffer for extended field attributes
+  @param[in]     field  field previously obtained by mysql_fetch_field() or
+                        mysql_fetch_fields().
+  @param[in]     type   attribute type, which can be one of the following values:
+                          - MARIADB_FIELD_ATTR_DATA_TYPE_NAME: name of data type
+                          - MARIADB_FIELD_ATTR_FORMAT_NAME: name of data format
+
+  @return  Zero if the column metadata contains a field attribute, otherwise 1
+
+  @detail  Returns extended field attributes for a specified column.
+
+  @version 3.1
+
+  @see
+    - mysql_fetch_field()
+    - mysql_fetch_fields()
+*/
 int STDCALL
 mariadb_field_attr(MARIADB_CONST_STRING *attr,
                    const MYSQL_FIELD *field,
@@ -3020,9 +3350,31 @@ mariadb_field_attr(MARIADB_CONST_STRING *attr,
 }
 
 
-/**************************************************************************
-**  Return next row of the query results
-**************************************************************************/
+/**
+  @brief  return next row of a result set
+
+  @param[in]  res  A result set handle which was previously obtained by mysql_use_result()
+                   or mysql_store_result()
+
+  @return     A MYSQL_ROW structure (array of character pointers) representing the data of the current row.
+              If there are no more rows available NULLwill be returned.
+
+  @details    Fetches one row of data from the result set and returns it as an array of char
+              pointers (MYSQL_ROW), where each column is stored in an offset starting from 0 (zero).
+              Each subsequent call to this function will return the next row within the result set,
+              or NULL if there are no more rows.
+
+  @note
+              - The returned value is considered to be read only.
+              - After calling mysql_free_result() the returned values become invalid.
+
+  @version    1.0
+
+  @see
+    - mysql_use_result()
+    - mysql_fetch_result()
+    - mysql_free_result()
+*/
 MYSQL_ROW STDCALL
 mysql_fetch_row(MYSQL_RES *res)
 {
@@ -3062,12 +3414,26 @@ mysql_fetch_row(MYSQL_RES *res)
   }
 }
 
-/**************************************************************************
-** Get column lengths of the current row
-** If one uses mysql_use_result, res->lengths contains the length information,
-** else the lengths are calculated from the offset between pointers.
-**************************************************************************/
+/**
+  @brief  returns an arry of length values for the current row
 
+  @param[in]  res  A result set handle which was previously obtained by mysql_use_result()
+                   or mysql_store_result()
+
+  @return an array of unsigned long values, or NULL if an error occurred.
+
+  @details Returns an array of length values.  The size of the array can be determined by  
+           mysql_num_fields(), which returns the number of columns in current resultset.
+           mysql_fetch_lengths() is valid only for the current row of the result set. 
+           It returns NULL if you call it before calling mysql_fetch_row() or after 
+           retrieving all rows in the result.
+
+  @version 1.0
+
+  @see
+    - mysql_num_fields()
+    - mysql_fetch_row()
+*/
 ulong * STDCALL
 mysql_fetch_lengths(MYSQL_RES *res)
 {
@@ -3102,6 +3468,25 @@ mysql_fetch_lengths(MYSQL_RES *res)
 ** Move to a specific row and column
 **************************************************************************/
 
+/**
+  @brief  seeks to an offset within a result set
+
+  @param[in] result  a result set identifier obtained by mysql_store_result()
+  @param[in] row     the row offset. 
+
+  @return    void
+
+  @details   The mysql_data_seek() function seeks to an arbitrary function result pointer
+             specified by the offset in the result set. 
+             The row offset must be between zero and the total number of rows minus one
+             (0..mysql_num_rows - 1)
+
+  @version   1.0
+
+  @see
+    - mysql_store_result()
+    - mysql_num_rows()
+*/
 void STDCALL
 mysql_data_seek(MYSQL_RES *result, unsigned long long row)
 {
@@ -3112,12 +3497,28 @@ mysql_data_seek(MYSQL_RES *result, unsigned long long row)
   result->data_cursor = tmp;
 }
 
-/*************************************************************************
-** put the row or field cursor one a position one got from mysql_row_tell()
-** This doesn't restore any data. The next mysql_fetch_row or
-** mysql_fetch_field will return the next row or field after the last used
-*************************************************************************/
+/**
+  @brief  Positions the row cursor to an arbitrary row
 
+  @param[in] result  A result set handle which was obtained by mysql_store_result()
+  @param[in] row     row offset
+
+  @return    returns the previous row offset
+
+  @details   Positions the row cursor to an arbitrary row in a result set which was obtained by
+             mysql_row_tell() or mysql_row_seek().
+
+  @note      
+             - This function will not work if the result set was obtained by mysql_use_result().
+             - To seek to a row within a result set use mysql_data_seek().
+
+  @version   1.0
+
+  @see
+     - mysql_store_result()
+     - mysql_row_tell()
+     - mysql_row_seek()
+*/
 MYSQL_ROW_OFFSET STDCALL
 mysql_row_seek(MYSQL_RES *result, MYSQL_ROW_OFFSET row)
 {
@@ -3127,7 +3528,28 @@ mysql_row_seek(MYSQL_RES *result, MYSQL_ROW_OFFSET row)
   return return_value;
 }
 
+/**
+  @brief sets the field cursor to the given position
 
+  @param[in] result        A result set handle which was obtained by mysql_store_result()
+                           or mysql_use_result()
+  @param[in] field_offset  field numer. This number must be in the range from 0 to number of fields - 1.
+
+  @return    Returns the previous value of field cursor
+
+  @details   Sets the field cursor to the given offset. The next call to mysql_fetch_field() will
+             retrieve the field definition of the column associated with that offset.
+
+  @note
+    - The number of fields can be obtained from mysql_field_count() .
+    - To move the field cursor to the first field offset parameter should be zero.
+
+  @version   1.0
+
+  @see
+    - mysql_field_count()
+    - mysql_field_tell()
+*/
 MYSQL_FIELD_OFFSET STDCALL
 mysql_field_seek(MYSQL_RES *result, MYSQL_FIELD_OFFSET field_offset)
 {
@@ -3142,10 +3564,22 @@ mysql_field_seek(MYSQL_RES *result, MYSQL_FIELD_OFFSET field_offset)
           instead
  ********************************************************/
 
-/*****************************************************************************
-** List all databases
-*****************************************************************************/
+/**
+  @brief  list all databases
 
+  @param[in] mysql  A mysql handle, which was previously allocated by mysql_init() and connected
+                    to a database server by mysql_real_connect()
+  @param[in] wild   database name or simpe regular expression
+
+  @return  a result set handle or NULL if no databases were found
+
+  @deprecated This function is deprecated and will be removed. Use SQL statement
+              SHOW DATABASES instead or retrieve the information from INFORMATION_SCHEMA.
+
+  @version   1.0
+
+  @see     - mysql_query()
+*/
 MYSQL_RES * STDCALL
 mysql_list_dbs(MYSQL *mysql, const char *wild)
 {
@@ -3162,11 +3596,22 @@ mysql_list_dbs(MYSQL *mysql, const char *wild)
           removed. Use SQL statement "SHOW TABLES"
           instead
  ********************************************************/
-/*****************************************************************************
-** List all tables in a database
-** If wild is given then only the tables matching wild are returned
-*****************************************************************************/
+/**
+  @brief  list all tables
 
+  @param[in] mysql  A mysql handle, which was previously allocated by mysql_init() and connected
+                    to a database server by mysql_real_connect()
+  @param[in] wild   table name or simpe regular expression
+
+  @return    a result set handle or NULL if no tables were found
+
+  @deprecated This function is deprecated and will be removed. Use SQL statement
+              SHOW TABLES instead or retrieve the information from INFORMATION_SCHEMA.
+
+  @version   1.0
+
+  @see     - mysql_query()
+*/
 MYSQL_RES * STDCALL
 mysql_list_tables(MYSQL *mysql, const char *wild)
 {
@@ -3185,7 +3630,22 @@ mysql_list_tables(MYSQL *mysql, const char *wild)
 ** Instead of this use query:
 ** show fields in 'table' like "wild"
 **************************************************************************/
+/**
+  @brief  list all columns in a table
 
+  @param[in] mysql  A mysql handle, which was previously allocated by mysql_init() and connected
+                    to a database server by mysql_real_connect()
+  @param[in] wild   column name or simpe regular expression
+
+  @return  a result set handle or NULL if no columns were found
+
+  @deprecated This function is deprecated and will be removed. Use SQL statement
+              SHOW DATABASES instead or retrieve the information from INFORMATION_SCHEMA.
+
+  @version   1.0
+
+  @see     - mysql_query()
+*/
 MYSQL_RES * STDCALL
 mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
 {
@@ -3227,9 +3687,21 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
           removed. Use SQL statement "SHOW PROCESSLIST"
           instead
  ********************************************************/
+/**
+  @brief  list all processes
 
-/* List all running processes (threads) in server */
+  @param[in] mysql  A mysql handle, which was previously allocated by mysql_init() and connected
+                    to a database server by mysql_real_connect()
 
+  @return  a result set handle
+
+  @deprecated This function is deprecated and will be removed. Use SQL statement
+              SHOW DATABASES instead or retrieve the information from INFORMATION_SCHEMA.
+
+  @version   1.0
+
+  @see     - mysql_query()
+*/
 MYSQL_RES * STDCALL
 mysql_list_processes(MYSQL *mysql)
 {
@@ -3254,6 +3726,24 @@ mysql_list_processes(MYSQL *mysql)
 }
 
 /* In 5.0 this version became an additional parameter shutdown_level */
+/**
+  @brief  sends shutdown message to database server
+
+  @param[in] mysql  A mysql handle, which was previously allocated by mysql_init() and connected
+                    to a database server by mysql_real_connect()
+  @param[in] shutdown_level  currently only one shutdown level, SHUTDOWN_DEFAULT is supported.
+
+  @return Returns zero on success, non-zero on failure
+
+  @details  Shuts down the database server. The user for the connection must have
+            SHUTDOWN privileges.
+
+  @version  1.0
+
+  @see
+    - mysql_kill()
+    - mysql_refresh()
+*/
 int STDCALL
 mysql_shutdown(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level)
 {
@@ -3262,6 +3752,34 @@ mysql_shutdown(MYSQL *mysql, enum mysql_enum_shutdown_level shutdown_level)
   return(ma_simple_command(mysql, COM_SHUTDOWN, (char *)s_level, 1, 0, 0));
 }
 
+/**
+  @brief flushes information on database server
+
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+  @param[in] options a bitmasked composed integer, which can be any combination of refresh flags.
+
+  @return Returns zero on success, non-zero on failure
+
+  @details   Flushes different types of information stored on the server. The bit-masked parameter options
+             specifies which kind of information will be flushed.
+             Option             | Description
+             -------------------|-----------------
+             REFRESH_GRANT      | Refresh grant tables.
+             REFRESH_LOG        | Flush logs.
+             REFRESH_TABLES     | Flush table cache.
+             REFRESH_HOSTS      | Flush host cache.
+             REFRESH_STATUS     | Reset status variables.
+             REFRESH_THREADS    | Flush thread cache.
+             REFRESH_SLAVE      | Reset master server information and restart slaves.
+             REFRESH_MASTER     | Remove binary log files.
+
+  @note
+    - To combine different values in the options parameter use the OR operator '|'.
+    - mysql_reload() is an alias for mysql_refresh().
+
+  @version  1.0
+*/
 int STDCALL
 mysql_refresh(MYSQL *mysql,uint options)
 {
@@ -3270,8 +3788,34 @@ mysql_refresh(MYSQL *mysql,uint options)
   return(ma_simple_command(mysql, COM_REFRESH,(char*) bits,1,0,0));
 }
 
+/**
+  @brief  Kills a connection
+
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+  @param[in] pid     process id
+
+  @return    Returns zero on success, non-zero on failure
+
+  @details   This function is used to ask the server to kill a MariaDB thread specified
+             by the processid parameter. This value can be retrieved by SHOW PROCESSLIST statement.
+             If trying to kill the own connection mysql_thread_id() should be used.
+
+  @note
+    - To stop a running command without killing the connection use KILL QUERY statement.
+    - The mysql_kill() function only kills a connection, it doesn't free any memory - this
+      must be done explicitly by calling mysql_close().
+
+  @version  1.0
+
+  @see
+    - mysql_shutdown()
+    - mysql_thread_id()
+    - mysql_close()
+    - mariadb_cancel()
+*/
 int STDCALL
-mysql_kill(MYSQL *mysql,ulong pid)
+mysql_kill(MYSQL *mysql, ulong pid)
 {
   char buff[12];
   int4store(buff,pid);
@@ -3279,13 +3823,47 @@ mysql_kill(MYSQL *mysql,ulong pid)
   return(ma_simple_command(mysql, COM_PROCESS_KILL,buff,4,0,0));
 }
 
+/**
+  @brief  Instructs server to write debug information to error log
 
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+
+  @return    Returns zero on success, non-zero on failure
+
+  @details   mysql_dump_debug_info() instructs the server to write debug information for the current
+             process to error log. This function requires that the user has SUPER privileges.
+
+  @version   1.0
+*/
 int STDCALL
 mysql_dump_debug_info(MYSQL *mysql)
 {
   return(ma_simple_command(mysql, COM_DEBUG,0,0,0,0));
 }
 
+/**
+  @brief  returns current server status
+
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+
+  @return  returns a string, representing the current server status. 
+
+  @details The returned string contains the following server information:
+           - Uptime
+           - Threads
+           - Statements
+           - Slow statements
+           - Open tables
+           - executed statements per second
+           For a complete list of other status variables the SQL statement SHOW STATUS should be used.
+
+  @version  1.0
+
+  @see
+    - mysql_get_server_info()
+*/
 char * STDCALL
 mysql_stat(MYSQL *mysql)
 {
@@ -3300,6 +3878,28 @@ mysql_stat(MYSQL *mysql)
   return((char*) mysql->net.read_pos);
 }
 
+/**
+  @brief checks if the connection between client and server is working
+
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+
+  @return   Returns zero on success, non-zero on failure
+
+  @details  Checks whether the connection to the server is working. If it has gone down, and global
+            option reconnect is enabled an automatic reconnection is attempted.  
+            This function can be used by clients that remain idle for a long while, to check
+            whether the server has closed the connection and reconnect if necessary.
+
+  @note     If a reconnect occurred the thread_id will change. Also resources bundled to the
+             connection (prepared statements, locks, temporary tables, ...) will be released.
+
+  @version  1.0
+
+  @see
+    - mariadb_reconnect()
+    - mysql_optionsv()
+*/
 int STDCALL
 mysql_ping(MYSQL *mysql)
 {
@@ -3310,6 +3910,24 @@ mysql_ping(MYSQL *mysql)
   return rc;
 }
 
+/**
+  @brief returns server version as string
+
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+
+  @return   Returns server version as zero terminated string or NULL on error (or if not connected).
+
+  @details  Returns the server version in string format. To obtain the server vesion in numerical
+            format mysql_get_server_version() should be used.
+
+  @version  1.0
+
+  @see
+    - mysql_get_server_version()
+    - mysql_get_client_info()
+    - mysql_get_client_version()
+*/
 char * STDCALL
 mysql_get_server_info(MYSQL *mysql)
 {

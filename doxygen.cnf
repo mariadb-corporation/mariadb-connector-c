@@ -829,7 +829,8 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = /home/georg/work/mariadb/conn/cc_3.3
+INPUT                  = /home/georg/work/mariadb/conn/cc_3.3/include \
+                         /home/georg/work/mariadb/conn/cc_3.3/libmariadb
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
