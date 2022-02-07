@@ -1284,7 +1284,7 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
   @version    1.0
 */
 
-MYSQL * STDCALL
+MYSQL * STDCALL 
 mysql_init(MYSQL *mysql)
 {
   if (mysql_server_init(0, NULL, NULL))
@@ -3122,15 +3122,15 @@ mysql_read_query_result(MYSQL *mysql)
 /**
  @brief  executes a SQL statement (binary safe)
 
- @param[in] mysql  a mysql handle, which was previously allocated by mysql_init() and 
-                   connected by mysql_real_connect().
- @param[in] query  a string containing the SQL statement to be performed
- @paran[in] length length of string
+ @details    Executes a SQL statement. Contrary to mysql_query() this function is binary safe,
+             which means the statement string might contain a null ('\0') character.
+
+ @param[in] mysql   a mysql handle, which was previously allocated by `mysql_init()` and 
+                    connected by mysql_real_connect().
+ @param[in] query   a string containing the SQL statement to be performed
+ @param[in] length  length of string
 
  @return    zero on success, non zero on error
-
- @details   Executes a SQL statement. Contrary to mysql_query() this function is binary safe,
-            which means the statement string might contain a null ('\0') character.
 
  @note      To determine if mysql_real_query returns a result set use the
             mysql_field_count() function.
@@ -3957,18 +3957,71 @@ unsigned long STDCALL mysql_get_server_version(MYSQL *mysql)
   return (unsigned long)mariadb_server_version_id(mysql);
 }
 
+/**
+  @brief  Returns host information
+
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+
+  @return    Returns a string, describing host information or NULL if the connection is not valid.
+
+  @details   Describes the type of connection in use for the connection, including the server host name.
+
+  @version   1.0
+
+  @see
+    - mysql_get_proto_info()
+    - mysql_get_server_info()
+    - mysql_get_server_version()
+
+*/
 char * STDCALL
 mysql_get_host_info(MYSQL *mysql)
 {
   return(mysql->host_info);
 }
 
+/**
+  @brief    returns protocol version number
+
+  @param[in] mysql   A mysql handle, which was previously allocated by mysql_init() and connected
+                     to a database server by mysql_real_connect()
+
+  @return   protcol version number.
+
+  @details  mysql_get_proto_info() returns an unsigned integer value, which contains the protocol version
+            number used for the client server transmission protocol.
+
+  @version  1.0
+
+  @see
+    - mysql_get_host_info()
+    - mysql_get_server_version()
+    - mysql_get_server_info()
+*/
 uint STDCALL
 mysql_get_proto_info(MYSQL *mysql)
 {
   return (mysql->protocol_version);
 }
 
+/**
+  @brief  returns the client version in string format
+
+  @param  void
+
+  @return returns the client version
+
+  @details mysql_get_client_info() returns a zero terminated string, containing the 
+           version of MariaDB Connector/C. To obtain a numerical value of the client
+           library mysql_get_client_version() should be used.
+
+  @version  1.0
+
+  @see
+    - mysql_get_client_version()
+*/
+  
 const char * STDCALL
 mysql_get_client_info(void)
 {
