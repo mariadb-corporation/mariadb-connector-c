@@ -347,22 +347,12 @@ SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
 SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
-IF(NOT WIN32)
-  CREATE_EXPORT_FILE(WRITE mariadbclient.def
-                   "libmysqlclient_18"
+CREATE_EXPORT_FILE("${CMAKE_CURRENT_BINARY_DIR}/mariadbclient.def"
+                   libmysqlclient_18
+                   libmariadbclient_18
+                   libmariadb_3
                    "${MYSQL_LIB_SYMBOLS}"
-                   "libmariadbclient_18")
-  CREATE_EXPORT_FILE(APPEND mariadbclient.def
-                   "libmariadb_3"
-                   "${MARIADB_LIB_SYMBOLS}"
-                   "")
-ELSE()
-  CREATE_EXPORT_FILE(WRITE mariadbclient.def
-                   "libmariadb_3"
-                   "${MARIADB_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS}"
-                   "")
-ENDIF()
-
+                   "${MARIADB_LIB_SYMBOLS}")
 
 IF((NOT WIN32) AND (CMAKE_VERSION VERSION_GREATER 2.8.7))
   # CREATE OBJECT LIBRARY 
