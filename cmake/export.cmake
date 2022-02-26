@@ -5,26 +5,28 @@
 #  BSD license.
 #  For details see the COPYING-CMAKE-SCRIPTS file.
 #
-MACRO(CREATE_EXPORT_FILE op outfile version symbols alias_version)
+MACRO(CREATE_EXPORT_FILE export_file_name mysqlclient_version alias_version mariadb_version mysql_symbols mariadb_symbols)
   IF(WIN32)
-    SET(EXPORT_CONTENT "EXPORTS\n")
-    FOREACH(exp_symbol ${symbols})
-      SET(EXPORT_CONTENT ${EXPORT_CONTENT} "${exp_symbol}\n")
-    ENDFOREACH()
+    STRING(REPLACE ";" "\n" export_file_text "EXPORTS\n${mariadb_symbols}\n${mysql_symbols}\n")
   ELSE()
-    SET(EXPORT_CONTENT "VERSION {\n${version} {\nglobal:\n")
-    FOREACH(exp_symbol ${symbols})
-      SET(EXPORT_CONTENT "${EXPORT_CONTENT} ${exp_symbol}\\;\n")
+    STRING(REPLACE ";" ";\n " mysql_symbol_lines "${mysql_symbols}")
+    STRING(REPLACE ";" ";\n " mariadb_symbol_lines "${mariadb_symbols}")
+    SET(mysql_alias_lines "")
+    FOREACH(exp_symbol ${mysql_symbols})
+      SET(mysql_alias_lines "${mysql_alias_lines}\"${exp_symbol}@${alias_version}\" = ${exp_symbol};\n")
     ENDFOREACH()
-    SET(EXPORT_CONTENT "${EXPORT_CONTENT}local:\n *\\;\n}\\;\n")
-    IF ("${alias_version}" STRGREATER "")
-      SET(EXPORT_CONTENT "${EXPORT_CONTENT}${alias_version} {\n}\\;\n}\\;\n")
-      FOREACH(exp_symbol ${symbols})
-        SET(EXPORT_CONTENT "${EXPORT_CONTENT}\"${exp_symbol}@${alias_version}\" = ${exp_symbol}\\;\n")
-      ENDFOREACH()
-    ELSE()
-      SET(EXPORT_CONTENT "${EXPORT_CONTENT}}\\;\n")
-    ENDIF()
+    STRING(CONCAT export_file_text
+           "VERSION {\n${mysqlclient_version} {\nglobal:\n ${mysql_symbol_lines};\nlocal:\n *;\n};\n"
+           "${alias_version} {\n};\n};\n${mysql_alias_lines}"
+           "VERSION {\n${mariadb_version} {\nglobal:\n ${mariadb_symbol_lines};\nlocal:\n *;\n};\n};\n")
   ENDIF()
-  FILE(${op} ${CMAKE_CURRENT_BINARY_DIR}/${outfile} ${EXPORT_CONTENT})
+
+  # Only write output if file contents change.
+  SET(old_file_contents)
+  IF(EXISTS "${export_file_name}")
+    FILE(READ "${export_file_name}" old_file_contents)
+  ENDIF()
+  IF(NOT old_file_contents STREQUAL export_file_text)
+    FILE(WRITE "${export_file_name}" "${export_file_text}")
+  ENDIF()
 ENDMACRO()
