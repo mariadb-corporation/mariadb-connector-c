@@ -790,10 +790,40 @@ static int test_conc223(MYSQL *mysql)
   MYSQL_RES *res;
   MYSQL_ROW row;
   int found= 0;
+  int mdev27266= 0;
 
   SKIP_MYSQL(mysql);
 
-  rc= mysql_query(mysql, "SELECT ID, CHARACTER_SET_NAME, COLLATION_NAME FROM INFORMATION_SCHEMA.COLLATIONS");
+  /*
+    Test if we're running against an MDEV-27266 server.
+    It can be detected by the presense of the FULL_COLLATION_NAME
+    column in I_S.COLLATION_CHARACTER_SET_APPLICABILITY.
+  */
+  rc= mysql_query(mysql,
+        "SELECT COUNT(*) "
+        "FROM INFORMATION_SCHEMA.COLUMNS "
+        "WHERE COLUMN_NAME='FULL_COLLATION_NAME' "
+        "  AND TABLE_NAME='COLLATION_CHARACTER_SET_APPLICABILITY'");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  if ((row= mysql_fetch_row(res)))
+    mdev27266= atoi(row[0]);
+  mysql_free_result(res);
+  diag("MDEV-27266 aware server: %d", mdev27266);
+
+  /*
+    Now get the list of collations either from I_S.COLLATIONS
+    or I_S.COLLATION_CHARACTER_SET_APPLICABILITY,
+    depending on the MDEV-27266 server awareness.
+  */
+  if (mdev27266)
+    rc= mysql_query(mysql,
+          "SELECT ID, CHARACTER_SET_NAME, FULL_COLLATION_NAME "
+          "FROM INFORMATION_SCHEMA.COLLATION_CHARACTER_SET_APPLICABILITY");
+  else
+    rc= mysql_query(mysql,
+         "SELECT ID, CHARACTER_SET_NAME, COLLATION_NAME "
+         "FROM INFORMATION_SCHEMA.COLLATIONS");
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
