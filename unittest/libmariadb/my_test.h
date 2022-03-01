@@ -73,7 +73,12 @@ if (IS_SKYSQL(hostname)) \
 #define SKIP_NOTLS
 #endif
 
-#define IS_MAXSCALE() (getenv("srv")!=NULL && (strcmp(getenv("srv"), "maxscale") == 0 || strcmp(getenv("srv"), "skysql-ha") == 0))
+MYSQL *mysql_default = NULL;  /* default connection */
+
+#define IS_MAXSCALE()\
+   ((mysql_default && strstr(mysql_get_server_info(mysql_default), "maxScale")) ||\
+    (getenv("srv")!=NULL && (strcmp(getenv("srv"), "maxscale") == 0 ||\
+     strcmp(getenv("srv"), "skysql-ha") == 0)))
 #define SKIP_MAXSCALE \
 if (IS_MAXSCALE()) \
 { \
@@ -644,7 +649,7 @@ MYSQL *my_test_connect(MYSQL *mysql,
 
 void run_tests(struct my_tests_st *test) {
   int i, rc, total=0;
-  MYSQL *mysql, *mysql_default= NULL;  /* default connection */
+  MYSQL *mysql;
 
   while (test[total].function)
     total++;
