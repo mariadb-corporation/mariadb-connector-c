@@ -5358,6 +5358,8 @@ static int test_mdev19838(MYSQL *mysql)
   char charvalue[] = "012345678901234567890123456789012345";
   MYSQL_STMT *stmt;
 
+  SKIP_MAXSCALE;
+
   rc = mysql_query(mysql, "CREATE temporary TABLE mdev19838("
           "f1  char(36),"
           "f2  char(36),"
