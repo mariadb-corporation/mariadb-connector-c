@@ -88,6 +88,11 @@
 # define HAVE_UINT 1
 #endif
 
+#cmakedefine SIZEOF_USHORT @SIZEOF_USHORT@
+#if defined(SIZEOF_USHORT)
+# define HAVE_USHORT 1
+#endif
+
 #cmakedefine SIZEOF_ULONG @SIZEOF_ULONG@
 #if defined(SIZEOF_ULONG)
 # define HAVE_ULONG 1
