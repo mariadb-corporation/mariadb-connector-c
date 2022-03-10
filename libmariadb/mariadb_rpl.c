@@ -443,8 +443,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       }
       break;
     default:
-      mariadb_free_rpl_event(rpl_event);
-      return NULL;
+      return rpl_event;
       break;
     }
 
