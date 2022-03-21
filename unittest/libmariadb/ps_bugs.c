@@ -3462,6 +3462,7 @@ static int test_explain_bug(MYSQL *mysql)
   MYSQL_STMT *stmt;
   MYSQL_RES  *result;
   int        rc;
+  int        fieldno;
 
   if (!is_mariadb)
     return SKIP;
@@ -3571,50 +3572,80 @@ static int test_explain_bug(MYSQL *mysql)
   result= mysql_stmt_result_metadata(stmt);
   FAIL_IF(!result, "Invalid result set");
 
-  FAIL_UNLESS(10 == mysql_num_fields(result), "fields != 10");
-
-  if (verify_prepare_field(result, 0, "id", "", MYSQL_TYPE_LONGLONG, "", "", "", 3, 0))
+  FAIL_UNLESS((mysql_num_fields(result) == 10 || 
+               mysql_num_fields(result) == 12), "fields not in (10,12)");
+  
+  fieldno= 0;
+  if (verify_prepare_field(result, fieldno++, "id", "", MYSQL_TYPE_LONGLONG, "", "", "", 3, 0))
     goto error;
 
-  if (verify_prepare_field(result, 1, "select_type", "", MYSQL_TYPE_VAR_STRING, "", "", "", 19, 0))
+  if (verify_prepare_field(result, fieldno++, "select_type", "", MYSQL_TYPE_VAR_STRING, "", "", "", 19, 0))
     goto error;
 
-  if (verify_prepare_field(result, 2, "table", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN, 0))
+  if (verify_prepare_field(result, fieldno++, "table", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN, 0))
     goto error;
 
-  if (verify_prepare_field(result, 3, "type", "", MYSQL_TYPE_VAR_STRING, "", "", "", 10, 0))
+  /* The next field can be 'partitions'. */ 
+  {
+    MYSQL_FIELD *field;
+    FAIL_IF(!(field= mysql_fetch_field_direct(result, fieldno)), "FAILED to get result");
+    if (!strcmp(field->name, "partitions"))
+    {
+      /*
+        The length is 6316032 = MAX_PARTITIONS * (1 + FN_LEN) * 3. See
+        mysql_client_test.c:test_explain_bug()
+      */ 
+      if (verify_prepare_field(result, fieldno++, "partitions", "",
+                               MYSQL_TYPE_MEDIUM_BLOB, "", "", "", 6316032, 0))
+        goto error;
+    }
+  }
+
+  if (verify_prepare_field(result, fieldno++, "type", "", MYSQL_TYPE_VAR_STRING, "", "", "", 10, 0))
     goto error;
 
-  if (verify_prepare_field(result, 4, "possible_keys", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN*MAX_KEY, 0))
+  if (verify_prepare_field(result, fieldno++, "possible_keys", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN*MAX_KEY, 0))
     goto error;
 
-  if ( verify_prepare_field(result, 5, "key", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN, 0))
+  if ( verify_prepare_field(result, fieldno++, "key", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN, 0))
     goto error;
 
   if (mysql_get_server_version(mysql) <= 50000)
   {
-    if (verify_prepare_field(result, 6, "key_len", "", MYSQL_TYPE_LONGLONG, "", "", "", 3, 0))
+    if (verify_prepare_field(result, fieldno++, "key_len", "", MYSQL_TYPE_LONGLONG, "", "", "", 3, 0))
       goto error;
   }
   else if (mysql_get_server_version(mysql) <= 60000)
   {
-    if (verify_prepare_field(result, 6, "key_len", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN*MAX_KEY, 0))
+    if (verify_prepare_field(result, fieldno++, "key_len", "", MYSQL_TYPE_VAR_STRING, "", "", "", NAME_CHAR_LEN*MAX_KEY, 0))
       goto error;
   }
   else
   {
-    if (verify_prepare_field(result, 6, "key_len", "", MYSQL_TYPE_VAR_STRING, "", "", "", (MAX_KEY_LENGTH_DECIMAL_WIDTH + 1) * MAX_KEY, 0))
+    if (verify_prepare_field(result, fieldno++, "key_len", "", MYSQL_TYPE_VAR_STRING, "", "", "", (MAX_KEY_LENGTH_DECIMAL_WIDTH + 1) * MAX_KEY, 0))
     goto error;
   }
 
-  if (verify_prepare_field(result, 7, "ref", "", MYSQL_TYPE_VAR_STRING, "", "", "",
+  if (verify_prepare_field(result, fieldno++, "ref", "", MYSQL_TYPE_VAR_STRING, "", "", "",
                            NAME_CHAR_LEN*16, 0))
     goto error;
 
-  if (verify_prepare_field(result, 8, "rows", "", MYSQL_TYPE_LONGLONG, "", "", "", 10, 0))
+  if (verify_prepare_field(result, fieldno++, "rows", "", MYSQL_TYPE_LONGLONG, "", "", "", 10, 0))
     goto error;
 
-  if (verify_prepare_field(result, 9, "Extra", "", MYSQL_TYPE_VAR_STRING, "", "", "", 255, 0))
+  /* The next field can be "filtered" */
+  {
+    MYSQL_FIELD *field;
+    FAIL_IF(!(field= mysql_fetch_field_direct(result, fieldno)), "FAILED to get result");
+    if (!strcmp(field->name, "filtered"))
+    {
+      if (verify_prepare_field(result, fieldno++, "filtered", "",
+                               MYSQL_TYPE_DOUBLE, "", "", "", 4, 0))
+        goto error;
+    }
+  }
+
+  if (verify_prepare_field(result, fieldno++, "Extra", "", MYSQL_TYPE_VAR_STRING, "", "", "", 255, 0))
     goto error;
 
   mysql_free_result(result);
