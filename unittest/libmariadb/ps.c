@@ -57,6 +57,7 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
   const char *query= "SELECT 1,2,3 FROM DUAL";
 
   SKIP_MAXSCALE;
+  SKIP_XPAND;
 
   stmt= mysql_stmt_init(mysql);
 
@@ -512,6 +513,12 @@ static int test_prepare(MYSQL *mysql)
                          "col4 smallint, col5 bigint, "
                          "col6 float, col7 double )");
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   /* insert by prepare */
   strcpy(query, "INSERT INTO my_prepare VALUES(?, ?, ?, ?, ?, ?, ?)");
@@ -1101,6 +1108,12 @@ static int test_simple_update(MYSQL *mysql)
   int        rowcount= 0;
   char query[MAX_TEST_QUERY_LENGTH];
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
 
@@ -1189,11 +1202,17 @@ static int test_long_data(MYSQL *mysql)
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE test_long_data(col1 int, "
-                         "      col2 long varchar, col3 long varbinary)");
+                         "      col2 MEDIUMTEXT, col3 MEDIUMTEXT)");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "INSERT INTO test_long_data(col1, col2) VALUES(?)");
@@ -1294,7 +1313,7 @@ static int test_long_data_str(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data_str");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(id int, longstr long varchar)");
+  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(id int, longstr MEDIUMTEXT)");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "INSERT INTO test_long_data_str VALUES(?, ?)");
@@ -1393,7 +1412,7 @@ static int test_long_data_str1(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data_str");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(longstr long varchar, blb long varbinary)");
+  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(longstr MEDIUMTEXT, blb MEDIUMBLOB)");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "INSERT INTO test_long_data_str VALUES(?, ?)");
@@ -1637,6 +1656,12 @@ static int test_simple_delete(MYSQL *mysql)
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_simple_delete");
   check_mysql_rc(rc, mysql);
 
@@ -1721,6 +1746,12 @@ static int test_update(MYSQL *mysql)
 
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_update");
   check_mysql_rc(rc, mysql);
@@ -2387,6 +2418,12 @@ static int test_union_param(MYSQL *mysql)
   my_bool         my_null= FALSE;
 
   strcpy(my_val, "abc");
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   query= (char*)"select ? as my_col union distinct select ?";
   stmt= mysql_stmt_init(mysql);
@@ -3391,6 +3428,9 @@ static int test_do_set(MYSQL *mysql)
   char *query;
   int rc, i;
 
+  // XPAND doesn't support DO command
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
@@ -3433,6 +3473,11 @@ static int test_double_compare(MYSQL *mysql)
   ulong      length[3];
   char query[MAX_TEST_QUERY_LENGTH];
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
@@ -4090,6 +4135,12 @@ static int test_select(MYSQL *mysql)
 
   rc= mysql_commit(mysql);
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   strcpy(query, "SELECT * FROM test_select WHERE id= ? "
                 "AND CONVERT(name USING utf8) =?");
@@ -4768,7 +4819,7 @@ static int test_long_data1(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE tld (col1 int, "
-                         "col2 long varbinary)");
+                         "col2 MEDIUMTEXT)");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO tld VALUES (1,'test')");
   check_mysql_rc(rc, mysql);
@@ -4805,6 +4856,12 @@ int test_blob_9000(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE tb9000 (a blob)");
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(query));

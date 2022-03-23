@@ -39,6 +39,7 @@ jobs:
     - env: srv=maxscale
     - env: srv=skysql
     - env: srv=skysql-ha
+    - env: srv=xpand
   include:
     - env: srv=mariadb v=10.5
       os: windows
@@ -54,6 +55,8 @@ jobs:
       env: srv=mariadb-es v=10.5
     - if: type = push AND fork = false
       env: srv=maxscale
+    - if: type = push AND fork = false
+      env: srv=xpand
     - if: type = push AND fork = false
       env: srv=build v=10.6
     - env: srv=mysql v=5.7 native=1

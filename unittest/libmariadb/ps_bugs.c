@@ -48,6 +48,12 @@ static int test_conc67(MYSQL *mysql)
   ulong prefetch_rows= 1000;
   ulong cursor_type= CURSOR_TYPE_READ_ONLY;
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc67");
   check_mysql_rc(rc, mysql);
 
@@ -231,6 +237,12 @@ static int test_bug1180(MYSQL *mysql)
   ulong length[1];
   char szData[11];
   char query[MAX_TEST_QUERY_LENGTH];
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_select");
   check_mysql_rc(rc, mysql);
@@ -557,6 +569,8 @@ static int test_bug1500(MYSQL *mysql)
   const char *data;
   const char *query;
 
+  // XPAND doesn't support AGAINST
+  SKIP_XPAND
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bg1500");
   check_mysql_rc(rc, mysql);
@@ -767,6 +781,9 @@ static int test_bug15613(MYSQL *mysql)
   MYSQL_FIELD *field;
   int rc;
 
+  //https://jira.mariadb.org/browse/XPT-273
+  SKIP_XPAND;
+
   /* I. Prepare the table */
   rc= mysql_query(mysql, "set names latin1");
   check_mysql_rc(rc, mysql);
@@ -838,11 +855,16 @@ static int test_bug1664(MYSQL *mysql)
     MYSQL_BIND my_bind[2];
     const char *query= "INSERT INTO test_long_data(col2, col1) VALUES(?, ?)";
 
+    // https://jira.mariadb.org/browse/XPT-266
+    if (IS_XPAND()) {
+      rc= mysql_query(mysql, "SET NAMES UTF8");
+      check_mysql_rc(rc, mysql);
+    }
 
     rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data");
     check_mysql_rc(rc, mysql);
 
-    rc= mysql_query(mysql, "CREATE TABLE test_long_data(col1 int, col2 long varchar)");
+    rc= mysql_query(mysql, "CREATE TABLE test_long_data(col1 int, col2 MEDIUMTEXT)");
     check_mysql_rc(rc, mysql);
 
     stmt= mysql_stmt_init(mysql);
@@ -1628,6 +1650,12 @@ static int test_ps_conj_select(MYSQL *mysql)
   unsigned long str_length;
   char query[MAX_TEST_QUERY_LENGTH];
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
 
@@ -2126,6 +2154,11 @@ static int test_bug3796(MYSQL *mysql)
   const char *stmt_text;
   int rc;
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   /* Create and fill test table */
   stmt_text= "DROP TABLE IF EXISTS t1";
@@ -3145,6 +3178,9 @@ static int test_field_misc(MYSQL *mysql)
   mysql_free_result(result);
   mysql_stmt_close(stmt);
 
+  // XPAND doesn't support @@max_error_count
+  SKIP_XPAND
+
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL("SELECT @@max_error_count"));
@@ -3791,6 +3827,7 @@ static int test_bug53311(MYSQL *mysql)
   int i;
   const char *query= "INSERT INTO bug53311 VALUES (1)";
   SKIP_MAXSCALE;
+  SKIP_XPAND;
 
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
@@ -4113,6 +4150,9 @@ static int test_conc168(MYSQL *mysql)
   char buffer[100];
   int rc;
 
+  //https://jira.mariadb.org/browse/XPT-273
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc168");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE conc168(a datetime(3))");
@@ -4208,6 +4248,9 @@ static int test_conc177(MYSQL *mysql)
   MYSQL_BIND bind[2];
   const char *stmt_str= "SELECT a,b FROM t1";
   char buf1[128], buf2[128];
+
+  // https://jira.mariadb.org/browse/XPT-286
+  SKIP_XPAND
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -5426,6 +5469,12 @@ static int test_mdev19838(MYSQL *mysql)
   MYSQL_STMT *stmt;
 
   SKIP_MAXSCALE;
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
 
   rc = mysql_query(mysql, "CREATE temporary TABLE mdev19838("
           "f1  char(36),"

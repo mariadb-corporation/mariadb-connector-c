@@ -841,6 +841,7 @@ static int test_conc49(MYSQL *mysql)
 
   SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
+  SKIP_XPAND;
 
   rc= mysql_query(mysql, "select @@LOCAL_INFILE");
   check_mysql_rc(rc, mysql);
@@ -1076,8 +1077,7 @@ static int test_remote1(MYSQL *mysql)
   MYSQL_RES *res;
   MYSQL_ROW row;
   SKIP_SKYSQL;
-
-  SKIP_SKYSQL;
+  SKIP_XPAND;
 
   remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MARIADB_CLIENT_REMOTEIO_PLUGIN);
   if (!remote_plugin)

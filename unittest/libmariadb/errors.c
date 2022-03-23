@@ -29,6 +29,8 @@ static int test_client_warnings(MYSQL *mysql)
 {
   int        rc;
 
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
   check_mysql_rc(rc, mysql); 
   rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
@@ -44,6 +46,9 @@ static int test_ps_client_warnings(MYSQL *mysql)
 {
   int        rc;
   MYSQL_STMT *stmt;
+
+  SKIP_XPAND;
+
   const char *query= "DROP TABLE IF EXISTS test_non_exists";
 
   rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
@@ -67,6 +72,8 @@ static int test_server_warnings(MYSQL *mysql)
 {
   int        rc;
   MYSQL_RES  *result;
+
+  SKIP_XPAND;
 
   rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
   check_mysql_rc(rc, mysql); 
@@ -256,6 +263,9 @@ static int test_parse_error_and_bad_length(MYSQL *mysql)
   stmt= mysql_stmt_init(mysql);
   FAIL_UNLESS(stmt, "");
   memset(stmt_str, 0, 100);
+
+  SKIP_XPAND;
+
   strcpy(stmt_str, "SHOW DATABASES");
   rc= mysql_stmt_prepare(stmt, stmt_str, 99);
   FAIL_IF(!rc, "Error expected");

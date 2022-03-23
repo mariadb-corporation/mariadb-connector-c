@@ -656,6 +656,9 @@ static int test_field_flags(MYSQL *mysql)
   MYSQL_RES    *result;
   MYSQL_FIELD  *field;
 
+  // https://jira.mariadb.org/browse/XPT-287
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_field_flags");
   check_mysql_rc(rc, mysql);
 

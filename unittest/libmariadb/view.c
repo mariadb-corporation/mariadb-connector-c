@@ -34,6 +34,12 @@ static int test_view(MYSQL *mysql)
   const char *query=
     "SELECT COUNT(*) FROM v1 WHERE SERVERNAME=?";
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc = mysql_query(mysql, "DROP TABLE IF EXISTS t1,t2,t3,v1");
   check_mysql_rc(rc, mysql);
 
@@ -216,6 +222,13 @@ static int test_view_2where(MYSQL *mysql)
     length[i] = 1;
     my_bind[i].length = &length[i];
   }
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
@@ -266,6 +279,12 @@ static int test_view_star(MYSQL *mysql)
     my_bind[i].is_null = 0;
     my_bind[i].length = &length[i];
     length[i] = 1;
+  }
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
   }
 
   stmt= mysql_stmt_init(mysql);
@@ -447,6 +466,13 @@ static int test_view_insert_fields(MYSQL *mysql)
     my_bind[i].buffer_length= 2;
     my_bind[i].length= &l[i];
   }
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);

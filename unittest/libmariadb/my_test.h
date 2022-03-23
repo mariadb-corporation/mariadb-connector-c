@@ -79,10 +79,22 @@ MYSQL *mysql_default = NULL;  /* default connection */
    ((mysql_default && strstr(mysql_get_server_info(mysql_default), "maxScale")) ||\
     (getenv("srv")!=NULL && (strcmp(getenv("srv"), "maxscale") == 0 ||\
      strcmp(getenv("srv"), "skysql-ha") == 0)))
+
 #define SKIP_MAXSCALE \
 if (IS_MAXSCALE()) \
 { \
   diag("test disabled with maxscale"); \
+  return SKIP; \
+}
+
+#define IS_XPAND()\
+   ((mysql_default && strstr(mysql_get_server_info(mysql_default), "Xpand")) ||\
+    (getenv("srv")!=NULL && strcmp(getenv("srv"), "xpand") == 0))
+
+#define SKIP_XPAND \
+if (IS_XPAND()) \
+{ \
+  diag("test disabled with xpand"); \
   return SKIP; \
 }
 
@@ -617,6 +629,11 @@ void get_envvars() {
   }
   if ((envvar= getenv("MYSQL_TEST_PLUGINDIR")))
     plugindir= envvar;
+
+  if (IS_XPAND())
+  {
+
+  }
 }
 
 MYSQL *my_test_connect(MYSQL *mysql,

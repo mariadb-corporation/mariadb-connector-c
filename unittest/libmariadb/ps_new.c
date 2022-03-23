@@ -31,6 +31,9 @@ static int test_multi_result(MYSQL *mysql)
   my_bool    is_null[3];    /* output value nullability */
   int        rc, i;
 
+  //https://jira.mariadb.org/browse/XPT-268
+  SKIP_XPAND;
+
   /* set up stored procedure */
   rc = mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
@@ -140,6 +143,9 @@ int test_sp_params(MYSQL *mysql)
   const char *stmtstr= "CALL P1(?,?,?)";
   char res[3][20];
 
+  //https://jira.mariadb.org/browse/XPT-268
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
 
@@ -223,6 +229,9 @@ int test_sp_reset(MYSQL *mysql)
   MYSQL_BIND bind[3];
   const char *stmtstr= "CALL P1(?,?,?)";
 
+  //https://jira.mariadb.org/browse/XPT-268
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
 
@@ -277,6 +286,9 @@ int test_sp_reset1(MYSQL *mysql)
 
   char tmp[20];
   const char *stmtstr= "CALL P1(?)";
+
+  // https://jira.mariadb.org/browse/XPT-268
+  SKIP_XPAND;
 
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);
@@ -430,6 +442,9 @@ int test_query(MYSQL *mysql)
 
   char tmp[20];
   const char *stmtstr= "CALL P1(?)";
+
+  // https://jira.mariadb.org/browse/XPT-268
+  SKIP_XPAND;
 
   rc= mysql_query(mysql, "DROP PROCEDURE IF EXISTS p1");
   check_mysql_rc(rc, mysql);

@@ -96,6 +96,12 @@ static int execute_direct_example(MYSQL *mysql)
   bind[1].buffer= (char *)strval;
   bind[1].buffer_length= (unsigned long)strlen(strval);
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   /* set number of parameters */
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
   check_stmt_rc(rc, stmt);

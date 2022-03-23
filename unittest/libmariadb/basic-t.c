@@ -39,6 +39,7 @@ static int test_conc75(MYSQL *my)
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
+  SKIP_XPAND;
 
   mysql= mysql_init(NULL);
 

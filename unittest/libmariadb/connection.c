@@ -1151,6 +1151,9 @@ static int test_auth256(MYSQL *my)
   if (IS_SKYSQL(hostname))
     return SKIP;
 
+  // xpand doesn't have information_schema.plugins
+  SKIP_XPAND;
+
   if (!mysql_client_find_plugin(mysql, "sha256_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN))
   {
     diag("sha256_password plugin not available");
@@ -1867,6 +1870,8 @@ static int test_gtid(MYSQL *mysql)
 
   if (is_mariadb)
     return SKIP;
+  // https://jira.mariadb.org/browse/XPT-182
+  SKIP_XPAND;
 
   rc= mysql_query(mysql, "SET @@session.session_track_state_change=1");
   check_mysql_rc(rc, mysql);
