@@ -1990,6 +1990,7 @@ static void mysql_close_options(MYSQL *mysql)
     free(mysql->options.extension->tls_version);
     free(mysql->options.extension->url);
     free(mysql->options.extension->connection_handler);
+    free(mysql->options.extension->proxy_header);
     if(ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
       ma_hashtbl_free(&mysql->options.extension->connect_attrs);
     if (ma_hashtbl_inited(&mysql->options.extension->userdata))
@@ -3245,8 +3246,23 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_PROXY_HEADER:
     {
     size_t arg2 = va_arg(ap, size_t);
-    OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header, (char *)arg1);
-    OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header_len, arg2);
+    char* buf = malloc(arg2);
+    if (buf)
+    {
+      if (mysql->options.extension && mysql->options.extension->proxy_header)
+      {
+        free(mysql->options.extension->proxy_header);
+      }
+
+      memcpy(buf, arg1, arg2);
+      OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header, buf);
+      OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header_len, arg2);
+    }
+    else
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      goto end;
+    }
     }
     break;
   case MARIADB_OPT_TLS_VERSION:
