@@ -46,10 +46,9 @@ static int test_ps_client_warnings(MYSQL *mysql)
 {
   int        rc;
   MYSQL_STMT *stmt;
+  const char *query= "DROP TABLE IF EXISTS test_non_exists";
 
   SKIP_XPAND;
-
-  const char *query= "DROP TABLE IF EXISTS test_non_exists";
 
   rc= mysql_query(mysql, "DROP TABLE if exists test_non_exists");
   check_mysql_rc(rc, mysql); 
