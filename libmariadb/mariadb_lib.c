@@ -1990,6 +1990,7 @@ static void mysql_close_options(MYSQL *mysql)
     free(mysql->options.extension->tls_version);
     free(mysql->options.extension->url);
     free(mysql->options.extension->connection_handler);
+    free(mysql->options.extension->proxy_header);
     if(ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
       ma_hashtbl_free(&mysql->options.extension->connect_attrs);
     if (ma_hashtbl_inited(&mysql->options.extension->userdata))
