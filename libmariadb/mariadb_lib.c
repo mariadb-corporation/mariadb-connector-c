@@ -205,10 +205,16 @@ restart:
   if (len == packet_error || len == 0)
   {
     end_server(mysql);
-    my_set_error(mysql, net->last_errno == ER_NET_PACKET_TOO_LARGE ?
-		     CR_NET_PACKET_TOO_LARGE:
-		     CR_SERVER_LOST,
-         SQLSTATE_UNKNOWN, 0, errno);
+#ifdef HAVE_TLS
+    /* don't overwrite possible tls protocol errors */
+    if (net->last_errno != CR_SSL_CONNECTION_ERROR)
+#endif
+    {
+      my_set_error(mysql, net->last_errno == ER_NET_PACKET_TOO_LARGE ?
+                   CR_NET_PACKET_TOO_LARGE:
+                   CR_SERVER_LOST,
+                   SQLSTATE_UNKNOWN, 0, errno);
+    }
     return(packet_error);
   }
   if (net->read_pos[0] == 255)
@@ -2256,6 +2262,7 @@ static void mysql_close_options(MYSQL *mysql)
     free(mysql->options.extension->tls_version);
     free(mysql->options.extension->url);
     free(mysql->options.extension->connection_handler);
+    free(mysql->options.extension->proxy_header);
     if(ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
       ma_hashtbl_free(&mysql->options.extension->connect_attrs);
     if (ma_hashtbl_inited(&mysql->options.extension->userdata))

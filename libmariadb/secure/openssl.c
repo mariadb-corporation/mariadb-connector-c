@@ -591,7 +591,14 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   {
     int error= SSL_get_error((SSL *)ctls->ssl, rc);
     if (error != SSL_ERROR_WANT_READ)
+    {
+      if (error == SSL_ERROR_SSL || errno == 0)
+      {
+        MYSQL *mysql= SSL_get_app_data(ctls->ssl);
+        ma_tls_set_error(mysql);
+      }
       return rc;
+    }
     if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.read_timeout) < 1)
       return rc;
   }
@@ -607,7 +614,14 @@ ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   {
     int error= SSL_get_error((SSL *)ctls->ssl, rc);
     if (error != SSL_ERROR_WANT_WRITE)
+    {
+      if (error == SSL_ERROR_SSL || errno == 0)
+      {
+        MYSQL *mysql= SSL_get_app_data(ctls->ssl);
+        ma_tls_set_error(mysql);
+      }
       return rc;
+    }
     if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.write_timeout) < 1)
       return rc;
   }
