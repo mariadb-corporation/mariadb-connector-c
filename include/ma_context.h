@@ -52,9 +52,6 @@ struct my_context {
 
 
 #ifdef MY_CONTEXT_USE_UCONTEXT
-#if defined(__APPLE__) && !defined(_XOPEN_SOURCE)
-#define _XOPEN_SOURCE 600
-#endif
 #include <ucontext.h>
 
 struct my_context {

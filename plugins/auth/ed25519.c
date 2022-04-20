@@ -55,7 +55,7 @@ extern BCRYPT_ALG_HANDLE Sha512Prov;
 #endif
 
 #include <ref10/api.h>
-#include <ref10/common.h>
+#include <ed25519_common.h>
 #include <ma_crypt.h>
 
 /* function prototypes */
