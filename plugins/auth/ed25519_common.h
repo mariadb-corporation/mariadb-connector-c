@@ -17,7 +17,6 @@
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 *************************************************************************************/
 
-
 #include <mysql.h>
 #include <string.h>
 
