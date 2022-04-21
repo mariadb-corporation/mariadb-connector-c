@@ -18,7 +18,7 @@ if [ -n "$server_branch" ] ; then
   git clone -b ${server_branch} https://github.com/mariadb/server ../workdir-server
 
   cd ../workdir-server
-  export SERVER_DIR=$pwd
+  export SERVER_DIR=$PWD
 
   # don't pull in submodules. We want the latest C/C as libmariadb
   # build latest server with latest C/C as libmariadb
