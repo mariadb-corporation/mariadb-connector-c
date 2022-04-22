@@ -18,6 +18,8 @@ if [ -n "$server_branch" ] ; then
   git clone -b ${server_branch} https://github.com/mariadb/server ../workdir-server
 
   cd ../workdir-server
+  mkdir bld
+  cd bld
   export SERVER_DIR=$PWD
 
   # don't pull in submodules. We want the latest C/C as libmariadb
@@ -40,7 +42,6 @@ if [ -n "$server_branch" ] ; then
 
   cd $SERVER_DIR/bld
   make -j9
-
 
   cd mysql-test/
   ./mysql-test-run.pl --suite=main ${TEST_OPTION} --parallel=auto --skip-test=session_tracker_last_gtid
