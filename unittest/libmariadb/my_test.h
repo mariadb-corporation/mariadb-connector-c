@@ -672,6 +672,33 @@ void run_tests(struct my_tests_st *test) {
     total++;
   plan(total);
 
+/* display TLS stats */
+  mysql= mysql_init(NULL);
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+
+  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
+  {
+    BAIL_OUT("Can't establish TLS connection to server.");
+  }
+
+  if (!mysql_query(mysql, "SHOW VARIABLES LIKE '%ssl%'"))
+  {
+    MYSQL_RES *res;
+    MYSQL_ROW row;
+
+    diag("TLS server variables");
+    diag("--------------------");
+
+    res= mysql_store_result(mysql);
+    while ((row= mysql_fetch_row(res)))
+      diag("%s: %s", row[0], row[1]);
+    mysql_free_result(res);
+    diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+    diag("--------------------");
+  }
+  mysql_close(mysql);
+
+
   if ((mysql_default= test_connect(NULL)))
   {
     diag("Testing against MySQL Server %s", mysql_get_server_info(mysql_default));
