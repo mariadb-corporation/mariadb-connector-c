@@ -3252,7 +3252,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_PROXY_HEADER:
     {
     size_t arg2 = va_arg(ap, size_t);
-    OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header, (char *)arg1);
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, proxy_header, (char *)arg1);
     OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header_len, arg2);
     }
     break;
