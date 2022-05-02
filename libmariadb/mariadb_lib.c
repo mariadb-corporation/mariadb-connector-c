@@ -704,6 +704,18 @@ struct st_default_options mariadb_defaults[] =
       (OPTS)->extension= (struct st_mysql_options_extension *)  \
         calloc(1, sizeof(struct st_mysql_options_extension));
 
+#define OPT_SET_EXTENDED_VALUE_BIN(OPTS, KEY, KEY_LEN, VAL, LEN) \
+    CHECK_OPT_EXTENSION_SET(OPTS)                                \
+    free((gptr)(OPTS)->extension->KEY);                          \
+    if((VAL) && (LEN)) {                                         \
+      if (((OPTS)->extension->KEY= malloc((LEN)))) {             \
+        memcpy((OPTS)->extension->KEY, (VAL), (LEN));            \
+        (OPTS)->extension->KEY_LEN= (LEN);                       \
+      }                                                          \
+    }                                                            \
+    else                                                         \
+      (OPTS)->extension->KEY= NULL
+
 #define OPT_SET_EXTENDED_VALUE_STR(OPTS, KEY, VAL)               \
     CHECK_OPT_EXTENSION_SET(OPTS)                                \
     free((gptr)(OPTS)->extension->KEY);                          \
@@ -3625,8 +3637,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_PROXY_HEADER:
     {
     size_t arg2 = va_arg(ap, size_t);
-    OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header, (char *)arg1);
-    OPT_SET_EXTENDED_VALUE(&mysql->options, proxy_header_len, arg2);
+    OPT_SET_EXTENDED_VALUE_BIN(&mysql->options, proxy_header, proxy_header_len, (char *)arg1, arg2);
     }
     break;
   case MARIADB_OPT_TLS_VERSION:
