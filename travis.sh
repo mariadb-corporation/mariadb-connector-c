@@ -2,6 +2,7 @@
 
 set -e
 
+export CC_DIR=/home/travis/build/mariadb-corporation/mariadb-connector-c
 if [ -n "$server_branch" ] ; then
 
   ###################################################################################################################
@@ -14,28 +15,33 @@ if [ -n "$server_branch" ] ; then
   sudo tail /etc/hosts
 
   # get latest server
-  git clone -b ${server_branch} https://github.com/mariadb/server ../workdir-server
+  git clone -b ${server_branch} https://github.com/mariadb/server ../workdir-server --depth=1
 
   cd ../workdir-server
+  export SERVER_DIR=$PWD
+
   # don't pull in submodules. We want the latest C/C as libmariadb
   # build latest server with latest C/C as libmariadb
   # skip to build some storage engines to speed up the build
-  cmake -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
+
+  mkdir bld
+  cd bld
+  cmake .. -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
   cd libmariadb
     echo "PR:${TRAVIS_PULL_REQUEST} TRAVIS_COMMIT:${TRAVIS_COMMIT}"
   if [ -n "$TRAVIS_PULL_REQUEST" ] && [ "$TRAVIS_PULL_REQUEST" != "false" ] ; then
     # fetching pull request
     echo "fetching PR"
-    git fetch origin pull/${TRAVIS_PULL_REQUEST}/head:PR_${TRAVIS_PULL_REQUEST}
     echo "checkout PR"
-    git checkout PR_${TRAVIS_PULL_REQUEST}
   else
     echo "checkout commit"
-    git checkout ${TRAVIS_COMMIT}
   fi
 
-  cd ..
+  cp $CC_DIR/* $SERVER_DIR/libmariadb -r
+  cd $SERVER_DIR
   git add libmariadb
+
+  cd $SERVER_DIR/bld
   make -j9
 
   cd mysql-test/
