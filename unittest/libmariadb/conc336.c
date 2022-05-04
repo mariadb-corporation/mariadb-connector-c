@@ -12,6 +12,9 @@ int main(int argc, char *argv[]) {
 
   get_envvars();
 
+  if (IS_XPAND())
+    SKIP_XPAND;
+
   if (IS_SKYSQL(hostname))
     return 0;
 
