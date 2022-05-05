@@ -15,6 +15,9 @@ int main(int argc, char *argv[]) {
   if (IS_SKYSQL(hostname))
     return 0;
 
+  if (IS_XPAND())
+    SKIP_XPAND;
+
   diag("hostname: %s", hostname);
 
 	for (i = 0; i < MAX_COUNT; ++i) {
