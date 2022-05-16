@@ -466,6 +466,11 @@ ENDIF()
 INSTALL(TARGETS mariadbclient
           COMPONENT Development
           DESTINATION ${INSTALL_LIBDIR})
+IF(WIN32)
+INSTALL(TARGETS libmariadb
+        COMPONENT SharedLibraries
+        DESTINATION ${INSTALL_LIBDIR})
+ELSE()
 # in cmake 3.12+ we can use
 #INSTALL(TARGETS libmariadb LIBRARY DESTINATION ${INSTALL_LIBDIR}
 #        COMPONENT SharedLibraries NAMELINK_COMPONENT Development)
@@ -474,6 +479,7 @@ INSTALL(TARGETS libmariadb LIBRARY DESTINATION ${INSTALL_LIBDIR}
         COMPONENT SharedLibraries NAMELINK_SKIP)
 INSTALL(TARGETS libmariadb LIBRARY DESTINATION ${INSTALL_LIBDIR}
         COMPONENT Development NAMELINK_ONLY)
+ENDIF()
 
 IF(MSVC)
    # On Windows, install PDB
