@@ -101,15 +101,17 @@ IF(NOT WIN32)
     SET(GSSAPI_SOURCES ${AUTH_DIR}/auth_gssapi_client.c ${AUTH_DIR}/gssapi_client.c ${AUTH_DIR}/gssapi_errmsg.c)
     CHECK_C_COMPILER_FLAG(-Wl,--as-needed have_C__Wl___as_needed)
   ENDIF()
+  SET(AUTH_GSSAPI_DEFAULT_CONFIG DYNAMIC)
 ELSE()
   SET(GSSAPI_LIBS secur32)
   SET(GSSAPI_SOURCES ${AUTH_DIR}/auth_gssapi_client.c ${AUTH_DIR}/sspi_client.c ${AUTH_DIR}/sspi_errmsg.c)
+  SET(AUTH_GSSAPI_DEFAULT_CONFIG STATIC)
 ENDIF()
 IF(GSSAPI_SOURCES)
   REGISTER_PLUGIN(TARGET auth_gssapi_client
                   TYPE MARIADB_CLIENT_PLUGIN_AUTH
                   CONFIGURATIONS DYNAMIC STATIC OFF
-                  DEFAULT DYNAMIC
+                  DEFAULT ${AUTH_GSSAPI_DEFAULT_CONFIG}
                   SOURCES ${GSSAPI_SOURCES}
                   INCLUDES ${CC_SOURCE_DIR}/plugins/auth ${GSSAPI_INCS}
                   LIBRARIES ${GSSAPI_LIBS})
