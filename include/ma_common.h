@@ -82,6 +82,8 @@ struct st_mysql_options_extension {
   int (*io_wait)(my_socket handle, my_bool is_read, int timeout);
   my_bool skip_read_response;
   char *restricted_auth;
+  char *rpl_host;
+  unsigned short rpl_port;
 };
 
 typedef struct st_connection_handler

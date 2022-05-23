@@ -20,6 +20,7 @@
 
 #include <ma_global.h>
 #include <ma_sys.h>
+#include <ma_common.h>
 #include <mysql.h>
 #include <errmsg.h>
 #include <stdlib.h>
@@ -95,7 +96,51 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
      * = filename length
 
   */
-  ptr= buf= 
+
+  /* if replica was specified, we will register replica via
+     COM_REGISTER_SLAVE */
+  if (rpl->mysql->options.extension && rpl->mysql->options.extension->rpl_host)
+  {
+     /* Protocol:
+        Ofs  Len  Data
+        0      1  COM_REGISTER_SLAVE
+        1      4  server id
+        5      1  replica host name length
+        6     <n> replica host name
+               1  user name length
+              <n> user name
+               1  password length
+              <n> password
+               2  replica port
+               4  replication rank (unused)
+               4  source server id (unused)
+      */
+     unsigned char *p, buffer[1024];
+     size_t len= MIN(strlen(rpl->mysql->options.extension->rpl_host), 255);
+    
+     p= buffer;
+     int4store(p, rpl->server_id);
+     p+= 4;
+     *p++= len;
+     memcpy(p, rpl->mysql->options.extension->rpl_host, len);
+     p+= len;
+
+     /* Don't send user, password, rank and server_id */
+     *p++= 0;
+     *p++= 0;
+     int2store(p, rpl->mysql->options.extension->rpl_port);
+     p+= 2;
+
+     int4store(p, 0);
+     p+= 4;
+     int4store(p, 0);
+     p+= 4;
+
+     if (ma_simple_command(rpl->mysql, COM_REGISTER_SLAVE, (const char *)buffer, p - buffer, 1, 0))
+       return 1;
+  }
+
+  ptr= buf=
 #ifdef WIN32
     (unsigned char *)_alloca(rpl->filename_length + 11);
 #else

@@ -38,6 +38,7 @@
 #include <signal.h>
 #include <time.h>
 #include <mariadb_dyncol.h>
+#include <mariadb_rpl.h>
 
 #ifndef __has_feature
 # define __has_feature(x) 0
@@ -704,7 +705,7 @@ struct st_default_options mariadb_defaults[] =
       (OPTS)->extension= (struct st_mysql_options_extension *)  \
         calloc(1, sizeof(struct st_mysql_options_extension));
 
-#define OPT_SET_EXTENDED_VALUE_BIN(OPTS, KEY, KEY_LEN, VAL, LEN) \
+#define OPT_SET_EXTENDED_VALUE_BIN(OPTS, KEY, KEY_LEN, VAL, LEN)\
     CHECK_OPT_EXTENSION_SET(OPTS)                                \
     free((gptr)(OPTS)->extension->KEY);                          \
     if((VAL) && (LEN)) {                                         \
@@ -719,7 +720,7 @@ struct st_default_options mariadb_defaults[] =
 #define OPT_SET_EXTENDED_VALUE_STR(OPTS, KEY, VAL)               \
     CHECK_OPT_EXTENSION_SET(OPTS)                                \
     free((gptr)(OPTS)->extension->KEY);                          \
-    if((VAL))                                                   \
+    if((VAL))                                                    \
       (OPTS)->extension->KEY= strdup((char *)(VAL));             \
     else                                                         \
       (OPTS)->extension->KEY= NULL
@@ -2280,6 +2281,7 @@ static void mysql_close_options(MYSQL *mysql)
     if (ma_hashtbl_inited(&mysql->options.extension->userdata))
       ma_hashtbl_free(&mysql->options.extension->userdata);
     free(mysql->options.extension->restricted_auth);
+    free(mysql->options.extension->rpl_host);
 
   }
   free(mysql->options.extension);
@@ -3653,6 +3655,13 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MARIADB_OPT_RESTRICTED_AUTH:
     OPT_SET_EXTENDED_VALUE_STR(&mysql->options, restricted_auth, (char *)arg1);
+    break;
+  case MARIADB_OPT_RPL_REGISTER_REPLICA:
+    {
+      unsigned int arg2 = va_arg(ap, unsigned int);
+      OPT_SET_EXTENDED_VALUE_STR(&mysql->options, rpl_host,(char *)arg1);
+      OPT_SET_EXTENDED_VALUE(&mysql->options, rpl_port, (ushort)arg2);
+    }
     break;
   default:
     va_end(ap);
