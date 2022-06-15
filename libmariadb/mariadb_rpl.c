@@ -121,7 +121,7 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
      p= buffer;
      int4store(p, rpl->server_id);
      p+= 4;
-     *p++= len;
+     *p++= (unsigned char)len;
      memcpy(p, rpl->mysql->options.extension->rpl_host, len);
      p+= len;
 
