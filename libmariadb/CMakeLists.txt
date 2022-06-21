@@ -189,7 +189,7 @@ ELSE()
     ${CC_SOURCE_DIR}/external/zlib/uncompr.c
     ${CC_SOURCE_DIR}/external/zlib/zutil.c
   )
-  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/external/zlib)
+  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/external/zlib ${CC_BINARY_DIR}/external/zlib)
 ENDIF()
 
 
