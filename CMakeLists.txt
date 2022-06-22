@@ -420,7 +420,7 @@ ENDIF()
 INCLUDE(${CC_SOURCE_DIR}/plugins/CMakeLists.txt)
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(libmariadb)
-IF(NOT WIN32)
+IF(NOT MSVC)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
 
