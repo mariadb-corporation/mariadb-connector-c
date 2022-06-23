@@ -67,6 +67,21 @@ MARIADB_RPL * STDCALL mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version)
   }
   rpl->version= version;
   rpl->mysql= mysql;
+
+  if (!mysql_query(mysql, "select @@binlog_checksum"))
+  {
+    MYSQL_RES *result;
+    if ((result= mysql_store_result(mysql)))
+    {
+      MYSQL_ROW row= mysql_fetch_row(result);
+      if (!strcmp(row[0], "CRC32"))
+      {
+        rpl->artificial_checksun= 1;
+      }
+      mysql_free_result(result);
+    }
+  }
+
   return rpl;
 }
 
@@ -378,8 +393,23 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       break;
     case ROTATE_EVENT:
       rpl_event->event.rotate.position= uint8korr(ev);
-      len= rpl_event->event_length - (ev - rpl->mysql->net.read_pos) - 8;
       ev+= 8;
+      if (rpl_event->timestamp == 0 &&
+          rpl_event->flags & LOG_EVENT_ARTIFICIAL_F)
+      {
+        const uint8_t header_size= 19;
+        len= rpl_event->event_length - header_size - 8;
+        if (rpl->artificial_checksun)
+        {
+          len-= 4;
+          int4store(ev + len, rpl_event->checksum);
+          rpl->artificial_checksun= 0;
+        }
+      }
+      else
+      {
+        len= rpl_event->event_length - (ev - rpl->mysql->net.read_pos) - 1;
+      }
       if (rpl_alloc_string(rpl_event, &rpl_event->event.rotate.filename, ev, len) ||
           ma_set_rpl_filename(rpl, ev, len))
         goto mem_error;
