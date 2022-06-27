@@ -1,5 +1,5 @@
 /****************************************************************************
-   Copyright (C) 2012, 2020, MariaDB Corporation.
+   Copyright (C) 2012, 2022, MariaDB Corporation.
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -538,7 +538,7 @@ static unsigned int check_mb_gb18030_valid(const char * start, const char * end)
 /*
   The server compiles sometimes the full utf-8 (the mb4) as utf8mb4, and the old as utf8,
   for BC reasons. Sometimes, utf8mb4 is just utf8 but the old charsets are utf8mb3.
-  Change easily now, with a macro, could be made compilastion dependable.
+  Change easily now, with a macro, could be made compilation dependable.
 */
 
 #define UTF8_MB4 "utf8mb4"
@@ -1170,7 +1170,7 @@ struct st_madb_os_charset MADB_OS_CHARSET[]=
   {"1252", "Western European (Windows)", "latin1", NULL, MADB_CS_EXACT},
   {"1253", "Greek (Windows)", "greek", NULL, MADB_CS_EXACT},
   {"1254", "Turkish (Windows)", "latin5", NULL, MADB_CS_EXACT},
-  {"1255", "Hebrew (Windows)", "hewbrew", NULL, MADB_CS_EXACT},
+  {"1255", "Hebrew (Windows)", "hebrew", NULL, MADB_CS_EXACT},
   {"1256", "Arabic (Windows)", "cp1256", NULL, MADB_CS_EXACT},
   {"1257", "Baltic (Windows)","cp1257", NULL, MADB_CS_EXACT},
   {"1258", "Vietnamese (Windows)", NULL, NULL, MADB_CS_UNSUPPORTED},

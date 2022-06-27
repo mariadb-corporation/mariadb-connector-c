@@ -1,5 +1,6 @@
 /****************************************************************************
   Copyright (C) 2012 Monty Program AB
+                2013, 2022 MariaDB Corporation AB
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -577,7 +578,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
        1          1       negative
        2-5        4       day
        6          1       hour
-       7          1       ninute
+       7          1       minute
        8          1       second;
        9-13       4       second_part
        */
@@ -938,7 +939,7 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
   p+=2;
 
   /* When using mariadb_stmt_execute_direct stmt->paran_count is
-     not knowm, so we need to assign prebind_params, which was previously
+     not known, so we need to assign prebind_params, which was previously
      set by mysql_stmt_attr_set
   */
   if (!stmt->param_count && stmt->prebind_params)
@@ -2288,7 +2289,7 @@ MYSQL_RES * STDCALL mysql_stmt_result_metadata(MYSQL_STMT *stmt)
   if (!stmt->field_count)
     return(NULL);
 
-  /* aloocate result set structutr and copy stmt information */
+  /* allocate result set structure and copy stmt information */
   if (!(res= (MYSQL_RES *)calloc(1, sizeof(MYSQL_RES))))
   {
     SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);

@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2017, 2021, MariaDB Corporation AB
+  Copyright (C) 2017, 2022, MariaDB Corporation AB
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -92,7 +92,7 @@ static int ma_sha256_scramble(unsigned char *scramble, size_t scramble_len,
 #endif
   size_t i;
 
-  /* check if all specified lengtht are valid */
+  /* check if all specified lengths are valid */
   if (!scramble_len || !source_len || !salt_len)
     return 1;
 

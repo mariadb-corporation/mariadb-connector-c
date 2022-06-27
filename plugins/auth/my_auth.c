@@ -264,7 +264,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   if (mysql->options.compress)
   {
-    /* For MySQL 8.0 we will use zstd copression */
+    /* For MySQL 8.0 we will use zstd compression */
     if (mysql->server_capabilities & CLIENT_ZSTD_COMPRESSION)
     {
       if ((compression_plugin(net) = (MARIADB_COMPRESSION_PLUGIN *)mysql_client_find_plugin(mysql, 

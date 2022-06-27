@@ -63,7 +63,7 @@ IF(CRYPTO_PLUGIN)
                 LIBRARIES ${CRYPT_LIBS}
                 COMPILE_OPTIONS -DMYSQL_CLIENT=1)
   IF(MSVC)
-     # Silence conversion (integer truncantion) warnings from reference code
+     # Silence conversion (integer truncation) warnings from reference code
      SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146")
   ENDIF()
 

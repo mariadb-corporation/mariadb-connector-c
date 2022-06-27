@@ -1,5 +1,5 @@
 /************************************************************************************
-    Copyright (C) 2018-2021 MariaDB Corporation AB
+    Copyright (C) 2018,2022 MariaDB Corporation AB
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -522,7 +522,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       break;
     }
 
-    /* check if we have to send acknoledgement to primary
+    /* check if we have to send acknowledgement to primary
        when semi sync replication is used */
     if (rpl_event->is_semi_sync &&
         rpl_event->semi_sync_flags == SEMI_SYNC_ACK_REQ)

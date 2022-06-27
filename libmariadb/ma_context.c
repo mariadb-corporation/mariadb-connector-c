@@ -641,7 +641,7 @@ my_context_trampoline(void *p)
     Reuse the Fiber by looping infinitely, each time we are scheduled we
     spawn the appropriate function and switch back when it is done.
 
-    This way we avoid the overhead of CreateFiber() for every asynchroneous
+    This way we avoid the overhead of CreateFiber() for every asynchronous
     operation.
   */
   for(;;)
