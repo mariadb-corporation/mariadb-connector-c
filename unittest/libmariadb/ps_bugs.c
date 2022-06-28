@@ -3268,7 +3268,7 @@ error:
   return FAIL;
 }
 
-/* Test a memory ovverun bug */
+/* Test a memory overrun bug */
 
 static int test_mem_overun(MYSQL *mysql)
 {
@@ -3278,7 +3278,7 @@ static int test_mem_overun(MYSQL *mysql)
   int        rc, i, length;
 
   /*
-    Test a memory ovverun bug when a table had 1000 fields with
+    Test a memory overrun bug when a table had 1000 fields with
     a row of data
   */
   rc= mysql_query(mysql, "drop table if exists t_mem_overun");
