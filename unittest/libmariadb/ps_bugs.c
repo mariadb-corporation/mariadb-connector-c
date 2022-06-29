@@ -2507,12 +2507,10 @@ static int test_bug4231(MYSQL *mysql)
 
 static int test_bug4236(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt, *stmt1;
+  MYSQL_STMT *stmt;
   const char *stmt_text;
   int rc;
   MYSQL_STMT backup;
-  MYSQL      *mysql1;
-
 
   stmt= mysql_stmt_init(mysql);
 
@@ -2525,20 +2523,6 @@ static int test_bug4236(MYSQL *mysql)
   stmt->stmt_id= 0;
   rc= mysql_stmt_execute(stmt);
   FAIL_IF(!rc, "Error expected");
-
-  /* lets try to hack with a new connection */
-  mysql1= test_connect(NULL);
-  stmt1= mysql_stmt_init(mysql1);
-  stmt_text= "SELECT 2";
-  rc= mysql_stmt_prepare(stmt1, SL(stmt_text));
-  check_stmt_rc(rc, stmt);
-
-  stmt->stmt_id= stmt1->stmt_id;
-  rc= mysql_stmt_execute(stmt);
-  FAIL_IF(!rc, "Error expected");
-
-  mysql_stmt_close(stmt1);
-  mysql_close(mysql1);
 
   /* Restore original statement id to be able to reprepare it */
   stmt->stmt_id= backup.stmt_id;
