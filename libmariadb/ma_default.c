@@ -154,7 +154,6 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
                                                const char *group,
                                                unsigned int recursion)
 {
-  uint line=0;
   my_bool read_values= 0, found_group= 0, is_escaped= 0, is_quoted= 0;
   char buff[4096],*ptr,*end,*value, *key= 0, *optval;
   MA_FILE *file= NULL;
@@ -179,7 +178,6 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
 
   while (ma_gets(buff,sizeof(buff)-1,file))
   {
-    line++;
     key= 0;
     /* Ignore comment and empty lines */
     for (ptr=buff ; isspace(*ptr) ; ptr++ );
