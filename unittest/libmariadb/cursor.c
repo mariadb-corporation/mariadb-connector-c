@@ -755,7 +755,7 @@ static int test_bug11656(MYSQL *mysql)
   return OK;
 }
 
-/* Cursors: opening a cursor to a compilicated query with ORDER BY */
+/* Cursors: opening a cursor to a complicated query with ORDER BY */
 
 static int test_bug11901(MYSQL *mysql)
 {
@@ -1700,7 +1700,7 @@ static int test_bug9478(MYSQL *mysql)
   return OK;
 }
 
-/* Crash when opening a cursor to a query with DISTICNT and no key */
+/* Crash when opening a cursor to a query with DISTINCT and no key */
 
 static int test_bug9520(MYSQL *mysql)
 {

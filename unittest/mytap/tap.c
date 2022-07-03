@@ -365,7 +365,7 @@ int exit_status() {
 
    This is to test that the component have the expected behaviour.
    This is just plain simple: test that it works.  For example, test
-   that you can unpack what you packed, adding gives the sum, pincing
+   that you can unpack what you packed, adding gives the sum, pinching
    the duck makes it quack.
 
    This is what everybody does when they write tests.

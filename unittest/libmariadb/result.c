@@ -1060,7 +1060,7 @@ static int test_conc160(MYSQL *mysql)
   result= mysql_store_result(mysql);
   field= mysql_fetch_field(result);
 
-  FAIL_UNLESS(field->flags & NUM_FLAG, "Numceric flag not set");
+  FAIL_UNLESS(field->flags & NUM_FLAG, "Numeric flag not set");
 
   mysql_free_result(result);
   return OK;

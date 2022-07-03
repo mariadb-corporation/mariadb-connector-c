@@ -373,7 +373,7 @@ void free_rows(MYSQL_DATA *cur)
 
 int
 mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
-	       size_t length, my_bool skipp_check, void *opt_arg)
+	       size_t length, my_bool skip_check, void *opt_arg)
 {
   NET *net= &mysql->net;
   int result= -1;
@@ -392,7 +392,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
   if (IS_CONNHDLR_ACTIVE(mysql))
   {
-    result= mysql->extension->conn_hdlr->plugin->set_connection(mysql, command, arg, length, skipp_check, opt_arg);
+    result= mysql->extension->conn_hdlr->plugin->set_connection(mysql, command, arg, length, skip_check, opt_arg);
     if (result== -1)
       return(result);
   }
@@ -443,9 +443,9 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
   result=0;
 
   if (net->extension->multi_status > COM_MULTI_OFF)
-    skipp_check= 1;
+    skip_check= 1;
 
-  if (!skipp_check)
+  if (!skip_check)
   {
     result= ((mysql->packet_length=ma_net_safe_read(mysql)) == packet_error ?
 	     1 : 0);
@@ -456,9 +456,9 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
 
 int
 ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
-	       size_t length, my_bool skipp_check, void *opt_arg)
+	       size_t length, my_bool skip_check, void *opt_arg)
 {
-  return mysql->methods->db_command(mysql, command, arg, length, skipp_check, opt_arg);
+  return mysql->methods->db_command(mysql, command, arg, length, skip_check, opt_arg);
 }
 
 int ma_multi_command(MYSQL *mysql, enum enum_multi_status status)

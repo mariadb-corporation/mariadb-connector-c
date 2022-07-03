@@ -96,13 +96,14 @@ enum mariadb_rpl_event {
   TRANSACTION_CONTEXT_EVENT= 36,
   VIEW_CHANGE_EVENT= 37,
   XA_PREPARE_LOG_EVENT= 38,
+  PARTIAL_UPDATE_ROWS_EVENT = 39,
 
   /*
     Add new events here - right above this comment!
     Existing events (except ENUM_END_EVENT) should never change their numbers
   */
 
-  /* New MySQL/Sun events are to be added right above this comment */
+  /* New MySQL events are to be added right above this comment */
   MYSQL_EVENTS_END,
 
   MARIA_EVENTS_BEGIN= 160,

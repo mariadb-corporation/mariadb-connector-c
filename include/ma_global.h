@@ -226,7 +226,7 @@
 #endif
 
 /* #define USE_some_charset 1 was deprecated by changes to configure */
-/* my_ctype my_to_upper, my_to_lower, my_sort_order gain theit right value */
+/* my_ctype my_to_upper, my_to_lower, my_sort_order gain their right value */
 /* automagically during configuration */
 
 /* Does the system remember a signal handler after a signal ? */
@@ -578,7 +578,7 @@ typedef long my_ptrdiff_t;
 #define STDCALL
 #endif
 
-/* Typdefs for easyier portability */
+/* Typedefs for easyier portability */
 
 #if defined(VOIDTYPE)
 typedef void	*gptr;		/* Generic pointer */
@@ -741,7 +741,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 #endif /* L64 */
 #endif /* _WIN32 */
 /*
-** Define-funktions for reading and storing in machine independent format
+** Define-functions for reading and storing in machine independent format
 **  (low byte first)
 */
 

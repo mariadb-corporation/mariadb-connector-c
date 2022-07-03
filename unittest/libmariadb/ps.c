@@ -4382,7 +4382,7 @@ static int test_set_option(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 2, "rowcunt != 2");
+  FAIL_UNLESS(rc == 2, "rowcount != 2");
   mysql_free_result(result);
 
   stmt= mysql_stmt_init(mysql);
