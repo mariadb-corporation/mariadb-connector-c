@@ -587,7 +587,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   int rc;
   MARIADB_PVIO *pvio= ctls->pvio;
 
-  while ((rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length)) < 0)
+  while ((rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length)) <= 0)
   {
     int error= SSL_get_error((SSL *)ctls->ssl, rc);
     if (error != SSL_ERROR_WANT_READ)
