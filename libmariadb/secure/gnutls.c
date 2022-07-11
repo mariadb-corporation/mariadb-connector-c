@@ -1136,7 +1136,7 @@ void *ma_tls_init(MYSQL *mysql)
   if ((ssl_error= ma_tls_set_certs(mysql, ctx)) < 0)
     goto error;
 
-  if ((ssl_error = gnutls_init(&ssl, GNUTLS_CLIENT & GNUTLS_NONBLOCK)) < 0)
+  if ((ssl_error = gnutls_init(&ssl, GNUTLS_CLIENT | GNUTLS_NONBLOCK | GNUTLS_NO_SIGNAL)) < 0)
     goto error;
 
   if (!(data= (struct st_gnutls_data *)calloc(1, sizeof(struct st_gnutls_data))))
