@@ -3252,7 +3252,7 @@ error:
   return FAIL;
 }
 
-/* Test a memory ovverun bug */
+/* Test a memory overrun bug */
 
 static int test_mem_overun(MYSQL *mysql)
 {
