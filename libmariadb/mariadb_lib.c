@@ -2098,6 +2098,11 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   mysql_close(mysql);
   *mysql=tmp_mysql;
   mysql->net.pvio->mysql= mysql;
+#ifdef HAVE_TLS
+  /* CONC-604: Set new connection handle */
+  if (mysql_get_ssl_cipher(mysql))
+    ma_pvio_tls_set_connection(mysql);
+#endif
   ma_net_clear(&mysql->net);
   mysql->affected_rows= ~(unsigned long long) 0;
   mysql->info= 0;

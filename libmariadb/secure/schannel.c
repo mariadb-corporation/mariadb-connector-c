@@ -560,3 +560,8 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
   CertFreeCertificateContext(pRemoteCertContext);
   return len;
 }
+
+void ma_tls_set_connection(MYSQL *mysql __attribute__((unused)))
+{
+  return;
+}

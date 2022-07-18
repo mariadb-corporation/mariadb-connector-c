@@ -682,13 +682,16 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
+//  SKIP_TLS;
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
-  mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(6)");
+  mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(7)");
   start= time(NULL);
   if (my_test_connect(mysql, hostname, username, password, schema, port, NULL, CLIENT_REMEMBER_OPTIONS))
   {
+  elapsed= time(NULL) - start;
+  diag("elapsed: %lu", (unsigned long)elapsed);
     diag("timeout error expected");
     return FAIL;
   }
