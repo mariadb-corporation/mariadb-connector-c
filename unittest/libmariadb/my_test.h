@@ -73,6 +73,13 @@ if (IS_SKYSQL(hostname)) \
 #define SKIP_NOTLS
 #endif
 
+#define SKIP_TLS \
+if (force_tls)\
+{\
+  diag("Test doesn't work with TLS");\
+  return SKIP;\
+}
+
 MYSQL *mysql_default = NULL;  /* default connection */
 
 #define IS_MAXSCALE()\
