@@ -682,7 +682,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
-//  SKIP_TLS;
+  SKIP_TLS;
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);

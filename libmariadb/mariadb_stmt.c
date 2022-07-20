@@ -1767,7 +1767,8 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
     goto fail;
 
   if (!is_multi && mysql->net.extension->multi_status == COM_MULTI_ENABLED)
-    ma_multi_command(mysql, COM_MULTI_END);
+    if (ma_multi_command(mysql, COM_MULTI_END))
+      goto fail;
   
   if (mysql->net.extension->multi_status > COM_MULTI_OFF ||
       mysql->options.extension->skip_read_response)

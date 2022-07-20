@@ -122,23 +122,23 @@ static long ma_tls_version_options(const char *version)
 static void ma_tls_set_error(MYSQL *mysql)
 {
   ulong ssl_errno= ERR_get_error();
-  char  ssl_error[MAX_SSL_ERR_LEN];
   const char *ssl_error_reason;
   MARIADB_PVIO *pvio= mysql->net.pvio;
 
-  if (!ssl_errno)
-  {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
-    return;
-  }
-  if ((ssl_error_reason= ERR_reason_error_string(ssl_errno)))
+  if (ssl_errno && (ssl_error_reason= ERR_reason_error_string(ssl_errno)))
   {
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                    0, ssl_error_reason);
     return;
+  } else
+  {
+    char errmsg[MAX_SSL_ERR_LEN];
+    int save_errno= errno;
+
+    strerror_r(save_errno, errmsg, MAX_SSL_ERR_LEN);
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                    "TLS/SSL error: %s (%d)", errmsg, save_errno);
   }
-  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%lu", ssl_errno);
-  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, ssl_error);
   return;
 }
 
