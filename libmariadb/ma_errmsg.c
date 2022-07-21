@@ -159,6 +159,13 @@ const char *mariadb_client_errors[] =
   /* 5006 */ "Bulk operation without parameters is not supported",
   /* 5007 */ "Invalid statement handle",
   /* 5008 */ "Unsupported version %d. Supported versions are in the range %d - %d",
+  /* 5009 */ "",
+  /* 5010 */ "",
+  /* 5011 */ "",
+  /* 5012 */ "",
+  /* 5013 */ "Read error: %s (%d)",
+  /* 5014 */ "Write error: %s (%d)",
+  /* 5015 */ "Error while uncompressing packet",
   ""
 };
 
