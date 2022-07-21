@@ -232,6 +232,6 @@ end:
 
 void ma_pvio_tls_set_connection(MYSQL *mysql)
 {
-  return ma_tls_set_connection(mysql);
+  ma_tls_set_connection(mysql);
 }
 #endif /* HAVE_TLS */
