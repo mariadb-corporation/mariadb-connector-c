@@ -105,7 +105,12 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_PLUGIN_NOT_ALLOWED 5010
 #define CR_CONNSTR_PARSE_ERROR 5011
 #define CR_ERR_LOAD_PLUGIN 5012
+#define CR_ERR_NET_READ 5013
+#define CR_ERR_NET_WRITE 5014
+#define CR_ERR_NET_UNCOMPRESS 5015
+
 /* Always last, if you add new error codes please update the
    value for CR_MARIADB_LAST_ERROR */
-#define CR_MARIADB_LAST_ERROR CR_ERR_LOAD_PLUGIN
+#define CR_MARIADB_LAST_ERROR CR_ERR_NET_UNCOMPRESS
+
 #endif

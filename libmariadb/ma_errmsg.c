@@ -107,6 +107,9 @@ const char *mariadb_client_errors[] =
   /* 5010 */ "Authentication plugin '%s' couldn't be found in restricted_auth plugin list.",
   /* 5011 */ "Parse error in connection string (offset %d)",
   /* 5012 */ "Error while loading plugin '%s'",
+  /* 5013 */ "Read error: %s (%d)",
+  /* 5014 */ "Write error: %s (%d)",
+  /* 5015 */ "Error while uncompressing packet",
   ""
 };
 

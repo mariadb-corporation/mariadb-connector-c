@@ -878,12 +878,7 @@ static void ma_tls_set_error(MYSQL *mysql, void *ssl, int ssl_errno)
   char  ssl_error[MAX_SSL_ERR_LEN];
   const char *ssl_error_reason;
   MARIADB_PVIO *pvio= mysql->net.pvio;
-
-  if (!ssl_errno)
-  {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "Unknown SSL error");
-    return;
-  }
+  int save_errno= errno;
 
   /* give a more descriptive error message for alerts */
   if (ssl_errno == GNUTLS_E_FATAL_ALERT_RECEIVED)
@@ -898,15 +893,16 @@ static void ma_tls_set_error(MYSQL *mysql, void *ssl, int ssl_errno)
     return;
   }
 
-  if ((ssl_error_reason= gnutls_strerror(ssl_errno)))
+  if (ssl_errno && (ssl_error_reason= gnutls_strerror(ssl_errno)))
   {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
                    ssl_error_reason);
     return;
   }
-  snprintf(ssl_error, MAX_SSL_ERR_LEN, "SSL errno=%d", ssl_errno);
-  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                  ssl_error);
+
+  strerror_r(save_errno, ssl_error, MAX_SSL_ERR_LEN);
+  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "TLS/SSL error: %s (%d)",
+                  ssl_error, save_errno);
 }
 
 
