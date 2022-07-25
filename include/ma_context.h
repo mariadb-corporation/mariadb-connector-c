@@ -224,6 +224,14 @@ struct mysql_async_context {
   struct st_ma_pvio *pvio;
   void (*suspend_resume_hook)(my_bool suspend, void *user_data);
   void *suspend_resume_hook_user_data;
+
+  /* If non-NULL,  this is a poitner to the result of getaddrinfo() currently
+   * under traversal in pvio_socket_connect(). It gets reset to NULL when a
+   * connection has been established to a server. The main objective is to
+   * free this memory resource in mysql_close() while an initiated connection
+   * has not been established. */
+  struct addrinfo* pending_gai_res;
+
   /*
     This is used to save the execution contexts so that we can suspend an
     operation and switch back to the application context, to resume the

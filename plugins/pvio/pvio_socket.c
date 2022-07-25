@@ -744,6 +744,16 @@ int pvio_socket_fast_send(MARIADB_PVIO *pvio)
 }
 
 static int
+pvio_socket_connect_async(MARIADB_PVIO *pvio,
+                          const struct sockaddr *name, uint namelen)
+{
+  MYSQL *mysql= pvio->mysql;
+  mysql->options.extension->async_context->pvio= pvio;
+  pvio_socket_blocking(pvio, 0, 0);
+  return my_connect_async(pvio, name, namelen, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
+}
+
+static int
 pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
                           const struct sockaddr *name, uint namelen)
 {
@@ -753,9 +763,7 @@ pvio_socket_connect_sync_or_async(MARIADB_PVIO *pvio,
   {
     /* even if we are not connected yet, application needs to check socket
      * via mysql_get_socket api call, so we need to assign pvio */
-    mysql->options.extension->async_context->pvio= pvio;
-    pvio_socket_blocking(pvio, 0, 0);
-    return my_connect_async(pvio, name, namelen, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
+    return pvio_socket_connect_async(pvio, name, namelen);
   }
 
   return pvio_socket_internal_connect(pvio, name, namelen);
@@ -927,7 +935,18 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
         }
       }
 
-      rc= pvio_socket_connect_sync_or_async(pvio, save_res->ai_addr, (uint)save_res->ai_addrlen);
+      if (mysql->options.extension && mysql->options.extension->async_context &&
+          mysql->options.extension->async_context->active)
+      {
+        mysql->options.extension->async_context->pending_gai_res = res;
+        rc= pvio_socket_connect_async(pvio, save_res->ai_addr, (uint)save_res->ai_addrlen);
+        mysql->options.extension->async_context->pending_gai_res = NULL;
+      }
+      else
+      {
+        rc= pvio_socket_connect_sync_or_async(pvio, save_res->ai_addr, (uint)save_res->ai_addrlen);
+      }
+
       if (!rc)
       {
         MYSQL *mysql= pvio->mysql;

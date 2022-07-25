@@ -1738,7 +1738,18 @@ restart:
   }
 
   if (ma_net_init(net, pvio))
+  {
+    ma_pvio_close(pvio);
     goto error;
+  }
+
+  if (mysql->options.extension && mysql->options.extension->async_context && mysql->options.extension->async_context->pvio)
+  {
+    /* pvio delegated to mysql->net.pvio by ma_net_init().
+     * invalidate the pvio pointer in the async context */
+    mysql->options.extension->async_context->pvio = NULL;
+  }
+
 
   if (mysql->options.max_allowed_packet)
     net->max_packet_size= mysql->options.max_allowed_packet;
@@ -2348,6 +2359,20 @@ void mysql_close_slow_part(MYSQL *mysql)
     if (mysql->net.pvio && mysql->net.buff)
       ma_simple_command(mysql, COM_QUIT,NullS,0,1,0);
     end_server(mysql);
+  }
+  /* there is an ongoing async operation */
+  else if (mysql->options.extension && mysql->options.extension->async_context)
+  {
+    if (mysql->options.extension->async_context->pending_gai_res)
+    {
+        freeaddrinfo(mysql->options.extension->async_context->pending_gai_res);
+        mysql->options.extension->async_context->pending_gai_res = 0;
+    }
+    if (mysql->options.extension->async_context->pvio)
+    {
+      ma_pvio_close(mysql->options.extension->async_context->pvio);
+      mysql->options.extension->async_context->pvio = 0;
+    }
   }
 }
 
