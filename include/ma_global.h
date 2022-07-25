@@ -579,7 +579,7 @@ typedef long my_ptrdiff_t;
 #define STDCALL
 #endif
 
-/* Typedefs for easyier portability */
+/* Typedefs for easier portability */
 
 #if defined(VOIDTYPE)
 typedef void	*gptr;		/* Generic pointer */
@@ -742,7 +742,7 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 #endif /* L64 */
 #endif /* _WIN32 */
 /*
-** Define-functions for reading and storing in machine independent format
+** Define functions for reading and storing in machine independent format
 **  (low byte first)
 */
 
@@ -975,7 +975,7 @@ do { doubleget_union _tmp; \
 				  (((uint32) ((uchar) (A)[1])) << 16) |\
 				  (((uint32) ((uchar) (A)[0])) << 24))
 /*
-  Define-funktions for reading and storing in machine format from/to
+  Define functions for reading and storing in machine format from/to
   short/long to/from some place in memory V should be a (not
   register) variable, M is a pointer to byte
 */
