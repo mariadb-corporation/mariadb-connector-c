@@ -164,14 +164,17 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   int packet_length;
   int rc= CR_ERROR;
   char passwd[MAX_PW_LEN];
-  unsigned char rsa_enc_pw[MAX_PW_LEN];
   unsigned int rsa_size;
   unsigned int pwlen, i;
 
 #if defined(HAVE_OPENSSL)
-  RSA *pubkey= NULL;
+  EVP_PKEY *pubkey= NULL;
+  EVP_PKEY_CTX *ctx= NULL;
+  size_t outlen= 0;
+  unsigned char *rsa_enc_pw= NULL;
   BIO *bio;
 #elif defined(HAVE_WINCRYPT)
+  unsigned char rsa_enc_pw[MAX_PW_LEN];
   HCRYPTKEY pubkey= 0;
   HCRYPTPROV hProv= 0;
   LPBYTE der_buffer= NULL;
@@ -229,9 +232,18 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #if defined(HAVE_OPENSSL)
   bio= BIO_new_mem_buf(filebuffer ? (unsigned char *)filebuffer : packet,
                        packet_length);
-  if ((pubkey= PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL)))
-    rsa_size= RSA_size(pubkey);
+  if ((pubkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
+  {
+    if (!(ctx= EVP_PKEY_CTX_new(pubkey, NULL)))
+      goto error;
+    if (EVP_PKEY_encrypt_init(ctx) <= 0)
+      goto error;
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
+      goto error;
+    rsa_size= EVP_PKEY_size(pubkey);
+  }
   BIO_free(bio);
+  bio= NULL;
   ERR_clear_error();
 #elif defined(HAVE_WINCRYPT)
   der_buffer_len= packet_length;
@@ -273,7 +285,11 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
   /* encrypt scrambled password */
 #if defined(HAVE_OPENSSL)
-  if (RSA_public_encrypt(pwlen, (unsigned char *)passwd, rsa_enc_pw, pubkey, RSA_PKCS1_OAEP_PADDING) < 0)
+  if (EVP_PKEY_encrypt(ctx, NULL, &outlen, (unsigned char *)passwd, pwlen) <= 0)
+    goto error;
+  if (!(rsa_enc_pw= malloc(outlen)))
+    goto error;
+  if (EVP_PKEY_encrypt(ctx, rsa_enc_pw, &outlen, (unsigned char *)passwd, pwlen) <= 0)
     goto error;
 #elif defined(HAVE_WINCRYPT)
   if (!CryptEncrypt(pubkey, 0, TRUE, CRYPT_OAEP, (BYTE *)passwd, (DWORD *)&pwlen, MAX_PW_LEN))
@@ -293,7 +309,13 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 error:
 #if defined(HAVE_OPENSSL)
   if (pubkey)
-    RSA_free(pubkey);
+    EVP_PKEY_free(pubkey);
+  if (bio)
+    BIO_free(bio);
+  if (ctx)
+    EVP_PKEY_CTX_free(ctx);
+  if (rsa_enc_pw)
+    free(rsa_enc_pw);
 #elif defined(HAVE_WINCRYPT)
   CryptReleaseContext(hProv, 0);
   if (publicKeyInfo)

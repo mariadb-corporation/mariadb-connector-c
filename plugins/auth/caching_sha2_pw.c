@@ -241,10 +241,11 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   int rc= CR_ERROR;
 #if !defined(HAVE_GNUTLS)
   char passwd[MAX_PW_LEN];
-  unsigned char rsa_enc_pw[MAX_PW_LEN];
 #ifdef HAVE_OPENSSL
-  int rsa_size;
+  unsigned char *rsa_enc_pw= NULL;
+  size_t rsa_size;
 #else
+  unsigned char rsa_enc_pw[MAX_PW_LEN];
   ULONG rsa_size;
 #endif
   unsigned int pwlen, i;
@@ -253,8 +254,10 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   unsigned char buf[MA_SHA256_HASH_SIZE];
 
 #if defined(HAVE_OPENSSL)
-  RSA *pubkey= NULL;
+  EVP_PKEY *pubkey= NULL;
+  EVP_PKEY_CTX *ctx= NULL;
   BIO *bio;
+  size_t outlen;
 #elif defined(HAVE_WINCRYPT)
   BCRYPT_KEY_HANDLE pubkey= 0;
   BCRYPT_OAEP_PADDING_INFO paddingInfo;
@@ -337,10 +340,19 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #if defined(HAVE_OPENSSL)
     bio= BIO_new_mem_buf(filebuffer ? (unsigned char *)filebuffer : packet,
                          packet_length);
-    if ((pubkey= PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL)))
-      rsa_size= RSA_size(pubkey);
-    BIO_free(bio);
-    ERR_clear_error();
+    if ((pubkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
+    {
+      if (!(ctx= EVP_PKEY_CTX_new(pubkey, NULL)))
+        goto error;
+      if (EVP_PKEY_encrypt_init(ctx) <= 0)
+        goto error;
+      if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
+        goto error;
+      rsa_size= EVP_PKEY_size(pubkey);
+   }
+   BIO_free(bio);
+   bio= NULL;
+   ERR_clear_error();
 #elif defined(HAVE_WINCRYPT)
     der_buffer_len= packet_length;
     /* Load pem and convert it to binary object. New length will be returned
@@ -377,7 +389,11 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
     /* encrypt scrambled password */
 #if defined(HAVE_OPENSSL)
-    if (RSA_public_encrypt(pwlen, (unsigned char *)passwd, rsa_enc_pw, pubkey, RSA_PKCS1_OAEP_PADDING) < 0)
+    if (EVP_PKEY_encrypt(ctx, NULL, &outlen, (unsigned char *)passwd, pwlen) <= 0)
+      goto error;
+    if (!(rsa_enc_pw= malloc(outlen)))
+      goto error;
+    if (EVP_PKEY_encrypt(ctx, rsa_enc_pw, &outlen, (unsigned char *)passwd, pwlen) <= 0)
       goto error;
 #elif defined(HAVE_WINCRYPT)
     ZeroMemory(&paddingInfo, sizeof(paddingInfo));
@@ -403,7 +419,13 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 error:
 #if defined(HAVE_OPENSSL)
   if (pubkey)
-    RSA_free(pubkey);
+    EVP_PKEY_free(pubkey);
+  if (rsa_enc_pw)
+    free(rsa_enc_pw);
+  if (bio)
+    BIO_free(bio);
+  if (ctx)
+    EVP_PKEY_CTX_free(ctx);
 #elif defined(HAVE_WINCRYPT)
   if (pubkey)
     BCryptDestroyKey(pubkey);
