@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2017 MariaDB Corporation AB
+  Copyright (C) 2017, 2022, MariaDB Corporation AB
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -243,7 +243,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   char passwd[MAX_PW_LEN];
 #ifdef HAVE_OPENSSL
   unsigned char *rsa_enc_pw= NULL;
-  size_t rsa_size;
+  size_t rsa_size= 0;
 #else
   unsigned char rsa_enc_pw[MAX_PW_LEN];
   ULONG rsa_size;

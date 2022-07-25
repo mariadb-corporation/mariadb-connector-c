@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2017 MariaDB Corporation AB
+  Copyright (C) 2017, 2022, MariaDB Corporation AB
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -164,7 +164,7 @@ static int auth_sha256_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   int packet_length;
   int rc= CR_ERROR;
   char passwd[MAX_PW_LEN];
-  unsigned int rsa_size;
+  unsigned int rsa_size= 0;
   unsigned int pwlen, i;
 
 #if defined(HAVE_OPENSSL)
