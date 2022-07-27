@@ -225,7 +225,7 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls,const CERT_CONTEXT **cert_c
   *cert_ctx = schannel_create_cert_context(certfile, keyfile, errmsg, sizeof(errmsg));
   if (!*cert_ctx)
   {
-    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, "SSL connection error: %s", errmsg);
+    pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);
     return 1;
   }
 

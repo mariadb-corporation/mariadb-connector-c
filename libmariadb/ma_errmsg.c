@@ -108,7 +108,7 @@ const char *client_errors[]=
 /* 2023 */  "",
 /* 2024 */  "",
 /* 2025 */  "",
-/* 2026 */  "SSL connection error: %-.100s",
+/* 2026 */  "TLS/SSL error1: %-.100s",
 /* 2027 */  "received malformed packet",
 /* 2028 */  "",
 /* 2029 */  "",

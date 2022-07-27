@@ -52,7 +52,7 @@ void ma_schannel_set_sec_error(MARIADB_PVIO* pvio, DWORD ErrorNo)
 void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
 {
   char buffer[256];
-  ma_format_win32_error(buffer, sizeof(buffer), ErrorNo, "SSL connection error: ");
+  ma_format_win32_error(buffer, sizeof(buffer), ErrorNo, "TLS/SSL error: ");
   pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, buffer);
   return;
 }
@@ -526,8 +526,7 @@ my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls, BOOL verify_server_name)
 end:
   if (!ret)
   {
-     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-      "SSL connection error: %s", errmsg);
+     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);
   }
   if (pServerCert)
     CertFreeCertificateContext(pServerCert);
