@@ -20,8 +20,7 @@
 #define _GNU_SOURCE 1
 #endif
 
-#ifdef _WIN32
-#define HAVE_WINCRYPT
+#ifdef HAVE_WINCRYPT
 #undef HAVE_OPENSSL
 #undef HAVE_GNUTLS
 #endif
@@ -93,10 +92,9 @@ static int ma_sha256_scramble(unsigned char *scramble, size_t scramble_len,
 #endif
   size_t i;
 
-  /* check if all specified lengtht are valid */
+  /* check if all specified lengths are valid */
   if (!scramble_len || !source_len || !salt_len)
     return 1;
-
 
   /* Step1: create sha256 from source */
   if (!(ctx= ma_hash_new(MA_HASH_SHA256, ctx)))
@@ -340,19 +338,18 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #if defined(HAVE_OPENSSL)
     bio= BIO_new_mem_buf(filebuffer ? (unsigned char *)filebuffer : packet,
                          packet_length);
-    if ((pubkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
-    {
-      if (!(ctx= EVP_PKEY_CTX_new(pubkey, NULL)))
-        goto error;
-      if (EVP_PKEY_encrypt_init(ctx) <= 0)
-        goto error;
-      if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
-        goto error;
-      rsa_size= EVP_PKEY_size(pubkey);
-   }
-   BIO_free(bio);
-   bio= NULL;
-   ERR_clear_error();
+    if (!(pubkey= PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL)))
+      goto error;
+    if (!(ctx= EVP_PKEY_CTX_new(pubkey, NULL)))
+      goto error;
+    if (EVP_PKEY_encrypt_init(ctx) <= 0)
+      goto error;
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)
+      goto error;
+    rsa_size= EVP_PKEY_size(pubkey);
+    BIO_free(bio);
+    bio= NULL;
+    ERR_clear_error();
 #elif defined(HAVE_WINCRYPT)
     der_buffer_len= packet_length;
     /* Load pem and convert it to binary object. New length will be returned
