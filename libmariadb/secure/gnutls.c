@@ -889,7 +889,7 @@ static void ma_tls_set_error(MYSQL *mysql, void *ssl, int ssl_errno)
     alert_name= gnutls_alert_get_name(alert_desc);
     snprintf(ssl_error, MAX_SSL_ERR_LEN, "fatal alert received: %s",
              alert_name);
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, ssl_error);
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, ssl_error);
     return;
   }
 

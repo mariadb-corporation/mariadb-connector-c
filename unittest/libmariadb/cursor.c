@@ -421,11 +421,9 @@ static int test_bug10736(MYSQL *mysql)
 
   for (i= 0; i < 3; i++)
   {
-    int row_no= 0;
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
-    while ((rc= mysql_stmt_fetch(stmt)) == 0)
-      ++row_no;
+    while ((rc= mysql_stmt_fetch(stmt)) == 0);
     FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
   }
   rc= mysql_stmt_close(stmt);
