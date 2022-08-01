@@ -96,7 +96,6 @@ static int ma_sha256_scramble(unsigned char *scramble, size_t scramble_len,
   if (!scramble_len || !source_len || !salt_len)
     return 1;
 
-
   /* Step1: create sha256 from source */
   if (!(ctx= ma_hash_new(MA_HASH_SHA256, ctx)))
     return 1;
