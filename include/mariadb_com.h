@@ -306,6 +306,13 @@ enum enum_mysql_set_option
   MYSQL_OPTION_MULTI_STATEMENTS_OFF
 };
 
+/* for status callback function */
+enum enum_mariadb_status_info
+{
+  STATUS_TYPE= 0,
+  SESSION_TRACK_TYPE
+};
+
 enum enum_session_state_type
 {
   SESSION_TRACK_SYSTEM_VARIABLES= 0,
