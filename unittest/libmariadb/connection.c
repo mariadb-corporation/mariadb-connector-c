@@ -2151,7 +2151,109 @@ static int test_conc365_reconnect(MYSQL *my)
   return rc;
 }
 
+struct st_callback {
+  char autocommit;
+  char database[64];
+  char charset[64];
+};
+
+void my_status_callback(void *ptr, enum enum_mariadb_status_info type, ...)
+{
+  va_list ap;
+  struct st_callback *data= (struct st_callback *)ptr;
+  va_start(ap, type);
+
+  switch(type) {
+  case STATUS_TYPE:
+    {
+      int status= va_arg(ap, int);
+      data->autocommit= status & SERVER_STATUS_AUTOCOMMIT;
+    }
+    break;
+  case SESSION_TRACK_TYPE:
+    {
+      enum enum_session_state_type track_type= va_arg(ap, enum enum_session_state_type);
+      switch (track_type) {
+      case SESSION_TRACK_SCHEMA:
+        {
+          MARIADB_CONST_STRING *str= va_arg(ap, MARIADB_CONST_STRING *);
+          strncpy(data->database, str->str, str->length);
+        }
+        break;
+      case SESSION_TRACK_SYSTEM_VARIABLES:
+        {
+          MARIADB_CONST_STRING *key= va_arg(ap, MARIADB_CONST_STRING *);
+          MARIADB_CONST_STRING *val= va_arg(ap, MARIADB_CONST_STRING *);
+
+          if (!strncmp(key->str, "character_set_client", key->length))
+          {
+            strncpy(data->charset, val->str, val->length);
+          }
+        }
+        break;
+      default:
+        break;
+      }
+    }
+  default:
+    break;
+  }
+  va_end(ap);
+}
+
+static int test_status_callback(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  char tmp[64];
+  int rc;
+  struct st_callback data= {0,"", ""};
+
+  rc= mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, my_status_callback, &data);
+
+  if (!my_test_connect(mysql, hostname, username,
+                      password, NULL, port, socketname, 0))
+  {
+    diag("error1: %s", mysql_error(mysql));
+    return FAIL;
+  }
+
+  rc= mysql_autocommit(mysql, 0);
+  check_mysql_rc(rc, mysql);
+  rc= mysql_autocommit(mysql, 1);
+  check_mysql_rc(rc, mysql);
+
+  if (!data.autocommit)
+  {
+    diag("autocommit not set");
+    return FAIL;
+  }
+  diag("-------------------------");
+
+  sprintf(tmp, "USE %s", schema);
+  rc= mysql_query(mysql, tmp);
+  check_mysql_rc(rc, mysql);
+
+  if (strcmp(data.database, schema))
+  {
+    diag("Expected database: %s instead of %s", schema, data.database);
+    return FAIL;
+  }
+
+  rc= mysql_query(mysql, "SET NAMES latin1");
+  check_mysql_rc(rc, mysql);
+
+  if (strcmp(data.charset, "latin1"))
+  {
+    diag("Expected charset latin1 instead of %s", data.charset);
+    return FAIL;
+  }
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_status_callback", test_status_callback, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc365", test_conc365, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc365_reconnect", test_conc365_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conn_str", test_conn_str, TEST_CONNECTION_NONE, 0, NULL, NULL},

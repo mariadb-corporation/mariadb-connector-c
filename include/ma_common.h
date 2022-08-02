@@ -84,6 +84,8 @@ struct st_mysql_options_extension {
   char *restricted_auth;
   char *rpl_host;
   unsigned short rpl_port;
+  void (*status_callback)(void *ptr, enum enum_mariadb_status_info type, ...);
+  void *status_data;
 };
 
 typedef struct st_connection_handler
