@@ -2594,7 +2594,7 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
           while (pos < end)
           {
             size_t plen;
-            MYSQL_LEX_STRING data1, data2;
+            MARIADB_CONST_STRING data1, data2;
             si_type= (enum enum_session_state_type)net_field_length(&pos);
 
             switch(si_type) {
@@ -3774,10 +3774,14 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_STATUS_CALLBACK:
     {
       void *arg2= va_arg(ap, void *);
-      if (arg1)
+      if (arg1 || arg2)
       {
-        OPT_SET_EXTENDED_VALUE(&mysql->options, status_callback, arg1);
-        OPT_SET_EXTENDED_VALUE(&mysql->options, status_data, arg2);
+        if (arg1) {
+           OPT_SET_EXTENDED_VALUE(&mysql->options, status_callback, arg1);
+        }
+        if (arg2) {
+           OPT_SET_EXTENDED_VALUE(&mysql->options, status_data, arg2);
+        }
       } else {
         OPT_SET_EXTENDED_VALUE(&mysql->options, status_callback, ma_save_session_track_info);
         OPT_SET_EXTENDED_VALUE(&mysql->options, status_data, mysql);
