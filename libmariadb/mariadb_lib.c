@@ -2552,6 +2552,9 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
   mysql->insert_id=	  net_field_length_ll(&pos);
   mysql->server_status=uint2korr(pos);
 
+  /* clear error */
+  mysql->net.last_error[0]= mysql->net.last_errno= mysql->net.extension->extended_errno= 0;
+
   /* callback */
   if (mysql->options.extension->status_callback &&
       mysql->server_status != last_server_status)
