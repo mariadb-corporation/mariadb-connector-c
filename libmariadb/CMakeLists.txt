@@ -353,6 +353,26 @@ ENDIF()
 IF(ZLIB_FOUND AND WITH_EXTERNAL_ZLIB)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 ELSE()
+  SET(ZLIB_SOURCES
+    ${CC_SOURCE_DIR}/external/zlib/adler32.c
+    ${CC_SOURCE_DIR}/external/zlib/compress.c
+    ${CC_SOURCE_DIR}/external/zlib/crc32.c
+    ${CC_SOURCE_DIR}/external/zlib/deflate.c
+    ${CC_SOURCE_DIR}/external/zlib/gzclose.c
+    ${CC_SOURCE_DIR}/external/zlib/gzlib.c
+    ${CC_SOURCE_DIR}/external/zlib/gzread.c
+    ${CC_SOURCE_DIR}/external/zlib/gzwrite.c
+    ${CC_SOURCE_DIR}/external/zlib/infback.c
+    ${CC_SOURCE_DIR}/external/zlib/inffast.c
+    ${CC_SOURCE_DIR}/external/zlib/inflate.c
+    ${CC_SOURCE_DIR}/external/zlib/inftrees.c
+    ${CC_SOURCE_DIR}/external/zlib/trees.c
+    ${CC_SOURCE_DIR}/external/zlib/uncompr.c
+    ${CC_SOURCE_DIR}/external/zlib/zutil.c
+  )
+  IF(MSVC)
+    SET_SOURCE_FILES_PROPERTIES(${ZLIB_SOURCES} PROPERTIES COMPILE_FLAGS -W0)
+  ENDIF()
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
   INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/external/zlib)
 ENDIF()
