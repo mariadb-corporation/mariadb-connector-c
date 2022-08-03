@@ -77,6 +77,7 @@
 #include <mysql/client_plugin.h>
 #ifdef _WIN32
 #include "shlwapi.h"
+#include "ws2tcpip.h"
 #define strncasecmp _strnicmp
 #endif
 
