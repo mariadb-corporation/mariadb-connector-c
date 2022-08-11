@@ -286,12 +286,14 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
       result->rows++;
     } else  /* end of stream */
     {
+      unsigned int last_status= stmt->mysql->server_status;
       *pprevious= 0;
       /* sace status info */
       p++;
       stmt->upsert_status.warning_count= stmt->mysql->warning_count= uint2korr(p);
       p+=2;
       stmt->upsert_status.server_status= stmt->mysql->server_status= uint2korr(p);
+      ma_status_callback(stmt->mysql, last_status);
       stmt->result_cursor= result->data;
       return(0);
     }
@@ -355,13 +357,16 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
                     stmt->state < MYSQL_STMT_FETCH_DONE;
   while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
   {
+    unsigned int last_status= stmt->mysql->server_status;
     uchar *pos= stmt->mysql->net.read_pos;
+
     if (!in_resultset && *pos == 0) /* OK */
     {
       pos++;
       net_field_length(&pos);
       net_field_length(&pos);
       stmt->mysql->server_status= uint2korr(pos);
+      ma_status_callback(stmt->mysql, last_status);
       goto end;
     }
     if (packet_len < 8 && *pos == 254) /* EOF */
@@ -369,6 +374,7 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
       if (mariadb_connection(stmt->mysql))
       {
         stmt->mysql->server_status= uint2korr(pos + 3);
+        ma_status_callback(stmt->mysql, last_status);
         if (in_resultset)
           goto end;
         in_resultset= 1;
@@ -1902,6 +1908,7 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
 {
   MYSQL *mysql= stmt->mysql;
   int ret;
+  unsigned int last_status= mysql->server_status;
 
   if (!mysql)
     return(1);
@@ -1956,6 +1963,7 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
   }
   stmt->upsert_status.last_insert_id= mysql->insert_id;
   stmt->upsert_status.server_status= mysql->server_status;
+  ma_status_callback(stmt->mysql, last_status);
   stmt->upsert_status.warning_count= mysql->warning_count;
 
   CLEAR_CLIENT_ERROR(mysql);
@@ -2232,7 +2240,8 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
 {
   MYSQL *mysql= stmt->mysql;
   my_bool ret= 1;
-  unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR;
+  unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR,
+               last_status= mysql->server_status;
 
   if (!mysql)
   {
@@ -2277,6 +2286,7 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
   stmt->upsert_status.affected_rows= mysql->affected_rows;
   stmt->upsert_status.last_insert_id= mysql->insert_id;
   stmt->upsert_status.server_status= mysql->server_status;
+  ma_status_callback(stmt->mysql, last_status);
   stmt->upsert_status.warning_count= mysql->warning_count;
   mysql->status= MYSQL_STATUS_READY;
 
@@ -2444,9 +2454,11 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
     rc= madb_alloc_stmt_fields(stmt);
   else
   {
+    unsigned int last_status= stmt->mysql->server_status;
     stmt->upsert_status.affected_rows= stmt->mysql->affected_rows;
     stmt->upsert_status.last_insert_id= stmt->mysql->insert_id;
     stmt->upsert_status.server_status= stmt->mysql->server_status;
+    ma_status_callback(stmt->mysql, last_status);
     stmt->upsert_status.warning_count= stmt->mysql->warning_count;
   }
 

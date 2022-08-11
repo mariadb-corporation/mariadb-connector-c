@@ -1185,10 +1185,12 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql,MYSQL_FIELD *mysql_fields,
   /* save status */
   if (pkt_len > 1)
   {
+    unsigned int last_status= mysql->server_status;
     cp++;
     mysql->warning_count= uint2korr(cp);
     cp+= 2;
     mysql->server_status= uint2korr(cp);
+    ma_status_callback(mysql, last_status)
   }
   return(result);
 }
@@ -1211,8 +1213,10 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
 
   if (pkt_len <= 8 && mysql->net.read_pos[0] == 254)
   {
+    unsigned int last_status= mysql->server_status;
     mysql->warning_count= uint2korr(mysql->net.read_pos + 1);
     mysql->server_status= uint2korr(mysql->net.read_pos + 3);
+    ma_status_callback(mysql, last_status);
     return 1;				/* End of data */
   }
   prev_pos= 0;				/* allowed to write at packet[-1] */
@@ -2547,7 +2551,7 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
 {
   uchar *end= mysql->net.read_pos+length;
   size_t item_len;
-  unsigned int last_server_status= mysql->server_status;
+  unsigned int last_status= mysql->server_status;
   mysql->affected_rows= net_field_length_ll(&pos);
   mysql->insert_id=	  net_field_length_ll(&pos);
   mysql->server_status=uint2korr(pos);
@@ -2556,10 +2560,7 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
   mysql->net.last_error[0]= mysql->net.last_errno= mysql->net.extension->extended_errno= 0;
 
   /* callback */
-  if (mysql->options.extension->status_callback &&
-      mysql->server_status != last_server_status)
-    mysql->options.extension->status_callback(mysql->options.extension->status_data,
-                                              STATUS_TYPE, mysql->server_status);
+  ma_status_callback(mysql, last_status);
   pos+=2;
   mysql->warning_count=uint2korr(pos);
   pos+=2;
@@ -2832,6 +2833,7 @@ get_info:
   }
   else
   {
+    unsigned int last_status= mysql->server_status;
     /* Read EOF, to get the status and warning count.  */
     if ((length= ma_net_safe_read(mysql)) == packet_error)
     {
@@ -2844,6 +2846,7 @@ get_info:
     }
     mysql->warning_count= uint2korr(pos + 1);
     mysql->server_status= uint2korr(pos + 3);
+    ma_status_callback(mysql, last_status);
   }
   mysql->status=MYSQL_STATUS_GET_RESULT;
   mysql->field_count=field_count;
