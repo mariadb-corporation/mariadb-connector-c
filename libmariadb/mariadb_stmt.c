@@ -2240,8 +2240,8 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
 {
   MYSQL *mysql= stmt->mysql;
   my_bool ret= 1;
-  unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR,
-               last_status= mysql->server_status;
+  unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR;
+  unsigned int last_status;
 
   if (!mysql)
   {
@@ -2250,6 +2250,8 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
     SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     return(1);
   }
+
+  last_status= mysql->server_status;
 
   if (stmt->state >= MYSQL_STMT_USER_FETCHING &&
       stmt->fetch_row_func == stmt_unbuffered_fetch)
