@@ -108,9 +108,14 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_ERR_NET_READ 5013
 #define CR_ERR_NET_WRITE 5014
 #define CR_ERR_NET_UNCOMPRESS 5015
+#define CR_ERR_CHECKSUM_VERIFICATION_ERROR 5016
+#define CR_ERR_UNSUPPORTED_BINLOG_FORMAT 5017
+#define CR_UNKNOWN_BINLOG_EVENT 5018
+#define CR_BINLOG_ERROR 5019
+#define CR_BINLOG_INVALID_FILE 5020
 
 /* Always last, if you add new error codes please update the
    value for CR_MARIADB_LAST_ERROR */
-#define CR_MARIADB_LAST_ERROR CR_ERR_NET_UNCOMPRESS
+#define CR_MARIADB_LAST_ERROR CR_BINLOG_INVALID_FILE
 
 #endif

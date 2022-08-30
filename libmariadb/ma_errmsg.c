@@ -109,7 +109,12 @@ const char *mariadb_client_errors[] =
   /* 5012 */ "Error while loading plugin '%s'",
   /* 5013 */ "Read error: %s (%d)",
   /* 5014 */ "Write error: %s (%d)",
-  /* 5015 */ "Error while uncompressing packet",
+  /* 5015 */ "Error while uncompressing packet (File: %.*s start_pos=%ld).",
+  /* 5016 */ "Checksum verification failed (File: %.*s start_pos=%ld). Reported checksum is %x, while calculated checksum is %x.",
+  /* 5017 */ "Binary log protocol error (File: %.*s start_pos=%ld): Log format %d not supported.",
+  /* 5018 */ "Binary log error (File: %.*s start_pos=%ld): Unknown event type (%d) with flag 'not_ignorable'.",
+  /* 5019 */ "Binary log error (File: %.*s start_pos=%ld): %s.",
+  /* 5020 */ "File '%s' is not a binary log file",
   ""
 };
 

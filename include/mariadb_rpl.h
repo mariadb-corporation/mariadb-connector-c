@@ -1,4 +1,4 @@
-/* Copyright (C) 2018-2021 MariaDB Corporation AB
+/* Copyright (C) 2018-2022 MariaDB Corporation AB
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -23,8 +23,11 @@ extern "C" {
 
 #include <stdint.h>
 
-#define MARIADB_RPL_VERSION 0x0001
-#define MARIADB_RPL_REQUIRED_VERSION 0x0001
+#define MARIADB_RPL_VERSION 0x0002
+#define MARIADB_RPL_REQUIRED_VERSION 0x0002
+
+#define RPL_BINLOG_MAGIC (const uchar*) "\xFE\x62\x69\x6E"
+#define RPL_BINLOG_MAGIC_SIZE 4
 
 /* Protocol flags */
 #define MARIADB_RPL_BINLOG_DUMP_NON_BLOCK 1
@@ -33,10 +36,37 @@ extern "C" {
 
 #define EVENT_HEADER_OFS 20
 
-#define FL_GROUP_COMMIT_ID 2
 #define FL_STMT_END 1
 
-#define LOG_EVENT_ARTIFICIAL_F 0x20
+/* GTID flags */ 
+
+/* FL_STANDALONE is set in case there is no terminating COMMIT event. */
+#define FL_STANDALONE            0x01
+
+/* FL_GROUP_COMMIT_ID is set when event group is part of a group commit */
+#define FL_GROUP_COMMIT_ID       0x02
+
+/* FL_TRANSACTIONAL is set for an event group that can be safely rolled back
+    (no MyISAM, eg.).
+  */
+#define FL_TRANSACTIONAL         0x04
+  /*
+    FL_ALLOW_PARALLEL reflects the (negation of the) value of
+    @@SESSION.skip_parallel_replication at the time of commit.
+  */
+#define FL_ALLOW_PARALLEL        0x08;
+  /*
+    FL_WAITED is set if a row lock wait (or other wait) is detected during the
+    execution of the transaction.
+  */
+#define FL_WAITED                0x10
+  /* FL_DDL is set for event group containing DDL. */
+#define FL_DDL                   0x20
+  /* FL_PREPARED_XA is set for XA transaction. */
+#define FL_PREPARED_XA           0x40
+  /* FL_"COMMITTED or ROLLED-BACK"_XA is set for XA transaction. */
+#define FL_COMPLETED_XA          0x80
+
 
 /* SEMI SYNCHRONOUS REPLICATION */
 #define SEMI_SYNC_INDICATOR 0xEF
@@ -50,7 +80,8 @@ enum mariadb_rpl_option {
   MARIADB_RPL_FLAGS,          /* Protocol flags */
   MARIADB_RPL_GTID_CALLBACK,  /* GTID callback function */
   MARIADB_RPL_GTID_DATA,      /* GTID data */
-  MARIADB_RPL_BUFFER
+  MARIADB_RPL_BUFFER,
+  MARIADB_RPL_VERIFY_CHECKSUM
 };
 
 /* Event types: From MariaDB Server sql/log_event.h */
@@ -125,6 +156,83 @@ enum mariadb_rpl_event {
   ENUM_END_EVENT /* end marker */
 };
 
+/* ROWS_EVENT flags */
+
+#define STMT_END_F                    0x01
+#define NO_FOREIGN_KEY_CHECKS_F       0x02
+#define RELAXED_UNIQUE_KEY_CHECKS_F   0x04
+#define COMPLETE_ROWS_F               0x08
+#define NO_CHECK_CONSTRAINT_CHECKS_F  0x80
+
+enum mariadb_rpl_status_code {
+  Q_FLAGS2_CODE= 0x00,
+  Q_SQL_MODE_CODE= 0x01,
+  Q_CATALOG_CODE= 0x02,
+  Q_AUTO_INCREMENT_CODE= 0x03,
+  Q_CHARSET_CODE= 0x04,
+  Q_TIMEZONE_CODE= 0x05,
+  Q_CATALOG_NZ_CODE= 0x06,
+  Q_LC_TIME_NAMES_CODE= 0x07,
+  Q_CHARSET_DATABASE_CODE= 0x08,
+  Q_TABLE_MAP_FOR_UPDATE_CODE= 0x09,
+  Q_MASTER_DATA_WRITTEN_CODE= 0x0A,
+  Q_INVOKERS_CODE= 0x0B,
+  Q_UPDATED_DB_NAMES_CODE= 0x0C,
+  Q_MICROSECONDS_CODE= 0x0D,
+  Q_COMMIT_TS_CODE= 0x0E,  /* unused */
+  Q_COMMIT_TS2_CODE= 0x0F, /* unused */
+  Q_EXPLICIT_DEFAULTS_FOR_TIMESTAMP_CODE= 0x10,
+  Q_DDL_LOGGED_WITH_XID_CODE= 0x11,
+  Q_DEFAULT_COLLATION_FOR_UTF8_CODE= 0x12,
+  Q_SQL_REQUIRE_PRIMARY_KEY_CODE= 0x13,
+  Q_DEFAULT_TABLE_ENCRYPTION_CODE= 0x14,
+  Q_HRNOW= 128,  /* second part: 3 bytes */
+  Q_XID= 129    /* xid: 8 bytes */
+};
+
+/* Log Event flags */
+
+/* used in FOMRAT_DESCRIPTION_EVENT. Indicates if it
+   is the active binary log.
+   Note: When reading data via COM_BINLOG_DUMP this
+         flag is never set.
+*/ 
+#define LOG_EVENT_BINLOG_IN_USE_F           0x0001
+
+/* Looks like this flag is no longer in use */
+#define LOG_EVENT_FORCED_ROTATE_F           0x0002
+
+/* Log entry depends on thread, e.g. when using user variables
+   or temporary tables */
+#define LOG_EVENT_THREAD_SPECIFIC_F         0x0004
+
+/* Indicates that the USE command can be suppressed before
+   executing a statement: e.g. DRIP SCHEMA  */
+#define LOG_EVENT_SUPPRESS_USE_F            0x0008
+
+/* ??? */
+#define LOG_EVENT_UPDATE_TABLE_MAP_F        0x0010
+
+/* Artifical event */
+#define LOG_EVENT_ARTIFICIAL_F              0x0020
+
+/* ??? */
+#define LOG_EVENT_RELAY_LOG_F               0x0040
+
+/* If an event is not supported, and LOG_EVENT_IGNORABLE_F was not
+   set, an error will be reported. */
+#define LOG_EVENT_IGNORABLE_F               0x0080
+
+/* ??? */
+#define LOG_EVENT_NO_FILTER_F               0x0100
+
+/* ?? */
+#define LOG_EVENT_MTS_ISOLATE_F             0x0200
+
+/* if session variable @@skip_repliation was set, this flag will be
+   reported for events which should be skipped. */
+#define LOG_EVENT_SKIP_REPLICATION_F        0x8000
+
 typedef struct {
   char *str;
   size_t length;
@@ -157,6 +265,11 @@ typedef struct st_mariadb_rpl {
   uint8_t fd_header_len; /* header len from last format description event */
   uint8_t use_checksum;
   uint8_t artificial_checksun;
+  uint8_t verify_checksum;
+  uint8_t post_header_len[ENUM_END_EVENT];
+  FILE *fp;
+  uint32_t error_no;
+  char error_msg[MYSQL_ERRMSG_SIZE];
 } MARIADB_RPL;
 
 /* Event header */
@@ -185,6 +298,7 @@ struct st_mariadb_rpl_format_description_event
   char *server_version;
   uint32_t timestamp;
   uint8_t header_len;
+  MARIADB_STRING post_header_lengths;
 };
 
 struct st_mariadb_rpl_checkpoint_event {
@@ -213,7 +327,7 @@ struct st_mariadb_rpl_table_map_event {
   unsigned int column_count;
   MARIADB_STRING column_types;
   MARIADB_STRING metadata;
-  char *null_indicator;
+  unsigned char *null_indicator;
 };
 
 struct st_mariadb_rpl_rand_event {
@@ -221,15 +335,33 @@ struct st_mariadb_rpl_rand_event {
   unsigned long long second_seed;
 };
 
-struct st_mariadb_rpl_encryption_event {
-  char scheme;
-  unsigned int key_version;
-  char *nonce;
+struct st_mariadb_rpl_intvar_event {
+  unsigned long long value;
+  uint8_t type;
 };
 
-struct st_mariadb_rpl_intvar_event {
-  char type;
-  unsigned long long value;
+struct st_mariadb_begin_load_query_event {
+  uint32_t file_id;
+  unsigned char *data;
+};
+
+struct st_mariadb_start_encryption_event {
+  uint8_t scheme;
+  uint32_t key_version;
+  char nonce[12];
+};
+
+struct st_mariadb_execute_load_query_event {
+  uint32_t thread_id;
+  uint32_t execution_time;
+  MARIADB_STRING schema;
+  uint16_t error_code;
+  uint32_t file_id;
+  uint32_t ofs1;
+  uint32_t ofs2;
+  uint8_t duplicate_flag;
+  MARIADB_STRING status_vars;
+  MARIADB_STRING statement;
 };
 
 struct st_mariadb_rpl_uservar_event {
@@ -246,12 +378,14 @@ struct st_mariadb_rpl_rows_event {
   uint64_t table_id;
   uint16_t flags;
   uint32_t column_count;
-  char *column_bitmap;
-  char *column_update_bitmap;
+  unsigned char *column_bitmap;
+  unsigned char *column_update_bitmap;
+  unsigned char *null_bitmap;
   size_t row_data_size;
   void *row_data;
   size_t extra_data_size;
   void *extra_data;
+  uint8_t compressed;
 };
 
 struct st_mariadb_rpl_heartbeat_event {
@@ -261,10 +395,26 @@ struct st_mariadb_rpl_heartbeat_event {
   uint16_t flags;
 };
 
+struct st_mariadb_rpl_xa_prepare_log_event {
+  uint8_t one_phase;
+  uint32_t format_id;
+  uint32_t gtrid_len;
+  uint32_t bqual_len;
+  MARIADB_STRING xid;
+};
+
+struct st_mariadb_gtid_log_event {
+  uint8_t commit_flag;
+  char    source_id[16];
+  uint64_t sequence_nr;
+};
+
 typedef struct st_mariadb_rpl_event
 {
   /* common header */
   MA_MEM_ROOT memroot;
+  unsigned char *raw_data;
+  size_t raw_data_size;
   unsigned int checksum;
   char ok;
   enum mariadb_rpl_event event_type;
@@ -273,6 +423,7 @@ typedef struct st_mariadb_rpl_event
   unsigned int event_length;
   unsigned int next_event_pos;
   unsigned short flags;
+  void *raw_data;
   /****************/
   union {
     struct st_mariadb_rpl_rotate_event rotate;
@@ -285,18 +436,54 @@ typedef struct st_mariadb_rpl_event
     struct st_mariadb_rpl_annotate_rows_event annotate_rows;
     struct st_mariadb_rpl_table_map_event table_map;
     struct st_mariadb_rpl_rand_event rand;
-    struct st_mariadb_rpl_encryption_event encryption;
     struct st_mariadb_rpl_intvar_event intvar;
     struct st_mariadb_rpl_uservar_event uservar;
     struct st_mariadb_rpl_rows_event rows;
     struct st_mariadb_rpl_heartbeat_event heartbeat;
+    struct st_mariadb_rpl_xa_prepare_log_event xa_prepare_log;
+    struct st_mariadb_begin_load_query_event begin_load_query;
+    struct st_mariadb_execute_load_query_event execute_load_query;
+    struct st_mariadb_gtid_log_event gtid_log;
+    struct st_mariadb_start_encryption_event start_encryption;
   } event;
   /* Added in C/C 3.3.0 */
   uint8_t is_semi_sync;
   uint8_t semi_sync_flags;
 } MARIADB_RPL_EVENT;
 
+/* compression uses myisampack format */
+#define myisam_uint1korr(B) ((uint8_t)(*B))
+#define myisam_uint2korr(B)\
+((uint16_t)(((uint16_t)(((const uchar*)(B))[1])) | ((uint16_t) (((const uchar*) (B))[0]) << 8)))
+#define myisam_uint3korr(B)\
+((uint32_t)(((uint32_t)(((const uchar*)(B))[2])) |\
+(((uint32_t)(((const uchar*)(B))[1])) << 8) |\
+(((uint32_t)(((const uchar*)(B))[0])) << 16)))
+#define myisam_uint4korr(B)\
+((uint32_t)(((uint32_t)(((const uchar*)(B))[3])) |\
+(((uint32_t)(((const uchar*)(B))[2])) << 8) |\
+(((uint32_t)(((const uchar*) (B))[1])) << 16) |\
+(((uint32_t)(((const uchar*) (B))[0])) << 24)))
+
+#define RPL_SAFEGUARD(rpl, event, condition) \
+if (!(condition))\
+{\
+  my_set_error((rpl)->mysql, CR_BINLOG_ERROR, SQLSTATE_UNKNOWN, 0,\
+                (rpl)->filename_length, (rpl)->filename,\
+                (rpl)->start_position,\
+                "Packet corrupted");\
+  mariadb_free_rpl_event((event));\
+  return 0;\
+}
+
 #define mariadb_rpl_init(a) mariadb_rpl_init_ex((a), MARIADB_RPL_VERSION)
+#define rpl_clear_error(rpl)\
+(rpl)->error_no= (rpl)->error_msg[0]= 0
+
+#define IS_ROW_VERSION2(a)\
+  ((a) == WRITE_ROWS_EVENT  || (a) == UPDATE_ROWS_EVENT || \
+   (a) == DELETE_ROWS_EVENT || (a) == WRITE_ROWS_COMPRESSED_EVENT ||\
+   (a) == UPDATE_ROWS_COMPRESSED_EVENT || (a) == DELETE_ROWS_COMPRESSED_EVENT)
 
 /* Function prototypes */
 MARIADB_RPL * STDCALL mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version);
