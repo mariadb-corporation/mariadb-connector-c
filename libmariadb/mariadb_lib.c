@@ -304,6 +304,9 @@ ulong
 net_field_length(uchar **packet)
 {
   reg1 uchar *pos= *packet;
+  if (!pos)
+    return NULL_LENGTH;
+
   if (*pos < 251)
   {
     (*packet)++;
@@ -1043,7 +1046,7 @@ unpack_fields(const MYSQL *mysql,
     for (i=0; i < field_count; i++)
     {
       uint length= (uint)(row->data[i+1] - row->data[i] - 1);
-      if (!row->data[i] && row->data[i][length])
+      if (!row->data[i] || row->data[i][length])
         goto error;
 
       *(char **)(((char *)field) + rset_field_offsets[i*2])=
@@ -1246,8 +1249,12 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
       *prev_pos=0;				/* Terminate prev field */
     prev_pos=pos;
   }
-  row[field]=(char*) prev_pos+1;		/* End of last field */
-  *prev_pos=0;					/* Terminate last field */
+
+  if (prev_pos)
+  {
+    row[field]=(char*) prev_pos+1;		/* End of last field */
+    *prev_pos=0;					/* Terminate last field */
+  }
   return 0;
 }
 
