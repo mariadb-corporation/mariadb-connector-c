@@ -44,9 +44,8 @@ jobs:
     - env: srv=mariadb v=10.5
       os: windows
       language: shell
-    - env: srv=mariadb v=10.2 local=1
-      dist: bionic
     - env: srv=mariadb v=10.3 local=1
+      dist: bionic
     - env: srv=mariadb v=10.4 local=1
     - env: srv=mariadb v=10.5 local=1
     - env: srv=mariadb v=10.6 local=1
@@ -62,13 +61,13 @@ jobs:
       env: srv=skysql
     - if: type = push AND fork = false
       env: srv=skysql-ha
-    - env: server_branch=10.2
-    - env: server_branch=10.2 TEST_OPTION=--ps-protocol
     - env: server_branch=10.3
     - env: server_branch=10.3 TEST_OPTION=--ps-protocol
     - env: server_branch=10.4
     - env: server_branch=10.4 TEST_OPTION=--ps-protocol
     - env: server_branch=10.5
     - env: server_branch=10.5 TEST_OPTION=--ps-protocol
+    - env: server_branch=10.6
+    - env: server_branch=10.6 TEST_OPTION=--ps-protocol
 
 script: ./travis.sh
