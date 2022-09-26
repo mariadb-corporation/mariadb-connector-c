@@ -1,0 +1,3 @@
+[submodule "external/crypto_wrapper"]
+	path = external/crypto_wrapper
+	url = https://github.com/9EOR9/crypto_wrapper

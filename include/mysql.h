@@ -68,6 +68,12 @@ typedef struct st_ma_const_string
   size_t length;
 } MARIADB_CONST_STRING;
 
+typedef struct st_ma_const_data
+{
+  const unsigned char *data;
+  size_t length;
+} MARIADB_CONST_DATA;
+
 
 #ifndef ST_MA_USED_MEM_DEFINED
 #define ST_MA_USED_MEM_DEFINED

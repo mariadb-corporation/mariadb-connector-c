@@ -81,7 +81,12 @@ enum mariadb_rpl_option {
   MARIADB_RPL_GTID_CALLBACK,  /* GTID callback function */
   MARIADB_RPL_GTID_DATA,      /* GTID data */
   MARIADB_RPL_BUFFER,
-  MARIADB_RPL_VERIFY_CHECKSUM
+  MARIADB_RPL_VERIFY_CHECKSUM,
+  MARIADB_RPL_UNCOMPRESS,
+  MARIADB_RPL_HOST,
+  MARIADB_RPL_PORT,
+  MARIADB_RPL_EXTRACT_VALUES,
+  MARIADB_RPL_DECRYPTION_KEY
 };
 
 /* Event types: From MariaDB Server sql/log_event.h */
@@ -164,6 +169,7 @@ enum mariadb_rpl_event {
 #define COMPLETE_ROWS_F               0x08
 #define NO_CHECK_CONSTRAINT_CHECKS_F  0x80
 
+
 enum mariadb_rpl_status_code {
   Q_FLAGS2_CODE= 0x00,
   Q_SQL_MODE_CODE= 0x01,
@@ -188,6 +194,21 @@ enum mariadb_rpl_status_code {
   Q_DEFAULT_TABLE_ENCRYPTION_CODE= 0x14,
   Q_HRNOW= 128,  /* second part: 3 bytes */
   Q_XID= 129    /* xid: 8 bytes */
+};
+
+enum opt_metadata_field_type
+{
+  SIGNEDNESS = 1,
+  DEFAULT_CHARSET,
+  COLUMN_CHARSET,
+  COLUMN_NAME,
+  SET_STR_VALUE,
+  ENUM_STR_VALUE,
+  GEOMETRY_TYPE, 
+  SIMPLE_PRIMARY_KEY,
+  PRIMARY_KEY_WITH_PREFIX,
+  ENUM_AND_SET_DEFAULT_CHARSET,
+  ENUM_AND_SET_COLUMN_CHARSET
 };
 
 /* Log Event flags */
@@ -251,14 +272,13 @@ typedef struct st_mariadb_gtid {
   unsigned long long sequence_nr;
 } MARIADB_GTID;
 
+
 /* Generic replication handle */
 typedef struct st_mariadb_rpl {
   unsigned int version;
   MYSQL *mysql;
   char *filename;
   uint32_t filename_length;
-  unsigned char *buffer;
-  unsigned long buffer_size;
   uint32_t server_id;
   unsigned long start_position;
   uint32_t flags;
@@ -270,7 +290,34 @@ typedef struct st_mariadb_rpl {
   FILE *fp;
   uint32_t error_no;
   char error_msg[MYSQL_ERRMSG_SIZE];
+  uint8_t uncompress;
+  char *host;
+  uint32_t port;
+  uint8_t extract_values;
+  char nonce[12];
+  uint8_t encrypted;
+  char *decryption_key;
 } MARIADB_RPL;
+
+typedef struct st_mariadb_rpl_value {
+  enum enum_field_types field_type;
+  uint8_t is_null;
+  uint8_t is_signed;
+  union {
+    int64_t ll;
+    uint64_t ull;
+    float f;
+    double d;
+    MYSQL_TIME tm;
+    MARIADB_STRING str;
+  } val;
+} MARIADB_RPL_VALUE;
+
+typedef struct st_rpl_mariadb_row {
+  uint32_t column_count;
+  MARIADB_RPL_VALUE *columns;
+  struct st_rpl_mariadb_row *next;
+} MARIADB_RPL_ROW;
 
 /* Event header */
 struct st_mariadb_rpl_rotate_event {
@@ -324,10 +371,21 @@ struct st_mariadb_rpl_table_map_event {
   unsigned long long table_id;
   MARIADB_STRING database;
   MARIADB_STRING table;
-  unsigned int column_count;
+  uint32_t column_count;
   MARIADB_STRING column_types;
   MARIADB_STRING metadata;
   unsigned char *null_indicator;
+  unsigned char *signed_indicator;
+  MARIADB_CONST_DATA column_names;
+  MARIADB_CONST_DATA geometry_types;
+  uint32_t default_charset;
+  MARIADB_CONST_DATA column_charsets;
+  MARIADB_CONST_DATA simple_primary_keys;
+  MARIADB_CONST_DATA prefixed_primary_keys;
+  MARIADB_CONST_DATA set_values;
+  MARIADB_CONST_DATA enum_values;
+  uint8_t enum_set_default_charset;
+  MARIADB_CONST_DATA enum_set_column_charsets;
 };
 
 struct st_mariadb_rpl_rand_event {
@@ -386,6 +444,7 @@ struct st_mariadb_rpl_rows_event {
   size_t extra_data_size;
   void *extra_data;
   uint8_t compressed;
+  uint32_t row_count;
 };
 
 struct st_mariadb_rpl_heartbeat_event {
@@ -415,6 +474,7 @@ typedef struct st_mariadb_rpl_event
   MA_MEM_ROOT memroot;
   unsigned char *raw_data;
   size_t raw_data_size;
+  size_t raw_data_ofs;
   unsigned int checksum;
   char ok;
   enum mariadb_rpl_event event_type;
@@ -423,7 +483,6 @@ typedef struct st_mariadb_rpl_event
   unsigned int event_length;
   unsigned int next_event_pos;
   unsigned short flags;
-  void *raw_data;
   /****************/
   union {
     struct st_mariadb_rpl_rotate_event rotate;
@@ -449,21 +508,41 @@ typedef struct st_mariadb_rpl_event
   /* Added in C/C 3.3.0 */
   uint8_t is_semi_sync;
   uint8_t semi_sync_flags;
+  /* Added in C/C 3.3.5 */
+  MARIADB_RPL *rpl;
 } MARIADB_RPL_EVENT;
 
 /* compression uses myisampack format */
 #define myisam_uint1korr(B) ((uint8_t)(*B))
+#define myisam_sint1korr(B) ((int8_t)(*B))
 #define myisam_uint2korr(B)\
 ((uint16_t)(((uint16_t)(((const uchar*)(B))[1])) | ((uint16_t) (((const uchar*) (B))[0]) << 8)))
+#define myisam_sint2korr(B)\
+((int16_t)(((int16_t)(((const uchar*)(B))[1])) | ((int16_t) (((const uchar*) (B))[0]) << 8)))
 #define myisam_uint3korr(B)\
 ((uint32_t)(((uint32_t)(((const uchar*)(B))[2])) |\
 (((uint32_t)(((const uchar*)(B))[1])) << 8) |\
 (((uint32_t)(((const uchar*)(B))[0])) << 16)))
+#define myisam_sint3korr(B)\
+((int32_t)(((int32_t)(((const uchar*)(B))[2])) |\
+(((int32_t)(((const uchar*)(B))[1])) << 8) |\
+(((int32_t)(((const uchar*)(B))[0])) << 16)))
 #define myisam_uint4korr(B)\
 ((uint32_t)(((uint32_t)(((const uchar*)(B))[3])) |\
 (((uint32_t)(((const uchar*)(B))[2])) << 8) |\
 (((uint32_t)(((const uchar*) (B))[1])) << 16) |\
 (((uint32_t)(((const uchar*) (B))[0])) << 24)))
+#define myisam_sint4korr(B)\
+((int32_t)(((int32_t)(((const uchar*)(B))[3])) |\
+(((int32_t)(((const uchar*)(B))[2])) << 8) |\
+(((int32_t)(((const uchar*) (B))[1])) << 16) |\
+(((int32_t)(((const uchar*) (B))[0])) << 24)))
+#define mi_uint5korr(B)\
+((uint64_t)(((uint32_t) (((const uchar*) (B))[4])) |\
+(((uint32_t) (((const uchar*) (B))[3])) << 8) |\
+(((uint32_t) (((const uchar*) (B))[2])) << 16) |\
+(((uint32_t) (((const uchar*) (B))[1])) << 24)) |\
+(((uint64_t) (((const uchar*) (B))[0])) << 32))
 
 #define RPL_SAFEGUARD(rpl, event, condition) \
 if (!(condition))\
@@ -485,8 +564,40 @@ if (!(condition))\
    (a) == DELETE_ROWS_EVENT || (a) == WRITE_ROWS_COMPRESSED_EVENT ||\
    (a) == UPDATE_ROWS_COMPRESSED_EVENT || (a) == DELETE_ROWS_COMPRESSED_EVENT)
 
+#define IS_ROW_EVENT(a)\
+((a)->event_type == WRITE_ROWS_COMPRESSED_EVENT_V1 ||\
+(a)->event_type == UPDATE_ROWS_COMPRESSED_EVENT_V1 ||\
+(a)->event_type == DELETE_ROWS_COMPRESSED_EVENT_V1 ||\
+(a)->event_type == WRITE_ROWS_EVENT_V1 ||\
+(a)->event_type == UPDATE_ROWS_EVENT_V1 ||\
+(a)->event_type == DELETE_ROWS_EVENT_V1 ||\
+(a)->event_type == WRITE_ROWS_EVENT ||\
+(a)->event_type == UPDATE_ROWS_EVENT ||\
+(a)->event_type == DELETE_ROWS_EVENT)
+
+static inline uint64_t uintNkorr(uint8_t len, u_char *p)
+{
+  switch (len) {
+    case 1:
+      return *p;
+    case 2:
+      return uint2korr(p);
+    case 3:
+      return uint3korr(p);
+    case 4:
+      return uint4korr(p);
+    case 8:
+      return uint8korr(p);
+    default:
+      return 0;
+  }
+}
+
+
 /* Function prototypes */
 MARIADB_RPL * STDCALL mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version);
+const char * STDCALL mariadb_rpl_error(MARIADB_RPL *rpl);
+uint32_t STDCALL mariadb_rpl_errno(MARIADB_RPL *rpl);
 
 int mariadb_rpl_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
 int mariadb_rpl_get_optionsv(MARIADB_RPL *rpl, enum mariadb_rpl_option, ...);
@@ -495,6 +606,111 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl);
 void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl);
 MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVENT *event);
 void STDCALL mariadb_free_rpl_event(MARIADB_RPL_EVENT *event);
+
+MARIADB_RPL_ROW * STDCALL
+mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
+                         MARIADB_RPL_EVENT *tm_event,
+                         MARIADB_RPL_EVENT *row_event);
+
+/* Returned from get_latest_key_version() */
+#define ENCRYPTION_KEY_VERSION_INVALID (~(unsigned int)0)
+#define ENCRYPTION_KEY_NOT_ENCRYPTED (0)
+
+#define ENCRYPTION_KEY_SYSTEM_DATA 1
+#define ENCRYPTION_KEY_TEMPORARY_DATA 2
+
+/* Returned from get_key()  */
+#define ENCRYPTION_KEY_BUFFER_TOO_SMALL (100)
+
+#define ENCRYPTION_FLAG_DECRYPT 0
+#define ENCRYPTION_FLAG_ENCRYPT 1
+#define ENCRYPTION_FLAG_NOPAD 2
+
+struct st_mariadb_encryption {
+  int interface_version; /**< version plugin uses */
+
+  /********************* KEY MANAGEMENT ***********************************/
+
+  /**
+    Function returning latest key version for a given key id.
+
+    @return A version or ENCRYPTION_KEY_VERSION_INVALID to indicate an error.
+  */
+  unsigned int (*get_latest_key_version)(unsigned int key_id);
+
+  /**
+    Function returning a key for a key version
+
+    @param key_id       The requested key id
+    @param version      The requested key version
+    @param key          The key will be stored there. Can be NULL -
+                        in which case no key will be returned
+    @param key_length   in: key buffer size
+                        out: the actual length of the key
+
+    This method can be used to query the key length - the required
+    buffer size - by passing key==NULL.
+
+    If the buffer size is less than the key length the content of the
+    key buffer is undefined (the plugin is free to partially fill it with
+    the key data or leave it untouched).
+
+    @return 0 on success, or
+            ENCRYPTION_KEY_VERSION_INVALID, ENCRYPTION_KEY_BUFFER_TOO_SMALL
+            or any other non-zero number for errors
+  */
+  unsigned int (*get_key)(unsigned int key_id, unsigned int version,
+                          unsigned char *key, unsigned int *key_length);
+
+  /********************* ENCRYPTION **************************************/
+  /*
+    The caller uses encryption as follows:
+      1. Create the encryption context object of the crypt_ctx_size() bytes.
+      2. Initialize it with crypt_ctx_init().
+      3. Repeat crypt_ctx_update() until there are no more data to encrypt.
+      4. Write the remaining output bytes and destroy the context object
+         with crypt_ctx_finish().
+  */
+
+  /**
+    Returns the size of the encryption context object in bytes
+  */
+  unsigned int (*crypt_ctx_size)(unsigned int key_id, unsigned int key_version);
+  /**
+    Initializes the encryption context object.
+  */
+  int (*crypt_ctx_init)(void *ctx, const unsigned char *key, unsigned int klen,
+                        const unsigned char *iv, unsigned int ivlen, int flags,
+                        unsigned int key_id, unsigned int key_version);
+  /**
+    Processes (encrypts or decrypts) a chunk of data
+
+    Writes the output to th dst buffer. note that it might write
+    more bytes that were in the input. or less. or none at all.
+  */
+  int (*crypt_ctx_update)(void *ctx, const unsigned char *src,
+                          unsigned int slen, unsigned char *dst,
+                          unsigned int *dlen);
+  /**
+    Writes the remaining output bytes and destroys the encryption context
+
+    crypt_ctx_update might've cached part of the output in the context,
+    this method will flush these data out.
+  */
+  int (*crypt_ctx_finish)(void *ctx, unsigned char *dst, unsigned int *dlen);
+  /**
+    Returns the length of the encrypted data
+
+    It returns the exact length, given only the source length.
+    Which means, this API only supports encryption algorithms where
+    the length of the encrypted data only depends on the length of the
+    input (a.k.a. compression is not supported).
+  */
+  unsigned int (*encrypted_length)(unsigned int slen, unsigned int key_id,
+                                   unsigned int key_version);
+};
+
+
 
 #ifdef	__cplusplus
 }

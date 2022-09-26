@@ -33,6 +33,7 @@ SET(MARIADB_LIB_SYMBOLS
  mariadb_rpl_fetch
  mariadb_rpl_optionsv
  mariadb_rpl_get_optionsv
+ mariadb_rpl_extract_rows
  mariadb_rpl_init_ex
  mariadb_free_rpl_event
  mariadb_field_attr
@@ -303,6 +304,7 @@ SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
 ${CC_SOURCE_DIR}/plugins/auth/my_auth.c
 ma_array.c
 ma_charset.c
+ma_decimal.c
 ma_hashtbl.c
 ma_net.c
 mariadb_charset.c
@@ -433,9 +435,12 @@ IF(WIN32)
                    "FILE_DESCRIPTION:Dynamic lib for client/server communication")
 ENDIF()
 
+IF(WITH_CRYPTO)
+   SET(CRYPTO_LIBS cw_crypt)
+ENDIF()
 
 ADD_LIBRARY(mariadbclient STATIC  ${MARIADB_OBJECTS} ${EMPTY_FILE})
-TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
+TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS} ${CRYPTO_LIBS})
 
 IF(UNIX)
   ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE})
@@ -445,7 +450,7 @@ ELSE()
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINKER_LANGUAGE C)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${SYSTEM_LIBS})
+TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${SYSTEM_LIBS} ${CRYPTO_LIBS})
 
 SIGN_TARGET(libmariadb)
 
