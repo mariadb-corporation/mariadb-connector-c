@@ -91,6 +91,12 @@ unittest/libmariadb/thread
 unittest/libmariadb/view
 unittest/libmariadb/conc336
 
+benchmark/benchmark/
+benchmark/bld/
+benchmark/mariadb.json
+benchmark/mysql.json
+benchmark/main-benchmark
+
 #VS files/directories
 *.vcxproj
 *.filters
