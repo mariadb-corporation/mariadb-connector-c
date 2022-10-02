@@ -2,6 +2,14 @@
 
 set -e
 
+if [ -n "$BENCH" ] ; then
+  sudo benchmark/build.sh
+  cd benchmark
+  sudo ./installation.sh
+  sudo ./launch.sh
+  exit
+fi
+
 export CC_DIR=/home/travis/build/mariadb-corporation/mariadb-connector-c
 if [ -n "$server_branch" ] ; then
 
