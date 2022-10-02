@@ -60,6 +60,7 @@ ELSE()
   ADD_OPTION(WITH_ICONV "enables character set conversion" OFF)
 ENDIF()
 
+ADD_OPTION(WITH_NONBLOCK "Enables support of non blocking API" ON)
 ADD_OPTION(WITH_UNIT_TESTS "build test suite" ON)
 ADD_OPTION(WITH_DYNCOL "Enables support of dynamic columns" ON)
 ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)

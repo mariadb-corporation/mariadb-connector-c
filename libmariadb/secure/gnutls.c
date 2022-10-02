@@ -31,8 +31,10 @@
 #include <mysql/client_plugin.h>
 #include <string.h>
 #include <ma_tls.h>
+#ifdef HAVE_NONBLOCK
 #include <mariadb_async.h>
 #include <ma_context.h>
+#endif
 
 pthread_mutex_t LOCK_gnutls_config;
 
@@ -1220,6 +1222,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   return 0;
 }
 
+#ifdef HAVE_NONBLOCK
 ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t res;
@@ -1268,6 +1271,7 @@ ssize_t ma_tls_read_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length
       (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
   }
 }
+#endif
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {

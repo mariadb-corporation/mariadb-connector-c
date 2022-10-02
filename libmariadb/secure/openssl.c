@@ -64,8 +64,10 @@
 #endif
 #include <ma_pthread.h>
 
+#ifdef HAVE_NONBLOCK
 #include <mariadb_async.h>
 #include <ma_context.h>
+#endif
 
 extern my_bool ma_tls_initialized;
 extern unsigned int mariadb_deinitialize_ssl;
@@ -529,6 +531,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   return 0;
 }
 
+#ifdef HAVE_NONBLOCK
 static my_bool
 ma_tls_async_check_result(int res, struct mysql_async_context *b, SSL *ssl)
 {
@@ -582,7 +585,7 @@ ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
       return res;
   }
 }
-
+#endif
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
