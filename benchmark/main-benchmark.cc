@@ -17,9 +17,9 @@ std::string GetEnvironmentVariableOrDefault(const std::string& variable_name,
 
 std::string DB_PORT = GetEnvironmentVariableOrDefault("TEST_DB_PORT", "3306");
 std::string DB_DATABASE = GetEnvironmentVariableOrDefault("TEST_DB_DATABASE", "bench");
-std::string DB_USER = GetEnvironmentVariableOrDefault("TEST_DB_USER", "root");
+std::string DB_USER = GetEnvironmentVariableOrDefault("TEST_DB_USER", "foobar");
 std::string DB_HOST = GetEnvironmentVariableOrDefault("TEST_DB_HOST", "127.0.0.1");
-std::string DB_PASSWORD = GetEnvironmentVariableOrDefault("TEST_DB_PASSWORD", "");
+std::string DB_PASSWORD = GetEnvironmentVariableOrDefault("TEST_DB_PASSWORD", "foobar");
 
 #define check_conn_rc(rc, mysql) \
 do {\
