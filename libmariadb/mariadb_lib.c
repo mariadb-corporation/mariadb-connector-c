@@ -3911,10 +3911,14 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((char **)arg)= mysql->options.ssl_cipher;
     break;
   case MYSQL_OPT_SSL_CRL:
-    *((char **)arg)= mysql->options.extension ? mysql->options.ssl_cipher : NULL;
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_crl : NULL;
     break;
   case MYSQL_OPT_SSL_CRLPATH:
     *((char **)arg)= mysql->options.extension ? mysql->options.extension->ssl_crlpath : NULL;
+    break;
+  case MARIADB_OPT_TLS_VERSION:
+  case MYSQL_OPT_TLS_VERSION:
+    *((char **)arg)= mysql->options.extension ? mysql->options.extension->tls_version : NULL;
     break;
   case MYSQL_OPT_CONNECT_ATTRS:
     /* mysql_get_optionsv(mysql, MYSQL_OPT_CONNECT_ATTRS, keys, vals, elements) */
