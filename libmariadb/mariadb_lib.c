@@ -1727,6 +1727,14 @@ restart:
   if (ma_pvio_connect(pvio, &cinfo) != 0)
   {
     ma_pvio_close(pvio);
+    if (mysql->options.extension && mysql->options.extension->async_context &&
+        mysql->options.extension->async_context->pvio)
+    {
+      /* pvio delegated to mysql->net.pvio by ma_net_init().
+       * invalidate the pvio pointer in the async context */
+      mysql->options.extension->async_context->pvio = NULL;
+    }
+
     if (is_multi)
     {
       connect_attempts++;

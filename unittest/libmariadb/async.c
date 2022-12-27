@@ -248,12 +248,60 @@ static int test_conc129(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_conc622(MYSQL *my __attribute__((unused)))
+{
+  int rc;
+  MYSQL mysql, *ret;
+  int status;
+  uint default_timeout;
+  int i;
+
+  if (skip_async)
+    return SKIP;
+
+  for (i=0; i < 100; i++)
+  {
+    mysql_init(&mysql);
+    rc= mysql_options(&mysql, MYSQL_OPT_NONBLOCK, 0);
+    check_mysql_rc(rc, (MYSQL *)&mysql);
+
+    /* set timeouts to 300 microseconds */
+    default_timeout= 3;
+    mysql_options(&mysql, MYSQL_OPT_READ_TIMEOUT, &default_timeout);
+    mysql_options(&mysql, MYSQL_OPT_CONNECT_TIMEOUT, &default_timeout);
+    mysql_options(&mysql, MYSQL_OPT_WRITE_TIMEOUT, &default_timeout);
+    mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp");
+
+    /* Returns 0 when done, else flag for what to wait for when need to block. */
+    status= mysql_real_connect_start(&ret, &mysql, "0.0.0.0", username, password, schema, port, socketname, 0);
+    while (status)
+    {
+      status= wait_for_mysql(&mysql, status);
+      status= mysql_real_connect_cont(&ret, &mysql, status);
+    }
+    if (!ret)
+    {
+      status= mysql_close_start(&mysql);
+      while (status)
+      {
+        status= wait_for_mysql(&mysql, status);
+        status= mysql_close_cont(&mysql, status);
+      }
+    } else {
+      diag("Expected error when connection to host '0.0.0.0'");
+      return FAIL;
+    }
+  }
+  return OK;
+}
+
 
 struct my_tests_st my_tests[] = {
   {"test_async", test_async, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"async1", async1, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"test_conc131", test_conc131, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {"test_conc129", test_conc129, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
+  {"test_conc622", test_conc622, TEST_CONNECTION_NONE, 0,  NULL,  NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 

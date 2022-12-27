@@ -1667,6 +1667,7 @@ static int test_conc312(MYSQL *my)
 
   if (rc)
   {
+    diag("Error: %s", mysql_error(my));
     diag("caching_sha256_password not supported");
     return SKIP; 
   }
