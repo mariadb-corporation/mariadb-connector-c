@@ -103,7 +103,7 @@ int ma_net_init(NET *net, MARIADB_PVIO* pvio)
   if (pvio != 0)					/* If real connection */
   {
     ma_pvio_get_handle(pvio, &net->fd);
-    ma_pvio_blocking(pvio, 1, 0);
+    ma_pvio_blocking(pvio, MATCH_PVIO_SYNC_OR_ASYNC(pvio), 0);
     ma_pvio_fast_send(pvio);
   }
   return 0;

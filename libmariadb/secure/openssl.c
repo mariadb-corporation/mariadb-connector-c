@@ -456,6 +456,8 @@ error:
   return NULL;
 }
 
+extern int ma_pvio_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
+
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   SSL *ssl = (SSL *)ctls->ssl;
@@ -490,11 +492,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   {
     switch((SSL_get_error(ssl, rc))) {
     case SSL_ERROR_WANT_READ:
-      if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.connect_timeout) < 1)
+      if (ma_pvio_wait_io_or_timeout(pvio, TRUE, pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1) /* handle non-blocking read */
         try_connect= 0;
       break;
     case SSL_ERROR_WANT_WRITE:
-      if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.connect_timeout) < 1)
+      if (ma_pvio_wait_io_or_timeout(pvio, FALSE, pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1) /* handle non-blocking write */
         try_connect= 0;
       break;
     default:
@@ -530,7 +532,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 }
 
 static my_bool
-ma_tls_async_check_result(int res, struct mysql_async_context *b, SSL *ssl)
+ma_tls_async_check_result(int res, struct mysql_async_context *b, SSL *ssl, int timeout)
 {
   int ssl_err;
   b->events_to_wait_for= 0;
@@ -543,6 +545,11 @@ ma_tls_async_check_result(int res, struct mysql_async_context *b, SSL *ssl)
     b->events_to_wait_for|= MYSQL_WAIT_WRITE;
   else
     return 1;
+  if (timeout > 0)
+  {
+    b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
+    b->timeout_value= timeout;
+  }
   if (b->suspend_resume_hook)
     (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
   my_context_yield(&b->async_context);
@@ -557,13 +564,16 @@ ssize_t ma_tls_read_async(MARIADB_PVIO *pvio,
 {
   int res;
   struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  int timeout= pvio->timeout[PVIO_READ_TIMEOUT];
   MARIADB_TLS *ctls= pvio->ctls;
 
   for (;;)
   {
     res= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
-    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
+    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl, timeout))
       return res;
+    if (b->events_occurred & MYSQL_WAIT_TIMEOUT)
+      return -1;
   }
 }
 
@@ -573,13 +583,16 @@ ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
 {
   int res;
   struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  int timeout= pvio->timeout[PVIO_WRITE_TIMEOUT];
   MARIADB_TLS *ctls= pvio->ctls;
 
   for (;;)
   {
     res= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
-    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
+    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl, timeout))
       return res;
+    if (b->events_occurred & MYSQL_WAIT_TIMEOUT)
+      return -1;
   }
 }
 
