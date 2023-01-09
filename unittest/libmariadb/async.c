@@ -288,7 +288,7 @@ static int test_conc622(MYSQL *my __attribute__((unused)))
         status= mysql_close_cont(&mysql, status);
       }
     } else {
-      diag("Expected error when connection to host '0.0.0.0'");
+      diag("Expected error when connection to host '0.0.0.0', mysql_errno: %d, mysql_err: %s", mysql_errno(&mysql), mysql_error(&mysql));
       return FAIL;
     }
   }
