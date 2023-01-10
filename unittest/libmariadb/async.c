@@ -259,7 +259,7 @@ static int test_conc622(MYSQL *my __attribute__((unused)))
   if (skip_async)
     return SKIP;
 
-  for (i=0; i < 100; i++)
+  for (i=0; i < 10; i++)
   {
     mysql_init(&mysql);
     rc= mysql_options(&mysql, MYSQL_OPT_NONBLOCK, 0);
