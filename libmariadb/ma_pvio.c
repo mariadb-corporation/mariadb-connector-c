@@ -199,7 +199,7 @@ static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t lengt
     if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_READ;
-    if (timeout >= 0)
+    if (timeout > 0)
     {
       b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
       b->timeout_value= timeout;
@@ -325,7 +325,7 @@ static ssize_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size
     if (res >= 0 || IS_BLOCKING_ERROR())
       return res;
     b->events_to_wait_for= MYSQL_WAIT_WRITE;
-    if (timeout >= 0)
+    if (timeout > 0)
     {
       b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
       b->timeout_value= timeout;
@@ -402,9 +402,11 @@ end:
 /* {{{ void ma_pvio_close */
 void ma_pvio_close(MARIADB_PVIO *pvio)
 {
+  MYSQL *mysql;
   /* free internal structures and close connection */
   if (pvio)
   {
+    mysql = pvio->mysql;
 #ifdef HAVE_TLS
     if (pvio->ctls)
     {
@@ -417,6 +419,10 @@ void ma_pvio_close(MARIADB_PVIO *pvio)
 
     if (pvio->cache)
       free(pvio->cache);
+
+    /* if there is an ongoing async operation */
+    if (mysql->options.extension && mysql->options.extension->async_context && mysql->options.extension->async_context->pvio)
+      mysql->options.extension->async_context->pvio = 0; /* clear pvio about to be freed */
 
     free(pvio);
   }
@@ -450,7 +456,7 @@ ma_pvio_wait_async(struct mysql_async_context *b, enum enum_pvio_io_event event,
     break;
   }
 
-  if (timeout >= 0)
+  if (timeout > 0)
   {
     b->events_to_wait_for |= MYSQL_WAIT_TIMEOUT;
     b->timeout_value= timeout;

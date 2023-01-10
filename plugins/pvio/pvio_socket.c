@@ -832,7 +832,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
                     ER(CR_CONNECTION_ERROR), cinfo->unix_socket, socket_errno);
       goto error;
     }
-    if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
+    if (pvio_socket_blocking(pvio, MATCH_PVIO_SYNC_OR_ASYNC(pvio), 0) == SOCKET_ERROR)
     {
       goto error;
     }
@@ -992,7 +992,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 #endif
       goto error;
     }
-    if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
+    if (pvio_socket_blocking(pvio, MATCH_PVIO_SYNC_OR_ASYNC(pvio), 0) == SOCKET_ERROR)
       goto error;
   }
   /* apply timeouts */

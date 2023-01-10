@@ -36,6 +36,8 @@ typedef struct st_ma_pvio_methods PVIO_METHODS;
 #define IS_MYSQL_ASYNC_ACTIVE(a) \
   (IS_MYSQL_ASYNC(a)&& (a)->options.extension->async_context->active)
 
+#define MATCH_PVIO_SYNC_OR_ASYNC(a) !IS_PVIO_ASYNC(a)
+
 enum enum_pvio_timeout {
   PVIO_CONNECT_TIMEOUT= 0,
   PVIO_READ_TIMEOUT,

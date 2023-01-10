@@ -259,7 +259,7 @@ static int test_conc622(MYSQL *my __attribute__((unused)))
   if (skip_async)
     return SKIP;
 
-  for (i=0; i < 100; i++)
+  for (i=0; i < 10; i++)
   {
     mysql_init(&mysql);
     rc= mysql_options(&mysql, MYSQL_OPT_NONBLOCK, 0);
@@ -273,7 +273,7 @@ static int test_conc622(MYSQL *my __attribute__((unused)))
     mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp");
 
     /* Returns 0 when done, else flag for what to wait for when need to block. */
-    status= mysql_real_connect_start(&ret, &mysql, "0.0.0.0", username, password, schema, port, socketname, 0);
+    status= mysql_real_connect_start(&ret, &mysql, "1.2.3.4", username, password, schema, port, socketname, 0);
     while (status)
     {
       status= wait_for_mysql(&mysql, status);
@@ -288,7 +288,7 @@ static int test_conc622(MYSQL *my __attribute__((unused)))
         status= mysql_close_cont(&mysql, status);
       }
     } else {
-      diag("Expected error when connection to host '0.0.0.0'");
+      diag("Expected error when connection to host '1.2.3.4'");
       return FAIL;
     }
   }
