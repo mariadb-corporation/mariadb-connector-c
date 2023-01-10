@@ -273,12 +273,16 @@ static int test_conc622(MYSQL *my __attribute__((unused)))
     mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp");
 
     /* Returns 0 when done, else flag for what to wait for when need to block. */
-    status= mysql_real_connect_start(&ret, &mysql, "0.0.0.0", username, password, schema, port, socketname, 0);
+    status= mysql_real_connect_start(&ret, &mysql, "1.2.3.4", username, password, schema, port, socketname, 0);
+    diag("status0: %d, pvio: %p", status, mysql.net.pvio);
     while (status)
     {
       status= wait_for_mysql(&mysql, status);
+      diag("status1: %d, pvio: %p", status, mysql.net.pvio);
       status= mysql_real_connect_cont(&ret, &mysql, status);
+      diag("status2: %d, pvio: %p", status, mysql.net.pvio);
     }
+    diag("status3 - mysql_errno: %d, mysql_err: %s", mysql_errno(&mysql), mysql_error(&mysql));
     if (!ret)
     {
       status= mysql_close_start(&mysql);
@@ -288,7 +292,7 @@ static int test_conc622(MYSQL *my __attribute__((unused)))
         status= mysql_close_cont(&mysql, status);
       }
     } else {
-      diag("Expected error when connection to host '0.0.0.0'");
+      diag("Expected error when connection to host '1.2.3.4', mysql_errno: %d, mysql_err: %s", mysql_errno(&mysql), mysql_error(&mysql));
       return FAIL;
     }
   }
