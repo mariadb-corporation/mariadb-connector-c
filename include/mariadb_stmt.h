@@ -34,14 +34,8 @@
     ((stmt)->mysql->extension->mariadb_server_capabilities & \
     (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))))
 
-#define SET_CLIENT_STMT_ERROR(a, b, c, d) \
-do { \
-  (a)->last_errno= (b);\
-  strncpy((a)->sqlstate, (c), SQLSTATE_LENGTH);\
-  (a)->sqlstate[SQLSTATE_LENGTH]= 0;\
-  strncpy((a)->last_error, (d) ? (d) : ER((b)), MYSQL_ERRMSG_SIZE);\
-  (a)->last_error[MYSQL_ERRMSG_SIZE - 1]= 0;\
-} while (0)
+#define SET_CLIENT_STMT_ERROR(a, b, c, d, ...) \
+  stmt_set_error((a),(b),(c),(d), ##__VA_ARGS__)
 
 #define CLEAR_CLIENT_STMT_ERROR(a) \
 do { \
@@ -223,6 +217,11 @@ void mysql_init_ps_subsystem(void);
 unsigned long net_field_length(unsigned char **packet);
 int ma_simple_command(MYSQL *mysql,enum enum_server_command command, const char *arg,
           	       size_t length, my_bool skipp_check, void *opt_arg);
+void stmt_set_error(MYSQL_STMT *stmt,
+                  unsigned int error_nr,
+                  const char *sqlstate,
+                  const char *format,
+                  ...);
 /*
  *  function prototypes
  */
