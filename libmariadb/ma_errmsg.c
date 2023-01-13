@@ -140,10 +140,10 @@ const char *client_errors[]=
 /* 2055 */  "Lost connection to MySQL server at '%s', system error: %d",
 /* 2056 */  "Server closed statement due to a prior %s function call",
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
-/* 2059 */  "Can't connect twice. Already connected",
-/* 2058 */  "Plugin %s could not be loaded: %s",
-/* 2059 */  "An attribute with same name already exists",
-/* 2060 */  "Plugin doesn't support this function",
+/* 2058 */  "Can't connect twice. Already connected",
+/* 2059 */  "Plugin %s could not be loaded: %s",
+/* 2060 */  "An attribute with same name already exists",
+/* 2061 */  "Plugin doesn't support this function",
             ""
 };
 #endif
