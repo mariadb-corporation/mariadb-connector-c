@@ -803,11 +803,16 @@ static int test_conc223(MYSQL *mysql)
   res= mysql_store_result(mysql);
   while ((row = mysql_fetch_row(res)))
   {
-    int id= atoi(row[0]);
-    if (!mariadb_get_charset_by_nr(id))
+    int id;
+
+    if (row[0])
     {
-      diag("%04d %s %s", id, row[1], row[2]);
-      found++;
+      id= atoi(row[0]);
+      if (!mariadb_get_charset_by_nr(id))
+      {
+        diag("%04d %s %s", id, row[1], row[2]);
+        found++;
+      }
     }
   }
   mysql_free_result(res);

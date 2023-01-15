@@ -89,18 +89,26 @@ void stmt_set_error(MYSQL_STMT *stmt,
                   ...)
 {
   va_list ap;
-  const char *error= NULL;
 
-  if (error_nr >= CR_MIN_ERROR && error_nr <= CR_MYSQL_LAST_ERROR)
-    error= ER(error_nr);
-  else if (error_nr >= CER_MIN_ERROR && error_nr <= CR_MARIADB_LAST_ERROR)
-    error= CER(error_nr);
+  const char *errmsg;
 
   stmt->last_errno= error_nr;
   ma_strmake(stmt->sqlstate, sqlstate, SQLSTATE_LENGTH);
+
+  if (!format)
+  {
+    if (IS_MYSQL_ERROR(error_nr) || IS_MARIADB_ERROR(error_nr))
+      errmsg= ER(error_nr);
+    else {
+      snprintf(stmt->last_error, MYSQL_ERRMSG_SIZE - 1,
+               ER_UNKNOWN_ERROR_CODE, error_nr);
+      return;
+    }
+  }
+
   va_start(ap, format);
-  vsnprintf(stmt->last_error, MYSQL_ERRMSG_SIZE,
-            format ? format : error ? error : "", ap);
+  vsnprintf(stmt->last_error, MYSQL_ERRMSG_SIZE - 1,
+            format ? format : errmsg, ap);
   va_end(ap);
   return;
 }

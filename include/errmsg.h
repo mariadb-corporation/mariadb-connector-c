@@ -31,15 +31,13 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 }
 #endif
 
-
-
 #define CR_MIN_ERROR		2000	/* For easier client code */
 #define CR_MAX_ERROR		2999
 #define CER_MIN_ERROR           5000
 #define CER_MAX_ERROR           5999
-#define CER(X) mariadb_client_errors[(X)-CER_MIN_ERROR]
-#define ER(X) client_errors[(X)-CR_MIN_ERROR]
 #define CLIENT_ERRMAP		2	/* Errormap used by ma_error() */
+
+#define ER_UNKNOWN_ERROR_CODE "Unknown or undefined error code (%d)"
 
 #define CR_UNKNOWN_ERROR	2000
 #define CR_SOCKET_CREATE_ERROR	2001
@@ -109,3 +107,12 @@ extern const char *mariadb_client_errors[];	/* Error messages */
    value for CR_MARIADB_LAST_ERROR */
 #define CR_MARIADB_LAST_ERROR CR_ERR_NET_UNCOMPRESS
 #endif
+
+#define IS_MYSQL_ERROR(code) ((code) > CR_MIN_ERROR && (code) < CR_MYSQL_LAST_ERROR)
+#define IS_MARIADB_ERROR(code) ((code) > CER_MIN_ERROR && (code) < CR_MARIADB_LAST_ERROR)
+
+#define ER(code) IS_MYSQL_ERROR((code)) ? client_errors[(code) - CR_MIN_ERROR] : \
+                 IS_MARIADB_ERROR((code)) ?  mariadb_client_errors[(code) - CER_MIN_ERROR] : \
+                 "Unknown or undefined error code" 
+#define CER(code) ER((code))
+
