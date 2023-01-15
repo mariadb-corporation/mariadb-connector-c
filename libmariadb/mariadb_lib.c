@@ -2147,7 +2147,7 @@ void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
     {
       MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
       stmt->mysql= NULL;
-      SET_CLIENT_STMT_ERROR(stmt, CR_STMT_CLOSED, SQLSTATE_UNKNOWN, function_name);
+      SET_CLIENT_STMT_ERROR(stmt, CR_STMT_CLOSED, SQLSTATE_UNKNOWN, 0, function_name);
     }
     mysql->stmts= NULL;
   }
@@ -2347,18 +2347,20 @@ void my_set_error(MYSQL *mysql,
 
   const char *errmsg;
 
-  if (!format)
-  {
-    if (error_nr >= CR_MIN_ERROR && error_nr <= CR_MYSQL_LAST_ERROR)
-      errmsg= ER(error_nr);
-    else if (error_nr >= CER_MIN_ERROR && error_nr <= CR_MARIADB_LAST_ERROR)
-      errmsg= CER(error_nr);
-    else
-      errmsg= ER(CR_UNKNOWN_ERROR);
-  }
-
   mysql->net.last_errno= error_nr;
   ma_strmake(mysql->net.sqlstate, sqlstate, SQLSTATE_LENGTH);
+
+  if (!format)
+  {
+    if (IS_MYSQL_ERROR(error_nr) || IS_MARIADB_ERROR(error_nr))
+      errmsg= ER(error_nr);
+    else {
+      snprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE - 1,
+               ER_UNKNOWN_ERROR_CODE, error_nr);
+      return;
+    }
+  }
+
   va_start(ap, format);
   vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE - 1,
             format ? format : errmsg, ap);
