@@ -106,10 +106,11 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_ERR_NET_READ 5013
 #define CR_ERR_NET_WRITE 5014
 #define CR_ERR_NET_UNCOMPRESS 5015
+#define CR_ERR_STMT_PARAM_CALLBACK 5016
 
 /* Always last, if you add new error codes please update the
    value for CR_MARIADB_LAST_ERROR */
-#define CR_MARIADB_LAST_ERROR CR_ERR_NET_UNCOMPRESS
+#define CR_MARIADB_LAST_ERROR CR_ERR_STMT_PARAM_CALLBACK
 
 #endif
 

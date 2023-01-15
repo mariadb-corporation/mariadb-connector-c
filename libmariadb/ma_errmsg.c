@@ -110,6 +110,7 @@ const char *mariadb_client_errors[] =
   /* 5013 */ "Read error: %s (%d)",
   /* 5014 */ "Write error: %s (%d)",
   /* 5015 */ "Error while uncompressing packet",
+  /* 5016 */ "Error while retrieving parameter from callback function",
   ""
 };
 

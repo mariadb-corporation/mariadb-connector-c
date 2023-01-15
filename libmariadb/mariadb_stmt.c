@@ -941,7 +941,10 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
 
   /* preallocate length bytes */
   if (!(start= p= (uchar *)malloc(length)))
-    goto mem_error;
+  {
+    SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+    goto error;
+  }
 
   int4store(p, stmt->stmt_id);
   p += STMT_ID_LENGTH;
@@ -973,7 +976,10 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
         if (!(start= (uchar *)realloc(start, length)))
-          goto mem_error;
+        {
+          SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+          goto error;
+        }
         p= start + offset;
       }
       for (i = 0; i < stmt->param_count; i++)
@@ -991,7 +997,13 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
       /* If callback for parameters was specified, we need to
          update bind information for new row */
       if (stmt->param_callback)
-        stmt->param_callback(stmt->user_data, stmt->params, j);
+      {
+        if (stmt->param_callback(stmt->user_data, stmt->params, j))
+        {
+          SET_CLIENT_STMT_ERROR(stmt, CR_ERR_STMT_PARAM_CALLBACK, SQLSTATE_UNKNOWN, 0);
+          goto error;
+        }
+      }
 
       if (mysql_stmt_skip_paramset(stmt, j))
         continue;
@@ -1059,7 +1071,10 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
           size_t offset= p - start;
           length= MAX(2 * length, offset + size + 20);
           if (!(start= (uchar *)realloc(start, length)))
-            goto mem_error;
+          {
+            SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+            goto error;
+          }
           p= start + offset;
         }
 
@@ -1075,8 +1090,7 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
   stmt->send_types_to_server= 0;
   *request_len = (size_t)(p - start);
   return start;
-mem_error:
-  SET_CLIENT_STMT_ERROR(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+error:
   free(start);
   *request_len= 0;
   return NULL;

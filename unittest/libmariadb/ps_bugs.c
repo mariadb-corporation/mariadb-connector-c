@@ -5587,7 +5587,58 @@ static int test_mdev19838(MYSQL *mysql)
   return OK;
 }
 
+my_bool conc623_param_callback(void *data __attribute((unused)),
+                               MYSQL_BIND *bind __attribute((unused)),
+                               unsigned int row_nr __attribute((unused)))
+{
+  return 1;
+}
+
+static int test_conc623(MYSQL *mysql)
+{
+  int rc;
+  unsigned int paramcount= 1;
+  unsigned int array_size= 2;
+  MYSQL_BIND bind;
+
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_query(mysql, "CREATE OR REPLACE TEMPORARY TABLE t1 (a int)");
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CB_USER_DATA, mysql);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramcount);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CB_PARAM, conc623_param_callback);
+  check_stmt_rc(rc, stmt);
+
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  rc= mysql_stmt_bind_param(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO t1 VALUES (?)"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  if (!rc)
+  {
+    diag("Error expected from callback function");
+    mysql_stmt_close(stmt);
+    return FAIL;
+  }
+
+  diag("Error (expected) %s", mysql_stmt_error(stmt));
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc623", test_conc623, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev19838", test_mdev19838, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc525", test_conc525, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc566", test_conc566, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
