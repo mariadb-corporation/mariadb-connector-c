@@ -715,6 +715,7 @@ unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size
   size_t length= 1024;
   size_t free_bytes= 0;
   size_t null_byte_offset= 0;
+  uchar *tmp_start;
   uint i;
 
   uchar *start= NULL, *p;
@@ -743,8 +744,9 @@ unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size
     {
       size_t offset= p - start;
       length+= offset + null_count + 20;
-      if (!(start= (uchar *)realloc(start, length)))
+      if (!(tmp_start= (uchar *)realloc(start, length)))
         goto mem_error;
+      start= tmp_start;
       p= start + offset;
     }
 
@@ -766,8 +768,9 @@ unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size
       {
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
-        if (!(start= (uchar *)realloc(start, length)))
+        if (!(tmp_start= (uchar *)realloc(start, length)))
           goto mem_error;
+        start= tmp_start;
         p= start + offset;
       }
       for (i = 0; i < stmt->param_count; i++)
@@ -836,8 +839,9 @@ unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size
       {
         size_t offset= p - start;
         length= MAX(2 * length, offset + size + 20);
-        if (!(start= (uchar *)realloc(start, length)))
+        if (!(tmp_start= (uchar *)realloc(start, length)))
           goto mem_error;
+        start= tmp_start;
         p= start + offset;
       }
       if (((stmt->params[i].is_null && *stmt->params[i].is_null) ||
@@ -910,6 +914,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
   size_t length= 1024;
   size_t free_bytes= 0;
   ushort flags= 0;
+  uchar *tmp_start;
   uint i, j;
 
   uchar *start= NULL, *p;
@@ -961,8 +966,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
       {
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
-        if (!(start= (uchar *)realloc(start, length)))
+        if (!(tmp_start= (uchar *)realloc(start, length)))
           goto mem_error;
+        start= tmp_start;
         p= start + offset;
       }
       for (i = 0; i < stmt->param_count; i++)
@@ -1047,8 +1053,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
         {
           size_t offset= p - start;
           length= MAX(2 * length, offset + size + 20);
-          if (!(start= (uchar *)realloc(start, length)))
+          if (!(tmp_start= (uchar *)realloc(start, length)))
             goto mem_error;
+          start= tmp_start;
           p= start + offset;
         }
 
