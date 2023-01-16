@@ -2866,7 +2866,7 @@ mysql_get_proto_info(MYSQL *mysql)
 const char * STDCALL
 mysql_get_client_info(void)
 {
-  return (char*) MARIADB_CLIENT_VERSION_STR;
+  return (char*) MARIADB_PACKAGE_VERSION;
 }
 
 static size_t get_store_length(size_t length)
