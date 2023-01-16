@@ -108,6 +108,15 @@ void stmt_set_error(MYSQL_STMT *stmt,
     }
   }
 
+  /* Fix for CONC-627: If this is a server error message, we don't
+     need to substitute and possible variadic arguments will be
+     ignored */
+  if (!IS_MYSQL_ERROR(error_nr) && !IS_MARIADB_ERROR(error_nr))
+  {
+    strncpy(stmt->last_error, format, MYSQL_ERRMSG_SIZE - 1);
+    return;
+  }
+
   va_start(ap, format);
   vsnprintf(stmt->last_error, MYSQL_ERRMSG_SIZE - 1,
             format ? format : errmsg, ap);

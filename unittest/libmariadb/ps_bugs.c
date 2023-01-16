@@ -5637,8 +5637,29 @@ static int test_conc623(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc627(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  int rc;
+
+  rc= mysql_stmt_prepare(stmt, SL("show grants for mysqltest_8"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_store_result(stmt);
+  FAIL_IF(!mysql_stmt_errno(stmt), "Expected error");
+  FAIL_IF(strcmp(mysql_error(mysql), mysql_stmt_error(stmt)), "Error messages differ");
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_conc623", test_conc623, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc627", test_conc627, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev19838", test_mdev19838, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc525", test_conc525, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc566", test_conc566, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
