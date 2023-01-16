@@ -3881,7 +3881,7 @@ int STDCALL mysql_set_server_option(MYSQL *mysql,
 
 ulong STDCALL mysql_get_client_version(void)
 {
-  return MARIADB_VERSION_ID;
+  return MARIADB_PACKAGE_VERSION_ID;
 }
 
 ulong STDCALL mysql_hex_string(char *to, const char *from, unsigned long len)
