@@ -892,6 +892,20 @@ static void ma_tls_set_error(MYSQL *mysql, void *ssl, int ssl_errno)
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, ssl_error);
     return;
   }
+#ifdef GNUTLS_E_PREMATURE_TERMINATION
+  /*
+    Correction for a new behaviour was introduced in new
+    versions of GnuTLS, where a new error code may be returned
+    when a connection is closed without the graceful termination
+    sequence:
+  */
+  else if (ssl_errno == GNUTLS_E_PREMATURE_TERMINATION)
+  {
+    pvio->set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                    ER(CR_SERVER_LOST));
+    return;
+  }
+#endif
 
   if (ssl_errno && (ssl_error_reason= gnutls_strerror(ssl_errno)))
   {
