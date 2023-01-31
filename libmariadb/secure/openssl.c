@@ -127,6 +127,23 @@ static void ma_tls_set_error(MYSQL *mysql)
   MARIADB_PVIO *pvio= mysql->net.pvio;
   int save_errno= errno;
 
+#ifdef SSL_R_UNEXPECTED_EOF_WHILE_READING
+    /*
+      Correction for a new behaviour was introduced in OpenSSL 3.x
+      when a peer does not send close_notify before closing the
+      connection - previously it was reported as an SSL_ERROR_SYSCALL
+      error with a strange errno == 0, but now it is reported as
+      SSL_ERROR_SSL with a special reason code:
+    */
+    if (ssl_errno &&
+        ERR_GET_REASON(ssl_errno) == SSL_R_UNEXPECTED_EOF_WHILE_READING)
+    {
+      pvio->set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                      ER(CR_SERVER_LOST));
+      return;
+    }
+#endif
+
   if (ssl_errno && (ssl_error_reason= ERR_reason_error_string(ssl_errno)))
   {
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
