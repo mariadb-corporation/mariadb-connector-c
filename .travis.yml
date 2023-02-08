@@ -36,8 +36,6 @@ env: local=0
 jobs:
   fast_finish: true
   allow_failures:
-    - env: srv=build v=10.6
-    - env: srv=mariadb v=10.5
     - env: srv=mysql v=5.7 native=1
     - env: srv=mysql v=8.0 native=1
       os: windows
@@ -50,13 +48,11 @@ jobs:
       dist: bionic
     - env: srv=mariadb v=10.4 local=1
     - env: srv=mariadb v=10.5 local=1
-    - env: srv=mariadb v=10.6 local=1
     - if: type = push AND fork = false
       env: srv=mariadb-es v=10.5
     - if: type = push AND fork = false
       env: srv=maxscale
     - if: type = push AND fork = false
-      env: srv=build v=10.6
     - env: srv=mysql v=5.7 native=1
     - env: srv=mysql v=8.0 native=1
     - if: type = push AND fork = false
@@ -69,16 +65,5 @@ jobs:
     - env: server_branch=10.4 TEST_OPTION=--ps-protocol
     - env: server_branch=10.5
     - env: server_branch=10.5 TEST_OPTION=--ps-protocol
-    - env: server_branch=10.6
-    - env: server_branch=10.6 TEST_OPTION=--ps-protocol
-    - env: server_branch=10.7
-    - env: server_branch=10.7 TEST_OPTION=--ps-protocol
-    - env: server_branch=10.8
-    - env: server_branch=10.8 TEST_OPTION=--ps-protocol
-    - env: server_branch=10.9
-    - env: server_branch=10.9 TEST_OPTION=--ps-protocol
-    - env: server_branch=10.10
-    - env: server_branch=10.10 TEST_OPTION=--ps-protocol
-
 
 script: ./travis.sh
