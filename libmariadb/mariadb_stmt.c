@@ -2569,7 +2569,14 @@ fail:
       stmt->mysql->methods->db_stmt_flush_unbuffered(stmt);
     } while(mysql_stmt_more_results(stmt));
   }
-  stmt->state= MYSQL_STMT_INITTED;
+
+  /* CONC-633: If prepare returned an error, we ignore error from execute */
+  if (mysql_stmt_errno(stmt))
+  {
+    my_set_error(mysql, mysql_stmt_errno(stmt), mysql_stmt_sqlstate(stmt),
+                 mysql_stmt_error(stmt));
+    stmt->state= MYSQL_STMT_INITTED;
+  } 
   return 1;
 }
 
