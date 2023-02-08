@@ -58,7 +58,7 @@ MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
   MARIADB_CLIENT_CONNECTION_PLUGIN_INTERFACE_VERSION,
   "replication",
   "Georg Richter",
-  "MariaDB connection plugin for master-slave load balancing",
+  "MariaDB connection plugin for source-replica load balancing",
   {1, 0, 0},
   "LGPL",
   NULL,

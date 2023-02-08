@@ -36,40 +36,40 @@
 #endif
 
 /* function prototypes */
-MYSQL *multimaster_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd,
+MYSQL *multisource_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd,
         const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
-void multimaster_close(MYSQL *mysql);
-int multimaster_set_connection(MYSQL *mysql,enum enum_server_command command, const char *arg,
+void multisource_close(MYSQL *mysql);
+int multisource_set_connection(MYSQL *mysql,enum enum_server_command command, const char *arg,
                       size_t length, my_bool skipp_check, void *opt_arg);
 
 static struct st_mariadb_api *libmariadb_api= NULL;
 
 #ifndef PLUGIN_DYNAMIC
-MARIADB_CONNECTION_PLUGIN multimaster_client_plugin =
+MARIADB_CONNECTION_PLUGIN multisource_client_plugin =
 #else
 MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
 #endif
 {
   MARIADB_CLIENT_CONNECTION_PLUGIN,
   MARIADB_CLIENT_CONNECTION_PLUGIN_INTERFACE_VERSION,
-  "multimaster",
+  "multisource",
   "Jonah H. Harris",
-  "MariaDB connection plugin for multi-master load balancing",
+  "MariaDB connection plugin for multi-source load balancing",
   {1, 0, 0},
   "LGPL",
   NULL,
   NULL,
   NULL,
   NULL,
-  multimaster_connect,
-  multimaster_close,
+  multisource_connect,
+  multisource_close,
   NULL,
-  multimaster_set_connection,
+  multisource_set_connection,
   NULL,
   NULL,
 };
 
-typedef struct st_conn_multimaster {
+typedef struct st_conn_multisource {
   MARIADB_PVIO *pvio;
   char *url;
   char *host;
@@ -80,7 +80,7 @@ typedef struct st_conn_multimaster {
  * Url has the following format:
  * host[:port],host[:port],host[:port],..,hostn[:port]
  */
-my_bool multimaster_parse_url(const char *url, REPL_DATA *data)
+my_bool multisource_parse_url(const char *url, REPL_DATA *data)
 {
   const char delim[2] = { ',', '\0' };
   size_t counter = 0;
@@ -157,7 +157,7 @@ my_bool multimaster_parse_url(const char *url, REPL_DATA *data)
   return 0;
 }
 
-MYSQL *multimaster_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd,
+MYSQL *multisource_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd,
         const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag)
 {
   REPL_DATA *data= NULL;
@@ -170,7 +170,7 @@ MYSQL *multimaster_connect(MYSQL *mysql, const char *host, const char *user, con
   {
     data->pvio->methods->close(data->pvio);
     data->pvio= 0;
-    multimaster_close(mysql);
+    multisource_close(mysql);
   }
 
   if (!(data= calloc(1, sizeof(REPL_DATA))))
@@ -180,7 +180,7 @@ MYSQL *multimaster_connect(MYSQL *mysql, const char *host, const char *user, con
   }
   memset(&data->pvio, 0, sizeof(data->pvio));
 
-  if (multimaster_parse_url(host, data))
+  if (multisource_parse_url(host, data))
     goto error;
 
   /* try to connect to master */
@@ -202,7 +202,7 @@ error:
   return NULL;
 }
 
-void multimaster_close(MYSQL *mysql)
+void multisource_close(MYSQL *mysql)
 {
   MA_CONNECTION_HANDLER *hdlr= mysql->extension->conn_hdlr;
   REPL_DATA *data= (REPL_DATA *)hdlr->data;
@@ -213,7 +213,7 @@ void multimaster_close(MYSQL *mysql)
   mysql->extension->conn_hdlr->data= NULL;
 }
 
-int multimaster_set_connection(MYSQL *mysql,enum enum_server_command command, const char *arg,
+int multisource_set_connection(MYSQL *mysql,enum enum_server_command command, const char *arg,
                      size_t length, 
                      my_bool skipp_check __attribute__((unused)), 
                      void *opt_arg __attribute__((unused)))
