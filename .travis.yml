@@ -36,10 +36,7 @@ env: local=0
 jobs:
   fast_finish: true
   allow_failures:
-    - env: srv=mysql v=5.7 native=1
-    - env: srv=mysql v=8.0 native=1
-      os: windows
-      language: shell
+    - env: srv=mysql
   include:
     - env: srv=mariadb v=10.5
       os: windows
