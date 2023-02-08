@@ -82,8 +82,8 @@ typedef struct st_conn_multisource {
  */
 my_bool multisource_parse_url(const char *url, REPL_DATA *data)
 {
-  const char delim[2] = { ',', '\0' };
-  size_t counter = 0;
+  const char delim[2]= { ',', '\0' };
+  size_t counter= 0;
   char *brk;
   char *token;
   char *p;
@@ -98,41 +98,41 @@ my_bool multisource_parse_url(const char *url, REPL_DATA *data)
   if (!url || url[0] == 0)
     return 1;
 
-  data->host = NULL;
-  data->port = 0;
+  data->host= NULL;
+  data->port= 0;
 
   if (!data->url)
     data->url= strdup(url);
 
-  token = data->url;
+  token= data->url;
   while (*token) {
-    brk = strpbrk(token, delim);
+    brk= strpbrk(token, delim);
     ++counter;
     if (NULL == brk) {
       break;
     } else {
-      token = ++brk;
+      token= ++brk;
     }
   }
 
   if (!counter)
     return 0;
 
-  counter = ((size_t) rand() % counter);
+  counter= ((size_t) rand() % counter);
 
-  token = data->url;
-  brk = NULL;
-  for (size_t ii = 0; ii <= counter; ++ii) {
-    brk = strpbrk(token, delim);
+  token= data->url;
+  brk= NULL;
+  for (size_t ii= 0; ii <= counter; ++ii) {
+    brk= strpbrk(token, delim);
     if (ii < counter) {
-      token = ++brk;
+      token= ++brk;
     }
   }
 
-  data->host = token;
+  data->host= token;
 
   if (brk != NULL)
-    data->host[(brk - token)] = '\0';
+    data->host[(brk - token)]= '\0';
 
   /* check ports */
   /* We need to be aware of IPv6 addresses: According to RFC3986 sect. 3.2.2
