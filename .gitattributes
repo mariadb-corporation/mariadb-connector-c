@@ -4,3 +4,7 @@
 # Prevent certain files from being exported:
 .gitattributes  export-ignore
 .gitignore      export-ignore
+
+# merge
+.travis.yml     merge=cc
+CMakeLists.txt  merge=cc
