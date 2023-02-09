@@ -126,7 +126,7 @@ do {\
   if (!mariadb_connection(mysql))\
   {\
     diag("Skip test for non MariaDB server");\
-    return OK;\
+    return SKIP;\
   }\
 } while(0)
 

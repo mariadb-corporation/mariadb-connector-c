@@ -1161,6 +1161,8 @@ static int test_auth256(MYSQL *my)
   if (IS_SKYSQL(hostname))
     return SKIP;
 
+  SKIP_MYSQL(my);
+
   if (!mysql_client_find_plugin(mysql, "sha256_password", MYSQL_CLIENT_AUTHENTICATION_PLUGIN))
   {
     diag("sha256_password plugin not available");
@@ -1924,9 +1926,12 @@ static int test_conc490(MYSQL *my __attribute__((unused)))
 
 static int test_conc632(MYSQL *my __attribute__((unused)))
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
   int rc;
 
+  SKIP_MYSQL(my);
+
+  mysql= mysql_init(NULL);
   if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
     diag("Connection failed. Error: %s", mysql_error(mysql));
