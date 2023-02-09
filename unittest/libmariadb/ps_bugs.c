@@ -5657,7 +5657,83 @@ static int test_conc627(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc633(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL *my= mysql_init(NULL);
+  int ret= FAIL;
+  int rc;
+
+  if (!mariadb_stmt_execute_direct(stmt, SL("SÄLECT 1")))
+  {
+    diag("Syntax error expected");
+    goto end;
+  }
+
+  if (mysql_errno(mysql) != mysql_stmt_errno(stmt))
+  {
+    diag("Different error codes. mysql_errno= %d, mysql_stmt_errno=%d",
+          mysql_errno(mysql), mysql_stmt_errno(stmt));
+    goto end;
+  }
+
+  if ((long)stmt->stmt_id != -1)
+  {
+    diag("Error: expected stmt_id=-1");
+    goto end;
+  }  
+
+  if (!(my= test_connect(NULL)))
+  {
+    diag("Can establish connection (%s)", mysql_error(my));
+    goto end;
+  }
+
+  rc= mysql_query(my, "CREATE OR REPLACE TABLE conc633 (a int)");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SET @@lock_wait_timeout=3");
+
+  rc= mysql_query(my, "LOCK TABLES conc633 WRITE");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "SET @@lock_wait_timeout=3");
+  check_mysql_rc(rc, mysql);
+
+  if (!mariadb_stmt_execute_direct(stmt, SL("INSERT INTO conc633 VALUES (1)")))
+  {
+    diag("lock wait timeout error expected");
+    goto end;
+  }
+
+  if (stmt->state != MYSQL_STMT_PREPARED)
+  {
+    diag("Error: stmt hasn't prepared status");
+    goto end;
+  }
+
+  if ((long)stmt->stmt_id == -1)
+  {
+    diag("Error: no stmt_id assigned");
+    goto end;
+  }  
+
+  rc= mysql_query(my, "UNLOCK TABLES");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(my, "DROP TABLE conc633");
+  check_mysql_rc(rc, mysql);
+
+  ret= OK;
+
+end:
+  if (my)
+    mysql_close(my);
+  mysql_stmt_close(stmt);
+  return ret;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc633", test_conc633, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc623", test_conc623, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc627", test_conc627, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev19838", test_mdev19838, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

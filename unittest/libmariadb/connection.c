@@ -2256,7 +2256,43 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_conc632(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc;
+
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
+  {
+    diag("Connection failed. Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  rc= mysql_query(mysql, "CREATE OR REPLACE PROCEDURE conc632() "
+                         "BEGIN "
+                         "  SELECT 1;"
+                         "  SELECT 2;"
+                         "END");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CALL conc632()");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_reset_connection(mysql);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_ping(mysql);
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "DROP PROCEDURE conc632");
+  check_mysql_rc(rc, mysql);
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc632", test_conc632, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_status_callback", test_status_callback, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc365", test_conc365, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc365_reconnect", test_conc365_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

@@ -4776,12 +4776,21 @@ int STDCALL mysql_reset_connection(MYSQL *mysql)
 
   /* skip result sets */
   if (mysql->status == MYSQL_STATUS_USE_RESULT ||
-      mysql->status == MYSQL_STATUS_GET_RESULT ||
-      mysql->status & SERVER_MORE_RESULTS_EXIST)
+      mysql->status == MYSQL_STATUS_GET_RESULT)
   {
     mthd_my_skip_result(mysql);
-    mysql->status= MYSQL_STATUS_READY;
   }
+
+  if (mysql->server_status & SERVER_MORE_RESULTS_EXIST)
+  {
+    while (mysql_next_result(mysql))
+    {
+      MYSQL_RES *res= mysql_use_result(mysql);
+      mysql_free_result(res);
+    }
+  }
+
+  mysql->status= MYSQL_STATUS_READY;
 
   rc= ma_simple_command(mysql, COM_RESET_CONNECTION, 0, 0, 0, 0);
   if (rc && mysql->options.reconnect)
