@@ -1929,8 +1929,6 @@ static int test_conc632(MYSQL *my __attribute__((unused)))
   MYSQL *mysql;
   int rc;
 
-  SKIP_MYSQL(my);
-
   mysql= mysql_init(NULL);
   if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {
@@ -1938,6 +1936,7 @@ static int test_conc632(MYSQL *my __attribute__((unused)))
     mysql_close(mysql);
     return FAIL;
   }
+  SKIP_MYSQL(mysql);
 
   rc= mysql_query(mysql, "CREATE OR REPLACE PROCEDURE conc632() "
                          "BEGIN "
