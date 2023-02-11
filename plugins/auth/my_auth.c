@@ -262,7 +262,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->client_flag & CLIENT_COMPRESS)
     mysql->options.compress= 1;
 
-  if (mysql->options.compress)
+  if (mysql->options.compress && (mysql->server_capabilities & CLIENT_COMPRESS))
   {
     /* For MySQL 8.0 we will use zstd compression */
     if (mysql->server_capabilities & CLIENT_ZSTD_COMPRESSION)
