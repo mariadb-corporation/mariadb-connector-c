@@ -29,9 +29,6 @@
 #include <zlib.h>
 #include <ma_decimal.h>
 #include <mariadb_rpl.h>
-#ifdef HAVE_CRYPTO
-#include <cw_crypt.h>
-#endif
 
 
 #ifdef WIN32
@@ -789,17 +786,18 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   } else
   {
     char *buf[RPL_BINLOG_MAGIC_SIZE];
+    MYSQL mysql;
 
     if (rpl->fp)
-      fclose(rpl->fp);
+      ma_close(rpl->fp);
 
-    if (!(rpl->fp= fopen((const char *)rpl->filename, "r")))
+    if (!(rpl->fp= ma_open((const char *)rpl->filename, "r", &mysql)))
     {
       rpl_set_error(rpl, CR_FILE_NOT_FOUND, 0, rpl->filename, errno);
       return errno;
     }
 
-    if (fread(buf, 1, RPL_BINLOG_MAGIC_SIZE, rpl->fp) != 4)
+    if (ma_read(buf, 1, RPL_BINLOG_MAGIC_SIZE, rpl->fp) != 4)
     {
       rpl_set_error(rpl, CR_FILE_READ, 0, rpl->filename, errno);
       return errno;
@@ -961,15 +959,14 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       size_t rc;
       uint32_t len= 0;
       char *p= buf;
-      uint32_t start_pos= ftell(rpl->fp);
 
-      if (feof(rpl->fp))
+      if (ma_feof(rpl->fp))
       {
         return NULL;
       }
 
       memset(buf, 0, EVENT_HEADER_OFS);
-      if ((rc= fread(buf, 1, EVENT_HEADER_OFS - 1, rpl->fp)) != EVENT_HEADER_OFS - 1)
+      if ((rc= ma_read(buf, 1, EVENT_HEADER_OFS - 1, rpl->fp)) != EVENT_HEADER_OFS - 1)
       {
          rpl_set_error(rpl, CR_BINLOG_ERROR, 0, "Can't read event header");
          mariadb_free_rpl_event(rpl_event);
@@ -987,7 +984,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       rpl_event->raw_data_size= len;
       memcpy(rpl_event->raw_data, buf, EVENT_HEADER_OFS - 1);
       len-= (EVENT_HEADER_OFS - 1);
-      rc= fread(rpl_event->raw_data + EVENT_HEADER_OFS - 1, 1, len, rpl->fp);
+      rc= ma_read(rpl_event->raw_data + EVENT_HEADER_OFS - 1, 1, len, rpl->fp);
       if (rc != len)
       {
         rpl_set_error(rpl, CR_BINLOG_ERROR, 0, "Error while reading post header");
@@ -998,38 +995,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
           /* We don't decrypt yet */
       if (rpl->encrypted) {
-        uchar iv[16];
-        int rc;
-        uint32 event_len= uint4korr(ev + 9);
-        uint32 dlen= event_len;
-        uchar *dst;
-
-  #ifndef HAVE_CRYPTO
         return rpl_event;
-  #endif
-        /* Application needs to set key after START_ENCRYPTION_EVENT, if not done
-           we return the encrypted event */
-        if (!rpl->decryption_key)
-          return rpl_event;
-
-        memcpy(iv, rpl->nonce, 12);
-        int4store(iv + 12, start_pos);
-
-        /* move timestamp */
-        memcpy(ev + 9, ev, 4);
-        dst= (uchar *)malloc(event_len);
-        if ((rc= cw_crypt(CW_AES_CTR, CW_CRYPT_DECRYPT, ev + 4, event_len - 4, dst + 4, &dlen,
-                 (uchar*)rpl->decryption_key, strlen(rpl->decryption_key), iv, 16)))
-        {
-          rpl_set_error(rpl, CR_BINLOG_ERROR, 0, RPL_ERR_POS(rpl), "Decryption failed");
-          free(dst);
-          return rpl_event;
-        }
-
-        memcpy(dst, dst + 9, 4);
-        int4store(dst + 9, event_len);
-        memcpy(ev, dst, event_len);
-        free(dst);
       }
     }
 
@@ -1553,11 +1519,29 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       */
       break;
 
-    case ANONYMOUS_GTID_LOG_EVENT:
     case PREVIOUS_GTIDS_LOG_EVENT:
+    {
+      /* 
+         PREVIOUS_GTID_LOG_EVENT (MySQL only):
+
+         8-bytes, always zero ?!
+      */
+      int len= ev_end - ev - rpl->use_checksum * 4;
+
+      if (len)
+      {
+        rpl_event->event.previous_gtid.content.data= ev;
+        rpl_event->event.previous_gtid.content.length= len;
+        ev+= len;
+      }
+      break;
+    }
+    case ANONYMOUS_GTID_LOG_EVENT:
+    case GTID_LOG_EVENT:
       /*
-         ANONYMOUS_GTID_LOG_EVENT,
-         PREVIOUS_GTIDS_LOG_EVENT (MySQL only)
+         ANONYMOUS_GTID_LOG_EVENT
+
+         uint32_t  thread_id
 
          Header:
            uint8_t flag:         commit flag
@@ -1861,12 +1845,9 @@ void STDCALL mariadb_rpl_close(MARIADB_RPL *rpl)
   free((void *)rpl->filename);
   if (rpl->fp)
   {
-    fclose(rpl->fp);
+    ma_close(rpl->fp);
   }
   free(rpl->host);
-#ifdef HAVE_CRYPTO
-  free(rpl->decryption_key);
-#endif
   free(rpl);
   return;
 }
@@ -1942,13 +1923,6 @@ int mariadb_rpl_optionsv(MARIADB_RPL *rpl,
     rpl->extract_values= (uint8_t)va_arg(ap, uint32_t);
     break;
   }
-#ifdef HAVE_CRYPTO
-  case MARIADB_RPL_DECRYPTION_KEY:
-  {
-    rpl->decryption_key=strdup(va_arg(ap, char *));
-    break;
-  }
-#endif
   default:
     rc= -1;
     goto end;

@@ -396,7 +396,7 @@ int bin2decimal(const char *from, decimal *to, int precision, int scale)
   if (intg0x)
   {
     int i= dig2bytes[intg0x];
-    dec1 x;
+    dec1 x= 0;
     switch (i)
     {
       case 1: x=myisam_sint1korr(from); break;
@@ -431,7 +431,7 @@ int bin2decimal(const char *from, decimal *to, int precision, int scale)
   if (frac0x)
   {
     int i=dig2bytes[frac0x];
-    dec1 x;
+    dec1 x= 0;
     switch (i)
     {
       case 1: x=myisam_sint1korr(from); break;
@@ -440,7 +440,7 @@ int bin2decimal(const char *from, decimal *to, int precision, int scale)
       case 4: x=myisam_sint4korr(from); break;
       default: DBUG_ASSERT(0);
     }
-    *buf=(x ^ mask) * powers10[DIG_PER_DEC1 - frac0x];
+    *buf= (x ^ mask) * powers10[DIG_PER_DEC1 - frac0x];
     buf++;
   }
   return error;

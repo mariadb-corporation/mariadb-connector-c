@@ -49,6 +49,7 @@ static int test_conc66(MYSQL *my)
   fprintf(fp, "user=conc66\n");
   fprintf(fp, "port=3306\n");
   fprintf(fp, "enable-local-infile\n");
+  fprintf(fp, "server_plugin=file_key_management:file_key_management_algorithm=AES_CTR;file_key_management_key=secret\n");
   fprintf(fp, "password='test@A1\\\";#test'\n");
 
   fclose(fp);
@@ -2256,6 +2257,7 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
 }
 
 struct my_tests_st my_tests[] = {
+  {"test_conc66", test_conc66, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_status_callback", test_status_callback, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc365", test_conc365, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc365_reconnect", test_conc365_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
@@ -2288,7 +2290,6 @@ struct my_tests_st my_tests[] = {
   {"test_wrong_bind_address", test_wrong_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bind_address", test_bind_address, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc118", test_conc118, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
-  {"test_conc66", test_conc66, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_bug20023", test_bug20023, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug33831", test_bug33831, TEST_CONNECTION_NEW, 0, NULL,  NULL},

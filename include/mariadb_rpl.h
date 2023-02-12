@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <mariadb/ma_io.h>
 
 #define MARIADB_RPL_VERSION 0x0002
 #define MARIADB_RPL_REQUIRED_VERSION 0x0002
@@ -211,6 +212,46 @@ enum opt_metadata_field_type
   ENUM_AND_SET_COLUMN_CHARSET
 };
 
+/* QFLAGS2 codes */
+#define OPTION_AUTO_IS_NULL                   0x00040000
+#define OPTION_NOT_AUTOCOMMIT                 0x00080000
+#define OPTION_NO_FOREIGN_KEY_CHECKS          0x04000000
+#define OPTION_RELAXED_UNIQUE_CHECKS          0x08000000
+
+/* SQL modes */
+#define MODE_REAL_AS_FLOAT                    0x00000001
+#define MODE_PIPES_AS_CONCAT                  0x00000002
+#define MODE_ANSI_QUOTES                      0x00000004
+#define MODE_IGNORE_SPACE                     0x00000008
+#define MODE_NOT_USED                         0x00000010
+#define MODE_ONLY_FULL_GROUP_BY               0x00000020
+#define MODE_NO_UNSIGNED_SUBTRACTION          0x00000040
+#define MODE_NO_DIR_IN_CREATE                 0x00000080
+#define MODE_POSTGRESQL                       0x00000100
+#define MODE_ORACLE                           0x00000200
+#define MODE_MSSQL                            0x00000400
+#define MODE_DB2                              0x00000800
+#define MODE_MAXDB                            0x00001000
+#define MODE_NO_KEY_OPTIONS                   0x00002000
+#define MODE_NO_TABLE_OPTIONS                 0x00004000
+#define MODE_NO_FIELD_OPTIONS                 0x00008000
+#define MODE_MYSQL323                         0x00010000
+#define MODE_MYSQL40                          0x00020000
+#define MODE_ANSI                             0x00040000
+#define MODE_NO_AUTO_VALUE_ON_ZERO            0x00080000
+#define MODE_NO_BACKSLASH_ESCAPES             0x00100000
+#define MODE_STRICT_TRANS_TABLES              0x00200000
+#define MODE_STRICT_ALL_TABLES                0x00400000
+#define MODE_NO_ZERO_IN_DATE                  0x00800000
+#define MODE_NO_ZERO_DATE                     0x01000000
+#define MODE_INVALID_DATES                    0x02000000
+#define MODE_ERROR_FOR_DIVISION_BY_ZERO       0x04000000
+#define MODE_TRADITIONAL                      0x08000000
+#define MODE_NO_AUTO_CREATE_USER              0x10000000
+#define MODE_HIGH_NOT_PRECEDENCE              0x20000000
+#define MODE_NO_ENGINE_SUBSTITUTION           0x40000000
+#define MODE_PAD_CHAR_TO_FULL_LENGTH          0x80000000
+
 /* Log Event flags */
 
 /* used in FOMRAT_DESCRIPTION_EVENT. Indicates if it
@@ -287,7 +328,7 @@ typedef struct st_mariadb_rpl {
   uint8_t artificial_checksun;
   uint8_t verify_checksum;
   uint8_t post_header_len[ENUM_END_EVENT];
-  FILE *fp;
+  MA_FILE *fp;
   uint32_t error_no;
   char error_msg[MYSQL_ERRMSG_SIZE];
   uint8_t uncompress;
@@ -296,7 +337,6 @@ typedef struct st_mariadb_rpl {
   uint8_t extract_values;
   char nonce[12];
   uint8_t encrypted;
-  char *decryption_key;
 } MARIADB_RPL;
 
 typedef struct st_mariadb_rpl_value {
@@ -332,6 +372,10 @@ struct st_mariadb_rpl_query_event {
   uint32_t errornr;
   MARIADB_STRING status;
   MARIADB_STRING statement;
+};
+
+struct st_mariadb_rpl_previous_gtid_event {
+  MARIADB_CONST_DATA content;
 };
 
 struct st_mariadb_rpl_gtid_list_event {
@@ -504,6 +548,7 @@ typedef struct st_mariadb_rpl_event
     struct st_mariadb_execute_load_query_event execute_load_query;
     struct st_mariadb_gtid_log_event gtid_log;
     struct st_mariadb_start_encryption_event start_encryption;
+    struct st_mariadb_rpl_previous_gtid_event previous_gtid;
   } event;
   /* Added in C/C 3.3.0 */
   uint8_t is_semi_sync;
@@ -611,106 +656,6 @@ MARIADB_RPL_ROW * STDCALL
 mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
                          MARIADB_RPL_EVENT *tm_event,
                          MARIADB_RPL_EVENT *row_event);
-
-/* Returned from get_latest_key_version() */
-#define ENCRYPTION_KEY_VERSION_INVALID (~(unsigned int)0)
-#define ENCRYPTION_KEY_NOT_ENCRYPTED (0)
-
-#define ENCRYPTION_KEY_SYSTEM_DATA 1
-#define ENCRYPTION_KEY_TEMPORARY_DATA 2
-
-/* Returned from get_key()  */
-#define ENCRYPTION_KEY_BUFFER_TOO_SMALL (100)
-
-#define ENCRYPTION_FLAG_DECRYPT 0
-#define ENCRYPTION_FLAG_ENCRYPT 1
-#define ENCRYPTION_FLAG_NOPAD 2
-
-struct st_mariadb_encryption {
-  int interface_version; /**< version plugin uses */
-
-  /********************* KEY MANAGEMENT ***********************************/
-
-  /**
-    Function returning latest key version for a given key id.
-
-    @return A version or ENCRYPTION_KEY_VERSION_INVALID to indicate an error.
-  */
-  unsigned int (*get_latest_key_version)(unsigned int key_id);
-
-  /**
-    Function returning a key for a key version
-
-    @param key_id       The requested key id
-    @param version      The requested key version
-    @param key          The key will be stored there. Can be NULL -
-                        in which case no key will be returned
-    @param key_length   in: key buffer size
-                        out: the actual length of the key
-
-    This method can be used to query the key length - the required
-    buffer size - by passing key==NULL.
-
-    If the buffer size is less than the key length the content of the
-    key buffer is undefined (the plugin is free to partially fill it with
-    the key data or leave it untouched).
-
-    @return 0 on success, or
-            ENCRYPTION_KEY_VERSION_INVALID, ENCRYPTION_KEY_BUFFER_TOO_SMALL
-            or any other non-zero number for errors
-  */
-  unsigned int (*get_key)(unsigned int key_id, unsigned int version,
-                          unsigned char *key, unsigned int *key_length);
-
-  /********************* ENCRYPTION **************************************/
-  /*
-    The caller uses encryption as follows:
-      1. Create the encryption context object of the crypt_ctx_size() bytes.
-      2. Initialize it with crypt_ctx_init().
-      3. Repeat crypt_ctx_update() until there are no more data to encrypt.
-      4. Write the remaining output bytes and destroy the context object
-         with crypt_ctx_finish().
-  */
-
-  /**
-    Returns the size of the encryption context object in bytes
-  */
-  unsigned int (*crypt_ctx_size)(unsigned int key_id, unsigned int key_version);
-  /**
-    Initializes the encryption context object.
-  */
-  int (*crypt_ctx_init)(void *ctx, const unsigned char *key, unsigned int klen,
-                        const unsigned char *iv, unsigned int ivlen, int flags,
-                        unsigned int key_id, unsigned int key_version);
-  /**
-    Processes (encrypts or decrypts) a chunk of data
-
-    Writes the output to th dst buffer. note that it might write
-    more bytes that were in the input. or less. or none at all.
-  */
-  int (*crypt_ctx_update)(void *ctx, const unsigned char *src,
-                          unsigned int slen, unsigned char *dst,
-                          unsigned int *dlen);
-  /**
-    Writes the remaining output bytes and destroys the encryption context
-
-    crypt_ctx_update might've cached part of the output in the context,
-    this method will flush these data out.
-  */
-  int (*crypt_ctx_finish)(void *ctx, unsigned char *dst, unsigned int *dlen);
-  /**
-    Returns the length of the encrypted data
-
-    It returns the exact length, given only the source length.
-    Which means, this API only supports encryption algorithms where
-    the length of the encrypted data only depends on the length of the
-    input (a.k.a. compression is not supported).
-  */
-  unsigned int (*encrypted_length)(unsigned int slen, unsigned int key_id,
-                                   unsigned int key_version);
-};
-
-
 
 #ifdef	__cplusplus
 }
