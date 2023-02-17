@@ -102,13 +102,14 @@ if (IS_MAXSCALE()) \
 #define SKIP_XPAND \
 if (IS_XPAND()) \
 { \
-  diag("test disabled with xpand"); \
+  diag("test disabled with Xpand"); \
   return SKIP; \
 }
 
 #define SKIP_LOAD_INFILE_DISABLE \
 if (!((mysql->server_capabilities & CLIENT_LOCAL_FILES) &&  \
-         (mysql->options.client_flag & CLIENT_LOCAL_FILES))) { \
+         (mysql->options.client_flag & CLIENT_LOCAL_FILES)) || \
+    IS_XPAND()) { \
   diag("Load local infile not supported"); \
   return SKIP; \
 }
