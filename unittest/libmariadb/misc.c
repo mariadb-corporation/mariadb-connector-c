@@ -40,6 +40,7 @@ static int test_bug28075(MYSQL *mysql)
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
+  SKIP_XPAND;
 
   rc= mysql_dump_debug_info(mysql);
   check_mysql_rc(rc, mysql);
