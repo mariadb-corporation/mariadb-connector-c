@@ -244,6 +244,7 @@ static int test_frm_bug(MYSQL *mysql)
   int        rc;
 
   SKIP_MYSQL(mysql);
+  SKIP_XPAND;
 
   mysql_autocommit(mysql, TRUE);
 
@@ -621,6 +622,8 @@ static int test_wl4166_4(MYSQL *mysql)
   const char *cp1251= "\xcd\xf3\x2c\x20\xe7\xe0\x20\xf0\xfb\xe1\xe0\xeb\xea\xf3";
   char buf1[16], buf2[16];
   ulong buf1_len, buf2_len;
+
+  SKIP_XPAND;
 
   if (mysql_get_server_version(mysql) < 50100) {
     diag("Test requires MySQL Server version 5.1 or above");
