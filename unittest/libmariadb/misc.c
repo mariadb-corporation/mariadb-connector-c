@@ -792,6 +792,9 @@ static int test_bug49694(MYSQL *mysql)
   SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
 
+  /* XPT-600: local_infile variable not supported */
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "select @@LOCAL_INFILE");
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
