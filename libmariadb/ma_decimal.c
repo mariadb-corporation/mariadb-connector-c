@@ -403,7 +403,7 @@ int bin2decimal(const char *from, decimal *to, int precision, int scale)
       case 2: x=myisam_sint2korr(from); break;
       case 3: x=myisam_sint3korr(from); break;
       case 4: x=myisam_sint4korr(from); break;
-      default: DBUG_ASSERT(0);
+      default: DBUG_ASSERT(0); x = 0;
     }
     from+=i;
     *buf=x ^ mask;
@@ -438,7 +438,7 @@ int bin2decimal(const char *from, decimal *to, int precision, int scale)
       case 2: x=myisam_sint2korr(from); break;
       case 3: x=myisam_sint3korr(from); break;
       case 4: x=myisam_sint4korr(from); break;
-      default: DBUG_ASSERT(0);
+      default: DBUG_ASSERT(0); x = 0;
     }
     *buf= (x ^ mask) * powers10[DIG_PER_DEC1 - frac0x];
     buf++;
