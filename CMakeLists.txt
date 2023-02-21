@@ -239,11 +239,11 @@ IF(NOT WIN32)
 ENDIF()
 
 # check for various include files
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/check_include_files.cmake)
 # check for various functions
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckFunctions.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/check_functions.cmake)
 # check for various types
-INCLUDE(${CC_SOURCE_DIR}/cmake/CheckTypes.cmake)
+INCLUDE(${CC_SOURCE_DIR}/cmake/check_types.cmake)
 
 IF(UNIX)
   SEARCH_LIBRARY(LIBM floor m)
