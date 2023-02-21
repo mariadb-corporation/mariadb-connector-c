@@ -49,6 +49,7 @@ static int test_conc66(MYSQL *my)
   fprintf(fp, "user=conc66\n");
   fprintf(fp, "port=3306\n");
   fprintf(fp, "enable-local-infile\n");
+  fprintf(fp, "server_plugin=file_key_management:file_key_management_algorithm=AES_CTR;file_key_management_key=secret\n");
   fprintf(fp, "password='test@A1\\\";#test'\n");
 
   fclose(fp);

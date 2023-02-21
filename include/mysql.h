@@ -68,6 +68,12 @@ typedef struct st_ma_const_string
   size_t length;
 } MARIADB_CONST_STRING;
 
+typedef struct st_ma_const_data
+{
+  const unsigned char *data;
+  size_t length;
+} MARIADB_CONST_DATA;
+
 
 #ifndef ST_MA_USED_MEM_DEFINED
 #define ST_MA_USED_MEM_DEFINED
@@ -250,7 +256,8 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_OPT_SKIP_READ_RESPONSE,
     MARIADB_OPT_RESTRICTED_AUTH,
     MARIADB_OPT_RPL_REGISTER_REPLICA,
-    MARIADB_OPT_STATUS_CALLBACK
+    MARIADB_OPT_STATUS_CALLBACK,
+    MARIADB_OPT_SERVER_PLUGINS
   };
 
   enum mariadb_value {
