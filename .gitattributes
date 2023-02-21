@@ -7,4 +7,3 @@
 
 # merge
 .travis.yml     merge=cc
-CMakeLists.txt  merge=cc
