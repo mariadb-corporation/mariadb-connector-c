@@ -62,6 +62,24 @@ if (rpl->post_header_len[(type) - 1])\
   RPL_CHECK_POS((position), (end), rpl->post_header_len[(type)-1])\
 }
 
+static inline uint64_t uintNkorr(uint8_t len, u_char *p)
+{
+  switch (len) {
+    case 1:
+      return *p;
+    case 2:
+      return uint2korr(p);
+    case 3:
+      return uint3korr(p);
+    case 4:
+      return uint4korr(p);
+    case 8:
+      return uint8korr(p);
+    default:
+      return 0;
+  }
+}
+
 static inline int net_field_size(uchar *p)
 {
   if (*p <= 251)

@@ -22,7 +22,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <ma_global.h>
 #include <mariadb/ma_io.h>
 
 #define MARIADB_RPL_VERSION 0x0002
@@ -619,25 +618,6 @@ if (!(condition))\
 (a)->event_type == WRITE_ROWS_EVENT ||\
 (a)->event_type == UPDATE_ROWS_EVENT ||\
 (a)->event_type == DELETE_ROWS_EVENT)
-
-static inline uint64_t uintNkorr(uint8_t len, u_char *p)
-{
-  switch (len) {
-    case 1:
-      return *p;
-    case 2:
-      return uint2korr(p);
-    case 3:
-      return uint3korr(p);
-    case 4:
-      return uint4korr(p);
-    case 8:
-      return uint8korr(p);
-    default:
-      return 0;
-  }
-}
-
 
 /* Function prototypes */
 MARIADB_RPL * STDCALL mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version);
