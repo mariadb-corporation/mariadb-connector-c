@@ -1816,6 +1816,9 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       memcpy(buffer + 9, rpl->filename, rpl->filename_length);
       buffer[buf_size - 1]= 0;
 
+      /* clear network buffer before sending the reply packet*/
+      ma_net_clear(&rpl->mysql->net);
+
       if (ma_net_write(&rpl->mysql->net, buffer, buf_size) ||
          (ma_net_flush(&rpl->mysql->net)))
         goto net_error;
