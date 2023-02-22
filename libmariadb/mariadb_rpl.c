@@ -783,8 +783,11 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
      int4store(p, 0);
      p+= 4;
 
-     if (ma_simple_command(rpl->mysql, COM_REGISTER_SLAVE, (const char *)buffer, p - buffer, 1, 0))
+     if (ma_simple_command(rpl->mysql, COM_REGISTER_SLAVE, (const char *)buffer, p - buffer, 0, 0))
+     {
+       rpl_set_error(rpl, mysql_errno(rpl->mysql), 0, NULL, 0);
        return 1;
+     }
   }
 
   if (rpl->mysql)
