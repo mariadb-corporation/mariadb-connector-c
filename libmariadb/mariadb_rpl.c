@@ -763,13 +763,13 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
                4  source server id (unused)
       */
      unsigned char *p, buffer[1024];
-     size_t len= MIN(strlen(rpl->mysql->options.extension->rpl_host), 255);
+     size_t len= MIN(strlen(rpl->host), 255);
     
      p= buffer;
      int4store(p, rpl->server_id);
      p+= 4;
      *p++= (unsigned char)len;
-     memcpy(p, rpl->mysql->options.extension->rpl_host, len);
+     memcpy(p, rpl->host, len);
      p+= len;
 
      /* Don't send user, password, rank and server_id */

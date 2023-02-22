@@ -136,13 +136,24 @@ static int test_rpl_semisync(MYSQL *my __attribute__((unused)))
 
   rpl = mariadb_rpl_init(mysql);
 
+  mariadb_rpl_optionsv(rpl, MARIADB_RPL_HOST, "foo");
+
   mysql_query(mysql, "SET @mariadb_slave_capability=4");
   mysql_query(mysql, "SET NAMES latin1");
   mysql_query(mysql, "SET @slave_gtid_strict_mode=1");
   mysql_query(mysql, "SET @slave_gtid_ignore_duplicates=1");
   mysql_query(mysql, "SET NAMES utf8");
   mysql_query(mysql, "SET @master_binlog_checksum= @@global.binlog_checksum");
-  mysql_query(mysql, "SET @rpl_semi_sync_slave=1");
+  rpl->server_id= 12;
+  rpl->start_position= 4;
+  rpl->flags= MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS;
+
+  mysql_query(mysql, "SET @mariadb_slave_capability=4");
+  mysql_query(mysql, "SET NAMES latin1");
+  mysql_query(mysql, "SET @slave_gtid_strict_mode=1");
+  mysql_query(mysql, "SET @slave_gtid_ignore_duplicates=1");
+  mysql_query(mysql, "SET NAMES utf8");
+  mysql_query(mysql, "SET @master_binlog_checksum= @@global.binlog_checksum");
   rpl->server_id= 12;
   rpl->start_position= 4;
   rpl->flags= MARIADB_RPL_BINLOG_SEND_ANNOTATE_ROWS;
