@@ -791,14 +791,17 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   }
 
   if (rpl->mysql)
-  {  
+  {
+    uint32_t replica_id= rpl->server_id;
     ptr= buf= (unsigned char *)alloca(rpl->filename_length + 11);
 
     int4store(ptr, (unsigned int)rpl->start_position);
     ptr+= 4;
     int2store(ptr, rpl->flags);
     ptr+= 2;
-    int4store(ptr, rpl->server_id);
+    if ((rpl->flags & MARIADB_RPL_BINLOG_DUMP_NON_BLOCK) && !replica_id)
+      replica_id= 1;
+    int4store(ptr, replica_id);
     ptr+= 4;
     memcpy(ptr, rpl->filename, rpl->filename_length);
     ptr+= rpl->filename_length;

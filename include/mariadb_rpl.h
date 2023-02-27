@@ -321,7 +321,7 @@ typedef struct st_mariadb_rpl {
   uint32_t filename_length;
   uint32_t server_id;
   unsigned long start_position;
-  uint32_t flags;
+  uint16_t flags;
   uint8_t fd_header_len; /* header len from last format description event */
   uint8_t use_checksum;
   uint8_t artificial_checksun;
