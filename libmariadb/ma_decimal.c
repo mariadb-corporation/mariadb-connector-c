@@ -108,7 +108,7 @@
 #include <string.h>
 
 #ifdef WIN32
-#define alloca _malloca
+#include <malloc.h>
 #endif
 
 typedef decimal_digit dec1;

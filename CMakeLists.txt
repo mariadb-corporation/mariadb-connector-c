@@ -97,7 +97,7 @@ IF(NOT IS_SUBPROJECT)
 IF(MSVC)
   # Speedup system tests
   INCLUDE(${CC_SOURCE_DIR}/cmake/WindowsCache.cmake)
-  ADD_DEFINITIONS(-DWIN32_LEAN_AND_MEAN)
+  ADD_DEFINITIONS(-DWIN32_LEAN_AND_MEAN -DNOGDI)
   IF (MSVC)
     # Treat warnings as errors
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -WX")

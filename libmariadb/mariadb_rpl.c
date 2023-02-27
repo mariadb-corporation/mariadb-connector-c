@@ -32,7 +32,7 @@
 
 
 #ifdef WIN32
-#define alloca _malloca
+#include <malloc.h>
 #endif
 
 #define RPL_EVENT_HEADER_SIZE 19
@@ -512,7 +512,7 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
           uint8_t f_len= *metadata++;
           uint32_t p2;
           pos+= 4;
-          p2= uintNkorr(f_len, pos);
+          p2= (uint32_t)uintNkorr(f_len, pos);
           pos+= f_len;
           sprintf(tmp, "%d.%d", p1, p2);
           if (rpl_alloc_set_string_and_len(row_event, &column->val.str, tmp, strlen(tmp)))
@@ -559,9 +559,9 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
           date_part= dt_val >> 17;
           time_part= dt_val % (1 << 17);
 
-          tm->day= date_part % (1 << 5);
-          tm->month= (date_part >> 5) % 13;
-          tm->year= (date_part >> 5) / 13;
+          tm->day= (unsigned int)date_part % (1 << 5);
+          tm->month= (unsigned int)(date_part >> 5) % 13;
+          tm->year= (unsigned int)(date_part >> 5) / 13;
  
           tm->second= time_part % (1 << 6);
           tm->minute= (time_part >> 6) % (1 << 6);
@@ -619,7 +619,7 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
           uint32_t s_len= uint2korr(metadata);
           uint8_t byte_len= rpl_byte_size(s_len);
           metadata+= 2;
-          s_len= uintNkorr(byte_len, pos);
+          s_len= (uint32_t)uintNkorr(byte_len, pos);
           pos+= byte_len;
           if (rpl_alloc_set_string_and_len(row_event, &column->val.str, pos, s_len))
             goto mem_error;
@@ -629,11 +629,11 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
         case MYSQL_TYPE_TIME:
         {
           MYSQL_TIME *tm= &column->val.tm;
-          uint32_t t= uint8korr(pos);
+          uint64_t t= uint8korr(pos);
           pos+= 8;
-          tm->hour= (t/100)/100;
-          tm->minute= (t/100) % 100;
-          tm->second= t % 100;
+          tm->hour= (unsigned int)(t/100)/100;
+          tm->minute= (unsigned int)(t/100) % 100;
+          tm->second= (unsigned int)t % 100;
           tm->time_type= MYSQL_TIMESTAMP_TIME;
           break;  
         }
@@ -641,12 +641,12 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
         {
           MYSQL_TIME *tm= &column->val.tm;
           uint64_t t= uint8korr(pos);
-          uint32_t d_val= t / 1000000,
-                   t_val= t % 1000000;
+          uint32_t d_val= (uint32_t)t / 1000000,
+                   t_val= (uint32_t)t % 1000000;
           pos+= 8;
-          tm->year= (d_val / 100) / 100;
-          tm->month= (d_val / 100) % 100;
-          tm->day= d_val % 100;
+          tm->year= (unsigned int)(d_val / 100) / 100;
+          tm->month= (unsigned int)(d_val / 100) % 100;
+          tm->day= (unsigned int)d_val % 100;
           tm->hour= (t_val/100)/100;
           tm->minute= (t_val/100) % 100;
           tm->second= t_val % 100;
@@ -1550,7 +1550,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
          8-bytes, always zero ?!
       */
-      int len= ev_end - ev - rpl->use_checksum * 4;
+      ssize_t len= ev_end - ev - rpl->use_checksum * 4;
 
       if (len)
       {
