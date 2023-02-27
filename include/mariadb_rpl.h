@@ -196,6 +196,10 @@ enum mariadb_rpl_status_code {
   Q_XID= 129    /* xid: 8 bytes */
 };
 
+#ifdef DEFAULT_CHARSET
+#undef DEFAULT_CHARSET
+#endif
+
 enum opt_metadata_field_type
 {
   SIGNEDNESS = 1,
