@@ -1814,13 +1814,12 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     if (rpl_event->is_semi_sync &&
         rpl_event->semi_sync_flags == SEMI_SYNC_ACK_REQ)
     {
-      size_t buf_size= rpl->filename_length + 1 + 9;
+      size_t buf_size= rpl->filename_length + 1 + 8;
       uchar *buffer= alloca(buf_size);
 
       buffer[0]= SEMI_SYNC_INDICATOR;
       int8store(buffer + 1, (int64_t)rpl_event->next_event_pos);
       memcpy(buffer + 9, rpl->filename, rpl->filename_length);
-      buffer[buf_size - 1]= 0;
 
       /* clear network buffer before sending the reply packet*/
       ma_net_clear(&rpl->mysql->net);
