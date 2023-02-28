@@ -608,7 +608,7 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
           uint8_t h_len= *metadata++;
           uint64_t b_len= uintNkorr(h_len, pos);
           pos+= h_len;
-          if (rpl_alloc_set_string_and_len(row_event, &column->val.str, pos, b_len))
+          if (rpl_alloc_set_string_and_len(row_event, &column->val.str, pos, (size_t)b_len))
             goto mem_error;
           pos+= b_len;
           break;
