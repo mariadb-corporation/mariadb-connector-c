@@ -698,7 +698,7 @@ MARIADB_RPL * STDCALL mariadb_rpl_init_ex(MYSQL *mysql, unsigned int version)
         MYSQL_ROW row= mysql_fetch_row(result);
         if (!strcmp(row[0], "CRC32"))
         {
-          rpl->artificial_checksun= 1;
+          rpl->artificial_checksum= 1;
         }
         mysql_free_result(result);
       }
@@ -1476,11 +1476,10 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       if (rpl_event->timestamp == 0 &&
           rpl_event->flags & LOG_EVENT_ARTIFICIAL_F)
       {
-        if (rpl->artificial_checksun)
+        if (rpl->artificial_checksum)
         {
-          int4store(ev_end - 4, rpl_event->checksum);
-          if (mariadb_connection(rpl->mysql))
-            rpl->artificial_checksun= 0;
+          unsigned long crc= crc32_z(0L, Z_NULL, 0);
+          rpl_event->checksum= (uint32_t) crc32_z(crc, checksum_start, ev_end - checksum_start);
         }
       }
       RPL_CHECK_POS(ev, ev_end, len);

@@ -328,7 +328,7 @@ typedef struct st_mariadb_rpl {
   uint16_t flags;
   uint8_t fd_header_len; /* header len from last format description event */
   uint8_t use_checksum;
-  uint8_t artificial_checksun;
+  uint8_t artificial_checksum;
   uint8_t verify_checksum;
   uint8_t post_header_len[ENUM_END_EVENT];
   MA_FILE *fp;
