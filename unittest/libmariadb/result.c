@@ -65,7 +65,7 @@ static int client_use_result(MYSQL *mysql)
   result= mysql_use_result(mysql);
   FAIL_IF(!result, "Invalid result set");
 
-  /* since we use use result, we shouldn't be able execute other api calls */
+  /* since we use result, we shouldn't be able execute other api calls */
   rc= mysql_ping(mysql);
   FAIL_IF(!rc, "Error expected");
 
