@@ -2975,12 +2975,16 @@ mysql_use_result(MYSQL *mysql)
   }
   if (!(result=(MYSQL_RES*) calloc(1, sizeof(*result)+
 				      sizeof(ulong)*mysql->field_count)))
+  {
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     return(0);
+  }
   result->lengths=(ulong*) (result+1);
   if (!(result->row=(MYSQL_ROW)
 	malloc(sizeof(result->row[0])*(mysql->field_count+1))))
   {					/* Ptrs: to one row */
     free(result);
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
     return(0);
   }
   result->fields=	mysql->fields;
