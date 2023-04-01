@@ -108,8 +108,8 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_MARIADB_LAST_ERROR CR_ERR_NET_UNCOMPRESS
 #endif
 
-#define IS_MYSQL_ERROR(code) ((code) > CR_MIN_ERROR && (code) < CR_MYSQL_LAST_ERROR)
-#define IS_MARIADB_ERROR(code) ((code) > CER_MIN_ERROR && (code) < CR_MARIADB_LAST_ERROR)
+#define IS_MYSQL_ERROR(code) ((code) > CR_MIN_ERROR && (code) <= CR_MYSQL_LAST_ERROR)
+#define IS_MARIADB_ERROR(code) ((code) > CER_MIN_ERROR && (code) <= CR_MARIADB_LAST_ERROR)
 
 #define ER(code) IS_MYSQL_ERROR((code)) ? client_errors[(code) - CR_MIN_ERROR] : \
                  IS_MARIADB_ERROR((code)) ?  mariadb_client_errors[(code) - CER_MIN_ERROR] : \
