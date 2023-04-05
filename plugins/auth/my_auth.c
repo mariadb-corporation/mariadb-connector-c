@@ -200,8 +200,6 @@ error:
   return res;
 }
 
-
-
 static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                                     const uchar *data, int data_len)
 {
@@ -236,6 +234,16 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     /* See CONC-490: If no database was specified, we need
        to unset CLIENT_CONNECT_WITH_DB flag */
     mysql->client_flag&= ~CLIENT_CONNECT_WITH_DB;
+
+  /* CONC-635: For connections via named pipe or shared memory the server
+               indicates the capability for secure connections (TLS), but
+               doesn't support it. */
+  if ((mysql->server_capabilities & CLIENT_SSL) &&
+      (mysql->net.pvio->type == PVIO_TYPE_NAMEDPIPE ||
+       mysql->net.pvio->type == PVIO_TYPE_SHAREDMEM))
+  {
+    mysql->server_capabilities &= ~(CLIENT_SSL);
+  }
 
   /* if server doesn't support SSL and verification of server certificate
      was set to mandatory, we need to return an error */
