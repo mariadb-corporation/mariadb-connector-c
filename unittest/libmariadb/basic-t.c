@@ -810,16 +810,16 @@ static int test_conc624(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   char errmsg[MYSQL_ERRMSG_SIZE];
 
-  SET_CLIENT_STMT_ERROR(stmt, 9000, SQLSTATE_UNKNOWN, 0);
+  stmt_set_error(stmt, 9000, SQLSTATE_UNKNOWN, 0);
   snprintf(errmsg, MYSQL_ERRMSG_SIZE, ER_UNKNOWN_ERROR_CODE, 9000);
   diag("stmt_error: %s", mysql_stmt_error(stmt));
   FAIL_IF(strcmp(mysql_stmt_error(stmt), errmsg), "expected undefined error 9000");
 
-  SET_CLIENT_STMT_ERROR(stmt, 0, SQLSTATE_UNKNOWN, 0);
+  stmt_set_error(stmt, 0, SQLSTATE_UNKNOWN, 0);
   snprintf(errmsg, MYSQL_ERRMSG_SIZE, ER_UNKNOWN_ERROR_CODE, 0);
   FAIL_IF(strcmp(mysql_stmt_error(stmt), errmsg), "expected undefined error 0");
 
-  SET_CLIENT_STMT_ERROR(stmt, 4999, SQLSTATE_UNKNOWN, 0);
+  stmt_set_error(stmt, 4999, SQLSTATE_UNKNOWN, 0);
   snprintf(errmsg, MYSQL_ERRMSG_SIZE, ER_UNKNOWN_ERROR_CODE, 4999);
   FAIL_IF(strcmp(mysql_stmt_error(stmt), errmsg), "expected undefined error 4999");
 
@@ -835,8 +835,8 @@ static int test_conc624(MYSQL *mysql)
   snprintf(errmsg, MYSQL_ERRMSG_SIZE, ER_UNKNOWN_ERROR_CODE, 9000);
   FAIL_IF(strcmp(mysql_error(mysql), errmsg), "expected undefined error 9000");
 
-  /* test if  SET_CLIENT_STMT_ERROR works with variadic arguments */
-  SET_CLIENT_STMT_ERROR(stmt, CR_STMT_CLOSED, SQLSTATE_UNKNOWN, 0, "foobar");
+  /* test if  stmt_set_error works with variadic arguments */
+  stmt_set_error(stmt, CR_STMT_CLOSED, SQLSTATE_UNKNOWN, 0, "foobar");
   snprintf(errmsg, MYSQL_ERRMSG_SIZE, ER(CR_STMT_CLOSED), "foobar");
   FAIL_IF(strcmp(mysql_stmt_error(stmt), errmsg), "error when passing variadic arguments to prepared stmt error function");
 

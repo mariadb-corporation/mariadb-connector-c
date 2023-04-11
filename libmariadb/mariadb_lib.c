@@ -1814,7 +1814,7 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
     if (stmt->state != MYSQL_STMT_INITTED)
     {
       stmt->state= MYSQL_STMT_INITTED;
-      SET_CLIENT_STMT_ERROR(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
+      stmt_set_error(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     }
   }
 
@@ -1851,7 +1851,7 @@ void ma_invalidate_stmts(MYSQL *mysql, const char *function_name)
     {
       MYSQL_STMT *stmt= (MYSQL_STMT *)li_stmt->data;
       stmt->mysql= NULL;
-      SET_CLIENT_STMT_ERROR(stmt, CR_STMT_CLOSED, SQLSTATE_UNKNOWN, 0, function_name);
+      stmt_set_error(stmt, CR_STMT_CLOSED, SQLSTATE_UNKNOWN, 0, function_name);
     }
     mysql->stmts= NULL;
   }
