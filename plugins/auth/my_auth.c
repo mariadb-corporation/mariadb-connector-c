@@ -310,6 +310,10 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       uint server_extended_cap= mysql->extension->mariadb_server_capabilities;
       uint client_extended_cap= (uint)(MARIADB_CLIENT_SUPPORTED_FLAGS >> 32);
 
+      /* If no catalog was provided, remove indication flag */
+      if (!mysql->options.extension->catalog)
+        client_extended_cap&= ~((MARIADB_CLIENT_CONNECT_CATALOG) >> 32);
+
       mysql->extension->mariadb_client_flag=
           server_extended_cap & client_extended_cap;
       int4store(buff + 28, mysql->extension->mariadb_client_flag);
@@ -404,19 +408,11 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   end= ma_send_connect_attr(mysql, (unsigned char *)end);
 
   /* Add catalog */
-  if (mysql->extension->mariadb_server_capabilities & (MARIADB_CLIENT_CONNECT_CATALOG >> 32))
+  if ((mysql->extension->mariadb_server_capabilities & (MARIADB_CLIENT_CONNECT_CATALOG >> 32)) &&
+      mysql->options.extension->catalog)
   {
-    if (mysql->options.extension->catalog)
-    {
-      end= (char *)mysql_net_store_length((uchar *)end, strlen(mysql->options.extension->catalog));
-      end= ma_strmake(end, mysql->options.extension->catalog, NAME_LEN);
-      /* store catalog */
-      mysql->extension->catalog= strdup(mysql->options.extension->catalog);
-    } else {
-      end= (char *)mysql_net_store_length((uchar *)end, 0);
-      /* store default catalog */
-      mysql->extension->catalog= strdup(MARIADB_DEFAULT_CATALOG);
-    }
+    end= (char *)mysql_net_store_length((uchar *)end, strlen(mysql->options.extension->catalog));
+    end= ma_strmake(end, mysql->options.extension->catalog, NAME_LEN);
   }
 
   /* MySQL 8.0: 

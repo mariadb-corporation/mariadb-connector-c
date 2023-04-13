@@ -2335,10 +2335,6 @@ static void mysql_close_memory(MYSQL *mysql)
   free(mysql->server_version);
   mysql->host_info= mysql->host= mysql->unix_socket=
                     mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
-  if (mysql->extension)
-  {
-    free(mysql->extension->catalog);
-  }
 }
 
 void my_set_error(MYSQL *mysql,
@@ -4584,12 +4580,6 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
   case MARIADB_CONNECTION_SOCKET:
     if (mysql)
       *((my_socket *)arg)= mariadb_get_socket(mysql);
-    else
-      goto error;
-    break;
-  case MARIADB_CONNECTION_CATALOG:
-    if (mysql)
-      *((const char **)arg)= mysql->extension->catalog;
     else
       goto error;
     break;
