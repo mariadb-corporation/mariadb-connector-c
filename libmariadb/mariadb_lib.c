@@ -2316,7 +2316,7 @@ static void mysql_close_options(MYSQL *mysql)
       ma_hashtbl_free(&mysql->options.extension->userdata);
     free(mysql->options.extension->restricted_auth);
     free(mysql->options.extension->rpl_host);
-
+    free(mysql->options.extension->catalog);
   }
   free(mysql->options.extension);
   /* clear all pointer */
@@ -2335,6 +2335,10 @@ static void mysql_close_memory(MYSQL *mysql)
   free(mysql->server_version);
   mysql->host_info= mysql->host= mysql->unix_socket=
                     mysql->server_version=mysql->user=mysql->passwd=mysql->db=0;
+  if (mysql->extension)
+  {
+    free(mysql->extension->catalog);
+  }
 }
 
 void my_set_error(MYSQL *mysql,
@@ -3809,6 +3813,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       }
     }
     break;
+  case MARIADB_OPT_CATALOG:
+    OPT_SET_EXTENDED_VALUE_STR(&mysql->options, catalog, (char *)arg1);
+    break;
   default:
     va_end(ap);
     SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
@@ -4030,6 +4037,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MARIADB_OPT_SKIP_READ_RESPONSE:
     *((my_bool*)arg)= mysql->options.extension ? mysql->options.extension->skip_read_response : 0;
+    break;
+  case MARIADB_OPT_CATALOG:
+    *((char **)arg)= mysql->options.extension->catalog;
     break;
   default:
     va_end(ap);
@@ -4574,6 +4584,12 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
   case MARIADB_CONNECTION_SOCKET:
     if (mysql)
       *((my_socket *)arg)= mariadb_get_socket(mysql);
+    else
+      goto error;
+    break;
+  case MARIADB_CONNECTION_CATALOG:
+    if (mysql)
+      *((const char **)arg)= mysql->extension->catalog;
     else
       goto error;
     break;

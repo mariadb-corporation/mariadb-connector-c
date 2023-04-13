@@ -86,6 +86,7 @@ struct st_mysql_options_extension {
   unsigned short rpl_port;
   void (*status_callback)(void *ptr, enum enum_mariadb_status_info type, ...);
   void *status_data;
+  char *catalog;
 };
 
 typedef struct st_connection_handler
@@ -115,6 +116,7 @@ struct st_mariadb_extension {
   unsigned long mariadb_client_flag; /* MariaDB specific client flags */
   unsigned long mariadb_server_capabilities; /* MariaDB specific server capabilities */
   my_bool auto_local_infile;
+  char *catalog;
 };
 
 #define OPT_EXT_VAL(a,key) \

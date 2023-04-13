@@ -687,7 +687,7 @@ void run_tests(struct my_tests_st *test) {
 
   if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
   {
-    BAIL_OUT("Can't establish TLS connection to server.");
+    BAIL_OUT("Can't establish connection to server. (Error: %s)", mysql_error(mysql));
   }
 
   if (!mysql_query(mysql, "SHOW VARIABLES LIKE '%ssl%'"))

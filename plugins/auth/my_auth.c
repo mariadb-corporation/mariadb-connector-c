@@ -228,6 +228,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->options.use_ssl)
     mysql->client_flag|= CLIENT_SSL;
 #endif /* HAVE_TLS && !EMBEDDED_LIBRARY*/
+
   if (mpvio->db)
     mysql->client_flag|= CLIENT_CONNECT_WITH_DB;
   else
@@ -308,6 +309,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     {
       uint server_extended_cap= mysql->extension->mariadb_server_capabilities;
       uint client_extended_cap= (uint)(MARIADB_CLIENT_SUPPORTED_FLAGS >> 32);
+
       mysql->extension->mariadb_client_flag=
           server_extended_cap & client_extended_cap;
       int4store(buff + 28, mysql->extension->mariadb_client_flag);
@@ -400,6 +402,22 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     end= ma_strmake(end, mpvio->plugin->name, NAME_LEN) + 1;
 
   end= ma_send_connect_attr(mysql, (unsigned char *)end);
+
+  /* Add catalog */
+  if (mysql->extension->mariadb_server_capabilities & (MARIADB_CLIENT_CONNECT_CATALOG >> 32))
+  {
+    if (mysql->options.extension->catalog)
+    {
+      end= (char *)mysql_net_store_length((uchar *)end, strlen(mysql->options.extension->catalog));
+      end= ma_strmake(end, mysql->options.extension->catalog, NAME_LEN);
+      /* store catalog */
+      mysql->extension->catalog= strdup(mysql->options.extension->catalog);
+    } else {
+      end= (char *)mysql_net_store_length((uchar *)end, 0);
+      /* store default catalog */
+      mysql->extension->catalog= strdup(MARIADB_DEFAULT_CATALOG);
+    }
+  }
 
   /* MySQL 8.0: 
      If zstd compresson was specified, the server expects
