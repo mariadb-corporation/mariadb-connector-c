@@ -40,7 +40,7 @@ jobs:
     - env: srv=skysql
     - env: srv=skysql-ha
     - env: srv=xpand
-    - env: srv=mysql
+    - env: srv=mysql native=1
   include:
     - env: srv=mariadb v=10.5
       os: windows
