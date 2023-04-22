@@ -618,6 +618,12 @@ int test_conc21(MYSQL *mysql)
   int major=0, minor= 0, patch=0;
   SKIP_MAXSCALE;
 
+  if (strlen(mysql_get_server_info(mysql)) > 63)
+  {
+    diag("server name is too long - skip until rpl hack was removed");
+    return SKIP;
+  }
+
   rc= mysql_query(mysql, "SELECT @@version");
   check_mysql_rc(rc, mysql);
 
