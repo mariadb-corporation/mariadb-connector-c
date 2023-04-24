@@ -1208,6 +1208,7 @@ static int test_auth256(MYSQL *my)
   if (!my_test_connect(mysql, hostname, "sha256user", "foo", NULL, port, socketname, 0))
   {
     diag("error: %s", mysql_error(mysql));
+    diag("host: %s", this_host);
     mysql_close(mysql);
     return FAIL;
   }
@@ -1940,7 +1941,9 @@ static int test_conc632(MYSQL *my __attribute__((unused)))
     return FAIL;
   }
 
-  rc= mysql_query(mysql, "CREATE OR REPLACE PROCEDURE conc632() "
+  rc= mysql_query(mysql, "DROP PROCEDURE conc632");
+
+  rc= mysql_query(mysql, "CREATE PROCEDURE conc632() "
                          "BEGIN "
                          "  SELECT 1;"
                          "  SELECT 2;"

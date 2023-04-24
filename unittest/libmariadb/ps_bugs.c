@@ -5489,8 +5489,12 @@ static int test_mdev19838(MYSQL *mysql)
 
 static int test_conc627(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   int rc;
+
+  SKIP_MYSQL(mysql);
+
+  stmt= mysql_stmt_init(mysql);
 
   rc= mysql_stmt_prepare(stmt, SL("show grants for mysqltest_8"));
   check_stmt_rc(rc, stmt);
