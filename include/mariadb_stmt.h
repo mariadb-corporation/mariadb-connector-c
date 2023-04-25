@@ -34,9 +34,6 @@
     ((stmt)->mysql->extension->mariadb_server_capabilities & \
     (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))))
 
-#define SET_CLIENT_STMT_ERROR(a, b, c, d, ...) \
-  stmt_set_error((a),(b),(c),(d), ##__VA_ARGS__)
-
 #define CLEAR_CLIENT_STMT_ERROR(a) \
 do { \
   (a)->last_errno= 0;\
