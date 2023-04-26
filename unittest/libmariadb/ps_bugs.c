@@ -5514,7 +5514,7 @@ static int test_conc627(MYSQL *mysql)
 static int test_conc633(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
-  MYSQL *my= mysql_init(NULL);
+  MYSQL *my= NULL;
   int ret= FAIL;
   int rc;
 
