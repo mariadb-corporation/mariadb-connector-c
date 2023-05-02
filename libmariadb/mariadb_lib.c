@@ -891,7 +891,7 @@ unpack_fields(const MYSQL *mysql,
     for (i=0; i < field_count; i++)
     {
       uint length= (uint)(row->data[i+1] - row->data[i] - 1);
-      if (!row->data[i] && row->data[i][length])
+      if (!row->data[i] || row->data[i][length])
         goto error;
 
       *(char **)(((char *)field) + rset_field_offsets[i*2])=
