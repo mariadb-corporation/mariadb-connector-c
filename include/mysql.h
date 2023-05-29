@@ -246,7 +246,8 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_OPT_MULTI_STATEMENTS,
     MARIADB_OPT_INTERACTIVE,
     MARIADB_OPT_PROXY_HEADER,
-    MARIADB_OPT_IO_WAIT
+    MARIADB_OPT_IO_WAIT,
+    MARIADB_OPT_USE_REDIRECTION
   };
 
   enum mariadb_value {
@@ -302,6 +303,13 @@ extern const char *SQLSTATE_UNKNOWN;
     MYSQL_PROTOCOL_DEFAULT, MYSQL_PROTOCOL_TCP, MYSQL_PROTOCOL_SOCKET,
     MYSQL_PROTOCOL_PIPE, MYSQL_PROTOCOL_MEMORY
   };
+
+  typedef enum mariadb_redirection_mode
+  {
+      REDIRECTION_OFF,
+      REDIRECTION_ON,
+      REDIRECTION_PREFERRED
+  } enable_redirect;
 
 struct st_mysql_options {
     unsigned int connect_timeout, read_timeout, write_timeout;
