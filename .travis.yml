@@ -3,6 +3,9 @@ dist: focal
 language: c
 services: docker
 addons:
+  apt:
+    packages:
+      - pandoc
   hosts:
     - mariadb.example.com
 
