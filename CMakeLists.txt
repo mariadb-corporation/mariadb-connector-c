@@ -54,7 +54,7 @@ ENDMACRO()
 IF(NOT WIN32)
   ADD_OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" OFF)
   # No man pages for Windows
-  ADD_OPTION(WITH_DOCS "Build and include documentation" OFF)
+  ADD_OPTION(WITH_DOCS "Build and include documentation" ON)
 ELSE()
   ADD_OPTION(WITH_MSI "Build MSI installation package" OFF)
   ADD_OPTION(WITH_SIGNCODE "digitally sign files" OFF)
@@ -536,7 +536,7 @@ ELSE()
   SET(zlib_status "yes (using bundled zlib)")
 ENDIF()
 
-IF(WITH_DOCS)
+IF(NOT WIN32 AND WITH_DOCS)
   IF(GIT_EXECUTABLE AND EXISTS ${CC_SOURCE_DIR}/.git)
     EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
                         WORKING_DIRECTORY ${CC_SOURCE_DIR}
