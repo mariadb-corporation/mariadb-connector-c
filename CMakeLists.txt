@@ -537,6 +537,15 @@ ELSE()
 ENDIF()
 
 IF(WITH_DOCS)
+  IF(GIT_EXECUTABLE AND EXISTS ${CC_SOURCE_DIR}/.git)
+    EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                        WORKING_DIRECTORY ${CC_SOURCE_DIR}
+                        RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        IF(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            MESSAGE(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        ENDIF()
+  ENDIF()
+
   ADD_SUBDIRECTORY(docs)
 ENDIF()
 
