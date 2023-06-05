@@ -463,6 +463,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   BIO_METHOD *bio_method= NULL;
   BIO *bio;
 #endif
+#ifdef SSL_OP_IGNORE_UNEXPECTED_EOF
+  SSL_set_options(ssl, SSL_OP_IGNORE_UNEXPECTED_EOF);
+#endif
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
