@@ -1360,7 +1360,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= len;
 
       len= ev_end - ev - (rpl->use_checksum ? 4 : 0);
-      RPL_CHECK_POS(ev, ev_end, len);
 
       if (len > 0)  /* optional metadata */
       {
@@ -1482,7 +1481,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
           rpl_event->checksum= (uint32_t) crc32(crc, checksum_start, (uint32_t)(ev_end - checksum_start));
         }
       }
-      RPL_CHECK_POS(ev, ev_end, len);
       rpl_set_string_and_len(&rpl_event->event.rotate.filename, ev, len);
       if (ma_set_rpl_filename(rpl, ev, len))
         goto mem_error;
