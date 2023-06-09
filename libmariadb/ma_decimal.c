@@ -227,7 +227,7 @@ int decimal2string(decimal *from, char *to, int *to_len)
   }
   if (intg > 0)
   {
-    for (i=(intg-1) % DIG_PER_DEC1; *buf0 < powers10[i--]; intg--) ;
+    for (i=(intg-1) % DIG_PER_DEC1; *buf0 < powers10[i--]; intg--) {}
     DBUG_ASSERT(intg > 0);
   }
   else

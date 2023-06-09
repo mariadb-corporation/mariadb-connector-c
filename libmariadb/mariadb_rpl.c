@@ -1360,7 +1360,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= len;
 
       len= ev_end - ev - (rpl->use_checksum ? 4 : 0);
-      RPL_CHECK_POS(ev, ev_end, len);
 
       if (len > 0)  /* optional metadata */
       {
@@ -1478,11 +1477,10 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       {
         if (rpl->artificial_checksum)
         {
-          unsigned long crc= crc32_z(0L, Z_NULL, 0);
-          rpl_event->checksum= (uint32_t) crc32_z(crc, checksum_start, ev_end - checksum_start);
+          unsigned long crc= crc32(0L, Z_NULL, 0);
+          rpl_event->checksum= (uint32_t) crc32(crc, checksum_start, (uint32_t)(ev_end - checksum_start));
         }
       }
-      RPL_CHECK_POS(ev, ev_end, len);
       rpl_set_string_and_len(&rpl_event->event.rotate.filename, ev, len);
       if (ma_set_rpl_filename(rpl, ev, len))
         goto mem_error;
@@ -1834,8 +1832,8 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
       if (rpl_event->checksum && rpl->verify_checksum)
       {
-        unsigned long crc= crc32_z(0L, Z_NULL, 0);
-        crc=  crc32_z(crc, checksum_start, ev_end - checksum_start - 4);
+        unsigned long crc= crc32(0L, Z_NULL, 0);
+        crc= crc32(crc, checksum_start, (uint32_t)(ev_end - checksum_start - 4));
         if (rpl_event->checksum != (uint32_t)crc)
         {
           rpl_set_error(rpl, CR_ERR_CHECKSUM_VERIFICATION_ERROR, SQLSTATE_UNKNOWN, 0, 

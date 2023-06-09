@@ -15,7 +15,7 @@ IF(WIN32)
   REGISTER_PLUGIN(TARGET pvio_npipe
                 TYPE MARIADB_CLIENT_PLUGIN_PVIO
                 CONFIGURATIONS STATIC DYNAMIC DEFAULT
-                DEFAULT DYNAMIC
+                DEFAULT STATIC
                 SOURCES ${CC_SOURCE_DIR}/plugins/pvio/pvio_npipe.c)
 
   # shared memory
