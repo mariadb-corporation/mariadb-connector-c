@@ -1787,7 +1787,12 @@ restart:
  */
   if ((pkt_length=ma_net_safe_read(mysql)) == packet_error)
   {
-    if (mysql->net.last_errno == CR_SERVER_LOST)
+    if (mysql->options.use_ssl)
+      my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                   "Received error packet before completion of TLS handshake. "
+                   "Suppressing its details so that the client cannot vary its behavior "
+                   "based on this UNTRUSTED input.");
+    else if (mysql->net.last_errno == CR_SERVER_LOST)
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
                  "handshake: reading initial communication packet",
