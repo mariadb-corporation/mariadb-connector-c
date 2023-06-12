@@ -1804,6 +1804,11 @@ restart:
                  ER(CR_SERVER_LOST_EXTENDED),
                  "handshake: reading initial communication packet",
                  errno);
+    else if (mysql->options.use_ssl)
+      my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                   "Received error packet before completion of TLS handshake. "
+                   "The authenticity of the following error cannot be verified:\n%d - %s",
+                   mysql->net.last_errno, mysql->net.last_error);
 
     goto error;
   }
