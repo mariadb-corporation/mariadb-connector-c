@@ -1951,6 +1951,17 @@ restart:
 
   mysql->client_flag= client_flag;
 
+  /* Until run_plugin_auth has completed, the connection
+   * cannot have been secured with TLS/SSL.
+   *
+   * This means that any client which expects to use a
+   * TLS/SSL-secured connection SHOULD NOT trust any
+   * communication received from the server prior to this
+   * point as being genuine; nor should either the client
+   * or the server send any confidential information up
+   * to this point.
+   */
+
   if (run_plugin_auth(mysql, scramble_data, scramble_len,
                              scramble_plugin, db))
     goto error;
