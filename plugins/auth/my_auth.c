@@ -245,15 +245,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     mysql->server_capabilities &= ~(CLIENT_SSL);
   }
 
-  /* if server doesn't support SSL, we need to return an error */
-  if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
-  {
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                        ER(CR_SSL_CONNECTION_ERROR), 
-                        "SSL is required, but the server does not support it");
-    goto error;
-  }
-
   /* Remove options that server doesn't support */
   mysql->client_flag= mysql->client_flag &
                        (~(CLIENT_COMPRESS | CLIENT_ZSTD_COMPRESSION | CLIENT_SSL | CLIENT_PROTOCOL_41) 
