@@ -408,6 +408,10 @@ struct st_mariadb_rpl_gtid_event {
   uint32_t domain_id;
   uint8_t flags;
   uint64_t commit_id;
+  uint32_t format_id;
+  uint8_t gtrid_len;
+  uint8_t bqual_len;
+  MARIADB_STRING xid;
 };
 
 struct st_mariadb_rpl_annotate_rows_event {

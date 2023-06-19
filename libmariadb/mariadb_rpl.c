@@ -1609,6 +1609,21 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         rpl_event->event.gtid.commit_id= uint8korr(ev);
         ev+= 8;
       }
+      else if (rpl_event->event.gtid.flags & (FL_PREPARED_XA | FL_COMPLETED_XA))
+      {
+        uint16_t len;
+        RPL_CHECK_POS(ev, ev_end, 6);
+        rpl_event->event.gtid.format_id= uint4korr(ev);
+        ev+= 4;
+        rpl_event->event.gtid.gtrid_len= *ev;
+        ev++;
+        rpl_event->event.gtid.bqual_len= *ev;
+        ev++;
+        len= rpl_event->event.gtid.gtrid_len + rpl_event->event.gtid.bqual_len;
+        RPL_CHECK_POS(ev, ev_end, len);
+        rpl_set_string_and_len(&rpl_event->event.gtid.xid, ev, len);
+        ev+= len;
+      }
       else
         ev+= 6;
       break;
