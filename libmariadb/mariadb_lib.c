@@ -1708,6 +1708,7 @@ restart:
   else
 #endif
   {
+  tcp_redirect:
     cinfo.unix_socket=0;				/* This is not used */
     if (!port)
       port=mysql_port;
@@ -1964,7 +1965,30 @@ restart:
 
   if (run_plugin_auth(mysql, scramble_data, scramble_len,
                              scramble_plugin, db))
+  {
+    if (mysql->net.last_errno == ER_SERVER_REDIRECT)
+    {
+      char *p= mysql->net.last_error; /* Should look like '|message|host[:port]' */
+      if (p && p[0] == '|')
+        p= strchr(p + 1, '|') ? : NULL;
+      if (p && *++p) {
+        host= p;
+        p= strchr(p, ':') ? : NULL;
+        if (p) {
+          *p++ = '\0';
+          port= atoi(p);
+        }
+        else
+        {
+          /* Restore to the default port, rather than reusing our current one */
+          port= 0;
+        }
+        fprintf(stderr, "Got server redirect to '%s' (port %d)\n", host, port);
+        goto tcp_redirect;
+      }
+    }
     goto error;
+  }
 
   if (mysql->client_flag & CLIENT_COMPRESS ||
       mysql->client_flag & CLIENT_ZSTD_COMPRESSION)
