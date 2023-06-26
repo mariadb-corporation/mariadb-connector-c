@@ -2342,7 +2342,7 @@ void my_set_error(MYSQL *mysql,
 {
   va_list ap;
 
-  const char *errmsg;
+  const char *errmsg= format;
 
   mysql->net.last_errno= error_nr;
   ma_strmake(mysql->net.sqlstate, sqlstate, SQLSTATE_LENGTH);
@@ -2359,8 +2359,7 @@ void my_set_error(MYSQL *mysql,
   }
 
   va_start(ap, format);
-  vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE - 1,
-            format ? format : errmsg, ap);
+  vsnprintf(mysql->net.last_error, MYSQL_ERRMSG_SIZE - 1, errmsg, ap);
   va_end(ap);
   return;
 }
