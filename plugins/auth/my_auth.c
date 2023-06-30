@@ -209,6 +209,11 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   size_t conn_attr_len= (mysql->options.extension) ? 
                          mysql->options.extension->connect_attrs_len : 0;
 
+#if defined(HAVE_TLS) && !defined(EMBEDDED_LIBRARY)
+  bool server_supports_ssl_v2=
+      !!(mysql->extension->mariadb_server_capabilities & (CLIENT_CAN_SSL_V2 >> 32));
+#endif
+
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
   buff= malloc(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
   end= buff;
@@ -320,26 +325,44 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->options.use_ssl &&
       (mysql->client_flag & CLIENT_SSL))
   {
-    /*
-      Send UNENCRYPTED "Login Request" packet with mysql->client_flag
-      and max_packet_size, but no username; without this, the server
-      does not know we want to switch to SSL/TLS
+    int ret;
+    if (server_supports_ssl_v2)
+    {
+      /*
+        The server doesn't inadvisably rely on information send in the
+        pre-TLS-handshake packet.  Send it a dummy packet that
+        contains NOTHING except for the 2-byte client capabilities
+        with the CLIENT_SSL bit.
+      */
+      unsigned char dummy[2];
+      int2store(dummy, CLIENT_SSL);
+      ret= (ma_net_write(net, dummy, sizeof(dummy)) || ma_net_flush(net));
+    }
+    else
+    {
+      /*
+        Send UNENCRYPTED "Login Request" packet with mysql->client_flag
+        and max_packet_size, but no username; without this, the server
+        does not know we want to switch to SSL/TLS
 
-      FIXME: Sending this packet is a very very VERY bad idea. It
-      contains the client's preferred charset and flags in plaintext;
-      this can be used for fingerprinting the client software version,
-      and probable geographic location.
+        FIXME: Sending this packet is a very very VERY bad idea. It
+        contains the client's preferred charset and flags in plaintext;
+        this can be used for fingerprinting the client software version,
+        and probable geographic location.
 
-      This offers a glaring opportunity for pervasive attackers to
-      easily target, intercept, and exploit the client-server
-      connection (e.g. "MITM all connections from known-vulnerable
-      client versions originating from countries X, Y, and Z").
-    */
-    if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
+        This offers a glaring opportunity for pervasive attackers to
+        easily target, intercept, and exploit the client-server
+        connection (e.g. "MITM all connections from known-vulnerable
+        client versions originating from countries X, Y, and Z").
+      */
+      ret= (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net));
+    }
+
+    if (ret)
     {
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                           ER(CR_SERVER_LOST_EXTENDED),
-                          "sending connection information to server",
+                          "sending SSLRequest packet to server",
                           errno);
       goto error;
     }
