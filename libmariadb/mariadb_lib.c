@@ -85,6 +85,7 @@
 #define MA_RPL_VERSION_HACK "5.5.5-"
 
 #define CHARSET_NAME_LEN 64
+#define INSTANT_FAILOVER_LIMIT 8
 
 #undef max_allowed_packet
 #undef net_buffer_length
@@ -1593,7 +1594,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   my_bool is_multi= 0;
   char *host_copy= NULL;
   struct st_host *host_list= NULL;
-  int connect_attempts= 0;
+  int connect_attempts= 0, instant_failovers=0;
 
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
@@ -2006,6 +2007,13 @@ restart:
         /* Client has disabled instant failover. Fall through and treat this
          * as a "normal" error. */
       }
+      else if (instant_failovers >= INSTANT_FAILOVER_LIMIT)
+      {
+        /* Too many instant failovers */
+        my_set_error(mysql, ER_INSTANT_FAILOVER, SQLSTATE_UNKNOWN,
+                     "Too many instant failovers (>= %d)",
+                     INSTANT_FAILOVER_LIMIT);
+      }
       else
       {
         char *p= mysql->net.last_error; /* Should look like '|message|host[:port]' */
@@ -2024,6 +2032,7 @@ restart:
             port= 0;
           }
         fprintf(stderr, "Got instant failover to '%s' (port %d)\n", host, port);
+          ++instant_failovers;
           goto tcp_redirect;
         }
       }
