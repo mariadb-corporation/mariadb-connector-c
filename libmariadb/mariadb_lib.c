@@ -85,6 +85,7 @@
 #define MA_RPL_VERSION_HACK "5.5.5-"
 
 #define CHARSET_NAME_LEN 64
+#define SERVER_REDIRECT_LIMIT 8
 
 #undef max_allowed_packet
 #undef net_buffer_length
@@ -1570,7 +1571,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   my_bool is_multi= 0;
   char *host_copy= NULL;
   struct st_host *host_list= NULL;
-  int connect_attempts= 0;
+  int connect_attempts= 0, server_redirects=0;
 
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
@@ -1975,6 +1976,13 @@ restart:
         /* Client has disabled server redirection. Fall through and treat this
          * as a "normal" error. */
       }
+      else if (server_redirects >= SERVER_REDIRECT_LIMIT)
+      {
+        /* Too many server redirects */
+        my_set_error(mysql, ER_SERVER_REDIRECT, SQLSTATE_UNKNOWN,
+                     "Too many server redirects (>= %d)",
+                     SERVER_REDIRECT_LIMIT);
+      }
       else
       {
         char *p= mysql->net.last_error; /* Should look like '|message|host[:port]' */
@@ -1993,6 +2001,7 @@ restart:
             port= 0;
           }
           fprintf(stderr, "Got server redirect to '%s' (port %d)\n", host, port);
+          ++server_redirects;
           goto tcp_redirect;
         }
       }
