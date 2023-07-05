@@ -228,6 +228,8 @@ extern const char *SQLSTATE_UNKNOWN;
     /* MariaDB specific */
     MYSQL_PROGRESS_CALLBACK=5999,
     MYSQL_OPT_NONBLOCK,
+    MARIADB_OPT_FOLLOW_INSTANT_FAILOVERS,
+
     /* MariaDB Connector/C specific */
     MYSQL_DATABASE_DRIVER=7000,
     MARIADB_OPT_SSL_FP,             /* deprecated, use MARIADB_OPT_TLS_PEER_FP instead */
@@ -340,6 +342,8 @@ struct st_mysql_options {
     char *bind_address;
     my_bool secure_auth;
     my_bool report_data_truncation;
+    my_bool follow_instant_failovers;
+
     /* function pointers for local infile support */
     int (*local_infile_init)(void **, const char *, void *);
     int (*local_infile_read)(void *, char *, unsigned int);
