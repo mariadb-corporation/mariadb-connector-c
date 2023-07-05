@@ -657,6 +657,7 @@ struct st_default_options mariadb_defaults[] =
   {{MYSQL_SET_CHARSET_NAME}, MARIADB_OPTION_STR, "default-character-set"},
   {{MARIADB_OPT_INTERACTIVE}, MARIADB_OPTION_NONE, "interactive-timeout"},
   {{MYSQL_OPT_CONNECT_TIMEOUT}, MARIADB_OPTION_INT, "connect-timeout"},
+  {{MARIADB_OPT_FOLLOW_SERVER_REDIRECTS}, MARIADB_OPTION_BOOL, "follow-server-redirects"},
   {{MYSQL_OPT_LOCAL_INFILE}, MARIADB_OPTION_BOOL, "local-infile"},
   {{0}, 0 ,"disable-local-infile",},
   {{MYSQL_OPT_SSL_CIPHER}, MARIADB_OPTION_STR, "ssl-cipher"},
@@ -1283,6 +1284,7 @@ mysql_init(MYSQL *mysql)
     goto error;
   mysql->options.report_data_truncation= 1;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
+  mysql->options.follow_server_redirects= TRUE;
   mysql->charset= mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
   mysql->methods= &MARIADB_DEFAULT_METHODS;
   strcpy(mysql->net.sqlstate, "00000");
@@ -1968,23 +1970,31 @@ restart:
   {
     if (mysql->net.last_errno == ER_SERVER_REDIRECT)
     {
-      char *p= mysql->net.last_error; /* Should look like '|message|host[:port]' */
-      if (p && p[0] == '|')
-        p= strchr(p + 1, '|') ? : NULL;
-      if (p && *++p) {
-        host= p;
-        p= strchr(p, ':') ? : NULL;
-        if (p) {
-          *p++ = '\0';
-          port= atoi(p);
+      if (!mysql->options.follow_server_redirects)
+      {
+        /* Client has disabled server redirection. Fall through and treat this
+         * as a "normal" error. */
+      }
+      else
+      {
+        char *p= mysql->net.last_error; /* Should look like '|message|host[:port]' */
+        if (p && p[0] == '|')
+          p= strchr(p + 1, '|') ? : NULL;
+        if (p && *++p) {
+          host= p;
+          p= strchr(p, ':') ? : NULL;
+          if (p) {
+            *p++ = '\0';
+            port= atoi(p);
+          }
+          else
+          {
+            /* Restore to the default port, rather than reusing our current one */
+            port= 0;
+          }
+          fprintf(stderr, "Got server redirect to '%s' (port %d)\n", host, port);
+          goto tcp_redirect;
         }
-        else
-        {
-          /* Restore to the default port, rather than reusing our current one */
-          port= 0;
-        }
-        fprintf(stderr, "Got server redirect to '%s' (port %d)\n", host, port);
-        goto tcp_redirect;
       }
     }
     goto error;
@@ -3494,6 +3504,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_RECONNECT:
     mysql->options.reconnect= *(my_bool *)arg1;
+    break;
+  case MARIADB_OPT_FOLLOW_SERVER_REDIRECTS:
+    mysql->options.follow_server_redirects= *(my_bool *)arg1;
     break;
   case MYSQL_OPT_PROTOCOL:
     mysql->options.protocol= *((uint *)arg1);
