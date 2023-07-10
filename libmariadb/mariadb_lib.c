@@ -25,6 +25,7 @@
 #include <ma_global.h>
 
 #include <ma_sys.h>
+#include <ma_helper.h>
 #include <ma_string.h>
 #include <mariadb_ctype.h>
 #include <ma_common.h>
@@ -4286,6 +4287,8 @@ static void ignore_sigpipe()
 #define ignore_sigpipe()
 #endif
 
+
+
 #ifdef _WIN32
 static int mysql_once_init()
 #else
@@ -4296,6 +4299,9 @@ static void mysql_once_init()
   init_client_errs();
   get_default_configuration_dirs();
   set_default_charset_by_name(MARIADB_DEFAULT_CHARSET, 0);
+#ifdef _WIN32
+  ma_get_windows_version();
+#endif
   if (mysql_client_plugin_init())
   {
 #ifdef _WIN32

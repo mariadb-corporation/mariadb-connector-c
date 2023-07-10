@@ -19,6 +19,7 @@
   Author: Georg Richter
 
  *************************************************************************************/
+#define SCHANNEL_USE_BLACKLISTS 1
 #include "ma_schannel.h"
 #include "schannel_certs.h"
 #include <assert.h>
@@ -276,7 +277,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   SecBuffer ExtraData;
   DWORD SFlags= ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT |
                 ISC_REQ_CONFIDENTIALITY | ISC_RET_EXTENDED_ERROR |
-                ISC_REQ_USE_SUPPLIED_CREDS |
+                ISC_REQ_USE_SUPPLIED_CREDS | //ISC_REQ_MANUAL_CRED_VALIDATION |
                 ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
 
   SecBufferDesc	BufferOut;
@@ -445,7 +446,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
     } while (sRet == SEC_E_INCOMPLETE_MESSAGE); /* Continue reading until full message arrives */
 
 
-    if (sRet != SEC_E_OK)
+    if (sRet != SEC_E_OK && sRet != SEC_I_RENEGOTIATE)
     {
       ma_schannel_set_sec_error(pvio, sRet);
       return sRet;
@@ -453,6 +454,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
 
     sctx->extraBuf.cbBuffer = 0;
     sctx->dataBuf.cbBuffer = 0;
+
     for (i = 0; i < 4; i++)
     {
       if (Buffers[i].BufferType == SECBUFFER_DATA)
@@ -477,7 +479,31 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
       *DecryptLength = (DWORD)nbytes;
       return SEC_E_OK;
     }
-    // No data buffer, loop
+
+    if (sctx->extraBuf.cbBuffer)
+    {
+      memcpy(ReadBuffer, sctx->extraBuf.pvBuffer, sctx->extraBuf.cbBuffer);
+      *DecryptLength = (DWORD)sctx->extraBuf.cbBuffer;
+    }
+
+    if (sRet == SEC_I_RENEGOTIATE)
+    {
+      sRet = ma_schannel_handshake_loop(pvio, 0, &sctx->extraBuf);
+
+      if (sRet != SEC_E_OK)
+        return sRet;
+      
+      if (sctx->extraBuf.pvBuffer)
+      {
+        memcpy(ReadBuffer, sctx->extraBuf.pvBuffer, sctx->extraBuf.cbBuffer);
+        *DecryptLength = (DWORD)sctx->extraBuf.cbBuffer;
+      }
+      else
+        dwOffset = 0;
+
+      continue;
+    }
+    
   }
 }
 /* }}} */

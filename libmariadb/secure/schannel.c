@@ -17,9 +17,13 @@
   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
  *************************************************************************************/
+#define SCHANNEL_USE_BLACKLISTS 1
 #include "ma_schannel.h"
+#include "ma_helper.h"
 #include "schannel_certs.h"
 #include <string.h>
+
+
 
 extern my_bool ma_tls_initialized;
 char tls_library_version[] = "Schannel";
@@ -28,6 +32,45 @@ char tls_library_version[] = "Schannel";
 #define PROT_TLS1_0 2
 #define PROT_TLS1_2 4
 #define PROT_TLS1_3 8
+
+ALG_ID all_algorithms[] = {CALG_MD2, CALG_MD4, CALG_MD5, CALG_SHA, CALG_SHA1, CALG_MAC,
+                           CALG_RSA_SIGN, CALG_DSS_SIGN, CALG_NO_SIGN, CALG_RSA_KEYX,
+                           CALG_DES, CALG_3DES_112, CALG_3DES, CALG_DESX, CALG_RC2,
+                           CALG_RC4, CALG_SEAL, CALG_DH_SF, CALG_DH_EPHEM, CALG_AGREEDKEY_ANY,
+                           CALG_KEA_KEYX, CALG_HUGHES_MD5, CALG_SKIPJACK, CALG_TEK, CALG_CYLINK_MEK,
+                           CALG_SSL3_SHAMD5, CALG_SSL3_MASTER, CALG_SCHANNEL_MASTER_HASH,
+                           CALG_SCHANNEL_MAC_KEY, CALG_SCHANNEL_ENC_KEY, CALG_PCT1_MASTER,
+                           CALG_SSL2_MASTER, CALG_TLS1_MASTER, CALG_RC5, CALG_HMAC, CALG_TLS1PRF,
+                           CALG_HASH_REPLACE_OWF, CALG_AES_128, CALG_AES_192, CALG_AES_256, CALG_AES,
+                           CALG_SHA_256, CALG_SHA_384, CALG_SHA_512, CALG_ECDH, CALG_ECDH_EPHEM, CALG_ECMQV,
+                           CALG_NULLCIPHER, CALG_THIRDPARTY_KEY_EXCHANGE, CALG_THIRDPARTY_SIGNATURE,
+                           CALG_THIRDPARTY_CIPHER, CALG_THIRDPARTY_HASH };
+
+typedef enum {
+  TLS_AES_128_GCM_SHA256 = 0,
+  TLS_AES_256_GCM_SHA384,
+  TLS_CHACHA20_POLY1305_SHA256,
+#ifdef ENABLE_TLSV13_CCM
+  TLS_AES_128_CCM_SHA256,
+  TLS_AES_128_CCM_8_SHA256
+#endif
+  MAX_TLSV13_CIPHERSUITES
+} enum_tlsv13_ciphers;
+
+typedef struct {
+  enum_tlsv13_ciphers id;
+  char* name;
+} TLSV13_CIPHERSUITE;
+
+TLSV13_CIPHERSUITE tlsv13_ciphersuites[] = {
+  {TLS_AES_128_GCM_SHA256, "TLS_AES_128_GCM_SHA256"},
+  {TLS_AES_256_GCM_SHA384, "TLS_AES_256_GCM_SHA384"},
+  {TLS_CHACHA20_POLY1305_SHA256, "TLS_CHACHA20_POLY1305_SHA256"},
+#ifdef ENABLE_TLSV13_CCM
+  {TLS_AES_128_CCM_SHA256, "TLS_AES_128_CCM_SHA256"},
+  {TLS_AES_128_CCM_8_SHA256, "TLS_AES_128_CCM_8_SHA256"}
+#endif
+};
 
 static struct
 {
@@ -43,8 +86,8 @@ cipher_map[] =
     0x0002,
     PROT_TLS1_0 |  PROT_TLS1_2 | PROT_SSL3,
     "TLS_RSA_WITH_NULL_SHA", "NULL-SHA",
-    { CALG_RSA_KEYX, 0, CALG_SHA1, CALG_RSA_SIGN }
-  },
+    { CALG_RSA_KEYX, 0, CALG_SHA1, CALG_RSA_SIGN },
+   },
   {
     0x0004,
     PROT_TLS1_0 |  PROT_TLS1_2 | PROT_SSL3,
@@ -360,85 +403,214 @@ static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t
   return pos;
 }
 
-my_bool ma_tls_connect(MARIADB_TLS *ctls)
+#define DISABLE_BLOCK_CIPHER(a,cipher)\
+{\
+  (a).Length = (a).MaximumLength= sizeof((cipher));\
+  (a).Buffer = (PWSTR)(cipher);\
+}
+
+#define DISABLE_ALGORITHM(a, usage, cipher)\
+{\
+  (a).eAlgorithmUsage = (usage);\
+  (a).strCngAlgId.Length = (a).strCngAlgId.MaximumLength = sizeof((cipher));\
+  (a).strCngAlgId.Buffer = (PWSTR)(cipher);\
+}
+
+my_bool ma_tls_connect(MARIADB_TLS* ctls)
 {
-  MYSQL *mysql;
-  SCHANNEL_CRED Cred = {0};
-  MARIADB_PVIO *pvio;
-  my_bool rc= 1;
-  SC_CTX *sctx;
+  MYSQL* mysql;
+  MARIADB_PVIO* pvio;
+  my_bool rc = 1;
+  SC_CTX* sctx;
   SECURITY_STATUS sRet;
   ALG_ID AlgId[MAX_ALG_ID];
   size_t i;
   DWORD protocol = 0;
+  DWORD flags = SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
+  DWORD Enabled_Protocols = 0;
   int verify_certs;
   const CERT_CONTEXT* cert_context = NULL;
+  SCHANNEL_CRED Cred = { 0 };
+
+  SCH_CREDENTIALS Sch_Cred = { 0 };
 
   if (!ctls)
     return 1;
 
-  pvio= ctls->pvio;
-  sctx= (SC_CTX *)ctls->ssl;
+  pvio = ctls->pvio;
+  sctx = (SC_CTX*)ctls->ssl;
   if (!pvio || !sctx)
     return 1;
 
-  mysql= pvio->mysql;
+  mysql = pvio->mysql;
   if (!mysql)
     return 1;
-
-  /* Set cipher */
-  if (mysql->options.ssl_cipher)
-  {
-
-   /* check if a protocol was specified as a cipher:
-     * In this case don't allow cipher suites which belong to newer protocols
-     * Please note: There are no cipher suites for TLS1.1
-     */
-    for (i = 0; i < sizeof(tls_version) / sizeof(tls_version[0]); i++)
-    {
-      if (!_stricmp(mysql->options.ssl_cipher, tls_version[i].tls_version))
-        protocol |= tls_version[i].protocol;
-    }
-    memset(AlgId, 0, sizeof(AlgId));
-    Cred.cSupportedAlgs = (DWORD)set_cipher(mysql->options.ssl_cipher, protocol, AlgId, MAX_ALG_ID);
-    if (Cred.cSupportedAlgs)
-    {
-      Cred.palgSupportedAlgs = AlgId;
-    }
-    else if (!protocol)
-    {
-      ma_schannel_set_sec_error(pvio, SEC_E_ALGORITHM_MISMATCH);
-      goto end;
-    }
-  }
-  
-  Cred.dwVersion= SCHANNEL_CRED_VERSION;
-
-  Cred.dwFlags = SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
-
-  if (mysql->options.extension && mysql->options.extension->tls_version)
-  {
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.0"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_0_CLIENT;
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.1"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1_CLIENT;
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.2"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
-  }
-  if (!Cred.grbitEnabledProtocols)
-    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
-
 
   if (ma_tls_set_client_certs(ctls, &cert_context))
     goto end;
 
-  if (cert_context)
+  if (mysql->options.extension && mysql->options.extension->tls_version)
   {
-    Cred.cCreds = 1;
-    Cred.paCred = &cert_context;
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.0"))
+      Enabled_Protocols |= SP_PROT_TLS1_0_CLIENT;
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.1"))
+      Enabled_Protocols |= SP_PROT_TLS1_1_CLIENT;
+    if (strstr(mysql->options.extension->tls_version, "TLSv1.2"))
+      Enabled_Protocols |= SP_PROT_TLS1_2_CLIENT;
+
+    /* TLS v1.3 available since build 20348 */
+    if (ma_check_windows_version(VERSION_GREATER_OR_EQUAL, 10, 0, 20348))
+      if (strstr(mysql->options.extension->tls_version, "TLSv1.3"))
+        Enabled_Protocols |= SP_PROT_TLS1_3_CLIENT;
   }
-  sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
-                                       NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL);
+  if (!Enabled_Protocols)
+  {
+    Enabled_Protocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT |
+      SP_PROT_TLS1_2_CLIENT;
+    if (ma_check_windows_version(VERSION_GREATER_OR_EQUAL, 10, 0, 20348))
+      Enabled_Protocols |= SP_PROT_TLS1_3_CLIENT;
+  }
+
+  /* Since Version 10.1809 SCHANNEL_CRED became deprecated, we have
+     to use SCH_CREDENTIALS instead.
+     1809 is build number 17763 */
+
+  if (ma_check_windows_version(VERSION_LESS, 10, 0, 17763))
+  {
+
+    /* Set cipher */
+    if (mysql->options.ssl_cipher)
+    {
+
+      /* check if a protocol was specified as a cipher:
+        * In this case don't allow cipher suites which belong to newer protocols
+        * Please note: There are no cipher suites for TLS1.1
+        */
+      for (i = 0; i < sizeof(tls_version) / sizeof(tls_version[0]); i++)
+      {
+        if (!_stricmp(mysql->options.ssl_cipher, tls_version[i].tls_version))
+          protocol |= tls_version[i].protocol;
+      }
+      memset(AlgId, 0, sizeof(AlgId));
+      Cred.cSupportedAlgs = (DWORD)set_cipher(mysql->options.ssl_cipher, protocol, AlgId, MAX_ALG_ID);
+      if (Cred.cSupportedAlgs)
+      {
+        Cred.palgSupportedAlgs = AlgId;
+      }
+      else if (!protocol)
+      {
+        ma_schannel_set_sec_error(pvio, SEC_E_ALGORITHM_MISMATCH);
+        goto end;
+      }
+    }
+
+    Cred.dwVersion = SCHANNEL_CRED_VERSION;
+
+    Cred.dwFlags = flags;
+
+    Cred.grbitEnabledProtocols = Enabled_Protocols;
+
+
+    if (cert_context)
+    {
+      Cred.cCreds = 1;
+      Cred.paCred = &cert_context;
+    }
+    sRet = AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
+      NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL);
+  }
+  else {
+    TLS_PARAMETERS tls_params = { 0 };
+    CRYPTO_SETTINGS c_settings[3] = { 0 };
+    uint8 c_cnt = 0;
+    UNICODE_STRING blockcipher_disable[2];
+    uint8 bcd_cnt = 0;
+    my_bool disabled_algs[MAX_TLSV13_CIPHERSUITES];
+
+    tls_params.grbitDisabledProtocols =  (DWORD)~Enabled_Protocols;
+    Sch_Cred.cTlsParameters = 1;
+    Sch_Cred.pTlsParameters = &tls_params;
+    tls_params.pDisabledCrypto = c_settings;
+    tls_params.cDisabledCrypto = 0;
+
+    memset(&disabled_algs, 0, sizeof(my_bool) * MAX_TLSV13_CIPHERSUITES);
+
+    if (mysql->options.ssl_cipher)
+    {
+      for (i = 0; i < MAX_TLSV13_CIPHERSUITES; i++)
+      {
+        if (!strcmp(tlsv13_ciphersuites[i].name, mysql->options.ssl_cipher))
+        {
+          memset(&disabled_algs, 1, sizeof(my_bool) * MAX_TLSV13_CIPHERSUITES);
+          disabled_algs[tlsv13_ciphersuites[i].id] = 0;
+          break;
+        }
+      }
+    }
+
+    /* GCM block cipher */
+    if (disabled_algs[TLS_AES_128_GCM_SHA256] || disabled_algs[TLS_AES_256_GCM_SHA384])
+    {
+      if (disabled_algs[TLS_AES_128_GCM_SHA256] && disabled_algs[TLS_AES_256_GCM_SHA384])
+      {
+        DISABLE_BLOCK_CIPHER(blockcipher_disable[bcd_cnt], BCRYPT_CHAIN_MODE_GCM);
+        c_settings[c_cnt].rgstrChainingModes = &blockcipher_disable[bcd_cnt];
+        c_settings[c_cnt].cChainingModes = 1;
+        bcd_cnt++;
+        DISABLE_ALGORITHM(c_settings[c_cnt], TlsParametersCngAlgUsageCipher, BCRYPT_AES_ALGORITHM);
+      }
+      else {
+        PWSTR alg = disabled_algs[TLS_AES_128_GCM_SHA256] ? (PWSTR)BCRYPT_SHA256_ALGORITHM : (PWSTR)BCRYPT_SHA384_ALGORITHM;
+        DISABLE_ALGORITHM(c_settings[c_cnt], TlsParametersCngAlgUsageCipher, alg);
+      }
+      c_cnt++;
+    }
+
+#ifdef ENABLE_TLSV13_CCM
+    /* CCM block cipher */
+    if (disabled_algs[TLS_AES_128_CCM_SHA256] || disabled_algs[TLS_AES_128_CCM_8_SHA256])
+    {
+      DISABLE_BLOCK_CIPHER(blockcipher_disable[bcd_cnt], BCRYPT_CHAIN_MODE_CCM);
+      c_settings[c_cnt].rgstrChainingModes = &blockcipher_disable[bcd_cnt];
+      c_settings[c_cnt].cChainingModes = 1;
+      bcd_cnt++;
+      DISABLE_ALGORITHM(c_settings[c_cnt], TlsParametersCngAlgUsageCipher, BCRYPT_AES_ALGORITHM);
+      /* if (disabled_algs[TLS_AES_128_CCM_SHA256] != disabled_algs[TLS_AES_128_CCM_8_SHA256])
+      {
+        if (disabled_algs[TLS_AES_128_CCM_SHA256])
+          c_settings[c_cnt].dwMaxBitLength = 64;
+        else
+          c_settings[c_cnt].dwMinBitLength = 128;
+      } */
+      c_cnt++;
+    }
+#endif
+
+    /* CHACHA20 */
+    if (disabled_algs[TLS_CHACHA20_POLY1305_SHA256])
+    {
+      DISABLE_ALGORITHM(c_settings[c_cnt], TlsParametersCngAlgUsageCipher, BCRYPT_CHACHA20_POLY1305_ALGORITHM);
+      c_cnt++;
+    }
+    
+    if (c_cnt)
+    {
+      tls_params.cDisabledCrypto = c_cnt;
+    }
+
+    Sch_Cred.dwVersion = SCH_CREDENTIALS_VERSION;
+    Sch_Cred.dwFlags = flags | SCH_USE_STRONG_CRYPTO;
+        
+
+    if (cert_context)
+    {
+      Sch_Cred.cCreds= 1;
+      Sch_Cred.paCred= &cert_context;
+    }
+
+    sRet = AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
+      NULL, &Sch_Cred, NULL, NULL, &sctx->CredHdl, NULL);
+  }
   if (sRet)
   {
     ma_schannel_set_sec_error(pvio, sRet);

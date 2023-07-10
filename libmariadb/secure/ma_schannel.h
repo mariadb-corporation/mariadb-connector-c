@@ -29,6 +29,7 @@
 #include <ma_pvio.h>
 #include <errmsg.h>
 
+#include <subauth.h>
 
 #include <wincrypt.h>
 #include <wintrust.h>
@@ -63,6 +64,10 @@ struct st_schannel {
   SecBuffer dataBuf;  /* decrypted but still unread data from server.*/
 
 };
+
+#ifndef SP_PROT_TLS1_3_CLIENT
+#define SP_PROT_TLS1_3_CLIENT 0x00002000
+#endif
 
 typedef struct st_schannel SC_CTX;
 

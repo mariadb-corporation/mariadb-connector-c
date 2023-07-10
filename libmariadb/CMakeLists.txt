@@ -310,6 +310,7 @@ ma_array.c
 ma_charset.c
 ma_decimal.c
 ma_hashtbl.c
+ma_helper.c
 ma_net.c
 mariadb_charset.c
 ma_time.c
