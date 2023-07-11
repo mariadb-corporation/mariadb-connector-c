@@ -297,10 +297,23 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   if (mysql->client_flag & CLIENT_PROTOCOL_41)
   {
+    /* Whether or not the client can/will verify the server's certificate is
+     * not the server's concern. The client should never reveal this; varying
+     * it effectively tells a MITM attacker whether or not the client will be
+     * able to *detect* a MITM attack based on 2-sided TLS.
+     *
+     * We set this bit to OFF, not to ON, in order to make our ouput
+     * indistinguishable from older clients which vary this bit, so that those
+     * older clients become more difficult for MITM attackers to reliably target
+     * once this change is deployed.
+     */
+    ulong sanitized_client_flag= mysql->client_flag & ~CLIENT_SSL_VERIFY_SERVER_CERT;
+
     /* 4.1 server and 4.1 client has a 32 byte option flag */
     if (!(mysql->server_capabilities & CLIENT_MYSQL))
       mysql->client_flag&= ~CLIENT_MYSQL;
-    int4store(buff,mysql->client_flag);
+
+    int4store(buff, sanitized_client_flag);
     int4store(buff+4, net->max_packet_size);
     buff[8]= (char) mysql->charset->nr;
     memset(buff + 9, 0, 32-9);
