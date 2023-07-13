@@ -448,11 +448,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     goto end;
 
    verify_certs =  mysql->options.ssl_ca || mysql->options.ssl_capath ||
-     (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT);
+     (mysql->options.extension->tls_verify_server_cert);
 
   if (verify_certs)
   {
-    if (!ma_schannel_verify_certs(ctls, (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT)))
+    if (!ma_schannel_verify_certs(ctls, mysql->options.extension->tls_verify_server_cert))
       goto end;
   }
 
