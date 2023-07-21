@@ -1787,7 +1787,12 @@ restart:
  */
   if ((pkt_length=ma_net_safe_read(mysql)) == packet_error)
   {
-    if (mysql->net.last_errno == CR_SERVER_LOST)
+    if (mysql->options.use_ssl)
+      my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                   "Received error packet before completion of TLS handshake. "
+                   "Suppressing its details so that the client cannot vary its behavior "
+                   "based on this UNTRUSTED input.");
+    else if (mysql->net.last_errno == CR_SERVER_LOST)
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
                  "handshake: reading initial communication packet",
@@ -1918,6 +1923,16 @@ restart:
     }
   }
 
+  /* We now know the server's capabilities. If the client wants TLS/SSL,
+   * but the server doesn't support it, we should immediately abort.
+   */
+  if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
+  {
+    SET_CLIENT_ERROR(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                     "Client requires TLS/SSL, but the server does not support it");
+    goto error;
+  }
+
   /* Set character set */
   if (mysql->options.charset_name)
     mysql->charset= mysql_find_charset_name(mysql->options.charset_name);
@@ -1935,6 +1950,17 @@ restart:
   }
 
   mysql->client_flag= client_flag;
+
+  /* Until run_plugin_auth has completed, the connection
+   * cannot have been secured with TLS/SSL.
+   *
+   * This means that any client which expects to use a
+   * TLS/SSL-secured connection SHOULD NOT trust any
+   * communication received from the server prior to this
+   * point as being genuine; nor should either the client
+   * or the server send any confidential information up
+   * to this point.
+   */
 
   if (run_plugin_auth(mysql, scramble_data, scramble_len,
                              scramble_plugin, db))

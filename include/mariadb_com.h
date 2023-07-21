@@ -162,6 +162,19 @@ enum enum_server_command
 #define CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS (1UL << 22)
 #define CLIENT_SESSION_TRACKING  (1UL << 23)
 #define CLIENT_ZSTD_COMPRESSION  (1UL << 26)
+/* This capability is set if:
+ *
+ * - The CLIENT knows how to send a truncated 2-byte SSLRequest
+ *   packet, containing no information other than the CLIENT_SSL flag
+ *   which is necessary to trigger the TLS handshake, and to send its
+ *   complete capability flags and other identifying information after
+ *   the TLS handshake.
+ * - The SERVER knows how to receive this truncated 2-byte SSLRequest
+ *   packet, and to receive the client's complete capability bits
+ *   after the TLS handshake.
+ *
+ */
+#define CLIENT_CAN_SSL_V2    (1ULL << 37)
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
 #define CLIENT_PROGRESS_OBSOLETE  CLIENT_PROGRESS 
 #define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
@@ -219,7 +232,8 @@ enum enum_server_command
                                  CLIENT_PLUGIN_AUTH |\
                                  CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA | \
                                  CLIENT_SESSION_TRACKING |\
-                                 CLIENT_CONNECT_ATTRS)
+                                 CLIENT_CONNECT_ATTRS |\
+                                 CLIENT_CAN_SSL_V2)
 
 #define CLIENT_DEFAULT_FLAGS ((CLIENT_SUPPORTED_FLAGS & ~CLIENT_COMPRESS)\
                                                       & ~CLIENT_SSL)
