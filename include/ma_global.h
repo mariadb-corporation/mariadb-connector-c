@@ -788,9 +788,9 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 #define uint8korr(A)	(*((ulonglong *) (A)))
 #define sint8korr(A)	(*((longlong *) (A)))
 #define int2store(T,A)	*((uint16*) (T))= (uint16) (A)
-#define int3store(T,A)  do { *(T)=  (uchar) ((A));\
-                            *(T+1)=(uchar) (((uint) (A) >> 8));\
-                            *(T+2)=(uchar) (((A) >> 16)); } while (0)
+#define int3store(T,A)  do { *(T)=  (uchar) ((A) & 0xff);\
+                            *(T+1)=(uchar) (((uint) (A) >> 8) & 0xff);\
+                            *(T+2)=(uchar) (((A) >> 16)  & 0xff); } while (0)
 #define int4store(T,A)	*((long *) (T))= (long) (A)
 #define int5store(T,A)  do { *(T)= (uchar)((A));\
                              *((T)+1)=(uchar) (((A) >> 8));\
