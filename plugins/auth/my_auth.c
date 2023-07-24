@@ -223,7 +223,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
       mysql->options.ssl_cipher || mysql->options.use_ssl ||
-      (mysql->options.client_flag & CLIENT_SSL_VERIFY_SERVER_CERT))
+      mysql->options.extension->tls_verify_server_cert)
     mysql->options.use_ssl= 1;
   if (mysql->options.use_ssl)
     mysql->client_flag|= CLIENT_SSL;
@@ -249,7 +249,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
      was set to mandatory, we need to return an error */
   if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
   {
-    if ((mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) ||
+    if (mysql->options.extension->tls_verify_server_cert ||
         (mysql->options.extension && (mysql->options.extension->tls_fp || 
                                       mysql->options.extension->tls_fp_list)))
     {

@@ -505,9 +505,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   /* In case handshake failed or if a root certificate (ca) was specified,
      we need to check the result code of X509 verification. A detailed check
      of the peer certificate (hostname checking will follow later) */
-  if (rc != 1 ||
-      (mysql->client_flag & CLIENT_SSL_VERIFY_SERVER_CERT) ||
-      (mysql->options.ssl_ca || mysql->options.ssl_capath))
+  if (rc != 1 || mysql->options.extension->tls_verify_server_cert ||
+      mysql->options.ssl_ca || mysql->options.ssl_capath)
   {
     long x509_err= SSL_get_verify_result(ssl);
     if (x509_err != X509_V_OK)
