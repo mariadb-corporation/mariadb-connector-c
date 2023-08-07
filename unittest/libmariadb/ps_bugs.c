@@ -5727,7 +5727,7 @@ static int test_conc633(MYSQL *mysql)
   rc= mysql_query(my, "DROP TABLE conc633");
   check_mysql_rc(rc, mysql);
 
-  ret= OK;
+  ret= OK;  
 
 end:
   if (my)
@@ -5736,7 +5736,53 @@ end:
   return ret;
 }
 
+static int test_mdev22843(MYSQL* mysql)
+{
+  MYSQL_STMT* stmt = mysql_stmt_init(mysql);
+  MYSQL_BIND bind[1] = { 0 };
+  MYSQL_TIME tm = { 0 };
+  MYSQL_RES* result;
+  MYSQL_ROW row;
+  int rc;
+
+  rc = mysql_query(mysql, "CREATE OR REPLACE TABLE t1 (id INTEGER, a DateTime, b Timestamp)");
+  check_mysql_rc(rc, mysql);
+  rc = mysql_query(mysql, "INSERT INTO t1 (id,a,b) VALUES(1, NULL, NULL)");
+
+  rc = mysql_stmt_prepare(stmt, SL("UPDATE t1 SET a = ? WHERE (id = 1)"));
+  check_stmt_rc(rc, stmt);
+
+  bind[0].buffer_type = MYSQL_TYPE_TIMESTAMP;
+  bind[0].buffer_length = sizeof(MYSQL_TIME);
+  bind[0].buffer = &tm;
+
+  tm.year = 2039;
+  tm.month = 12;
+  tm.day = 26;
+  tm.second_part = 100;
+  tm.time_type = MYSQL_TIMESTAMP_DATETIME;
+
+  rc = mysql_stmt_bind_param(stmt, bind);
+
+  rc = mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc = mysql_query(mysql, "SELECT a,b from t1 where id=1");
+  check_mysql_rc(rc, mysql);
+
+  result = mysql_store_result(mysql);
+  row = mysql_fetch_row(result);
+  diag("%s %s", row[0], row[1]);
+  mysql_free_result(result);
+
+  rc = mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_mdev22843", test_mdev22843, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc633", test_conc633, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc623", test_conc623, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc627", test_conc627, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

@@ -88,5 +88,21 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
                                  uchar *ReadBuffer,
                                  DWORD ReadBufferSize);
 
+inline void maInit_SecBuffer(SecBuffer * buffer, ulong type, void* data, ulong count)
+{
+  buffer->BufferType = type;
+  buffer->cbBuffer = count;
+  buffer->pvBuffer = data;
+}
+
+inline void maInit_SecBufferDesc(SecBufferDesc * desc, SecBuffer * secbuffer, ulong count)
+{
+  desc->ulVersion = SECBUFFER_VERSION;
+  desc->cBuffers = count;
+  desc->pBuffers = secbuffer;
+}
+
+extern PSecurityFunctionTable PSFT;
+
 
 #endif /* _ma_schannel_h_ */

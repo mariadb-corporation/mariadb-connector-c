@@ -636,7 +636,6 @@ cleanup:
   return status;
 }
 
-
 /* Attach private key (in PEM format) to client certificate */
 static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_str, size_t len, char* errmsg, size_t errmsg_len)
 {
@@ -646,11 +645,11 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
   BYTE* keyblob = NULL;
   HCRYPTPROV hProv = 0;
   HCRYPTKEY hKey = 0;
-  CERT_KEY_CONTEXT cert_key_context = { 0 };
   PCRYPT_PRIVATE_KEY_INFO  pki = NULL;
   DWORD pki_len = 0;
+  CRYPT_KEY_PROV_INFO *ck_pi = NULL;
   SECURITY_STATUS status = SEC_E_OK;
-
+  
   derbuf = LocalAlloc(0, derlen);
   if (!derbuf)
   {
@@ -696,23 +695,41 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
     FAIL("Failed to parse private key");
   }
 
-  if (!CryptAcquireContext(&hProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+  
+  /* Open or create "MariaDB" context */
+  if (!CryptAcquireContextA(&hProv, "MariaDB", MS_ENHANCED_PROV, PROV_RSA_FULL, 0))
   {
-    FAIL("CryptAcquireContext failed");
+    if (GetLastError() != NTE_BAD_KEYSET)
+    {
+      FAIL("CryptAcquireContext failed");
+    }
+    
+    if (!CryptAcquireContextA(&hProv, "MariaDB", MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+    {
+      FAIL("CryptAcquireContext failed");
+    }
   }
 
   if (!CryptImportKey(hProv, keyblob, keyblob_len, 0, 0, (HCRYPTKEY*)&hKey))
   {
     FAIL("CryptImportKey failed");
   }
-  cert_key_context.hCryptProv = hProv;
-  cert_key_context.dwKeySpec = AT_KEYEXCHANGE;
-  cert_key_context.cbSize = sizeof(cert_key_context);
 
+  if (!(ck_pi = (PCRYPT_KEY_PROV_INFO)LocalAlloc(0, sizeof(CRYPT_KEY_PROV_INFO))))
+    FAIL("Out of memory");
+  ck_pi->pwszContainerName = L"MariaDB";
+  ck_pi->pwszProvName = NULL;
+  ck_pi->dwProvType = PROV_RSA_FULL;
+  ck_pi->dwFlags = 0;
+  ck_pi->cProvParam = 0;
+  ck_pi->rgProvParam = NULL;
+  ck_pi->dwKeySpec = AT_KEYEXCHANGE;
+
+  
   /* assign private key to certificate context */
-  if (!CertSetCertificateContextProperty(cert, CERT_KEY_CONTEXT_PROP_ID,
+  if (!CertSetCertificateContextProperty(cert, CERT_KEY_PROV_INFO_PROP_ID,
                                          CERT_STORE_NO_CRYPT_RELEASE_FLAG,
-                                         &cert_key_context))
+                                         ck_pi))
   {
     FAIL("CertSetCertificateContextProperty failed");
   }
@@ -721,6 +738,7 @@ cleanup:
   LocalFree(derbuf);
   LocalFree(keyblob);
   LocalFree(pki);
+  LocalFree(ck_pi);
   if (hKey)
     CryptDestroyKey(hKey);
   if (status)

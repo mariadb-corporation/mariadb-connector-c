@@ -24,13 +24,10 @@
 #include "schannel_certs.h"
 #include <assert.h>
 
-#define SC_IO_BUFFER_SIZE 0x4000
 #define MAX_SSL_ERR_LEN 100
 
 #define SCHANNEL_PAYLOAD(A) ((A).cbMaximumMessage + (A).cbHeader + (A).cbTrailer)
 void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo);
-
-
 
 
 /* {{{ void ma_schannel_set_sec_error */
@@ -77,8 +74,8 @@ void ma_schannel_set_win_error(MARIADB_PVIO *pvio, DWORD ErrorNo)
 
 SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData)
 {
-  SecBufferDesc   OutBuffer, InBuffer;
-  SecBuffer       InBuffers[2], OutBuffers;
+  SecBufferDesc   OutBuf_Desc, InBuf_Desc;
+  SecBuffer       InBuf[2], OutBuf;
   DWORD           dwSSPIFlags, dwSSPIOutFlags, cbData, cbIoBuffer;
   TimeStamp       tsExpiry;
   SECURITY_STATUS rc;
@@ -92,6 +89,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
                 ISC_REQ_REPLAY_DETECT |
                 ISC_REQ_CONFIDENTIALITY |
                 ISC_RET_EXTENDED_ERROR |
+                ISC_REQ_USE_SUPPLIED_CREDS |
                 ISC_REQ_ALLOCATE_MEMORY | 
                 ISC_REQ_STREAM;
 
@@ -135,60 +133,44 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
        First buffer stores data received from server. leftover data
        will be stored in second buffer with BufferType SECBUFFER_EXTRA */
 
-    InBuffers[0].pvBuffer   = IoBuffer;
-    InBuffers[0].cbBuffer   = cbIoBuffer;
-    InBuffers[0].BufferType = SECBUFFER_TOKEN;
-
-    InBuffers[1].pvBuffer   = NULL;
-    InBuffers[1].cbBuffer   = 0;
-    InBuffers[1].BufferType = SECBUFFER_EMPTY;
-
-    InBuffer.cBuffers       = 2;
-    InBuffer.pBuffers       = InBuffers;
-    InBuffer.ulVersion      = SECBUFFER_VERSION;
-
+    maInit_SecBuffer(&InBuf[0], SECBUFFER_TOKEN, IoBuffer, cbIoBuffer);
+    maInit_SecBuffer(&InBuf[1], SECBUFFER_EMPTY, NULL, 0);
+    maInit_SecBufferDesc(&InBuf_Desc, InBuf, 2);
 
     /* output buffer */
-    OutBuffers.pvBuffer  = NULL;
-    OutBuffers.BufferType= SECBUFFER_TOKEN;
-    OutBuffers.cbBuffer  = 0;
+    maInit_SecBuffer(&OutBuf, SECBUFFER_TOKEN, NULL, 0);
+    maInit_SecBufferDesc(&OutBuf_Desc, &OutBuf, 1);
 
-    OutBuffer.cBuffers      = 1;
-    OutBuffer.pBuffers      = &OutBuffers;
-    OutBuffer.ulVersion     = SECBUFFER_VERSION;
-
-
-    rc = InitializeSecurityContextA(&sctx->CredHdl,
-                                    &sctx->hCtxt,
-                                    NULL,
-                                    dwSSPIFlags,
-                                    0,
-                                    SECURITY_NATIVE_DREP,
-                                    &InBuffer,
-                                    0,
-                                    NULL,
-                                    &OutBuffer,
-                                    &dwSSPIOutFlags,
-                                    &tsExpiry );
-
+    rc = InitializeSecurityContext(&sctx->CredHdl,
+      &sctx->hCtxt,
+      NULL,
+      dwSSPIFlags,
+      0,
+      SECURITY_NATIVE_DREP,
+      &InBuf_Desc,
+      0,
+      NULL,
+      &OutBuf_Desc,
+      &dwSSPIOutFlags,
+      &tsExpiry);
 
     if (rc == SEC_E_OK  ||
         rc == SEC_I_CONTINUE_NEEDED ||
         (FAILED(rc) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR)))
     {
-      if(OutBuffers.cbBuffer && OutBuffers.pvBuffer)
+      if(OutBuf.BufferType == SECBUFFER_TOKEN && OutBuf.cbBuffer && OutBuf.pvBuffer)
       {
-        ssize_t nbytes = pvio->methods->write(pvio, (uchar *)OutBuffers.pvBuffer, (size_t)OutBuffers.cbBuffer);
+        ssize_t nbytes = pvio->methods->write(pvio, (uchar *)OutBuf.pvBuffer, (size_t)OutBuf.cbBuffer);
         if(nbytes <= 0)
         {
-          FreeContextBuffer(OutBuffers.pvBuffer);
+          FreeContextBuffer(OutBuf.pvBuffer);
           DeleteSecurityContext(&sctx->hCtxt);
           return SEC_E_INTERNAL_ERROR;
         }
         cbData= (DWORD)nbytes;
         /* Free output context buffer */
-        FreeContextBuffer(OutBuffers.pvBuffer);
-        OutBuffers.pvBuffer = NULL;
+        FreeContextBuffer(OutBuf.pvBuffer);
+        OutBuf.pvBuffer = NULL;
       }
     }
     /* check if we need to read more data */
@@ -200,14 +182,14 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     case SEC_E_OK:
       /* handshake completed, but we need to check if extra
          data was sent (which contains encrypted application data) */
-      if (InBuffers[1].BufferType == SECBUFFER_EXTRA)
+      if (InBuf[1].BufferType == SECBUFFER_EXTRA)
       {
-        if (!(pExtraData->pvBuffer= LocalAlloc(0, InBuffers[1].cbBuffer)))
+        if (!(pExtraData->pvBuffer= LocalAlloc(0, InBuf[1].cbBuffer)))
           return SEC_E_INSUFFICIENT_MEMORY;
 
-        MoveMemory(pExtraData->pvBuffer, IoBuffer + (cbIoBuffer - InBuffers[1].cbBuffer), InBuffers[1].cbBuffer );
+        MoveMemory(pExtraData->pvBuffer, IoBuffer + (cbIoBuffer - InBuf[1].cbBuffer), InBuf[1].cbBuffer );
         pExtraData->BufferType = SECBUFFER_TOKEN;
-        pExtraData->cbBuffer   = InBuffers[1].cbBuffer;
+        pExtraData->cbBuffer   = InBuf[1].cbBuffer;
       }
       else
       {
@@ -232,10 +214,15 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
       break;
     }
 
-    if ( InBuffers[1].BufferType == SECBUFFER_EXTRA )
+    if (InBuf[1].BufferType == SECBUFFER_EXTRA && InBuf[1].cbBuffer > 0)
     {
-      MoveMemory( IoBuffer, IoBuffer + (cbIoBuffer - InBuffers[1].cbBuffer), InBuffers[1].cbBuffer );
-      cbIoBuffer = InBuffers[1].cbBuffer;
+      MoveMemory( IoBuffer, IoBuffer + (cbIoBuffer - InBuf[1].cbBuffer), InBuf[1].cbBuffer );
+      cbIoBuffer = InBuf[1].cbBuffer;
+      if (rc == SEC_I_CONTINUE_NEEDED)
+      {
+        fDoRead = 0;
+        continue;
+      }
     }
     else
       cbIoBuffer = 0;
@@ -274,14 +261,14 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   SECURITY_STATUS sRet;
   DWORD OutFlags;
   SC_CTX *sctx;
-  SecBuffer ExtraData;
+  SecBuffer ExtraData = { 0 };
   DWORD SFlags= ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT |
                 ISC_REQ_CONFIDENTIALITY | ISC_RET_EXTENDED_ERROR |
-                ISC_REQ_USE_SUPPLIED_CREDS | //ISC_REQ_MANUAL_CRED_VALIDATION |
+                ISC_REQ_USE_SUPPLIED_CREDS | ISC_REQ_MANUAL_CRED_VALIDATION |
                 ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
 
-  SecBufferDesc	BufferOut;
-  SecBuffer  BuffersOut;
+  SecBufferDesc	OutBuf_Desc;
+  SecBuffer  OutBuf;
 
   if (!ctls || !ctls->pvio)
     return 1;
@@ -290,15 +277,8 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   sctx= (SC_CTX *)ctls->ssl;
 
   /* Initialie securifty context */
-  BuffersOut.BufferType= SECBUFFER_TOKEN;
-  BuffersOut.cbBuffer= 0;
-  BuffersOut.pvBuffer= NULL;
-
-
-  BufferOut.cBuffers= 1;
-  BufferOut.pBuffers= &BuffersOut;
-  BufferOut.ulVersion= SECBUFFER_VERSION;
-
+  maInit_SecBuffer(&OutBuf, SECBUFFER_TOKEN, NULL, 0);
+  maInit_SecBufferDesc(&OutBuf_Desc, &OutBuf, 1);
   sRet = InitializeSecurityContext(&sctx->CredHdl,
                                     NULL,
                                     pvio->mysql->host,
@@ -308,7 +288,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
                                     NULL,
                                     0,
                                     &sctx->hCtxt,
-                                    &BufferOut,
+                                    &OutBuf_Desc,
                                     &OutFlags,
                                     NULL);
 
@@ -319,9 +299,9 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   }
 
   /* send client hello */
-  if(BuffersOut.cbBuffer != 0 && BuffersOut.pvBuffer != NULL)
+  if(OutBuf.cbBuffer != 0 && OutBuf.pvBuffer != NULL)
   {
-    ssize_t nbytes = (DWORD)pvio->methods->write(pvio, (uchar *)BuffersOut.pvBuffer, (size_t)BuffersOut.cbBuffer);
+    ssize_t nbytes = (DWORD)pvio->methods->write(pvio, (uchar *)OutBuf.pvBuffer, (size_t)OutBuf.cbBuffer);
 
     if (nbytes <= 0)
     {
@@ -333,7 +313,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
 
   /* allocate IO-Buffer for write operations: After handshake
   was successful, we are able now to calculate payload */
-  if ((sRet = QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes )))
+  if ((sRet = QueryContextAttributesA(&sctx->hCtxt, SECPKG_ATTR_STREAM_SIZES, &sctx->Sizes )))
     goto end;
 
   sctx->IoBufferSize= SCHANNEL_PAYLOAD(sctx->Sizes);
@@ -345,8 +325,8 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
     
   return sRet;
 end:
-  if (BuffersOut.pvBuffer)
-    FreeContextBuffer(BuffersOut.pvBuffer);
+  if (OutBuf.pvBuffer)
+    FreeContextBuffer(OutBuf.pvBuffer);
   return sRet;
 }
 /* }}} */
@@ -404,7 +384,6 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
     return SEC_E_OK;
   }
 
-
   while (1)
   {
     /* Check for any encrypted data returned by last DecryptMessage() in SECBUFFER_EXTRA buffer. */
@@ -429,17 +408,11 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
         dwOffset += (DWORD)nbytes;
       }
       ZeroMemory(Buffers, sizeof(SecBuffer) * 4);
-      Buffers[0].pvBuffer = sctx->IoBuffer;
-      Buffers[0].cbBuffer = dwOffset;
-
-      Buffers[0].BufferType = SECBUFFER_DATA;
-      Buffers[1].BufferType = SECBUFFER_EMPTY;
-      Buffers[2].BufferType = SECBUFFER_EMPTY;
-      Buffers[3].BufferType = SECBUFFER_EMPTY;
-
-      Msg.ulVersion = SECBUFFER_VERSION;    // Version number
-      Msg.cBuffers = 4;
-      Msg.pBuffers = Buffers;
+      maInit_SecBuffer(&Buffers[0], SECBUFFER_DATA, sctx->IoBuffer, dwOffset);
+      maInit_SecBuffer(&Buffers[1], SECBUFFER_EMPTY, NULL, 0);
+      maInit_SecBuffer(&Buffers[2], SECBUFFER_EMPTY, NULL, 0);
+      maInit_SecBuffer(&Buffers[3], SECBUFFER_EMPTY, NULL, 0);
+      maInit_SecBufferDesc(&Msg, Buffers, 4);
 
       sRet = DecryptMessage(phContext, &Msg, 0, NULL);
 

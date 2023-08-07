@@ -23,8 +23,6 @@
 #include "schannel_certs.h"
 #include <string.h>
 
-
-
 extern my_bool ma_tls_initialized;
 char tls_library_version[] = "Schannel";
 
@@ -516,7 +514,7 @@ my_bool ma_tls_connect(MARIADB_TLS* ctls)
       Cred.cCreds = 1;
       Cred.paCred = &cert_context;
     }
-    sRet = AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
+    sRet = AcquireCredentialsHandleA(NULL, UNISP_NAME, SECPKG_CRED_OUTBOUND,
       NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL);
   }
   else {
@@ -726,7 +724,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
 {
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;
-  if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
+  if (QueryContextAttributesA(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
     return 0;
   CertGetCertificateContextProperty(pRemoteCertContext, CERT_HASH_PROP_ID, fp, (DWORD *)&len);
   CertFreeCertificateContext(pRemoteCertContext);

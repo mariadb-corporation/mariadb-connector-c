@@ -676,6 +676,7 @@ MYSQL *my_test_connect(MYSQL *mysql,
 void run_tests(struct my_tests_st *test) {
   int i, rc, total=0;
   MYSQL *mysql;
+  
 
   while (test[total].function)
     total++;
@@ -683,10 +684,12 @@ void run_tests(struct my_tests_st *test) {
 
 /* display TLS stats */
   mysql= mysql_init(NULL);
-  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  mysql_options(mysql, MARIADB_OPT_TLS_VERSION, "TLSv1.3");
+  mysql_ssl_set(mysql, "\\certs\\client-key.pem", "\\certs\\client-cert.pem", "\\certs\\cacert.pem", NULL, NULL);
 
   if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
   {
+    diag("error: %s", mysql_error(mysql));
     BAIL_OUT("Can't establish TLS connection to server.");
   }
 
