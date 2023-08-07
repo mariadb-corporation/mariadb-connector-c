@@ -165,6 +165,7 @@ enum enum_server_command
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
 #define CLIENT_PROGRESS_OBSOLETE  CLIENT_PROGRESS 
 #define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
+#define CLIENT_SSL_VERIFY_SERVER_CERT_OBSOLETE CLIENT_SSL_VERIFY_SERVER_CERT
 #define CLIENT_REMEMBER_OPTIONS  (1UL << 31)
 
 /* MariaDB specific capabilities */

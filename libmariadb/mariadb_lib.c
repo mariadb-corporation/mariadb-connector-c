@@ -3535,10 +3535,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     mysql->options.use_ssl= (*(my_bool *)arg1);
     break;
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
-    if (*(my_bool *)arg1)
-      mysql->options.client_flag |= CLIENT_SSL_VERIFY_SERVER_CERT;
-    else
-      mysql->options.client_flag &= ~CLIENT_SSL_VERIFY_SERVER_CERT;
+    OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verify_server_cert, *(my_bool *)arg1);
     break;
   case MYSQL_OPT_SSL_KEY:
     OPT_SET_VALUE_STR(&mysql->options, ssl_key, (char *)arg1);
@@ -3904,7 +3901,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((my_bool *)arg)= mysql->options.use_ssl;
     break;
   case MYSQL_OPT_SSL_VERIFY_SERVER_CERT:
-    *((my_bool *)arg)= test(mysql->options.client_flag & CLIENT_SSL_VERIFY_SERVER_CERT);
+    *((my_bool*)arg) = mysql->options.extension ? mysql->options.extension->tls_verify_server_cert : 0;
     break;
   case MYSQL_OPT_SSL_KEY:
     *((char **)arg)= mysql->options.ssl_key;

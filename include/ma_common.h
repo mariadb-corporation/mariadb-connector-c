@@ -86,6 +86,7 @@ struct st_mysql_options_extension {
   unsigned short rpl_port;
   void (*status_callback)(void *ptr, enum enum_mariadb_status_info type, ...);
   void *status_data;
+  my_bool tls_verify_server_cert;
 };
 
 typedef struct st_connection_handler

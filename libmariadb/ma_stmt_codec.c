@@ -606,18 +606,18 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
 {
   switch (r_param->buffer_type) {
     case MYSQL_TYPE_TINY:
-      *(uchar *)r_param->buffer= (uchar)val;
+      *(uchar *)r_param->buffer= (uchar)(val & 0xff);
       *r_param->error= r_param->is_unsigned ? NUMERIC_TRUNCATION(val, 0, UINT_MAX8) : NUMERIC_TRUNCATION(val, INT_MIN8, INT_MAX8);
       r_param->buffer_length= 1;
       break;
     case MYSQL_TYPE_SHORT:
     case MYSQL_TYPE_YEAR:
-      shortstore(r_param->buffer, (short)val);
+      shortstore(r_param->buffer, (short)(val & 0xffff));
       *r_param->error= r_param->is_unsigned ? NUMERIC_TRUNCATION(val, 0, UINT_MAX16) : NUMERIC_TRUNCATION(val, INT_MIN16, INT_MAX16);
       r_param->buffer_length= 2;
       break;
     case MYSQL_TYPE_LONG:
-      longstore(r_param->buffer, (int32)val);
+      longstore(r_param->buffer, (int32)(val & 0xffffffff));
       *r_param->error= r_param->is_unsigned ? NUMERIC_TRUNCATION(val, 0, UINT_MAX32) : NUMERIC_TRUNCATION(val, INT_MIN32, INT_MAX32);
       r_param->buffer_length= 4;
       break;
