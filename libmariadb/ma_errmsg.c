@@ -117,6 +117,7 @@ const char *mariadb_client_errors[] =
   /* 5020 */ "Binary log error (File: %.*s start_pos=%ld): Unknown event type (%d) with flag 'not_ignorable'.",
   /* 5021 */ "Binary log error (File: %.*s start_pos=%ld): %s.",
   /* 5022 */ "File '%s' is not a binary log file",
+  /* 5023 */ "Semi sync request error: %s",
   ""
 };
 

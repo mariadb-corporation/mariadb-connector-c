@@ -86,7 +86,8 @@ enum mariadb_rpl_option {
   MARIADB_RPL_UNCOMPRESS,
   MARIADB_RPL_HOST,
   MARIADB_RPL_PORT,
-  MARIADB_RPL_EXTRACT_VALUES
+  MARIADB_RPL_EXTRACT_VALUES,
+  MARIADB_RPL_SEMI_SYNC,
 };
 
 /* Event types: From MariaDB Server sql/log_event.h */
@@ -320,8 +321,8 @@ typedef struct st_mariadb_gtid {
 /* Generic replication handle */
 typedef struct st_mariadb_rpl {
   unsigned int version;
-  MYSQL *mysql;
-  char *filename;
+  MYSQL* mysql;
+  char* filename;
   uint32_t filename_length;
   uint32_t server_id;
   unsigned long start_position;
@@ -331,16 +332,17 @@ typedef struct st_mariadb_rpl {
   uint8_t artificial_checksum;
   uint8_t verify_checksum;
   uint8_t post_header_len[ENUM_END_EVENT];
-  MA_FILE *fp;
+  MA_FILE* fp;
   uint32_t error_no;
   char error_msg[MYSQL_ERRMSG_SIZE];
   uint8_t uncompress;
-  char *host;
+  char* host;
   uint32_t port;
   uint8_t extract_values;
   char nonce[12];
   uint8_t encrypted;
-} MARIADB_RPL;
+  uint8_t is_semi_sync;
+}MARIADB_RPL;
 
 typedef struct st_mariadb_rpl_value {
   enum enum_field_types field_type;
