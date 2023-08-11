@@ -113,6 +113,7 @@ extern const char *mariadb_client_errors[];	/* Error messages */
 #define CR_UNKNOWN_BINLOG_EVENT 5020
 #define CR_BINLOG_ERROR 5021
 #define CR_BINLOG_INVALID_FILE 5022
+#define CR_BINLOG_SEMI_SYNC_ERROR 5023
 
 /* Always last, if you add new error codes please update the
    value for CR_MARIADB_LAST_ERROR */
