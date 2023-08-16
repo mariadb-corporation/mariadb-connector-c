@@ -962,7 +962,7 @@ static uint8_t mariadb_rpl_send_semisync_ack(MARIADB_RPL* rpl, MARIADB_RPL_EVENT
     rpl_set_error(rpl, CR_BINLOG_SEMI_SYNC_ERROR, 0, "semi synchronous replication is not enabled");
     return 1;
   }
-  if (!event->is_semi_sync || !event->semi_sync_flags != SEMI_SYNC_ACK_REQ)
+  if (!event->is_semi_sync || (event->semi_sync_flags != SEMI_SYNC_ACK_REQ))
   {
     rpl_set_error(rpl, CR_BINLOG_SEMI_SYNC_ERROR, 0, "This event doesn't require to send semi synchronous acknoledgement");
     return 1;
@@ -972,7 +972,7 @@ static uint8_t mariadb_rpl_send_semisync_ack(MARIADB_RPL* rpl, MARIADB_RPL_EVENT
   buf = alloca(buf_size);
 
   buf[0] = SEMI_SYNC_INDICATOR;
-  int8store(buf + 1, event->next_event_pos);
+  int8store(buf + 1, (uint64_t)event->next_event_pos);
   memcpy(buf + 9, rpl->filename, rpl->filename_length);
 
   ma_net_clear(&rpl->mysql->net);
@@ -2084,6 +2084,7 @@ int STDCALL mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
   {
     unsigned int* semi_sync = va_arg(ap, unsigned int*);
     *semi_sync = rpl->is_semi_sync;
+    break;
   }
 
   default:

@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #define strcasecmp _stricmp
 #define strtok_r strtok_s
+#define strdup _strdup
 #define sleep(x) Sleep(1000*(x))
 #ifdef _MSC_VER
 #define inline __inline

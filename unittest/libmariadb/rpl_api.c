@@ -342,9 +342,9 @@ static int test_conc592(MYSQL *my __attribute__((unused)))
 }
 
 struct my_tests_st my_tests[] = {
- // {"test_conc592", test_conc592, TEST_CONNECTION_NEW, 0, NULL, NULL},
-  //{"test_rpl_async", test_rpl_async, TEST_CONNECTION_NEW, 0, NULL, NULL},
-  //{"test_rpl_semisync", test_rpl_semisync, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_conc592", test_conc592, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_rpl_async", test_rpl_async, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_rpl_semisync", test_rpl_semisync, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc467", test_conc467, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, NULL}
 };

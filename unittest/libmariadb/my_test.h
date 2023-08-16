@@ -38,6 +38,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <pthread.h>
 #else
 #include <io.h>
+#define unlink _unlink
 #endif
 
 #ifndef OK

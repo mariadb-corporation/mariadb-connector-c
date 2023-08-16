@@ -5,6 +5,9 @@ project(zlib C)
 
 set(VERSION "1.2.13")
 
+# Don't treat warnings as error for zlib
+STRING(REPLACE ${WARNING_AS_ERROR} "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
+
 set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Installation directory for executables")
 set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Installation directory for libraries")
 set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
