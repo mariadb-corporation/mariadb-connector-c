@@ -369,6 +369,7 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
   while (pos < end)
   {
     uchar *n_bitmap;
+    uint32_t i;
 
     uchar *metadata= (uchar *)tm_event->event.table_map.metadata.str;
 
@@ -389,7 +390,7 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
     n_bitmap= pos;
     pos+= (column_count + 7) / 8;
 
-    for (uint32_t i= 0; i < column_count; i++)
+    for (i= 0; i < column_count; i++)
     {
       MARIADB_RPL_VALUE *column= &c_row->columns[i];
       column->field_type= (uchar)tm_event->event.table_map.column_types.str[i];
@@ -1734,11 +1735,12 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       /* Payload */
       if (rpl_event->event.gtid_list.gtid_cnt)        
       {
+        uint32_t i;
         if (!(rpl_event->event.gtid_list.gtid= 
          (MARIADB_GTID *)ma_calloc_root(&rpl_event->memroot,
                                         sizeof(MARIADB_GTID) * rpl_event->event.gtid_list.gtid_cnt)))
           goto mem_error;
-        for (uint32_t i=0; i < rpl_event->event.gtid_list.gtid_cnt; i++)
+        for (i=0; i < rpl_event->event.gtid_list.gtid_cnt; i++)
         {
           rpl_event->event.gtid_list.gtid[i].domain_id= uint4korr(ev);
           ev+= 4;
