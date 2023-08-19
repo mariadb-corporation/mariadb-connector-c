@@ -122,7 +122,7 @@ typedef struct st_mariadb_client_plugin_PVIO
 } MARIADB_PVIO_PLUGIN;
 
 /******** authentication plugin specific declarations *********/
-#include <mysql/plugin_auth_common.h>
+#include <mysql/plugin_auth.h>
 
 struct st_mysql_client_plugin_AUTHENTICATION
 {
