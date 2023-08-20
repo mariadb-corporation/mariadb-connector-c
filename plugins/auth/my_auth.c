@@ -9,6 +9,7 @@
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
+static int native_password_hash(MYSQL *mysql, unsigned char *out, size_t *outlen);
 static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attribute__((unused)));
 extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
@@ -55,14 +56,14 @@ auth_plugin_t mysql_native_password_client_plugin=
   native_password_plugin_name,
   "R.J.Silk, Sergei Golubchik",
   "Native MySQL authentication",
-  {1, 0, 0},
+  {1, 0, 1},
   "LGPL",
   NULL,
   NULL,
   NULL,
   NULL,
   native_password_auth_client,
-  NULL
+  native_password_hash
 };
 
 
@@ -107,6 +108,22 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       return CR_ERROR;
 
   return CR_OK;
+}
+
+static int native_password_hash(MYSQL *mysql, unsigned char *out, size_t *out_length)
+{
+  unsigned char digest[MA_SHA1_HASH_SIZE];
+
+  if (*out_length < MA_SHA1_HASH_SIZE)
+    return 1;
+  *out_length= MA_SHA1_HASH_SIZE;
+
+  /* would it be better to reuse instead of recalculating here? see ed25519 */
+  ma_hash(MA_HASH_SHA1, (unsigned char*)mysql->passwd, strlen(mysql->passwd),
+          digest);
+  ma_hash(MA_HASH_SHA1, digest, sizeof(digest), out);
+
+  return 0;
 }
 
 auth_plugin_t dummy_fallback_client_plugin=

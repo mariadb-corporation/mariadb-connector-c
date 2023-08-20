@@ -64,6 +64,7 @@ static int auth_ed25519_init(char *unused1,
     size_t unused2,
     int unused3,
     va_list);
+static int auth_ed25519_hash(MYSQL *, unsigned char *out, size_t *outlen);
 
 
 #ifndef PLUGIN_DYNAMIC
@@ -77,22 +78,24 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   "client_ed25519",
   "Sergei Golubchik, Georg Richter",
   "Ed25519 Authentication Plugin",
-  {0,1,0},
+  {0,1,1},
   "LGPL",
   NULL,
   auth_ed25519_init,
   auth_ed25519_deinit,
   NULL,
   auth_ed25519_client,
-  NULL
+  auth_ed25519_hash
 };
 
 
 static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
   unsigned char *packet,
-                signature[CRYPTO_BYTES + NONCE_BYTES];
-  int pkt_len;
+                signature[CRYPTO_BYTES + NONCE_BYTES],
+                pk[CRYPTO_PUBLICKEYBYTES];
+  unsigned long long pkt_len, pwlen= strlen(mysql->passwd);
+  char *newpw;
 
   /*
      Step 1: Server sends nonce
@@ -107,13 +110,33 @@ static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_SERVER_HANDSHAKE_ERR;
 
   /* Sign nonce: the crypto_sign function is part of ref10 */
-  ma_crypto_sign(signature, packet, NONCE_BYTES, (unsigned char*)mysql->passwd, strlen(mysql->passwd));
+  ma_crypto_sign(signature, pk, packet, NONCE_BYTES, (unsigned char*)mysql->passwd, pwlen);
 
   /* send signature to server */
   if (vio->write_packet(vio, signature, CRYPTO_BYTES))
     return CR_ERROR;
 
+  /* save pk for the future auth_ed25519_hash() call */
+  if ((newpw= realloc(mysql->passwd, pwlen + 1 + sizeof(pk))))
+  {
+    memcpy(newpw + pwlen + 1, pk, sizeof(pk));
+    mysql->passwd= newpw;
+  }
+
   return CR_OK;
+}
+/* }}} */
+
+/* {{{ static int auth_ed25519_hash */
+static int auth_ed25519_hash(MYSQL *mysql, unsigned char *out, size_t *outlen)
+{
+  if (*outlen < CRYPTO_PUBLICKEYBYTES)
+    return 1;
+  *outlen= CRYPTO_PUBLICKEYBYTES;
+
+  /* use the cached value */
+  memcpy(out, mysql->passwd + strlen(mysql->passwd) + 1, CRYPTO_PUBLICKEYBYTES);
+  return 0;
 }
 /* }}} */
 
