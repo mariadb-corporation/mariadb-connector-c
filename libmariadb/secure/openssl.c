@@ -510,7 +510,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       mysql->options.ssl_ca || mysql->options.ssl_capath)
   {
     long x509_err= SSL_get_verify_result(ssl);
-    if (x509_err != X509_V_OK)
+    if ((x509_err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT ||
+         x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN) && rc == 1 &&
+        !mysql->options.ssl_ca && !mysql->options.ssl_capath)
+      mysql->net.tls_self_signed_error= X509_verify_cert_error_string(x509_err);
+    else if (x509_err != X509_V_OK)
     {
       my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                    ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(x509_err));

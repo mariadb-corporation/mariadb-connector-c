@@ -129,3 +129,16 @@ typedef struct st_mariadb_field_extension
 {
   MARIADB_CONST_STRING metadata[MARIADB_FIELD_ATTR_LAST+1]; /* 10.5 */
 } MA_FIELD_EXTENSION;
+
+#if defined(HAVE_SCHANNEL) || defined(HAVE_GNUTLS)
+#define reset_tls_self_signed_error(mysql)              \
+  do {                                                  \
+    free((char*)mysql->net.tls_self_signed_error);      \
+    mysql->net.tls_self_signed_error= 0;                \
+  } while(0)
+#else
+#define reset_tls_self_signed_error(mysql)              \
+  do {                                                  \
+    mysql->net.tls_self_signed_error= 0;                \
+  } while(0)
+#endif

@@ -1371,10 +1371,22 @@ static int my_verify_callback(gnutls_session_t ssl)
   {
     gnutls_datum_t out;
     int type;
-    /* accept self signed certificates if we don't have to verify server cert */
-    if (!(mysql->options.extension->tls_verify_server_cert) &&
-        (status & GNUTLS_CERT_SIGNER_NOT_FOUND))
-      return 0;
+
+    if (status & GNUTLS_CERT_SIGNER_NOT_FOUND)
+    {
+      /* accept self signed certificates if we don't have to verify server cert */
+      if (!mysql->options.extension->tls_verify_server_cert)
+        return 0;
+
+      /* postpone the error for self signed certificates if CA isn't set */
+      if (!mysql->options.ssl_ca && !mysql->options.ssl_capath)
+      {
+        type= gnutls_certificate_type_get(ssl);
+        gnutls_certificate_verification_status_print(status, type, &out, 0);
+        mysql->net.tls_self_signed_error= (char*)out.data;
+        return 0;
+      }
+    }
 
     /* gnutls default error message "certificate validation failed" isn't very
        descriptive, so we provide more information about the error here */

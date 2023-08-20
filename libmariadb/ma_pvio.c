@@ -545,6 +545,7 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
      3. verrify finger print
   */
   if (pvio->mysql->options.extension->tls_verify_server_cert &&
+         !pvio->mysql->net.tls_self_signed_error &&
          ma_pvio_tls_verify_server_cert(pvio->ctls))
     return 1;
 
@@ -556,6 +557,7 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
           pvio->mysql->options.extension->tls_fp,
           pvio->mysql->options.extension->tls_fp_list))
       return 1;
+    reset_tls_self_signed_error(pvio->mysql); // validated
   }
 
   return 0;

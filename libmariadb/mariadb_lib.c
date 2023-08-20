@@ -1440,6 +1440,8 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->options.extension || !mysql->options.extension->status_callback)
     mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, NULL, NULL);
 
+  reset_tls_self_signed_error(mysql);
+
   /* if host contains a semicolon, we need to parse connection string */
   if (host && strchr(host, ';'))
   {
@@ -2444,6 +2446,7 @@ mysql_close(MYSQL *mysql)
     mysql_close_memory(mysql);
     mysql_close_options(mysql);
     ma_clear_session_state(mysql);
+    reset_tls_self_signed_error(mysql);
 
     if (mysql->net.extension)
     {

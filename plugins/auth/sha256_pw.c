@@ -76,7 +76,8 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   auth_sha256_init,
   NULL,
   NULL,
-  auth_sha256_client
+  auth_sha256_client,
+  NULL
 };
 
 #ifdef HAVE_WINCRYPT

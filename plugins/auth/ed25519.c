@@ -83,7 +83,8 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   auth_ed25519_init,
   auth_ed25519_deinit,
   NULL,
-  auth_ed25519_client
+  auth_ed25519_client,
+  NULL
 };
 
 

@@ -58,7 +58,8 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   auth_dialog_init,
   NULL,
   NULL,
-  auth_dialog_open
+  auth_dialog_open,
+  NULL
 };
 
 
