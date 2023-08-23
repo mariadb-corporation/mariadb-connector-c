@@ -52,8 +52,6 @@
 #include <wincrypt.h>
 #include <bcrypt.h>
 
-extern BCRYPT_ALG_HANDLE RsaProv;
-extern BCRYPT_ALG_HANDLE Sha256Prov;
 #endif
 
 #include <ma_crypt.h>
@@ -460,10 +458,6 @@ static int auth_caching_sha2_init(char *unused1 __attribute__((unused)),
     int unused3     __attribute__((unused)),
     va_list unused4 __attribute__((unused)))
 {
-#if defined(HAVE_WINCRYPT)
-  BCryptOpenAlgorithmProvider(&Sha256Prov, BCRYPT_SHA256_ALGORITHM, NULL, 0);
-  BCryptOpenAlgorithmProvider(&RsaProv, BCRYPT_RSA_ALGORITHM, NULL, 0);
-#endif
   return 0;
 }
 /* }}} */
@@ -471,10 +465,6 @@ static int auth_caching_sha2_init(char *unused1 __attribute__((unused)),
 /* {{{ auth_caching_sha2_deinit */
 static int auth_caching_sha2_deinit(void)
 {
-#if defined(HAVE_WINCRYPT)
-  BCryptCloseAlgorithmProvider(Sha256Prov, 0);
-  BCryptCloseAlgorithmProvider(RsaProv, 0);
-#endif
   return 0;
 }
 /* }}} */
