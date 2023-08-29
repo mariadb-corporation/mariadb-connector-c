@@ -560,6 +560,9 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
     reset_tls_self_signed_error(pvio->mysql); // validated
   }
 
+  if (pvio->mysql->net.tls_self_signed_error && pvio->type == PVIO_TYPE_UNIXSOCKET)
+    reset_tls_self_signed_error(pvio->mysql);
+
   return 0;
 }
 /* }}} */

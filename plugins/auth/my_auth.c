@@ -256,6 +256,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
        mysql->net.pvio->type == PVIO_TYPE_SHAREDMEM))
   {
     mysql->server_capabilities &= ~(CLIENT_SSL);
+    mysql->options.extension->tls_verify_server_cert= 0;
   }
 
   /* if server doesn't support SSL and verification of server certificate
