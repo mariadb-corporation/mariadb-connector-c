@@ -5604,7 +5604,7 @@ static int test_conc623(MYSQL *mysql)
 
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
 
-  rc= mysql_query(mysql, "CREATE OR REPLACE TEMPORARY TABLE t1 (a int)");
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CB_USER_DATA, mysql);
   check_stmt_rc(rc, stmt);
@@ -5664,10 +5664,14 @@ static int test_conc627(MYSQL *mysql)
 
 static int test_conc633(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   MYSQL *my= NULL;
   int ret= FAIL;
   int rc;
+
+  SKIP_MYSQL(mysql);
+
+  stmt= mysql_stmt_init(mysql);
 
   if (!mariadb_stmt_execute_direct(stmt, SL("SÄLECT 1")))
   {
