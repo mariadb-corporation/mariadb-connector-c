@@ -1357,7 +1357,7 @@ static int my_verify_callback(gnutls_session_t ssl)
 
   CLEAR_CLIENT_ERROR(mysql);
 
-  if ((mysql->options.extension->tls_verify_server_cert))
+  if (!mysql->options.extension->tls_allow_invalid_server_cert)
   {
     const char *hostname= mysql->host;
 
@@ -1375,7 +1375,7 @@ static int my_verify_callback(gnutls_session_t ssl)
     if (status & GNUTLS_CERT_SIGNER_NOT_FOUND)
     {
       /* accept self signed certificates if we don't have to verify server cert */
-      if (!mysql->options.extension->tls_verify_server_cert)
+      if (mysql->options.extension->tls_allow_invalid_server_cert)
         return 0;
 
       /* postpone the error for self signed certificates if CA isn't set */

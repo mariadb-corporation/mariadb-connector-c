@@ -253,7 +253,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
       mysql->options.ssl_cipher || mysql->options.use_ssl ||
-      mysql->options.extension->tls_verify_server_cert)
+      !mysql->options.extension->tls_allow_invalid_server_cert)
     mysql->options.use_ssl= 1;
   if (mysql->options.use_ssl)
     mysql->client_flag|= CLIENT_SSL;
@@ -273,16 +273,16 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
        mysql->net.pvio->type == PVIO_TYPE_SHAREDMEM))
   {
     mysql->server_capabilities &= ~(CLIENT_SSL);
-    mysql->options.extension->tls_verify_server_cert= 0;
+    mysql->options.extension->tls_allow_invalid_server_cert= 1;
   }
 
   /* if server doesn't support SSL and verification of server certificate
      was set to mandatory, we need to return an error */
   if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
   {
-    if (mysql->options.extension->tls_verify_server_cert ||
-        (mysql->options.extension && (mysql->options.extension->tls_fp || 
-                                      mysql->options.extension->tls_fp_list)))
+    if (!mysql->options.extension->tls_allow_invalid_server_cert ||
+        mysql->options.extension->tls_fp ||
+        mysql->options.extension->tls_fp_list)
     {
       my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                           ER(CR_SSL_CONNECTION_ERROR), 
@@ -783,7 +783,7 @@ retry:
     return 0;
 
   assert(mysql->options.use_ssl);
-  assert(mysql->options.extension->tls_verify_server_cert);
+  assert(!mysql->options.extension->tls_allow_invalid_server_cert);
   assert(!mysql->options.ssl_ca);
   assert(!mysql->options.ssl_capath);
   assert(!mysql->options.extension->tls_fp);
