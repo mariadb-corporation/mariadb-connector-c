@@ -2041,13 +2041,7 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
 
   sprintf(conn_str, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1;socket=%s",
                 hostname ? hostname : "localhost", username ? username : "", 
-                password ? password : "", port, socketname ? socketname : "");
-
-  /* SkySQL requires secure connection */
-  if (IS_SKYSQL(hostname))
-  {
-    strcat(conn_str, ";ssl_enforce=1");
-  }
+                password ? password : "", ssl_port, socketname ? socketname : "");
 
   fprintf(fp, "[client]\n");
   fprintf(fp, "%s\n", conn_str);
@@ -2132,16 +2126,22 @@ static int test_conc365_reconnect(MYSQL *my)
   MYSQL *mysql= mysql_init(NULL);
   char tmp[1024];
   my_bool reconnect= 1;
+  SKIP_MAXSCALE;
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
 
-  snprintf(tmp, sizeof(tmp) - 1,
-   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s",
-   hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-   port, socketname ? socketname : "");
-
- if (IS_SKYSQL(hostname))
-   strcat(tmp, ";ssl_enforce=1");
+  if (IS_SKYSQL(hostname))
+  {
+    snprintf(tmp, sizeof(tmp) - 1,
+      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;ssl_enforce=1",
+      hostname ? hostname : "localhost", username ? username : "", password ? password : "",
+      ssl_port, socketname ? socketname : "");
+  } else {
+    snprintf(tmp, sizeof(tmp) - 1,
+      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s",
+      hostname ? hostname : "localhost", username ? username : "", password ? password : "",
+      port, socketname ? socketname : "");
+  }
 
   if (!my_test_connect(mysql, tmp, username,
                              password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))

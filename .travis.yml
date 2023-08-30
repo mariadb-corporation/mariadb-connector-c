@@ -46,7 +46,8 @@ jobs:
     - env: srv=skysql
     - env: srv=skysql-ha
     - env: srv=xpand
-    - env: srv=mysql
+    - env: srv=mysql v=5.7
+    - env: srv=mysql v=8.0
   include:
     - stage: Minimal
       env: srv=mariadb v=10.6 packet=8
@@ -68,8 +69,6 @@ jobs:
       name: "ES 23.08"
     - env: srv=maxscale
       name: "Maxscale"
-    - env: srv=xpand TEST_DB_OTHER="&initSql=SET NAMES UTF8"
-      name: "Xpand"
     - env: srv=skysql
       name: "SkySQL"
     - env: srv=skysql-ha
@@ -97,7 +96,7 @@ jobs:
       name: "CS 10.11 with ps-protocol"
     - env: srv=mariadb v=11.0 local=1
       name: "CS 11.0"
-    - env: srv=mariadb v=11.1-rc local=1
+    - env: srv=mariadb v=11.1 local=1
       name: "CS 11.1"
     - env: srv=mysql v=5.7 native=1
       name: "MySQL 5.7"

@@ -93,8 +93,8 @@ else
     fi
     export MYSQL_TEST_TLS=$TEST_REQUIRE_TLS
     export SSLCERT=$TEST_DB_SERVER_CERT
-    if [ -n "$MYSQL_TEST_SSL_PORT" ] ; then
-      export MYSQL_TEST_SSL_PORT=$MYSQL_TEST_SSL_PORT
+    if [ -n "$TEST_MAXSCALE_TLS_PORT" ] ; then
+      export MYSQL_TEST_SSL_PORT=$TEST_MAXSCALE_TLS_PORT
     fi
     make
   fi

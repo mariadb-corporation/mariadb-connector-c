@@ -57,7 +57,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 # define TRUE 1
 #endif
 
-#define IS_SKYSQL(a) ((a) && strstr((a), "db.skysql.net"))
+#define IS_SKYSQL(a) ((a) && strstr((a), "skysql.mariadb.com"))
 #define SKIP_SKYSQL \
 if (IS_SKYSQL(hostname)) \
 { \
