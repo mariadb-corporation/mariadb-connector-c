@@ -20,6 +20,9 @@
 #include "ma_schannel.h"
 #include "schannel_certs.h"
 #include <string.h>
+#include <ma_crypt.h>
+#include <wincrypt.h>
+#include <bcrypt.h>
 
 extern my_bool ma_tls_initialized;
 char tls_library_version[] = "Schannel";
@@ -550,15 +553,35 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   return cipher_name(&CipherInfo);
 }
 
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp, unsigned int len)
 {
+  MA_HASH_CTX* hash_ctx;
+  uint hash_len;
+
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;
+  int rc= 0;
+
+  if (hash_type == MA_HASH_SHA224)
+  {
+    MYSQL *mysql = ctls->pvio->mysql;
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+      ER(CR_SSL_CONNECTION_ERROR),
+      "SHA224 hash for fingerprint verification is not supported in Schannel");
+    return 0;
+  }
+
   if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
     return 0;
-  CertGetCertificateContextProperty(pRemoteCertContext, CERT_HASH_PROP_ID, fp, (DWORD *)&len);
+
+  hash_ctx = ma_hash_new(hash_type, NULL);
+  ma_hash_input(hash_ctx, pRemoteCertContext->pbCertEncoded, pRemoteCertContext->cbCertEncoded);
+  ma_hash_result(hash_ctx, fp);
+  hash_len = hash_ctx->digest_len;
+  ma_hash_free(hash_ctx);
+
   CertFreeCertificateContext(pRemoteCertContext);
-  return len;
+  return hash_len;
 }
 
 void ma_tls_set_connection(MYSQL *mysql __attribute__((unused)))

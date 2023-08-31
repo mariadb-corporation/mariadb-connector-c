@@ -21,22 +21,19 @@
 #include <ma_crypt.h>
 #include <malloc.h>
 
-BCRYPT_ALG_HANDLE Sha256Prov= 0;
-BCRYPT_ALG_HANDLE Sha512Prov= 0;
-BCRYPT_ALG_HANDLE RsaProv= 0;
-
-static LPCWSTR ma_hash_get_algorithm(unsigned int alg, BCRYPT_ALG_HANDLE *algHdl)
+LPCWSTR ma_hash_get_algorithm(unsigned int alg)
 {
   switch(alg)
   {
+  case MA_HASH_SHA1:
+    return BCRYPT_SHA1_ALGORITHM;
   case MA_HASH_SHA256:
-    *algHdl= Sha256Prov;
     return BCRYPT_SHA256_ALGORITHM;
+  case MA_HASH_SHA384:
+    return BCRYPT_SHA384_ALGORITHM;
   case MA_HASH_SHA512:
-    *algHdl= Sha512Prov;
     return BCRYPT_SHA512_ALGORITHM;
   default:
-    *algHdl= 0;
     return NULL;
   }
 }
@@ -48,15 +45,10 @@ MA_HASH_CTX *ma_hash_new(unsigned int algorithm, MA_HASH_CTX *ctx)
   LPCWSTR alg;
   BCRYPT_ALG_HANDLE algHdl= 0;
 
-  alg= ma_hash_get_algorithm(algorithm, &algHdl);
+  alg= ma_hash_get_algorithm(algorithm);
 
-  if (!alg || !algHdl)
+  if (!alg)
     return NULL;
-
-  if (BCryptGetProperty(algHdl, BCRYPT_OBJECT_LENGTH,
-                      (PBYTE)&cbObjSize, sizeof(DWORD),
-                      &cbData, 0) < 0)
-      goto error;
 
   if (!newctx)
   {
@@ -64,11 +56,21 @@ MA_HASH_CTX *ma_hash_new(unsigned int algorithm, MA_HASH_CTX *ctx)
     newctx->free_me= 1;
   }
   else
+  {
+    free(newctx->hashObject);
     memset(newctx, 0, sizeof(MA_HASH_CTX));
+  }
+
+  BCryptOpenAlgorithmProvider(&newctx->hAlg, alg, NULL, 0);
+
+  if (BCryptGetProperty(newctx->hAlg, BCRYPT_OBJECT_LENGTH,
+    (PBYTE)&cbObjSize, sizeof(DWORD),
+    &cbData, 0) < 0)
+    goto error;
 
   newctx->hashObject= (PBYTE)malloc(cbObjSize);
   newctx->digest_len= (DWORD)ma_hash_digest_size(algorithm);
-  BCryptCreateHash(algHdl, &newctx->hHash, newctx->hashObject, cbObjSize, NULL, 0, 0);
+  BCryptCreateHash(newctx->hAlg, &newctx->hHash, newctx->hashObject, cbObjSize, NULL, 0, 0);
 
   return newctx;
 error:
@@ -85,6 +87,8 @@ void ma_hash_free(MA_HASH_CTX *ctx)
       BCryptDestroyHash(ctx->hHash);
     if (ctx->hashObject)
       free(ctx->hashObject);
+    if (ctx->hAlg)
+      BCryptCloseAlgorithmProvider(ctx->hAlg, 0);
 	if (ctx->free_me)
       free(ctx);
   }

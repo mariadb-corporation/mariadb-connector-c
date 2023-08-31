@@ -34,8 +34,6 @@ static gnutls_digest_algorithm_t ma_hash_get_algorithm(unsigned int alg)
     return GNUTLS_DIG_SHA384;
   case MA_HASH_SHA512:
     return GNUTLS_DIG_SHA512;
-  case MA_HASH_RIPEMD160:
-    return GNUTLS_DIG_RMD160;
   default:
     return GNUTLS_DIG_UNKNOWN;
   }

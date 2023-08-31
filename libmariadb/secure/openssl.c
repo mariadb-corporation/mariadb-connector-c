@@ -29,6 +29,7 @@
 #include <openssl/err.h> /* error reporting */
 #include <openssl/conf.h>
 #include <openssl/md4.h>
+#include <ma_tls.h>
 
 #if defined(_WIN32) && !defined(_OPENSSL_Applink) && defined(HAVE_OPENSSL_APPLINK_C)
 #include <openssl/applink.c>
@@ -729,17 +730,50 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   return SSL_get_cipher_name(ctls->ssl);
 }
 
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp, unsigned int len)
 {
   X509 *cert= NULL;
   MYSQL *mysql;
   unsigned int fp_len;
+  const EVP_MD *hash_alg;
 
   if (!ctls || !ctls->ssl)
     return 0;
 
-  mysql= SSL_get_app_data(ctls->ssl);
+  mysql = SSL_get_app_data(ctls->ssl);
 
+  if (len < EVP_MAX_MD_SIZE)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Finger print buffer too small");
+    return 0;
+  }
+
+  switch (hash_type)
+  {
+  case MA_HASH_SHA1:
+    hash_alg = EVP_sha1();
+    break;
+  case MA_HASH_SHA224:
+    hash_alg = EVP_sha224();
+    break;
+  case MA_HASH_SHA256:
+    hash_alg = EVP_sha256();
+    break;
+  case MA_HASH_SHA384:
+    hash_alg = EVP_sha384();
+    break;
+  case MA_HASH_SHA512:
+    hash_alg = EVP_sha512();
+    break;
+  default:
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+      ER(CR_SSL_CONNECTION_ERROR),
+      "Cannot detect hash algorithm for fingerprint verification");
+    return 0;
+  }
+  
   if (!(cert= SSL_get_peer_certificate(ctls->ssl)))
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
@@ -748,14 +782,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
     goto end;
   }
 
-  if (len < EVP_MAX_MD_SIZE)
-  {
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                        ER(CR_SSL_CONNECTION_ERROR), 
-                        "Finger print buffer too small");
-    goto end;
-  }
-  if (!X509_digest(cert, EVP_sha1(), (unsigned char *)fp, &fp_len))
+  if (!X509_digest(cert, hash_alg, (unsigned char *)fp, &fp_len))
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                         ER(CR_SSL_CONNECTION_ERROR), 

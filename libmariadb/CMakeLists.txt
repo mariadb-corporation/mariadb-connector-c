@@ -344,6 +344,10 @@ IF(WIN32)
     ${CC_SOURCE_DIR}/win-iconv/win_iconv.c
     win32_errmsg.c
     win32_errmsg.h)
+    IF(WITH_SSL STREQUAL "SCHANNEL")
+      SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
+          secure/win_crypt.c)
+    ENDIF()
 ELSE()
   IF(ICONV_INCLUDE_DIR)
      INCLUDE_DIRECTORIES(BEFORE ${ICONV_INCLUDE_DIR}) 
