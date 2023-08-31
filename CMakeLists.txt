@@ -382,7 +382,7 @@ CONFIGURE_FILE(${CC_SOURCE_DIR}/include/mariadb_version.h.in
 INCLUDE_DIRECTORIES(${CC_BINARY_DIR}/include)
 
 IF(WIN32)
-  SET(SYSTEM_LIBS ws2_32 advapi32 kernel32 shlwapi crypt32 ${LIBZ})
+  SET(SYSTEM_LIBS ws2_32 advapi32 kernel32 shlwapi crypt32 bcrypt ${LIBZ})
 ELSE()
   SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBPTHREAD} ${CMAKE_DL_LIBS} ${LIBM})
   IF(ICONV_EXTERNAL)

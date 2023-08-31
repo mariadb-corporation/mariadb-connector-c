@@ -1391,17 +1391,42 @@ static int my_verify_callback(gnutls_session_t ssl)
   return 0;
 }
 
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp, unsigned int len)
 {
   MYSQL *mysql;
   size_t fp_len= len;
   const gnutls_datum_t *cert_list;
   unsigned int cert_list_size;
+  gnutls_digest_algorithm_t hash_alg;
 
   if (!ctls || !ctls->ssl)
     return 0;
 
   mysql= (MYSQL *)gnutls_session_get_ptr(ctls->ssl);
+
+  switch (hash_type)
+  {
+  case MA_HASH_SHA1:
+    hash_alg = GNUTLS_DIG_SHA1;
+    break;
+  case MA_HASH_SHA224:
+    hash_alg = GNUTLS_DIG_SHA224;
+    break;
+  case MA_HASH_SHA256:
+    hash_alg = GNUTLS_DIG_SHA256;
+    break;
+  case MA_HASH_SHA384:
+    hash_alg = GNUTLS_DIG_SHA384;
+    break;
+  case MA_HASH_SHA512:
+    hash_alg = GNUTLS_DIG_SHA512;
+    break;
+  default:
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+      ER(CR_SSL_CONNECTION_ERROR),
+      "Cannot detect hash algorithm for fingerprint verification");
+    return 0;
+  }
 
   cert_list = gnutls_certificate_get_peers (ctls->ssl, &cert_list_size);
   if (cert_list == NULL)
@@ -1412,7 +1437,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int l
     return 0;
   }
 
-  if (gnutls_fingerprint(GNUTLS_DIG_SHA1, &cert_list[0], fp, &fp_len) == 0)
+  if (gnutls_fingerprint(hash_alg, &cert_list[0], fp, &fp_len) == 0)
     return fp_len;
   else
   {

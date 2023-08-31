@@ -17,33 +17,19 @@
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 */
 
-#ifndef _ma_hash_h_
-#define _ma_hash_h_
+#ifndef _ma_crypt_h_
+#define _ma_crypt_h_
 
+#include <ma_hash.h>
 #include <stddef.h>
 #include <stdarg.h>
 
 /*! Hash algorithms */
-#define MA_HASH_MD5       1
-#define MA_HASH_SHA1      2
-#define MA_HASH_SHA224    3
-#define MA_HASH_SHA256    4
-#define MA_HASH_SHA384    5
-#define MA_HASH_SHA512    6
 #define MA_HASH_RIPEMD160 7
 #define MA_HASH_MAX       8
 
 /*! Hash digest sizes */
-#define MA_MD5_HASH_SIZE 16
-#define MA_SHA1_HASH_SIZE 20
-#define MA_SHA224_HASH_SIZE 28
-#define MA_SHA256_HASH_SIZE 32
-#define MA_SHA384_HASH_SIZE 48
-#define MA_SHA512_HASH_SIZE 64
 #define MA_RIPEMD160_HASH_SIZE 20
-
-#define MA_MAX_HASH_SIZE 64
-/** \typedef MRL hash context */
 
 #if defined(HAVE_WINCRYPT)
 typedef void MA_HASH_CTX;
@@ -123,8 +109,6 @@ static inline size_t ma_hash_digest_size(unsigned int hash_alg)
     return MA_SHA384_HASH_SIZE;
   case MA_HASH_SHA512:
     return MA_SHA512_HASH_SIZE;
-  case MA_HASH_RIPEMD160:
-    return MA_RIPEMD160_HASH_SIZE;
   default:
     return 0;
   }
@@ -152,4 +136,4 @@ static inline void ma_hash(unsigned int algorithm,
   ma_hash_free(ctx);
 }
 
-#endif /* _ma_hash_h_ */
+#endif /* _ma_crypt_h_ */
