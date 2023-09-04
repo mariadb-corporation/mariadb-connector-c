@@ -1440,23 +1440,23 @@ static int test_bug32265(MYSQL *mysql)
   mysql_free_result(metadata);
   mysql_stmt_close(stmt);
 
-  stmt= open_cursor(mysql, "SELECT a '' FROM t1 ``");
+  stmt= open_cursor(mysql, "SELECT a '' FROM t1 `alias`");
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   metadata= mysql_stmt_result_metadata(stmt);
   field= mysql_fetch_field(metadata);
-  FAIL_UNLESS(strcmp(field->table, "") == 0, "field != ''");
+  FAIL_UNLESS(strcmp(field->table, "alias") == 0, "field != 'alias'");
   FAIL_UNLESS(strcmp(field->org_table, "t1") == 0, "org_table != t1");
   FAIL_UNLESS(strcmp(field->db, schema) == 0, "db != schema");
   mysql_free_result(metadata);
   mysql_stmt_close(stmt);
 
-  stmt= open_cursor(mysql, "SELECT a '' FROM t1 ``");
+  stmt= open_cursor(mysql, "SELECT a '' FROM t1 `alias`");
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
   metadata= mysql_stmt_result_metadata(stmt);
   field= mysql_fetch_field(metadata);
-  FAIL_UNLESS(strcmp(field->table, "") == 0, "table != ''");
+  FAIL_UNLESS(strcmp(field->table, "alias") == 0, "table != 'alias'");
   FAIL_UNLESS(strcmp(field->org_table, "t1") == 0, "org_table != t1");
   FAIL_UNLESS(strcmp(field->db, schema) == 0, "db != schema");
   mysql_free_result(metadata);
