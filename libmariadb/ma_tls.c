@@ -218,12 +218,8 @@ static my_bool ma_pvio_tls_compare_fp(MARIADB_TLS *ctls,
 
 my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list)
 {
-  unsigned int cert_fp_len= 64;
-  char *cert_fp= NULL;
   my_bool rc=1;
   MYSQL *mysql= ctls->pvio->mysql;
-
-  cert_fp= (char *)malloc(cert_fp_len);
 
   if (fp)
   {
@@ -231,13 +227,13 @@ my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_l
   }
   else if (fp_list)
   {
-    MA_FILE *fp;
+    MA_FILE *f;
     char buff[255];
 
-    if (!(fp = ma_open(fp_list, "r", mysql)))
+    if (!(f = ma_open(fp_list, "r", mysql)))
       goto end;
 
-    while (ma_gets(buff, sizeof(buff)-1, fp))
+    while (ma_gets(buff, sizeof(buff)-1, f))
     {
       /* remove trailing new line character */
       char *pos= strchr(buff, '\r');
@@ -246,22 +242,20 @@ my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_l
       if (pos)
         *pos= '\0';
         
-      if (!ma_pvio_tls_compare_fp(ctls, cert_fp, cert_fp_len))
+      if (!ma_pvio_tls_compare_fp(ctls, buff, (uint)strlen(buff)))
       {
         /* finger print is valid: close file and exit */
-        ma_close(fp);
+        ma_close(f);
         rc= 0;
         goto end;
       }
     }
 
     /* No finger print matched - close file and return error */
-    ma_close(fp);
+    ma_close(f);
   }
 
 end:
-  if (cert_fp)
-    free(cert_fp);
   if (rc)
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
