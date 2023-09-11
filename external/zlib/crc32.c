@@ -29,26 +29,26 @@
 
 #include "zutil.h"      /* for Z_U4, Z_U8, z_crc_t, and FAR definitions */
 
- /*
-  A CRC of a message is computed on N braids of words in the message, where
-  each word consists of W bytes (4 or 8). If N is 3, for example, then three
-  running sparse CRCs are calculated respectively on each braid, at these
-  indices in the array of words: 0, 3, 6, ..., 1, 4, 7, ..., and 2, 5, 8, ...
-  This is done starting at a word boundary, and continues until as many blocks
-  of N * W bytes as are available have been processed. The results are combined
-  into a single CRC at the end. For this code, N must be in the range 1..6 and
-  W must be 4 or 8. The upper limit on N can be increased if desired by adding
-  more #if blocks, extending the patterns apparent in the code. In addition,
-  crc32.h would need to be regenerated, if the maximum N value is increased.
+/*
+ A CRC of a message is computed on N braids of words in the message, where
+ each word consists of W bytes (4 or 8). If N is 3, for example, then three
+ running sparse CRCs are calculated respectively on each braid, at these
+ indices in the array of words: 0, 3, 6, ..., 1, 4, 7, ..., and 2, 5, 8, ...
+ This is done starting at a word boundary, and continues until as many blocks
+ of N * W bytes as are available have been processed. The results are combined
+ into a single CRC at the end. For this code, N must be in the range 1..6 and
+ W must be 4 or 8. The upper limit on N can be increased if desired by adding
+ more #if blocks, extending the patterns apparent in the code. In addition,
+ crc32.h would need to be regenerated, if the maximum N value is increased.
 
-  N and W are chosen empirically by benchmarking the execution time on a given
-  processor. The choices for N and W below were based on testing on Intel Kaby
-  Lake i7, AMD Ryzen 7, ARM Cortex-A57, Sparc64-VII, PowerPC POWER9, and MIPS64
-  Octeon II processors. The Intel, AMD, and ARM processors were all fastest
-  with N=5, W=8. The Sparc, PowerPC, and MIPS64 were all fastest at N=5, W=4.
-  They were all tested with either gcc or clang, all using the -O3 optimization
-  level. Your mileage may vary.
- */
+ N and W are chosen empirically by benchmarking the execution time on a given
+ processor. The choices for N and W below were based on testing on Intel Kaby
+ Lake i7, AMD Ryzen 7, ARM Cortex-A57, Sparc64-VII, PowerPC POWER9, and MIPS64
+ Octeon II processors. The Intel, AMD, and ARM processors were all fastest
+ with N=5, W=8. The Sparc, PowerPC, and MIPS64 were all fastest at N=5, W=4.
+ They were all tested with either gcc or clang, all using the -O3 optimization
+ level. Your mileage may vary.
+*/
 
 /* Define N */
 #ifdef Z_TESTN
@@ -88,11 +88,11 @@
 #endif
 #ifdef W
 #  if W == 8 && defined(Z_U8)
-     typedef Z_U8 z_word_t;
+typedef Z_U8 z_word_t;
 #  elif defined(Z_U4)
 #    undef W
 #    define W 4
-     typedef Z_U4 z_word_t;
+typedef Z_U4 z_word_t;
 #  else
 #    undef W
 #  endif
@@ -105,15 +105,16 @@
 
 /* Local functions. */
 local z_crc_t multmodp OF((z_crc_t a, z_crc_t b));
+
 local z_crc_t x2nmodp OF((z_off64_t n, unsigned k));
 
 #if defined(W) && (!defined(ARMCRC32) || defined(DYNAMIC_CRC_TABLE))
-    local z_word_t byte_swap OF((z_word_t word));
+local z_word_t byte_swap OF((z_word_t word));
 #endif
 
 #if defined(W) && !defined(ARMCRC32)
-    local z_crc_t crc_word OF((z_word_t data));
-    local z_word_t crc_word_big OF((z_word_t data));
+local z_crc_t crc_word OF((z_word_t data));
+local z_word_t crc_word_big OF((z_word_t data));
 #endif
 
 #if defined(W) && (!defined(ARMCRC32) || defined(DYNAMIC_CRC_TABLE))
@@ -123,9 +124,7 @@ local z_crc_t x2nmodp OF((z_off64_t n, unsigned k));
   instruction, if one is available. This assumes that word_t is either 32 bits
   or 64 bits.
  */
-local z_word_t byte_swap(word)
-    z_word_t word;
-{
+local z_word_t byte_swap(z_word_t word){
 #  if W == 8
     return
         (word & 0xff00000000000000) >> 56 |
@@ -537,6 +536,7 @@ local void braid(ltl, big, n, w)
  * of x for combining CRC-32s, all made by make_crc_table().
  */
 #include "crc32.h"
+
 #endif /* DYNAMIC_CRC_TABLE */
 
 /* ========================================================================
@@ -548,13 +548,10 @@ local void braid(ltl, big, n, w)
   Return a(x) multiplied by b(x) modulo p(x), where p(x) is the CRC polynomial,
   reflected. For speed, this requires that a not be zero.
  */
-local z_crc_t multmodp(a, b)
-    z_crc_t a;
-    z_crc_t b;
-{
+local z_crc_t multmodp(z_crc_t a, z_crc_t b) {
     z_crc_t m, p;
 
-    m = (z_crc_t)1 << 31;
+    m = (z_crc_t) 1 << 31;
     p = 0;
     for (;;) {
         if (a & m) {
@@ -572,13 +569,10 @@ local z_crc_t multmodp(a, b)
   Return x^(n * 2^k) modulo p(x). Requires that x2n_table[] has been
   initialized.
  */
-local z_crc_t x2nmodp(n, k)
-    z_off64_t n;
-    unsigned k;
-{
+local z_crc_t x2nmodp(z_off64_t n, unsigned k) {
     z_crc_t p;
 
-    p = (z_crc_t)1 << 31;           /* x^0 == 1 */
+    p = (z_crc_t) 1 << 31;           /* x^0 == 1 */
     while (n) {
         if (n & 1)
             p = multmodp(x2n_table[k & 31], p);
@@ -592,12 +586,11 @@ local z_crc_t x2nmodp(n, k)
  * This function can be used by asm versions of crc32(), and to force the
  * generation of the CRC tables in a threaded application.
  */
-const z_crc_t FAR * ZEXPORT get_crc_table()
-{
+const z_crc_t FAR *ZEXPORT get_crc_table() {
 #ifdef DYNAMIC_CRC_TABLE
     once(&made, make_crc_table);
 #endif /* DYNAMIC_CRC_TABLE */
-    return (const z_crc_t FAR *)crc_table;
+    return (const z_crc_t FAR *) crc_table;
 }
 
 /* =========================================================================
@@ -619,11 +612,7 @@ const z_crc_t FAR * ZEXPORT get_crc_table()
 #define Z_BATCH_ZEROS 0xa10d3d0c    /* computed from Z_BATCH = 3990 */
 #define Z_BATCH_MIN 800             /* fewest words in a final batch */
 
-unsigned long ZEXPORT crc32_z(crc, buf, len)
-    unsigned long crc;
-    const unsigned char FAR *buf;
-    z_size_t len;
-{
+unsigned long ZEXPORT crc32_z(    unsigned long crc,    const unsigned char FAR *buf,    z_size_t len){
     z_crc_t val;
     z_word_t crc1, crc2;
     const z_word_t *word;
@@ -723,18 +712,14 @@ unsigned long ZEXPORT crc32_z(crc, buf, len)
   least-significant byte of the word as the first byte of data, without any pre
   or post conditioning. This is used to combine the CRCs of each braid.
  */
-local z_crc_t crc_word(data)
-    z_word_t data;
-{
+local z_crc_t crc_word(z_word_t data){
     int k;
     for (k = 0; k < W; k++)
         data = (data >> 8) ^ crc_table[data & 0xff];
     return (z_crc_t)data;
 }
 
-local z_word_t crc_word_big(data)
-    z_word_t data;
-{
+local z_word_t crc_word_big(z_word_t data) {
     int k;
     for (k = 0; k < W; k++)
         data = (data << 8) ^
@@ -745,11 +730,7 @@ local z_word_t crc_word_big(data)
 #endif
 
 /* ========================================================================= */
-unsigned long ZEXPORT crc32_z(crc, buf, len)
-    unsigned long crc;
-    const unsigned char FAR *buf;
-    z_size_t len;
-{
+unsigned long ZEXPORT crc32_z(unsigned long crc, const unsigned char FAR *buf, z_size_t len) {
     /* Return initial CRC, if requested. */
     if (buf == Z_NULL) return 0;
 
@@ -1069,20 +1050,12 @@ unsigned long ZEXPORT crc32_z(crc, buf, len)
 #endif
 
 /* ========================================================================= */
-unsigned long ZEXPORT crc32(crc, buf, len)
-    unsigned long crc;
-    const unsigned char FAR *buf;
-    uInt len;
-{
+unsigned long ZEXPORT crc32(unsigned long crc, const unsigned char FAR *buf, uInt len) {
     return crc32_z(crc, buf, len);
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine64(crc1, crc2, len2)
-    uLong crc1;
-    uLong crc2;
-    z_off64_t len2;
-{
+uLong ZEXPORT crc32_combine64(uLong crc1, uLong crc2, z_off64_t len2) {
 #ifdef DYNAMIC_CRC_TABLE
     once(&made, make_crc_table);
 #endif /* DYNAMIC_CRC_TABLE */
@@ -1090,18 +1063,12 @@ uLong ZEXPORT crc32_combine64(crc1, crc2, len2)
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine(crc1, crc2, len2)
-    uLong crc1;
-    uLong crc2;
-    z_off_t len2;
-{
-    return crc32_combine64(crc1, crc2, (z_off64_t)len2);
+uLong ZEXPORT crc32_combine(uLong crc1, uLong crc2, z_off_t len2) {
+    return crc32_combine64(crc1, crc2, (z_off64_t) len2);
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine_gen64(len2)
-    z_off64_t len2;
-{
+uLong ZEXPORT crc32_combine_gen64(z_off64_t len2) {
 #ifdef DYNAMIC_CRC_TABLE
     once(&made, make_crc_table);
 #endif /* DYNAMIC_CRC_TABLE */
@@ -1109,17 +1076,11 @@ uLong ZEXPORT crc32_combine_gen64(len2)
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine_gen(len2)
-    z_off_t len2;
-{
-    return crc32_combine_gen64((z_off64_t)len2);
+uLong ZEXPORT crc32_combine_gen(z_off_t len2) {
+    return crc32_combine_gen64((z_off64_t) len2);
 }
 
 /* ========================================================================= */
-uLong ZEXPORT crc32_combine_op(crc1, crc2, op)
-    uLong crc1;
-    uLong crc2;
-    uLong op;
-{
+uLong ZEXPORT crc32_combine_op(uLong crc1, uLong crc2, uLong op) {
     return multmodp(op, crc1) ^ (crc2 & 0xffffffff);
 }
