@@ -47,9 +47,7 @@ union pass_void_ptr_as_2_int {
   the actual type (as the actual type can differ from call to call).
 */
 static void
-my_context_spawn_internal(i0, i1)
-int i0, i1;
-{
+my_context_spawn_internal(int i0, int i1) {
   int err;
   struct my_context *c;
   union pass_void_ptr_as_2_int u;

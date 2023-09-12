@@ -55,7 +55,7 @@
 
 #if !defined(Z_HAVE_UNISTD_H) && !defined(_LARGEFILE64_SOURCE)
 #ifndef WIN32 /* unlink already in stdio.h for WIN32 */
-  extern int unlink OF((const char *));
+extern int unlink OF((const char *));
 #endif
 #endif
 
@@ -133,29 +133,33 @@ static void pwinerror (s)
 
 #ifdef MAXSEG_64K
 #  define local static
-   /* Needed for systems with limitation on stack size. */
+/* Needed for systems with limitation on stack size. */
 #else
 #  define local
 #endif
 
 char *prog;
 
-void error            OF((const char *msg));
-void gz_compress      OF((FILE   *in, gzFile out));
+void error OF((const char *msg));
+
+void gz_compress OF((FILE * in, gzFile out));
+
 #ifdef USE_MMAP
 int  gz_compress_mmap OF((FILE   *in, gzFile out));
 #endif
-void gz_uncompress    OF((gzFile in, FILE   *out));
-void file_compress    OF((char  *file, char *mode));
-void file_uncompress  OF((char  *file));
-int  main             OF((int argc, char *argv[]));
+
+void gz_uncompress OF((gzFile in, FILE * out));
+
+void file_compress OF((char  *file, char *mode));
+
+void file_uncompress OF((char  *file));
+
+int main OF((int argc, char *argv[]));
 
 /* ===========================================================================
  * Display error message and exit
  */
-void error(msg)
-    const char *msg;
-{
+void error(const char *msg) {
     fprintf(stderr, "%s: %s\n", prog, msg);
     exit(1);
 }
@@ -164,10 +168,8 @@ void error(msg)
  * Compress input to output then close both files.
  */
 
-void gz_compress(in, out)
-    FILE   *in;
-    gzFile out;
-{
+void gz_compress(FILE *in,
+                 gzFile out0 {
     local char buf[BUFLEN];
     int len;
     int err;
@@ -179,14 +181,14 @@ void gz_compress(in, out)
     if (gz_compress_mmap(in, out) == Z_OK) return;
 #endif
     for (;;) {
-        len = (int)fread(buf, 1, sizeof(buf), in);
+        len = (int) fread(buf, 1, sizeof(buf), in);
         if (ferror(in)) {
             perror("fread");
             exit(1);
         }
         if (len == 0) break;
 
-        if (gzwrite(out, buf, (unsigned)len) != len) error(gzerror(out, &err));
+        if (gzwrite(out, buf, (unsigned) len) != len) error(gzerror(out, &err));
     }
     fclose(in);
     if (gzclose(out) != Z_OK) error("failed gzclose");
@@ -232,20 +234,18 @@ int gz_compress_mmap(in, out)
 /* ===========================================================================
  * Uncompress input to output then close both files.
  */
-void gz_uncompress(in, out)
-    gzFile in;
-    FILE   *out;
-{
+void gz_uncompress(gzFile in,
+                   FILE *out) {
     local char buf[BUFLEN];
     int len;
     int err;
 
     for (;;) {
         len = gzread(in, buf, sizeof(buf));
-        if (len < 0) error (gzerror(in, &err));
+        if (len < 0) error(gzerror(in, &err));
         if (len == 0) break;
 
-        if ((int)fwrite(buf, 1, (unsigned)len, out) != len) {
+        if ((int) fwrite(buf, 1, (unsigned) len, out) != len) {
             error("failed fwrite");
         }
     }
@@ -259,12 +259,10 @@ void gz_uncompress(in, out)
  * Compress the given file: create a corresponding .gz file and remove the
  * original.
  */
-void file_compress(file, mode)
-    char  *file;
-    char  *mode;
-{
+void file_compress(char *file,
+                   char *mode) {
     local char outfile[MAX_NAME_LEN];
-    FILE  *in;
+    FILE *in;
     gzFile out;
 
     if (strlen(file) + strlen(GZ_SUFFIX) >= sizeof(outfile)) {
@@ -294,12 +292,10 @@ void file_compress(file, mode)
 /* ===========================================================================
  * Uncompress the given file and remove the original.
  */
-void file_uncompress(file)
-    char  *file;
-{
+void file_uncompress(char *file) {
     local char buf[MAX_NAME_LEN];
     char *infile, *outfile;
-    FILE  *out;
+    FILE *out;
     gzFile in;
     size_t len = strlen(file);
 
@@ -310,10 +306,10 @@ void file_uncompress(file)
 
     strcpy(buf, file);
 
-    if (len > SUFFIX_LEN && strcmp(file+len-SUFFIX_LEN, GZ_SUFFIX) == 0) {
+    if (len > SUFFIX_LEN && strcmp(file + len - SUFFIX_LEN, GZ_SUFFIX) == 0) {
         infile = file;
         outfile = buf;
-        outfile[len-3] = '\0';
+        outfile[len - 3] = '\0';
     } else {
         outfile = file;
         infile = buf;
@@ -346,10 +342,7 @@ void file_uncompress(file)
  *   -1 to -9 : compression level
  */
 
-int main(argc, argv)
-    int argc;
-    char *argv[];
-{
+int main(int argc, char *argv[]) {
     int copyout = 0;
     int uncompr = 0;
     gzFile file;
@@ -360,33 +353,33 @@ int main(argc, argv)
     prog = argv[0];
     bname = strrchr(argv[0], '/');
     if (bname)
-      bname++;
+        bname++;
     else
-      bname = argv[0];
+        bname = argv[0];
     argc--, argv++;
 
     if (!strcmp(bname, "gunzip"))
-      uncompr = 1;
+        uncompr = 1;
     else if (!strcmp(bname, "zcat"))
-      copyout = uncompr = 1;
+        copyout = uncompr = 1;
 
     while (argc > 0) {
-      if (strcmp(*argv, "-c") == 0)
-        copyout = 1;
-      else if (strcmp(*argv, "-d") == 0)
-        uncompr = 1;
-      else if (strcmp(*argv, "-f") == 0)
-        outmode[3] = 'f';
-      else if (strcmp(*argv, "-h") == 0)
-        outmode[3] = 'h';
-      else if (strcmp(*argv, "-r") == 0)
-        outmode[3] = 'R';
-      else if ((*argv)[0] == '-' && (*argv)[1] >= '1' && (*argv)[1] <= '9' &&
-               (*argv)[2] == 0)
-        outmode[2] = (*argv)[1];
-      else
-        break;
-      argc--, argv++;
+        if (strcmp(*argv, "-c") == 0)
+            copyout = 1;
+        else if (strcmp(*argv, "-d") == 0)
+            uncompr = 1;
+        else if (strcmp(*argv, "-f") == 0)
+            outmode[3] = 'f';
+        else if (strcmp(*argv, "-h") == 0)
+            outmode[3] = 'h';
+        else if (strcmp(*argv, "-r") == 0)
+            outmode[3] = 'R';
+        else if ((*argv)[0] == '-' && (*argv)[1] >= '1' && (*argv)[1] <= '9' &&
+                 (*argv)[2] == 0)
+            outmode[2] = (*argv)[1];
+        else
+            break;
+        argc--, argv++;
     }
     if (outmode[3] == ' ')
         outmode[3] = 0;
@@ -419,7 +412,7 @@ int main(argc, argv)
                 }
             } else {
                 if (copyout) {
-                    FILE * in = fopen(*argv, "rb");
+                    FILE *in = fopen(*argv, "rb");
 
                     if (in == NULL) {
                         perror(*argv);

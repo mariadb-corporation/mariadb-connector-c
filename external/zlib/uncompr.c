@@ -6,6 +6,7 @@
 /* @(#) $Id$ */
 
 #define ZLIB_INTERNAL
+
 #include "zlib.h"
 
 /* ===========================================================================
@@ -24,15 +25,13 @@
    Z_DATA_ERROR if the input data was corrupted, including if the input data is
    an incomplete zlib stream.
 */
-int ZEXPORT uncompress2(dest, destLen, source, sourceLen)
-    Bytef *dest;
-    uLongf *destLen;
-    const Bytef *source;
-    uLong *sourceLen;
-{
+int ZEXPORT uncompress2(Bytef *dest,
+                        uLongf *destLen,
+                        const Bytef *source,
+                        uLong *sourceLen) {
     z_stream stream;
     int err;
-    const uInt max = (uInt)-1;
+    const uInt max = (uInt) -1;
     uLong len, left;
     Byte buf[1];    /* for detection of incomplete stream when *destLen == 0 */
 
@@ -40,17 +39,16 @@ int ZEXPORT uncompress2(dest, destLen, source, sourceLen)
     if (*destLen) {
         left = *destLen;
         *destLen = 0;
-    }
-    else {
+    } else {
         left = 1;
         dest = buf;
     }
 
-    stream.next_in = (z_const Bytef *)source;
+    stream.next_in = (z_const Bytef *) source;
     stream.avail_in = 0;
-    stream.zalloc = (alloc_func)0;
-    stream.zfree = (free_func)0;
-    stream.opaque = (voidpf)0;
+    stream.zalloc = (alloc_func) 0;
+    stream.zfree = (free_func) 0;
+    stream.opaque = (voidpf) 0;
 
     err = inflateInit(&stream);
     if (err != Z_OK) return err;
@@ -60,11 +58,11 @@ int ZEXPORT uncompress2(dest, destLen, source, sourceLen)
 
     do {
         if (stream.avail_out == 0) {
-            stream.avail_out = left > (uLong)max ? max : (uInt)left;
+            stream.avail_out = left > (uLong) max ? max : (uInt) left;
             left -= stream.avail_out;
         }
         if (stream.avail_in == 0) {
-            stream.avail_in = len > (uLong)max ? max : (uInt)len;
+            stream.avail_in = len > (uLong) max ? max : (uInt) len;
             len -= stream.avail_in;
         }
         err = inflate(&stream, Z_NO_FLUSH);
@@ -78,16 +76,14 @@ int ZEXPORT uncompress2(dest, destLen, source, sourceLen)
 
     inflateEnd(&stream);
     return err == Z_STREAM_END ? Z_OK :
-           err == Z_NEED_DICT ? Z_DATA_ERROR  :
+           err == Z_NEED_DICT ? Z_DATA_ERROR :
            err == Z_BUF_ERROR && left + stream.avail_out ? Z_DATA_ERROR :
            err;
 }
 
-int ZEXPORT uncompress(dest, destLen, source, sourceLen)
-    Bytef *dest;
-    uLongf *destLen;
-    const Bytef *source;
-    uLong sourceLen;
-{
+int ZEXPORT uncompress(Bytef *dest,
+                       uLongf *destLen,
+                       const Bytef *source,
+                       uLong sourceLen) {
     return uncompress2(dest, destLen, source, &sourceLen);
 }
