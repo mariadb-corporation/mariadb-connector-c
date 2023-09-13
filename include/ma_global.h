@@ -34,9 +34,9 @@
 #if _MSC_VER < 1900
 #define snprintf _snprintf
 #endif
-#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
 #endif
-#define STDCALL __stdcall 
+#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+#define STDCALL __stdcall
 #endif
 
 #include <ma_config.h>
