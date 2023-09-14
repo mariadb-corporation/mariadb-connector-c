@@ -351,7 +351,7 @@ mysql_client_register_plugin(MYSQL *mysql,
 
 /* see <mysql/client_plugin.h> for a full description */
 struct st_mysql_client_plugin * STDCALL
-mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
+mysql_load_plugin_v(struct st_mysql *mysql, const char *name, int type,
                     int argc, va_list args)
 {
   const char *errmsg;
@@ -467,8 +467,8 @@ err:
 
 
 /* see <mysql/client_plugin.h> for a full description */
-struct st_mysql_client_plugin * STDCALL
-mysql_load_plugin(MYSQL *mysql, const char *name, int type, int argc, ...)
+struct st_mysql_client_plugin *
+mysql_load_plugin(struct st_mysql *mysql, const char *name, int type, int argc, ...)
 {
   struct st_mysql_client_plugin *p;
   va_list args;
