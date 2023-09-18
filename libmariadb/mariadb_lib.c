@@ -117,7 +117,7 @@ extern int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row);
 extern int mthd_stmt_read_all_rows(MYSQL_STMT *stmt);
 extern void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt);
 extern my_bool _mariadb_read_options(MYSQL *mysql, const char *dir, const char *config_file, char *group, unsigned int recursion);
-extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
+extern unsigned char *mysql_net_store_length(unsigned char *packet, ulonglong length);
 
 extern void
 my_context_install_suspend_resume_hook(struct mysql_async_context *b,
