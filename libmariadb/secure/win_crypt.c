@@ -20,10 +20,34 @@
 #include <bcrypt.h>
 #include <ma_crypt.h>
 #include <malloc.h>
+#include <stdlib.h>
+#include <stdio.h>
 
+/*
+  Error handling for bcrypt.
+  If we can't meaningfully return an error, dump error on stderr
+  and abort. Those errors are mostly likely programming errors
+  (invalid parameters and such)
+*/
+static inline void check_nt_status(int ret, const char *function,
+                                   const char *file, int line)
+{
+  if (ret)
+  {
+    fprintf(stderr,"invalid return %d from bcrypt, "
+        "function %s with file %s, line %d\n",
+        ret, function, file, line);
+    abort();
+  }
+}
+#define CHECK_NT_STATUS(ret) check_nt_status(ret, __func__, __FILE__, __LINE__)
+
+/*
+  Return Bcrypt algorithm ID (wchar string) for MariaDB numeric ID
+*/
 static LPCWSTR ma_hash_get_algorithm(unsigned int alg)
 {
-  switch(alg)
+  switch (alg)
   {
   case MA_HASH_SHA1:
     return BCRYPT_SHA1_ALGORITHM;
@@ -38,78 +62,101 @@ static LPCWSTR ma_hash_get_algorithm(unsigned int alg)
   }
 }
 
-MA_HASH_CTX *ma_hash_new(unsigned int algorithm, MA_HASH_CTX *ctx)
+/* Cached algorithm provides handles. */
+static BCRYPT_ALG_HANDLE cached_alg_handles[MA_HASH_MAX];
+
+/*
+  Cleanup cached algorithm handles. It runs either on process exit,
+  or when DLL is unloaded (see _onexit() documentation)
+*/
+static int win_crypt_onexit(void)
 {
-  MA_HASH_CTX *newctx= ctx;
-  DWORD cbObjSize, cbData;
-  LPCWSTR alg;
-  BCRYPT_ALG_HANDLE algHdl= 0;
+  int i;
+  for (i= 0; i < MA_HASH_MAX; i++)
+  {
+    if (cached_alg_handles[i])
+      BCryptCloseAlgorithmProvider(cached_alg_handles[i], 0);
+  }
+  return 0;
+}
 
-  alg= ma_hash_get_algorithm(algorithm);
+static void register_cleanup_onexit_once()
+{
+  static LONG onexit_called;
+  if (!InterlockedCompareExchange(&onexit_called, 1, 0))
+    _onexit(win_crypt_onexit);
+}
 
-  if (!alg)
+/*
+  Given algorithm ID, return BCRYPT provider handle.
+  Uses or populates algorithm provider handle cache.
+*/
+static BCRYPT_ALG_HANDLE ma_hash_get_algorithm_handle(unsigned int alg)
+{
+  static SRWLOCK lock= SRWLOCK_INIT;
+  BCRYPT_ALG_HANDLE handle= NULL;
+  const wchar_t *name;
+
+  if ((handle= cached_alg_handles[alg]) != NULL)
+    return handle;
+
+  name= ma_hash_get_algorithm(alg);
+  if (!name)
     return NULL;
 
-  if (!newctx)
+  AcquireSRWLockExclusive(&lock);
+  if ((handle= cached_alg_handles[alg]) == NULL)
   {
-    newctx= (MA_HASH_CTX *)calloc(1, sizeof(MA_HASH_CTX));
-    newctx->free_me= 1;
-  } else {
-    char tmp_freeme= newctx->free_me;
-    BCRYPT_ALG_HANDLE tmp_alg= newctx->hAlg;
-
-    newctx->free_me= 0;
-    newctx->hAlg = 0;
- 
-    ma_hash_free(newctx); 
-
-    newctx->free_me= tmp_freeme;
-    newctx->hAlg= tmp_alg;
+    if (BCryptOpenAlgorithmProvider(&handle, name, NULL, 0) == 0)
+      cached_alg_handles[alg]= handle;
+    else
+      handle= NULL;
   }
+  ReleaseSRWLockExclusive(&lock);
 
-  if (!newctx->hAlg)
-    if (BCryptOpenAlgorithmProvider(&newctx->hAlg, alg, NULL, 0))
-      goto error;
+  if (handle)
+    register_cleanup_onexit_once();
+  return handle;
+}
 
-  if (BCryptGetProperty(newctx->hAlg, BCRYPT_OBJECT_LENGTH,
-                      (PBYTE)&cbObjSize, sizeof(DWORD),
-                      &cbData, 0) < 0)
-    goto error;
+MA_HASH_CTX *ma_hash_new(unsigned int algorithm)
+{
+  BCRYPT_HASH_HANDLE hash_handle;
+  BCRYPT_ALG_HANDLE alg_handle= ma_hash_get_algorithm_handle(algorithm);
 
-  newctx->hashObject= (PBYTE)malloc(cbObjSize);
-  newctx->digest_len= (DWORD)ma_hash_digest_size(algorithm);
-  BCryptCreateHash(newctx->hAlg, &newctx->hHash, newctx->hashObject, cbObjSize, NULL, 0, 0);
+  if (!alg_handle)
+    return NULL;
 
-  return newctx;
-error:
-  if (newctx && !ctx)
-    free(newctx);
-  return NULL;
+  if (BCryptCreateHash(alg_handle, &hash_handle, NULL, 0, NULL, 0, 0))
+    return NULL;
+
+  return hash_handle;
 }
 
 void ma_hash_free(MA_HASH_CTX *ctx)
 {
-  if (ctx)
-  {
-    if (ctx->hHash)
-      BCryptDestroyHash(ctx->hHash);
-    if (ctx->hashObject)
-      free(ctx->hashObject);
-    if (ctx->hAlg)
-      BCryptCloseAlgorithmProvider(ctx->hAlg, 0);
-	if (ctx->free_me)
-      free(ctx);
-  }
+  NTSTATUS status;
+  if (!ctx)
+    return;
+  status= BCryptDestroyHash(ctx);
+  CHECK_NT_STATUS(status);
 }
 
-void ma_hash_input(MA_HASH_CTX *ctx,
-                   const unsigned char *buffer,
-                   size_t len)
+void ma_hash_input(MA_HASH_CTX *ctx, const unsigned char *buffer, size_t len)
 {
-  BCryptHashData(ctx->hHash, (PUCHAR)buffer, (LONG)len, 0);
+  NTSTATUS status= BCryptHashData(ctx, (PUCHAR) buffer, (ULONG) len, 0);
+  CHECK_NT_STATUS(status);
 }
 
 void ma_hash_result(MA_HASH_CTX *ctx, unsigned char *digest)
 {
-  BCryptFinishHash(ctx->hHash, digest, ctx->digest_len, 0);
+  DWORD hash_length;
+  DWORD data_length;
+  NTSTATUS status=
+      BCryptGetProperty(ctx, BCRYPT_HASH_LENGTH, (PBYTE) &hash_length,
+                        sizeof(DWORD), &data_length, 0);
+  CHECK_NT_STATUS(status);
+
+  status= BCryptFinishHash(ctx, digest, (ULONG) hash_length, 0);
+  CHECK_NT_STATUS(status);
 }

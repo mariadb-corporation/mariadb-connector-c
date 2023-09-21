@@ -43,7 +43,7 @@ static const EVP_MD *ma_hash_get_algorithm(unsigned int alg)
   }
 }
 
-MA_HASH_CTX *ma_hash_new(unsigned int algorithm, MA_HASH_CTX *unused __attribute__((unused)))
+MA_HASH_CTX *ma_hash_new(unsigned int algorithm)
 {
   EVP_MD_CTX *ctx= NULL;
   const EVP_MD *evp_md= ma_hash_get_algorithm(algorithm);

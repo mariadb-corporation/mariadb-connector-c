@@ -41,7 +41,7 @@ static gnutls_digest_algorithm_t ma_hash_get_algorithm(unsigned int alg)
   }
 }
 
-MA_HASH_CTX *ma_hash_new(unsigned int algorithm, MA_HASH_CTX *unused_ctx __attribute__((unused)))
+MA_HASH_CTX *ma_hash_new(unsigned int algorithm)
 {
   gnutls_hash_hd_t ctx= NULL;
   gnutls_digest_algorithm_t hash_alg= ma_hash_get_algorithm(algorithm);
