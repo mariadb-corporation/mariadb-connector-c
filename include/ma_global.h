@@ -29,13 +29,7 @@
 #define strtok_r strtok_s
 #define strdup _strdup
 #define sleep(x) Sleep(1000*(x))
-#ifdef _MSC_VER
-#define inline __inline
-#if _MSC_VER < 1900
-#define snprintf _snprintf
-#endif
 #define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
-#endif
 #define STDCALL __stdcall 
 #endif
 
