@@ -964,7 +964,7 @@ do { doubleget_union _tmp; \
 
 #define float8get(V,M)   doubleget((V),(M))
 #define float8store(V,M) doublestore((V),(M))
-#endif /* WORDS_BIGENDIAN */
+#endif /* HAVE_BIGENDIAN */
 
 #endif /* __i386__ OR _WIN32 */
 
@@ -1034,7 +1034,7 @@ do { doubleget_union _tmp; \
 #define longlongget(V,M) memcpy(&V, (M), sizeof(ulonglong))
 #define longlongstore(T,V) memcpy((T), &V, sizeof(ulonglong))
 
-#endif /* WORDS_BIGENDIAN */
+#endif /* HAVE_BIGENDIAN */
 
 #ifndef THREAD
 #define thread_safe_increment(V,L) ((V)++)
