@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <mariadb/ma_io.h>
+#include <ma_io.h>
 
 #define MARIADB_RPL_VERSION 0x0002
 #define MARIADB_RPL_REQUIRED_VERSION 0x0002
