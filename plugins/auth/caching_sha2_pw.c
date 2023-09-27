@@ -52,8 +52,6 @@
 #include <wincrypt.h>
 #include <bcrypt.h>
 
-extern BCRYPT_ALG_HANDLE RsaProv;
-extern BCRYPT_ALG_HANDLE Sha256Prov;
 #endif
 
 #include <ma_crypt.h>
@@ -84,12 +82,8 @@ static int ma_sha256_scramble(unsigned char *scramble, size_t scramble_len,
   unsigned char digest1[MA_SHA256_HASH_SIZE],
                 digest2[MA_SHA256_HASH_SIZE],
                 new_scramble[MA_SHA256_HASH_SIZE];
-#ifdef HAVE_WINCRYPT
-  MA_HASH_CTX myctx;
-  MA_HASH_CTX *ctx= &myctx;
-#else
+
   MA_HASH_CTX *ctx = NULL;
-#endif
   size_t i;
 
   /* check if all specified lengths are valid */
@@ -97,27 +91,22 @@ static int ma_sha256_scramble(unsigned char *scramble, size_t scramble_len,
     return 1;
 
   /* Step1: create sha256 from source */
-  if (!(ctx= ma_hash_new(MA_HASH_SHA256, ctx)))
+  if (!(ctx= ma_hash_new(MA_HASH_SHA256)))
     return 1;
   ma_hash_input(ctx, source, source_len);
   ma_hash_result(ctx, digest1);
   ma_hash_free(ctx);
-#ifndef HAVE_WINCRYPT
-  ctx = NULL;
-#endif
+
 
   /* Step2: create sha256 digest from digest1 */
-  if (!(ctx= ma_hash_new(MA_HASH_SHA256, ctx)))
+  if (!(ctx= ma_hash_new(MA_HASH_SHA256)))
     return 1;
   ma_hash_input(ctx, digest1, MA_SHA256_HASH_SIZE);
   ma_hash_result(ctx, digest2);
   ma_hash_free(ctx);
-#ifndef HAVE_WINCRYPT
-  ctx = NULL;
-#endif
 
   /* Step3: create sha256 digest from digest2 + salt */
-  if (!(ctx= ma_hash_new(MA_HASH_SHA256, ctx)))
+  if (!(ctx= ma_hash_new(MA_HASH_SHA256)))
     return 1;
   ma_hash_input(ctx, digest2, MA_SHA256_HASH_SIZE);
   ma_hash_input(ctx, salt, salt_len);
@@ -460,10 +449,6 @@ static int auth_caching_sha2_init(char *unused1 __attribute__((unused)),
     int unused3     __attribute__((unused)),
     va_list unused4 __attribute__((unused)))
 {
-#if defined(HAVE_WINCRYPT)
-  BCryptOpenAlgorithmProvider(&Sha256Prov, BCRYPT_SHA256_ALGORITHM, NULL, 0);
-  BCryptOpenAlgorithmProvider(&RsaProv, BCRYPT_RSA_ALGORITHM, NULL, 0);
-#endif
   return 0;
 }
 /* }}} */
@@ -471,10 +456,6 @@ static int auth_caching_sha2_init(char *unused1 __attribute__((unused)),
 /* {{{ auth_caching_sha2_deinit */
 static int auth_caching_sha2_deinit(void)
 {
-#if defined(HAVE_WINCRYPT)
-  BCryptCloseAlgorithmProvider(Sha256Prov, 0);
-  BCryptCloseAlgorithmProvider(RsaProv, 0);
-#endif
   return 0;
 }
 /* }}} */

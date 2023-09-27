@@ -45,7 +45,6 @@
 #include <windows.h>
 #include <wincrypt.h>
 #include <bcrypt.h>
-extern BCRYPT_ALG_HANDLE Sha512Prov;
 #elif defined(HAVE_OPENSSL)
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
@@ -123,9 +122,6 @@ static int auth_ed25519_init(char *unused1 __attribute__((unused)),
     int unused3     __attribute__((unused)),
     va_list unused4 __attribute__((unused)))
 {
-#if defined(HAVE_WINCRYPT)
-  BCryptOpenAlgorithmProvider(&Sha512Prov, BCRYPT_SHA512_ALGORITHM, NULL, 0);
-#endif
   return 0;
 }
 /* }}} */
@@ -133,9 +129,6 @@ static int auth_ed25519_init(char *unused1 __attribute__((unused)),
 /* {{{ auth_ed25519_deinit */
 static int auth_ed25519_deinit(void)
 {
-#if defined(HAVE_WINCRYPT)
-  BCryptCloseAlgorithmProvider(Sha512Prov, 0);
-#endif
   return 0;
 }
 /* }}} */

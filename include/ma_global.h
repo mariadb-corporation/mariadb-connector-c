@@ -29,13 +29,7 @@
 #define strtok_r strtok_s
 #define strdup _strdup
 #define sleep(x) Sleep(1000*(x))
-#ifdef _MSC_VER
-#define inline __inline
-#if _MSC_VER < 1900
-#define snprintf _snprintf
-#endif
 #define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
-#endif
 #define STDCALL __stdcall 
 #endif
 
@@ -964,7 +958,7 @@ do { doubleget_union _tmp; \
 
 #define float8get(V,M)   doubleget((V),(M))
 #define float8store(V,M) doublestore((V),(M))
-#endif /* WORDS_BIGENDIAN */
+#endif /* HAVE_BIGENDIAN */
 
 #endif /* __i386__ OR _WIN32 */
 
@@ -1034,7 +1028,7 @@ do { doubleget_union _tmp; \
 #define longlongget(V,M) memcpy(&V, (M), sizeof(ulonglong))
 #define longlongstore(T,V) memcpy((T), &V, sizeof(ulonglong))
 
-#endif /* WORDS_BIGENDIAN */
+#endif /* HAVE_BIGENDIAN */
 
 #ifndef THREAD
 #define thread_safe_increment(V,L) ((V)++)
