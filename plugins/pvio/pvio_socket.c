@@ -183,7 +183,7 @@ static int pvio_socket_end(void)
 
 my_bool pvio_socket_change_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout)
 {
-  struct timeval tm;
+  struct timeval tm= {0};
   int rc= 0;
   struct st_pvio_socket *csock= NULL;
   if (!pvio)
