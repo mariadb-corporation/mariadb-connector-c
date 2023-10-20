@@ -55,6 +55,7 @@ jobs:
     - env: srv=mariadb-es
       name: "ES latest"
       if: type = push AND fork = false
+    - env: server_branch=10.11
 
     - stage: Enterprise
       env: srv=mariadb-es v=10.4
