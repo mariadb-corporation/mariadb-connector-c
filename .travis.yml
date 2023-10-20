@@ -81,6 +81,8 @@ jobs:
       env: srv=mariadb v=10.11
       os: windows
       language: shell
+    - env: server_branch=10.6
+    - env: server_branch=11.3
     - env: srv=mariadb v=10.4 local=1
       dist: bionic
       name: "CS 10.4"
