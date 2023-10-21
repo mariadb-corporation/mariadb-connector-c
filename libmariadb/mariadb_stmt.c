@@ -492,7 +492,7 @@ MYSQL_RES *_mysql_stmt_use_result(MYSQL_STMT *stmt)
   return(NULL);
 }
 
-unsigned char *mysql_net_store_length(unsigned char *packet, ulonglong length)
+unsigned char *mysql_net_store_length(unsigned char *packet, size_t length)
 {
   if (length < (unsigned long long) L64(251)) {
     *packet = (unsigned char) length;
