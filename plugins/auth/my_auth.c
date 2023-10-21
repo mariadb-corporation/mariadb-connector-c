@@ -12,7 +12,7 @@ static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attr
 extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
 extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
-extern unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
+extern unsigned char *mysql_net_store_length(unsigned char *packet, ulonglong length);
 
 typedef struct {
   int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
