@@ -292,7 +292,7 @@ static int ma_net_write_buff(NET *net,const char *packet, size_t len)
   return 0;
 }
 
-unsigned char *mysql_net_store_length(unsigned char *packet, size_t length);
+unsigned char *mysql_net_store_length(unsigned char *packet, ulonglong length);
 
 /*  Read and write using timeouts */
 
