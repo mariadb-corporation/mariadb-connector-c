@@ -511,7 +511,7 @@ unsigned char *mysql_net_store_length(unsigned char *packet, size_t length)
     return packet + 3;
   }
   *packet++ = 254;
-  int8store(packet, length);
+  int8store(packet,(ulonglong) length);
   return packet + 8;
 }
 
