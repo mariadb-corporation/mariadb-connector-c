@@ -3272,7 +3272,7 @@ static int test_mem_overun(MYSQL *mysql)
   strcpy(buffer, "create table t_mem_overun(");
   for (i= 0; i < 1000; i++)
   {
-    sprintf(field, "c%d int, ", i);
+    snprintf(field, sizeof(field), "c%d int, ", i);
     strcat(buffer, field);
   }
   length= (int)strlen(buffer);
