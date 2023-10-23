@@ -55,6 +55,8 @@ jobs:
     - env: srv=mariadb-es
       name: "ES latest"
       if: type = push AND fork = false
+    - env: server_branch=10.11
+      name: "10.11 Server unit testing"
 
     - stage: Enterprise
       env: srv=mariadb-es v=10.4
@@ -69,10 +71,6 @@ jobs:
       name: "ES 23.08"
     - env: srv=maxscale
       name: "Maxscale"
-    - env: srv=skysql
-      name: "SkySQL"
-    - env: srv=skysql-ha
-      name: "SkySQL with replication"
     - env: srv=xpand
       name: "Xpand"
 
@@ -80,6 +78,11 @@ jobs:
       env: srv=mariadb v=10.11
       os: windows
       language: shell
+      name: "Windows"
+    - env: server_branch=10.6
+      name: "10.6 Server unit testing"
+    - env: server_branch=11.3
+      name: "10.3 Server unit testing"
     - env: srv=mariadb v=10.4 local=1
       dist: bionic
       name: "CS 10.4"
