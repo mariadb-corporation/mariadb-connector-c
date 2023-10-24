@@ -81,8 +81,8 @@ jobs:
       name: "Windows"
     - env: server_branch=10.6
       name: "10.6 Server unit testing"
-    - env: server_branch=11.3
-      name: "10.3 Server unit testing"
+    - env: server_branch=11.3 TEST_OPTION=--ps-protocol
+      name: "11.3 Server unit testing with ps-protocol"
     - env: srv=mariadb v=10.4 local=1
       dist: bionic
       name: "CS 10.4"
@@ -95,7 +95,7 @@ jobs:
       name: "CS 10.10"
     - env: srv=mariadb v=10.11 local=1
       name: "CS 10.11"
-    - env: srv=mariadb v=10.11 local=1  TEST_OPTION=--ps-protocol
+    - env: srv=mariadb v=10.11 local=1 TEST_OPTION=--ps-protocol
       name: "CS 10.11 with ps-protocol"
     - env: srv=mariadb v=11.0 local=1
       name: "CS 11.0"
