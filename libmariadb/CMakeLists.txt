@@ -298,7 +298,7 @@ MESSAGE(STATUS "SYSTEM_LIBS: ${SYSTEM_LIBS}")
 INCLUDE_DIRECTORIES(${LIBMARIADB_PLUGIN_INCLUDES})
 ADD_DEFINITIONS(${LIBMARIADB_PLUGIN_DEFS})
 FOREACH(plugin ${PLUGINS_STATIC})
-  SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin ${plugin}_client_plugin;\n")
+  SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin_${PLUGIN_${plugin}_TYPE} ${plugin}_client_plugin;\n")
   SET(BUILTIN_PLUGINS "${BUILTIN_PLUGINS}   (struct st_mysql_client_plugin *)&${plugin}_client_plugin,\n")
 ENDFOREACH()
 CONFIGURE_FILE(${CC_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
