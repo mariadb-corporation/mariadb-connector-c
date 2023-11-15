@@ -2,9 +2,9 @@ INCLUDE(FetchContent)
 
 FETCHCONTENT_DECLARE(
     zlib
+    DOWNLOAD_EXTRACT_TIMESTAMP 1
     # Always use latest stable version
     URL https://zlib.net/current/zlib.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP 1
 )
 
 FETCHCONTENT_MAKEAVAILABLE(zlib)
