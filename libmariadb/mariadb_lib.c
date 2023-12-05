@@ -1820,17 +1820,6 @@ restart:
   mysql->protocol_version= end[0];
   end++;
 
-  /* Check if server sends an error */
-  if (mysql->protocol_version == 0XFF)
-  {
-    net_get_error(end, pkt_length - 1, net->last_error, sizeof(net->last_error),
-      &net->last_errno, net->sqlstate);
-    /* fix for bug #26426 */
-    if (net->last_errno == 1040)
-      memcpy(net->sqlstate, "08004", SQLSTATE_LENGTH);
-    goto error;
-  }
-
   if (mysql->protocol_version <  PROTOCOL_VERSION)
   {
     net->last_errno= CR_VERSION_ERROR;
