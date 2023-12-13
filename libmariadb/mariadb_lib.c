@@ -241,18 +241,30 @@ restart:
         }
         goto restart;
       }
-      net->last_errno= last_errno;
-      if (pos[0]== '#')
+      if (last_errno >= CR_MIN_ERROR && last_errno <= CR_MAX_ERROR ||
+          last_errno >= CER_MIN_ERROR && last_errno <= CER_MAX_ERROR)
       {
-        ma_strmake(net->sqlstate, pos+1, SQLSTATE_LENGTH);
-        pos+= SQLSTATE_LENGTH + 1;
+        /* The server appears to have sent an error code within the
+         * range(s) of error codes that should only be generated
+         * client-side.
+         */
+        my_set_error(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
       }
       else
       {
-        strncpy(net->sqlstate, SQLSTATE_UNKNOWN, SQLSTATE_LENGTH);
+        net->last_errno= last_errno;
+        if (pos[0]== '#')
+        {
+          ma_strmake(net->sqlstate, pos+1, SQLSTATE_LENGTH);
+          pos+= SQLSTATE_LENGTH + 1;
+        }
+        else
+        {
+          strncpy(net->sqlstate, SQLSTATE_UNKNOWN, SQLSTATE_LENGTH);
+        }
+        ma_strmake(net->last_error,(char*) pos,
+                min(len,sizeof(net->last_error)-1));
       }
-      ma_strmake(net->last_error,(char*) pos,
-              min(len,sizeof(net->last_error)-1));
     }
     else
     {
