@@ -2190,6 +2190,7 @@ void my_status_callback(void *ptr, enum enum_mariadb_status_info type, ...)
         {
           MARIADB_CONST_STRING *str= va_arg(ap, MARIADB_CONST_STRING *);
           strncpy(data->database, str->str, str->length);
+          data->database[str->length]= 0;
         }
         break;
       case SESSION_TRACK_SYSTEM_VARIABLES:
@@ -2200,6 +2201,7 @@ void my_status_callback(void *ptr, enum enum_mariadb_status_info type, ...)
           if (!strncmp(key->str, "character_set_client", key->length))
           {
             strncpy(data->charset, val->str, val->length);
+            data->charset[val->length]= 0;
           }
         }
         break;
