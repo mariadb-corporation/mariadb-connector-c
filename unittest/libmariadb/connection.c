@@ -1222,6 +1222,9 @@ static int test_mdev13100(MYSQL *my __attribute__((unused)))
   int rc;
   FILE *fp;
 
+  /* MXS-4898: MaxScale sends utf8mb4 in handshake OK packet */
+  SKIP_MAXSCALE;
+
   if (!(fp= fopen("./mdev13100.cnf", "w")))
     return FAIL;
 

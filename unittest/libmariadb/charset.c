@@ -47,6 +47,9 @@ int bug_8378(MYSQL *mysql) {
   MYSQL_RES *res;
   MYSQL_ROW row;
 
+  /* MXS-4898: MaxScale sends utf8mb4 in handshake OK packet */
+  SKIP_MAXSCALE;
+
   len= mysql_real_escape_string(mysql, out, TEST_BUG8378_IN, 4);
   FAIL_IF(memcmp(out, TEST_BUG8378_OUT, len), "wrong result");
 
