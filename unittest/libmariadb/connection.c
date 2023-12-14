@@ -1240,6 +1240,7 @@ static int test_mdev13100(MYSQL *my __attribute__((unused)))
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
+  diag("Default charset: %s", mysql_character_set_name(mysql));
   FAIL_IF(strcmp("latin2", mysql_character_set_name(mysql)), "Expected charset latin2");
   mysql_close(mysql);
 
