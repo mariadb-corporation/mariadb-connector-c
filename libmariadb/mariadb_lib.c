@@ -241,8 +241,7 @@ restart:
         }
         goto restart;
       }
-      if (last_errno >= CR_MIN_ERROR && last_errno <= CR_MAX_ERROR ||
-          last_errno >= CER_MIN_ERROR && last_errno <= CER_MAX_ERROR)
+      if (IS_MYSQL_ERROR(last_errno) || IS_MARIADB_ERROR(last_errno))
       {
         /* The server appears to have sent an error code within the
          * range(s) of error codes that should only be generated
@@ -1799,16 +1798,20 @@ restart:
  */
   if ((pkt_length=ma_net_safe_read(mysql)) == packet_error)
   {
-    if (mysql->net.last_errno == CR_SERVER_LOST)
+
+    unsigned int code= mysql->net.last_errno;
+    if (code == CR_SERVER_LOST)
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
                  ER(CR_SERVER_LOST_EXTENDED),
                  "handshake: reading initial communication packet",
                  errno);
+    else if (IS_MYSQL_ERROR(code) || IS_MARIADB_ERROR(code))
+      ; /* not forged - generated on the client side */
     else if (mysql->options.use_ssl)
       my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                    "Received error packet before completion of TLS handshake. "
                    "The authenticity of the following error cannot be verified:\n%d - %s",
-                   mysql->net.last_errno, mysql->net.last_error);
+                   code, mysql->net.last_error);
 
     goto error;
   }
