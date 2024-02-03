@@ -1808,10 +1808,14 @@ restart:
     else if (IS_MYSQL_ERROR(code) || IS_MARIADB_ERROR(code))
       ; /* not forged - generated on the client side */
     else if (mysql->options.use_ssl)
+    {
+      char last_error[sizeof(mysql->net.last_error)];
+      strcpy(last_error, mysql->net.last_error);
       my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                    "Received error packet before completion of TLS handshake. "
-                   "The authenticity of the following error cannot be verified:\n%d - %s",
-                   code, mysql->net.last_error);
+                   "The authenticity of the following error cannot be verified: %d - %s",
+                   code, last_error);
+    }
 
     goto error;
   }
