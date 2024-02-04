@@ -53,7 +53,7 @@ const char *client_errors[]=
 /* 2023 */  "",
 /* 2024 */  "",
 /* 2025 */  "",
-/* 2026 */  "TLS/SSL error: %-.100s",
+/* 2026 */  "TLS/SSL error: %s",
 /* 2027 */  "Received malformed packet",
 /* 2028 */  "",
 /* 2029 */  "",
