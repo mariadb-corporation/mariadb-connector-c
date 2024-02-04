@@ -3,7 +3,7 @@
   <Product Id="*" Name="@PRODUCT_NAME@" Language="1033" 
     Version="@PRODUCT_VERSION@"
     Manufacturer="@PRODUCT_MANUFACTURER@" UpgradeCode="@PRODUCT_UPGRADE_CODE@">
-    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="@WIXPLATFORM@"/>
+    <Package InstallerVersion="@MIN_INSTALLER_VERSION@" Compressed="yes" InstallScope="perMachine" Platform="@WIXPLATFORM@"/>
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of @PRODUCT_NAME@ is already installed." />
     <MediaTemplate EmbedCab="yes" />
