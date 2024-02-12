@@ -686,6 +686,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   unsigned int timeout= 5;
   time_t start, elapsed;
   MYSQL *mysql;
+  my_bool no= 0;
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
@@ -694,6 +695,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_CONNECT_TIMEOUT, (unsigned int *)&timeout);
   mysql_options(mysql, MYSQL_INIT_COMMAND, "set @a:=SLEEP(7)");
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &no);
   start= time(NULL);
   if (my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS))
   {

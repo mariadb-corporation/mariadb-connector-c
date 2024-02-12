@@ -3257,7 +3257,7 @@ error:
 
 static int test_mem_overun(MYSQL *mysql)
 {
-  char       buffer[10000], field[12];
+  char       buffer[10000], field[20];
   MYSQL_STMT *stmt;
   MYSQL_RES  *field_res, *res;
   int        rc, i, length;

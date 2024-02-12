@@ -41,11 +41,14 @@
 #include <ma_tls.h>
 #include <mysql/client_plugin.h>
 #include <mariadb/ma_io.h>
+#include <ma_hash.h>
 
 #ifdef HAVE_NONBLOCK
 #include <mariadb_async.h>
 #include <ma_context.h>
 #endif
+
+#define MAX_FINGERPRINT_LEN 128;
 
 /* Errors should be handled via pvio callback function */
 my_bool ma_tls_initialized= FALSE;
@@ -141,62 +144,96 @@ static signed char ma_hex2int(char c)
   return -1;
 }
 
-static my_bool ma_pvio_tls_compare_fp(const char *cert_fp,
-                                     unsigned int cert_fp_len,
-                                     const char *fp, unsigned int fp_len)
+#ifndef EVP_MAX_MD_SIZE
+#define EVP_MAX_MD_SIZE 64
+#endif
+
+static my_bool ma_pvio_tls_compare_fp(MARIADB_TLS *ctls,
+                                     const char *cert_fp,
+                                     unsigned int cert_fp_len
+)
 {
-  char *p= (char *)fp,
-       *c;
+  const char fp[EVP_MAX_MD_SIZE];
+  unsigned int fp_len= EVP_MAX_MD_SIZE;
+  unsigned int hash_type;
 
-  /* check length */
-  if (cert_fp_len != 20)
+  char *p, *c;
+  uint hash_len;
+
+  /* check length without colons */
+  if (strchr(cert_fp, ':'))
+    hash_len= (uint)((strlen(cert_fp) + 1) / 3) * 2;
+  else
+    hash_len= (uint)strlen(cert_fp);
+
+  /* check hash size */
+  switch (hash_len) {
+#ifndef DISABLE_WEAK_HASH
+  case MA_SHA1_HASH_SIZE * 2:
+    hash_type = MA_HASH_SHA1;
+    break;
+#endif
+  case MA_SHA224_HASH_SIZE * 2:
+    hash_type = MA_HASH_SHA224;
+    break;
+  case MA_SHA256_HASH_SIZE * 2:
+    hash_type = MA_HASH_SHA256;
+    break;
+  case MA_SHA384_HASH_SIZE * 2:
+    hash_type = MA_HASH_SHA384;
+    break;
+  case MA_SHA512_HASH_SIZE * 2:
+    hash_type = MA_HASH_SHA512;
+    break;
+  default:
+    {
+      MYSQL* mysql = ctls->pvio->mysql;
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Unknown or invalid fingerprint hash size detected");
+      return 1;
+    }
+  }
+
+  if (!ma_tls_get_finger_print(ctls, hash_type, (char *)fp, fp_len))
     return 1;
 
-  /* We support two formats:
-     2 digits hex numbers, separated by colons (length=59)
-     20 * 2 digits hex numbers without separators (length = 40)
-  */
-  if (fp_len != (strchr(fp, ':') ? 59 : 40))
-    return 1;
+  p= (char *)cert_fp;
+  c = (char *)fp;
 
-  for(c= (char *)cert_fp; c < cert_fp + cert_fp_len; c++)
+  for (p = (char*)cert_fp; p < cert_fp + cert_fp_len; c++, p += 2)
   {
     signed char d1, d2;
     if (*p == ':')
       p++;
-    if (p - fp > (int)fp_len -1)
+    if (p - cert_fp > (int)fp_len - 1)
       return 1;
-    if ((d1 = ma_hex2int(*p)) == - 1 ||
-        (d2 = ma_hex2int(*(p+1))) == -1 ||
-        (char)(d1 * 16 + d2) != *c)
+    if ((d1 = ma_hex2int(*p)) == -1 ||
+      (d2 = ma_hex2int(*(p + 1))) == -1 ||
+      (char)(d1 * 16 + d2) != *c)
       return 1;
-    p+= 2;
   }
   return 0;
 }
 
 my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list)
 {
-  unsigned int cert_fp_len= 64;
-  char *cert_fp= NULL;
   my_bool rc=1;
   MYSQL *mysql= ctls->pvio->mysql;
 
-  cert_fp= (char *)malloc(cert_fp_len);
-
-  if ((cert_fp_len= ma_tls_get_finger_print(ctls, cert_fp, cert_fp_len)) < 1)
-    goto end;
   if (fp)
-    rc= ma_pvio_tls_compare_fp(cert_fp, cert_fp_len, fp, (unsigned int)strlen(fp));
+  {
+    rc = ma_pvio_tls_compare_fp(ctls, fp, (uint)strlen(fp));
+  }
   else if (fp_list)
   {
-    MA_FILE *fp;
+    MA_FILE *f;
     char buff[255];
 
-    if (!(fp = ma_open(fp_list, "r", mysql)))
+    if (!(f = ma_open(fp_list, "r", mysql)))
       goto end;
 
-    while (ma_gets(buff, sizeof(buff)-1, fp))
+    while (ma_gets(buff, sizeof(buff)-1, f))
     {
       /* remove trailing new line character */
       char *pos= strchr(buff, '\r');
@@ -205,22 +242,20 @@ my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_l
       if (pos)
         *pos= '\0';
         
-      if (!ma_pvio_tls_compare_fp(cert_fp, cert_fp_len, buff, (unsigned int)strlen(buff)))
+      if (!ma_pvio_tls_compare_fp(ctls, buff, (uint)strlen(buff)))
       {
         /* finger print is valid: close file and exit */
-        ma_close(fp);
+        ma_close(f);
         rc= 0;
         goto end;
       }
     }
 
     /* No finger print matched - close file and return error */
-    ma_close(fp);
+    ma_close(f);
   }
 
 end:
-  if (cert_fp)
-    free(cert_fp);
   if (rc)
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,

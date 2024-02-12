@@ -288,7 +288,7 @@ typedef struct st_net {
   my_bool unused_2;
   my_bool compress;
   my_bool unused_3;
-  void *unused_4;
+  const char *tls_self_signed_error;
   unsigned int last_errno;
   unsigned char error;
   my_bool unused_5;

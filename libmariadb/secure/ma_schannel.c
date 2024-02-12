@@ -526,6 +526,13 @@ my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls, BOOL verify_server_name)
 end:
   if (!ret)
   {
+    /* postpone the error for self signed certificates if CA isn't set */
+    if (status == CERT_E_UNTRUSTEDROOT && !ca_file && !ca_path)
+    {
+      mysql->net.tls_self_signed_error= strdup(errmsg);
+      ret= 1;
+    }
+    else
      pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);
   }
   if (pServerCert)
