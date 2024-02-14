@@ -713,10 +713,19 @@ struct st_default_options mariadb_defaults[] =
   {{0}, 0, NULL}
 };
 
+#ifdef DEFAULT_SSL_VERIFY_SERVER_CERT
+#define FIX_SSL_VERIFY_SERVER_CERT(OPTS)
+#else
+#define FIX_SSL_VERIFY_SERVER_CERT(OPTS) (OPTS)->extension->tls_allow_invalid_server_cert=1
+#endif
+
 #define CHECK_OPT_EXTENSION_SET(OPTS)\
     if (!(OPTS)->extension)                                     \
+    {                                                           \
       (OPTS)->extension= (struct st_mysql_options_extension *)  \
-        calloc(1, sizeof(struct st_mysql_options_extension));
+        calloc(1, sizeof(struct st_mysql_options_extension));   \
+      FIX_SSL_VERIFY_SERVER_CERT(OPTS);                         \
+    }
 
 #define OPT_SET_EXTENDED_VALUE_BIN(OPTS, KEY, KEY_LEN, VAL, LEN)\
     CHECK_OPT_EXTENSION_SET(OPTS)                                \
@@ -3522,6 +3531,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       goto end;
     }
     if (!mysql->options.extension)
+    {
       if(!(mysql->options.extension= (struct st_mysql_options_extension *)
         calloc(1, sizeof(struct st_mysql_options_extension))))
       {
@@ -3529,6 +3539,8 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
         SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
         goto end;
       }
+      FIX_SSL_VERIFY_SERVER_CERT(&mysql->options);
+    }
     mysql->options.extension->async_context= ctxt;
     break;
   case MYSQL_OPT_MAX_ALLOWED_PACKET:
