@@ -94,7 +94,8 @@ static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   unsigned char *packet,
                 signature[CRYPTO_BYTES + NONCE_BYTES],
                 pk[CRYPTO_PUBLICKEYBYTES];
-  unsigned long long pkt_len, pwlen= strlen(mysql->passwd);
+  unsigned long long pkt_len;
+  size_t pwlen= strlen(mysql->passwd);
   char *newpw;
 
   /*
