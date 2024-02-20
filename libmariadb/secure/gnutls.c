@@ -995,9 +995,6 @@ static size_t ma_gnutls_get_protocol_version(const char *tls_version_option,
   if (!tls_version_option || !tls_version_option[0])
     goto end;
 
-
-  if (strstr(tls_version_option, "TLSv1.0"))
-    strcat(tls_versions, ":+VERS-TLS1.0");
   if (strstr(tls_version_option, "TLSv1.1"))
     strcat(tls_versions, ":+VERS-TLS1.1");
   if (strstr(tls_version_option, "TLSv1.2"))
@@ -1010,7 +1007,7 @@ end:
   if (tls_versions[0])
     snprintf(priority_string, prio_len - 1, "-VERS-TLS-ALL%s:NORMAL", tls_versions);
   else
-    strncpy(priority_string, "NORMAL:+VERS-ALL", prio_len - 1);
+    strncpy(priority_string, "NORMAL:+VERS-ALL+!VERS-TLS1.0", prio_len - 1);
   return strlen(priority_string);
 }
 

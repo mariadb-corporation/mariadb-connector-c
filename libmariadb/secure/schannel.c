@@ -421,15 +421,13 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   if (mysql->options.extension && mysql->options.extension->tls_version)
   {
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.0"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_0_CLIENT;
     if (strstr(mysql->options.extension->tls_version, "TLSv1.1"))
       Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1_CLIENT;
     if (strstr(mysql->options.extension->tls_version, "TLSv1.2"))
       Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
   }
   if (!Cred.grbitEnabledProtocols)
-    Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
+    Cred.grbitEnabledProtocols = SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
 
 
   if (ma_tls_set_client_certs(ctls, &cert_context))

@@ -1628,7 +1628,37 @@ static int test_ext_field_attr(MYSQL *mysql)
   return OK;
 }
 
+static int test_disable_tls1_0(MYSQL *my)
+{
+  MYSQL *mysql= mysql_init(NULL);
+  const char *disabled_version= "TLSv1.0";
+  MYSQL_RES *result;
+  MYSQL_ROW row;
+  int rc;
+
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERSION, disabled_version);
+
+  FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
+                         port, socketname, 0), mysql_error(mysql));
+
+  rc= mysql_query(mysql, "SHOW STATUS LIKE 'ssl_version'");
+  check_mysql_rc(rc, mysql);
+
+  result = mysql_store_result(mysql);
+  row= mysql_fetch_row(result);
+
+  FAIL_IF(!strcmp(row[1], "TLSv1.0"), "TLS 1.0 should be disabled!");
+
+  mysql_free_result(result);
+
+  mysql_close(mysql);
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_disable_tls1_0", test_disable_tls1_0, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_ext_field_attr", test_ext_field_attr, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
