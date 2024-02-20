@@ -62,9 +62,10 @@ else
 
   mkdir bld
   cd bld
-  cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCERT_PATH=${SSLCERT} -DDEFAULT_SSL_VERIFY_SERVER_CERT=OFF
-
   if [ "$TRAVIS_OS_NAME" = "windows" ] ; then
+    set WIX="c:/Program Files (x86)/WiX Toolset v3.11"
+    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCERT_PATH=${SSLCERT} -DDEFAULT_SSL_VERIFY_SERVER_CERT=OFF -DWITH_MSI=ON -DWITH_CURL=ON
+
     echo "build from windows"
     set MARIADB_CC_TEST=1
     set MYSQL_TEST_DB=testc
@@ -77,6 +78,7 @@ else
     cmake --build . --config RelWithDebInfo
   else
     echo "build from linux"
+    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCERT_PATH=${SSLCERT} -DDEFAULT_SSL_VERIFY_SERVER_CERT=OFF -DWITH_CURL=ON
     export MARIADB_CC_TEST=1
     export MYSQL_TEST_USER=$TEST_DB_USER
     export MYSQL_TEST_HOST=$TEST_DB_HOST
