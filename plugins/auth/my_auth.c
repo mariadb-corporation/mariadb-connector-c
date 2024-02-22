@@ -3,28 +3,16 @@
 #include <errmsg.h>
 #include <string.h>
 #include <ma_common.h>
-#include <ma_crypt.h>
 #include <mysql/client_plugin.h>
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, size_t);
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql);
-static int native_password_hash(MYSQL *mysql, unsigned char *out, size_t *outlen);
 static int dummy_fallback_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql __attribute__((unused)));
 extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
 extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, ulonglong length);
-
-#define hashing(p)  (p->interface_version >= 0x0101 && p->hash_password_bin)
-
-static int set_error_from_tls_self_signed_error(MYSQL *mysql)
-{
-  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-    ER(CR_SSL_CONNECTION_ERROR), mysql->net.tls_self_signed_error);
-  reset_tls_self_signed_error(mysql);
-  return 1;
-}
 
 typedef struct {
   int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
@@ -56,14 +44,13 @@ auth_plugin_t mysql_native_password_client_plugin=
   native_password_plugin_name,
   "R.J.Silk, Sergei Golubchik",
   "Native MySQL authentication",
-  {1, 0, 1},
+  {1, 0, 0},
   "LGPL",
   NULL,
   NULL,
   NULL,
   NULL,
-  native_password_auth_client,
-  native_password_hash
+  native_password_auth_client
 };
 
 
@@ -110,22 +97,6 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   return CR_OK;
 }
 
-static int native_password_hash(MYSQL *mysql, unsigned char *out, size_t *out_length)
-{
-  unsigned char digest[MA_SHA1_HASH_SIZE];
-
-  if (*out_length < MA_SHA1_HASH_SIZE)
-    return 1;
-  *out_length= MA_SHA1_HASH_SIZE;
-
-  /* would it be better to reuse instead of recalculating here? see ed25519 */
-  ma_hash(MA_HASH_SHA1, (unsigned char*)mysql->passwd, strlen(mysql->passwd),
-          digest);
-  ma_hash(MA_HASH_SHA1, digest, sizeof(digest), out);
-
-  return 0;
-}
-
 auth_plugin_t dummy_fallback_client_plugin=
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
@@ -139,8 +110,7 @@ auth_plugin_t dummy_fallback_client_plugin=
   NULL,
   NULL,
   NULL,
-  dummy_fallback_auth_client,
-  NULL
+  dummy_fallback_auth_client
 };
 
 
@@ -253,7 +223,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->options.ssl_key || mysql->options.ssl_cert ||
       mysql->options.ssl_ca || mysql->options.ssl_capath ||
       mysql->options.ssl_cipher || mysql->options.use_ssl ||
-      !mysql->options.extension->tls_allow_invalid_server_cert)
+      mysql->options.extension->tls_verify_server_cert)
     mysql->options.use_ssl= 1;
   if (mysql->options.use_ssl)
     mysql->client_flag|= CLIENT_SSL;
@@ -273,16 +243,15 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
        mysql->net.pvio->type == PVIO_TYPE_SHAREDMEM))
   {
     mysql->server_capabilities &= ~(CLIENT_SSL);
-    mysql->options.extension->tls_allow_invalid_server_cert= 1;
   }
 
   /* if server doesn't support SSL and verification of server certificate
      was set to mandatory, we need to return an error */
   if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
   {
-    if (!mysql->options.extension->tls_allow_invalid_server_cert ||
-        mysql->options.extension->tls_fp ||
-        mysql->options.extension->tls_fp_list)
+    if (mysql->options.extension->tls_verify_server_cert ||
+        (mysql->options.extension && (mysql->options.extension->tls_fp || 
+                                      mysql->options.extension->tls_fp_list)))
     {
       my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                           ER(CR_SSL_CONNECTION_ERROR), 
@@ -381,13 +350,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     }
     if (ma_pvio_start_ssl(mysql->net.pvio))
       goto error;
-    if (mysql->net.tls_self_signed_error &&
-        (!mysql->passwd || !mysql->passwd[0] || !hashing(mpvio->plugin)))
-    {
-     /* cannot use auth to validate the cert */
-      set_error_from_tls_self_signed_error(mysql);
-      goto error;
-    }
   }
 #endif /* HAVE_TLS */
 
@@ -765,62 +727,15 @@ retry:
                          auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
       auth_plugin= &dummy_fallback_client_plugin;
 
-    /* can we use this plugin with this tls server cert ? */
-    if (mysql->net.tls_self_signed_error && !hashing(auth_plugin))
-      return set_error_from_tls_self_signed_error(mysql);
     goto retry;
+
   }
   /*
     net->read_pos[0] should always be 0 here if the server implements
     the protocol correctly
   */
-  if (mysql->net.read_pos[0] != 0)
-    return 1;
-  if (ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length))
-    return -1;
-
-  if (!mysql->net.tls_self_signed_error)
-    return 0;
-
-  assert(mysql->options.use_ssl);
-  assert(!mysql->options.extension->tls_allow_invalid_server_cert);
-  assert(!mysql->options.ssl_ca);
-  assert(!mysql->options.ssl_capath);
-  assert(!mysql->options.extension->tls_fp);
-  assert(!mysql->options.extension->tls_fp_list);
-  assert(hashing(auth_plugin));
-  assert(mysql->passwd[0]);
-  if (mysql->info && mysql->info[0] == '\1')
-  {
-    MA_HASH_CTX *ctx = NULL;
-    unsigned char buf[1024], digest[MA_SHA256_HASH_SIZE];
-    char fp[128], hexdigest[sizeof(digest)*2+1], *hexsig= mysql->info + 1;
-    size_t buflen= sizeof(buf) - 1, fplen;
-
-    mysql->info= NULL; /* no need to confuse the client with binary info */
-
-    if (!(fplen= ma_tls_get_finger_print(mysql->net.pvio->ctls, MA_HASH_SHA256,
-                                         fp, sizeof(fp))))
-      return 1; /* error is already set */
-
-    if (auth_plugin->hash_password_bin(mysql, buf, &buflen) ||
-        !(ctx= ma_hash_new(MA_HASH_SHA256)))
-    {
-      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      return 1;
-    }
-
-    ma_hash_input(ctx, (unsigned char*)buf, buflen);
-    ma_hash_input(ctx, (unsigned char*)mysql->scramble_buff, SCRAMBLE_LENGTH);
-    ma_hash_input(ctx, (unsigned char*)fp, fplen);
-    ma_hash_result(ctx, digest);
-    ma_hash_free(ctx);
-
-    mysql_hex_string(hexdigest, (char*)digest, sizeof(digest));
-    if (strcmp(hexdigest, hexsig) == 0)
-      return 0; /* phew. self-signed certificate is validated! */
-  }
-
-  return set_error_from_tls_self_signed_error(mysql);
+  if (mysql->net.read_pos[0] == 0)
+    return ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length);
+  return 1;
 }
 

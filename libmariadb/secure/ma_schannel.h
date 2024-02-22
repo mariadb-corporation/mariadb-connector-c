@@ -28,7 +28,6 @@
 #include <ma_common.h>
 #include <ma_pvio.h>
 #include <errmsg.h>
-#include <ma_hash.h>
 
 
 #include <wincrypt.h>
@@ -36,7 +35,6 @@
 
 
 #include <security.h>
-#include <ma_crypt.h>
 
 #include <schnlsp.h>
 #undef SECURITY_WIN32
@@ -59,7 +57,7 @@ struct st_schannel {
   DWORD IoBufferSize;
   SecPkgContext_StreamSizes Sizes;
   CtxtHandle hCtxt;
-  BCRYPT_ALG_HANDLE HashProv[MA_MAX_HASH_SIZE];
+
   /* Cached data from the last read/decrypt call.*/
   SecBuffer extraBuf; /* encrypted data read from server. */
   SecBuffer dataBuf;  /* decrypted but still unread data from server.*/

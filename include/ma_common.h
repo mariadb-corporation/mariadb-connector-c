@@ -86,7 +86,7 @@ struct st_mysql_options_extension {
   unsigned short rpl_port;
   void (*status_callback)(void *ptr, enum enum_mariadb_status_info type, ...);
   void *status_data;
-  my_bool tls_allow_invalid_server_cert;
+  my_bool tls_verify_server_cert;
 };
 
 typedef struct st_connection_handler
@@ -129,16 +129,3 @@ typedef struct st_mariadb_field_extension
 {
   MARIADB_CONST_STRING metadata[MARIADB_FIELD_ATTR_LAST+1]; /* 10.5 */
 } MA_FIELD_EXTENSION;
-
-#if defined(HAVE_SCHANNEL) || defined(HAVE_GNUTLS)
-#define reset_tls_self_signed_error(mysql)              \
-  do {                                                  \
-    free((char*)mysql->net.tls_self_signed_error);      \
-    mysql->net.tls_self_signed_error= 0;                \
-  } while(0)
-#else
-#define reset_tls_self_signed_error(mysql)              \
-  do {                                                  \
-    mysql->net.tls_self_signed_error= 0;                \
-  } while(0)
-#endif

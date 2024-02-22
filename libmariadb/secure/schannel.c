@@ -20,9 +20,6 @@
 #include "ma_schannel.h"
 #include "schannel_certs.h"
 #include <string.h>
-#include <ma_crypt.h>
-#include <wincrypt.h>
-#include <bcrypt.h>
 
 extern my_bool ma_tls_initialized;
 char tls_library_version[] = "Schannel";
@@ -451,11 +448,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     goto end;
 
    verify_certs =  mysql->options.ssl_ca || mysql->options.ssl_capath ||
-     !mysql->options.extension->tls_allow_invalid_server_cert;
+     (mysql->options.extension->tls_verify_server_cert);
 
   if (verify_certs)
   {
-    if (!ma_schannel_verify_certs(ctls, !mysql->options.extension->tls_allow_invalid_server_cert))
+    if (!ma_schannel_verify_certs(ctls, mysql->options.extension->tls_verify_server_cert))
       goto end;
   }
 
@@ -553,33 +550,15 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   return cipher_name(&CipherInfo);
 }
 
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp, unsigned int len)
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int len)
 {
-  MA_HASH_CTX* hash_ctx;
-
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;
-  int rc= 0;
-
-  if (hash_type == MA_HASH_SHA224)
-  {
-    MYSQL *mysql = ctls->pvio->mysql;
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-      ER(CR_SSL_CONNECTION_ERROR),
-      "SHA224 hash for fingerprint verification is not supported in Schannel");
-    return 0;
-  }
-
   if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pRemoteCertContext) != SEC_E_OK)
     return 0;
-
-  hash_ctx = ma_hash_new(hash_type);
-  ma_hash_input(hash_ctx, pRemoteCertContext->pbCertEncoded, pRemoteCertContext->cbCertEncoded);
-  ma_hash_result(hash_ctx, fp);
-  ma_hash_free(hash_ctx);
-
+  CertGetCertificateContextProperty(pRemoteCertContext, CERT_HASH_PROP_ID, fp, (DWORD *)&len);
   CertFreeCertificateContext(pRemoteCertContext);
-  return (uint)ma_hash_digest_size(hash_type);
+  return len;
 }
 
 void ma_tls_set_connection(MYSQL *mysql __attribute__((unused)))

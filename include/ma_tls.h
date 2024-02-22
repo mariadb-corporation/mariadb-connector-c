@@ -1,8 +1,6 @@
 #ifndef _ma_tls_h_
 #define _ma_tls_h_
 
-#include <ma_hash.h>
-
 enum enum_pvio_tls_type {
   SSL_TYPE_DEFAULT=0,
 #ifdef _WIN32
@@ -130,14 +128,12 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ssl);
    returns SHA1 finger print of server certificate
    Parameter:
      MARIADB_TLS  MariaDB SSL container
-     hash_type    hash_type as defined in ma_hash.h
      fp           buffer for fingerprint
      fp_len       buffer length
-
    Returns:
      actual size of finger print
 */
-unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp, unsigned int fp_len);
+unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, char *fp, unsigned int fp_len);
 
 /* ma_tls_get_protocol_version 
    returns protocol version number in use
