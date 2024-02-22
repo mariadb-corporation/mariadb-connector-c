@@ -2351,8 +2351,34 @@ static int test_x509(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_conc505(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+
+#define CLIENT_DEPRECATE_EOF (1ULL << 24)
+
+  if (my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_DEPRECATE_EOF))
+  {
+    diag("Error expected: Invalid client flag");
+    mysql_close(mysql);
+    return FAIL;
+  }
+  diag("Error (expected): %s", mysql_error(mysql));
+  FAIL_IF(mysql_errno(mysql) != CR_INVALID_CLIENT_FLAG, "Wrong error number");
+  if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS))
+  {
+    diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  mysql_close(mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_x509", test_x509, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_conc505", test_conc505, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc632", test_conc632, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_status_callback", test_status_callback, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc365", test_conc365, TEST_CONNECTION_NONE, 0, NULL, NULL},

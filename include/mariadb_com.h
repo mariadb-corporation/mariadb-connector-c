@@ -213,6 +213,12 @@ enum enum_server_command
                                  CLIENT_PLUGIN_AUTH |\
                                  CLIENT_SESSION_TRACKING |\
                                  CLIENT_CONNECT_ATTRS)
+#define CLIENT_ALLOWED_FLAGS     ((CLIENT_SUPPORTED_FLAGS |\
+                                 CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |\
+                                 CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS |\
+                                 CLIENT_ZSTD_COMPRESSION |\
+                                 CLIENT_PS_MULTI_RESULTS |\
+                                 CLIENT_REMEMBER_OPTIONS) & ~CLIENT_MYSQL)
 #define CLIENT_CAPABILITIES	    (CLIENT_MYSQL | \
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_TRANSACTIONS |\

@@ -1444,6 +1444,14 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   char *connection_handler= (mysql->options.extension) ?
                             mysql->options.extension->connection_handler : 0;
 
+  if ((client_flag & CLIENT_ALLOWED_FLAGS) != client_flag)
+  {
+    my_set_error(mysql, CR_INVALID_CLIENT_FLAG, SQLSTATE_UNKNOWN,
+                 ER(CR_INVALID_CLIENT_FLAG),
+                 client_flag, CLIENT_ALLOWED_FLAGS);
+    return NULL;
+  }
+
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
 
