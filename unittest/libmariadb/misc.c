@@ -1628,7 +1628,7 @@ static int test_ext_field_attr(MYSQL *mysql)
   return OK;
 }
 
-static int test_disable_tls1_0(MYSQL *my)
+static int test_disable_tls1_0(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   const char *disabled_version= "TLSv1.0";
