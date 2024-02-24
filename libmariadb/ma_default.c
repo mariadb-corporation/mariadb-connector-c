@@ -133,6 +133,7 @@ char **get_default_configuration_dirs()
 end:
   return configuration_dirs;
 error:
+  release_configuration_dirs();
   return NULL;
 }
 
