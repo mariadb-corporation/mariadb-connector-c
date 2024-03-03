@@ -452,6 +452,11 @@ my_context_spawn(struct my_context *c, void (*f)(void *), void *d)
      */
      ".cfi_escape 0x07, 8\n\t"
 #endif
+     /*
+      * we'll push the arg on the stack. Skipping the first 12 bytes will mean the
+      * stack is re-aligned on a 16-byte address when we jump to "f".
+      */
+     "sub $12, %%esp\n\t"
      /* Push the parameter on the stack. */
      "pushl %[d]\n\t"
      "movl %%ebp, 4(%[save])\n\t"
