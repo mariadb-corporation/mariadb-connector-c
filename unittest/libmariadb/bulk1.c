@@ -1310,7 +1310,7 @@ static int bulk_with_unit_result_update(MYSQL *my)
   my_bool unique_result= 1;
   unsigned int array_size= 5;
   int rc, rowcount= 0;
-  unsigned int i, j, array_size;
+  unsigned int i, j;
   MYSQL_BIND bind[1];
   MYSQL_RES *res;
   MYSQL_ROW row;
