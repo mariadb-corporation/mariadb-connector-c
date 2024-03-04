@@ -693,6 +693,7 @@ struct st_default_options mariadb_defaults[] =
   {{MYSQL_OPT_SSL_ENFORCE}, MARIADB_OPTION_BOOL, "ssl-enforce"},
   {{MARIADB_OPT_RESTRICTED_AUTH}, MARIADB_OPTION_STR, "restricted-auth"},
   {{.option_func=parse_connection_string}, MARIADB_OPTION_FUNC, "connection"},
+  {{MARIADB_OPT_BULK_UNIT_RESULTS}, MARIADB_OPTION_BOOL, "bulk-unit-results"},
   /* Aliases */
   {{MARIADB_OPT_SCHEMA}, MARIADB_OPTION_STR, "db"},
   {{MARIADB_OPT_UNIXSOCKET}, MARIADB_OPTION_STR, "unix_socket"},
@@ -1302,6 +1303,7 @@ mysql_init(MYSQL *mysql)
                           calloc(1, sizeof(struct st_mariadb_extension))))
     goto error;
   mysql->options.report_data_truncation= 1;
+  mysql->options.bulk_unit_results= 0;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
   mysql->charset= mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
   mysql->methods= &MARIADB_DEFAULT_METHODS;
@@ -3830,6 +3832,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       }
     }
     break;
+  case MARIADB_OPT_BULK_UNIT_RESULTS:
+    mysql->options.bulk_unit_results= *(my_bool *)arg1;
+    break;
   default:
     va_end(ap);
     SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);
@@ -4051,6 +4056,9 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     break;
   case MARIADB_OPT_SKIP_READ_RESPONSE:
     *((my_bool*)arg)= mysql->options.extension ? mysql->options.extension->skip_read_response : 0;
+    break;
+  case MARIADB_OPT_BULK_UNIT_RESULTS:
+    *((my_bool *)arg)= mysql->options.bulk_unit_results;
     break;
   default:
     va_end(ap);

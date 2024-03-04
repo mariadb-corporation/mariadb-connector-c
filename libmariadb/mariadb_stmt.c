@@ -911,7 +911,7 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
      0             4      Statement id
      4             2      Flags (cursor type):
                             STMT_BULK_FLAG_CLIENT_SEND_TYPES = 128
-                            STMT_BULK_FLAG_INSERT_ID_REQUEST = 64
+                            STMT_BULK_FLAG_SEND_UNIT_RESULTS = 64
      -----------------------------------------
      if (stmt->send_types_to_server):
      for (i=0; i < param_count; i++)
@@ -964,6 +964,9 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
   /* todo: request to return auto generated ids */
   if (stmt->send_types_to_server)
     flags|= STMT_BULK_FLAG_CLIENT_SEND_TYPES;
+  if (MARIADB_STMT_BULK_UNIT_RESULTS_SUPPORTED(stmt))
+    flags|= STMT_BULK_FLAG_SEND_UNIT_RESULTS;
+
   int2store(p, flags);
   p+=2;
 

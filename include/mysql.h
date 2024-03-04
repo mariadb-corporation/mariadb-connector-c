@@ -257,7 +257,8 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_OPT_RESTRICTED_AUTH,
     MARIADB_OPT_RPL_REGISTER_REPLICA,
     MARIADB_OPT_STATUS_CALLBACK,
-    MARIADB_OPT_SERVER_PLUGINS
+    MARIADB_OPT_SERVER_PLUGINS,
+    MARIADB_OPT_BULK_UNIT_RESULTS
   };
 
   enum mariadb_value {
@@ -336,7 +337,8 @@ struct st_mysql_options {
     enum mysql_option methods_to_use;
     char *bind_address;
     my_bool secure_auth;
-    my_bool report_data_truncation; 
+    my_bool report_data_truncation;
+    my_bool bulk_unit_results;
     /* function pointers for local infile support */
     int (*local_infile_init)(void **, const char *, void *);
     int (*local_infile_read)(void *, char *, unsigned int);
