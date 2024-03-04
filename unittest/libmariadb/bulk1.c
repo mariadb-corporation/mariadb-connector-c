@@ -1084,7 +1084,6 @@ static int bulk_with_unit_result_insert(MYSQL *my)
   SKIP_MAXSCALE;
   MYSQL *mysql;
   MYSQL_STMT *stmt;
-  const char *stmt_str= "INSERT INTO bulk_with_unit_result_insert(b) VALUES (?)";
   unsigned int array_size= TEST_ARRAY_SIZE;
   int rc, rowcount= 0;
   unsigned int i;
@@ -1122,7 +1121,7 @@ static int bulk_with_unit_result_insert(MYSQL *my)
   rc= mysql_query(mysql, "CREATE TABLE bulk_with_unit_result_insert (a int NOT NULL AUTO_INCREMENT, b VARCHAR(255), PRIMARY KEY (a)) engine=InnoDB");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, SL(stmt_str));
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk_with_unit_result_insert(b) VALUES (?)"));
   check_stmt_rc(rc, stmt);
 
   /* allocate memory */
@@ -1202,7 +1201,6 @@ static int bulk_with_unit_result_delete(MYSQL *my)
 {
   my_bool unique_result= 1;
   SKIP_MAXSCALE;
-  const char *stmt_str= "DELETE FROM bulk_with_unit_result_delete WHERE a = ?";
   unsigned int array_size= 5;
   int rc, rowcount= 0;
   unsigned int i, j;
@@ -1241,7 +1239,7 @@ static int bulk_with_unit_result_delete(MYSQL *my)
   rc= mysql_query(mysql, "INSERT INTO bulk_with_unit_result_delete(b) (SELECT CONCAT(seq, 'test') FROM seq_1_to_100)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, SL(stmt_str));
+  rc= mysql_stmt_prepare(stmt, SL("DELETE FROM bulk_with_unit_result_delete WHERE a = ?"));
   check_stmt_rc(rc, stmt);
 
   memset(bind_out, '\0', sizeof(bind_out));
@@ -1309,8 +1307,6 @@ static int bulk_with_unit_result_update(MYSQL *my)
 {
   my_bool unique_result= 1;
   SKIP_MAXSCALE;
-  MYSQL *mysql= mysql_init(NULL);
-  const char *stmt_str= "UPDATE bulk_with_unit_result_update SET b=CONCAT(b,'added') WHERE a = ?";
   unsigned int array_size= 5;
   int rc, rowcount= 0;
   unsigned int i, j;
@@ -1350,7 +1346,7 @@ static int bulk_with_unit_result_update(MYSQL *my)
   rc= mysql_query(mysql, "INSERT INTO bulk_with_unit_result_update(b) (SELECT CONCAT(seq, 'test') FROM seq_1_to_100)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_stmt_prepare(stmt, SL(stmt_str));
+  rc= mysql_stmt_prepare(stmt, SL("UPDATE bulk_with_unit_result_update SET b=CONCAT(b,'added') WHERE a = ?"));
   check_stmt_rc(rc, stmt);
 
   memset(bind_out, '\0', sizeof(bind_out));
