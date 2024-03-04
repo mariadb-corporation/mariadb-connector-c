@@ -1081,7 +1081,6 @@ static int bulk_with_unit_result_insert(MYSQL *my)
 {
   my_bool unique_result= 1;
   my_bool bool_val;
-  SKIP_MAXSCALE;
   MYSQL *mysql;
   MYSQL_STMT *stmt;
   unsigned int array_size= TEST_ARRAY_SIZE;
@@ -1096,6 +1095,8 @@ static int bulk_with_unit_result_insert(MYSQL *my)
   int id, affected_rows = 0;
   int expectedId = 1;
   unsigned int intval;
+
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
   stmt= mysql_stmt_init(mysql);
@@ -1200,7 +1201,6 @@ static int bulk_with_unit_result_insert(MYSQL *my)
 static int bulk_with_unit_result_delete(MYSQL *my)
 {
   my_bool unique_result= 1;
-  SKIP_MAXSCALE;
   unsigned int array_size= 5;
   int rc, rowcount= 0;
   unsigned int i, j;
@@ -1213,6 +1213,8 @@ static int bulk_with_unit_result_delete(MYSQL *my)
   unsigned int intval;
   MYSQL *mysql;
   MYSQL_STMT *stmt;
+
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
   stmt= mysql_stmt_init(mysql);
@@ -1306,10 +1308,9 @@ static int bulk_with_unit_result_delete(MYSQL *my)
 static int bulk_with_unit_result_update(MYSQL *my)
 {
   my_bool unique_result= 1;
-  SKIP_MAXSCALE;
   unsigned int array_size= 5;
   int rc, rowcount= 0;
-  unsigned int i, j;
+  unsigned int i, j, array_size;
   MYSQL_BIND bind[1];
   MYSQL_RES *res;
   MYSQL_ROW row;
@@ -1319,6 +1320,8 @@ static int bulk_with_unit_result_update(MYSQL *my)
   char str[50];
   MYSQL *mysql;
   MYSQL_STMT *stmt;
+
+  SKIP_MAXSCALE;
 
   mysql= mysql_init(NULL);
   stmt= mysql_stmt_init(mysql);
