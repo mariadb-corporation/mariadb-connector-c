@@ -338,9 +338,11 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     if (!(mysql->server_capabilities & CLIENT_MYSQL))
     {
       uint server_extended_cap= mysql->extension->mariadb_server_capabilities;
-      uint client_extended_cap= (uint)(MARIADB_CLIENT_SUPPORTED_FLAGS >> 32);
+      ulonglong client_extended_flag = CLIENT_DEFAULT_EXTENDED_FLAGS;
+      if (mysql->options.extension && mysql->options.extension->bulk_unit_results)
+        client_extended_flag|= MARIADB_CLIENT_BULK_UNIT_RESULTS;
       mysql->extension->mariadb_client_flag=
-          server_extended_cap & client_extended_cap;
+          server_extended_cap & (long)(client_extended_flag >> 32);
       int4store(buff + 28, mysql->extension->mariadb_client_flag);
     }
     end= buff+32;
