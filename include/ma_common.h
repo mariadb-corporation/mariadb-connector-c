@@ -73,6 +73,7 @@ struct st_mysql_options_extension {
   unsigned int tls_cipher_strength;
   char *tls_version;
   my_bool read_only;
+  my_bool bulk_unit_results;
   char *connection_handler;
   my_bool (*set_option)(MYSQL *mysql, const char *config_option, const char *config_value);
   MA_HASHTBL userdata;
