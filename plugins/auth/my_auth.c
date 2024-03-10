@@ -15,6 +15,7 @@ extern void read_user_name(char *name);
 extern char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer);
 extern int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length);
 extern unsigned char *mysql_net_store_length(unsigned char *packet, ulonglong length);
+extern const char *disabled_plugins;
 
 #define hashing(p)  (p->interface_version >= 0x0101 && p->hash_password_bin)
 
@@ -698,11 +699,11 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
 retry:
   mpvio.plugin= auth_plugin;
 
-  if (auth_plugin_name &&
-     mysql->options.extension &&
-     mysql->options.extension->restricted_auth)
+  if (auth_plugin_name)
   {
-    if (!strstr(mysql->options.extension->restricted_auth, auth_plugin_name))
+    if ((mysql->options.extension && mysql->options.extension->restricted_auth)
+        ? !strstr(mysql->options.extension->restricted_auth, auth_plugin_name)
+        : strstr(disabled_plugins, auth_plugin_name) != NULL)
     {
       my_set_error(mysql, CR_PLUGIN_NOT_ALLOWED, SQLSTATE_UNKNOWN, 0, data_plugin);
       return 1;

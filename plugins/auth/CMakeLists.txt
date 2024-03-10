@@ -130,7 +130,8 @@ ENDIF()
 REGISTER_PLUGIN(TARGET mysql_old_password
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS STATIC DYNAMIC OFF
-                DEFAULT OFF
+                DEFAULT STATIC
+                DISABLED YES
                 SOURCES ${AUTH_DIR}/old_password.c)
 
 # Cleartext

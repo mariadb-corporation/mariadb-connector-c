@@ -12,7 +12,7 @@ include(${CC_SOURCE_DIR}/cmake/sign.cmake)
 
 FUNCTION(REGISTER_PLUGIN)
 
-  SET(one_value_keywords TARGET DEFAULT TYPE)
+  SET(one_value_keywords TARGET DISABLED TYPE DEFAULT)
   SET(multi_value_keywords CONFIGURATIONS SOURCES LIBRARIES INCLUDES COMPILE_OPTIONS)
 
   cmake_parse_arguments(CC_PLUGIN
@@ -41,6 +41,12 @@ FUNCTION(REGISTER_PLUGIN)
   list(FIND CC_PLUGIN_CONFIGURATIONS ${CC_PLUGIN_DEFAULT} configuration_found)
   if(${configuration_found} EQUAL -1)
     message(FATAL_ERROR "Invalid plugin type ${CC_PLUGIN_DEFAULT}. Allowed plugin types are ${CC_PLUGIN_CONFIGURATIONS}")
+  endif()
+
+# check if plugin is disabled
+  string(TOUPPER "${CC_PLUGIN_DISABLED}" CC_PLUGIN_DISABLED)
+  if("${CC_PLUGIN_DISABLED}" STREQUAL "YES")
+    set(PLUGINS_DISABLED ${PLUGINS_DISABLED} ${CC_PLUGIN_TARGET} PARENT_SCOPE)
   endif()
 
   if(NOT ${CC_PLUGIN_DEFAULT} STREQUAL "OFF")
