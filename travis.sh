@@ -63,7 +63,7 @@ else
   mkdir bld
   cd bld
   if [ "$TRAVIS_OS_NAME" = "windows" ] ; then
-    set WIX="c:/Program Files (x86)/WiX Toolset v3.11"
+    export WIX="c:/Program Files (x86)/WiX Toolset v3.14"
     cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCERT_PATH=${SSLCERT} -DDEFAULT_SSL_VERIFY_SERVER_CERT=OFF -DWITH_MSI=ON -DWITH_CURL=ON
 
     echo "build from windows"
