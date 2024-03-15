@@ -705,7 +705,7 @@ retry:
         ? !strstr(mysql->options.extension->restricted_auth, auth_plugin_name)
         : strstr(disabled_plugins, auth_plugin_name) != NULL)
     {
-      my_set_error(mysql, CR_PLUGIN_NOT_ALLOWED, SQLSTATE_UNKNOWN, 0, data_plugin);
+      my_set_error(mysql, CR_PLUGIN_NOT_ALLOWED, SQLSTATE_UNKNOWN, 0, auth_plugin_name);
       return 1;
     }
   }
