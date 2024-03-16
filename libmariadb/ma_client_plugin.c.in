@@ -46,6 +46,8 @@
 #include <dlfcn.h>
 #endif
 
+const char *disabled_plugins= "@PLUGINS_DISABLED@";
+
 struct st_client_plugin_int {
   struct st_client_plugin_int *next;
   void   *dlhandle;

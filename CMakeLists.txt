@@ -547,6 +547,7 @@ ENDIF()
 MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- Static PLUGINS ${PLUGINS_STATIC}
 -- Dynamic PLUGINS ${PLUGINS_DYNAMIC}
+-- Disabled PLUGINS ${PLUGINS_DISABLED}
 -- CPack generation: ${CPACK_GENERATOR}
 -- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
 -- Zlib support: ${zlib_status}
