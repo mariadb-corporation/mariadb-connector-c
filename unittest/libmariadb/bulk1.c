@@ -1118,7 +1118,7 @@ static int bulk_with_unit_result_insert(MYSQL *my)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_with_unit_result_insert");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE bulk_with_unit_result_insert (a int NOT NULL AUTO_INCREMENT, b VARCHAR(255), PRIMARY KEY (a)) engine=InnoDB");
+  rc= mysql_query(mysql, "CREATE TABLE bulk_with_unit_result_insert (a int NOT NULL AUTO_INCREMENT, b VARCHAR(255), PRIMARY KEY (a))");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk_with_unit_result_insert(b) VALUES (?)"));
@@ -1168,7 +1168,6 @@ static int bulk_with_unit_result_insert(MYSQL *my)
       FAIL_UNLESS(affected_rows == 1, "affected_rows != 1");
     }
     // test can be improved depending on auto_increment_increment/auto_increment_offset...
-    expectedId = expectedId + 1023;
     FAIL_IF(rowcount != TEST_ARRAY_SIZE, "rowcount != TEST_ARRAY_SIZE");
   }
 
@@ -1237,7 +1236,7 @@ static int bulk_with_unit_result_delete(MYSQL *my)
   rc= mysql_query(mysql, "CREATE TABLE bulk_with_unit_result_delete (a int NOT NULL AUTO_INCREMENT, b VARCHAR(255), PRIMARY KEY (a))");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "INSERT INTO bulk_with_unit_result_delete(b) (SELECT CONCAT(seq, 'test') FROM seq_1_to_100)");
+  rc= mysql_query(mysql, "INSERT INTO bulk_with_unit_result_delete(b) with recursive cte (seq) as (select 1 union all select seq+1 from cte where seq < 100) select concat(seq, 'test') from cte");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, SL("DELETE FROM bulk_with_unit_result_delete WHERE a = ?"));
@@ -1345,7 +1344,7 @@ static int bulk_with_unit_result_update(MYSQL *my)
   rc= mysql_query(mysql, "CREATE TABLE bulk_with_unit_result_update (a int NOT NULL AUTO_INCREMENT, b VARCHAR(255), PRIMARY KEY (a))");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "INSERT INTO bulk_with_unit_result_update(b) (SELECT CONCAT(seq, 'test') FROM seq_1_to_100)");
+  rc= mysql_query(mysql, "INSERT INTO bulk_with_unit_result_update(b) with recursive cte (seq) as (select 1 union all select seq+1 from cte where seq < 100) select concat(seq, 'test') from cte");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, SL("UPDATE bulk_with_unit_result_update SET b=CONCAT(b,'added') WHERE a = ?"));
