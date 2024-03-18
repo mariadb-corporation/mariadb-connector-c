@@ -501,10 +501,7 @@ struct st_mariadb_rpl_rows_event {
 };
 
 struct st_mariadb_rpl_heartbeat_event {
-  uint32_t timestamp;
-  uint32_t next_position;
-  uint8_t type;
-  uint16_t flags;
+  MARIADB_STRING filename;
 };
 
 struct st_mariadb_rpl_xa_prepare_log_event {
