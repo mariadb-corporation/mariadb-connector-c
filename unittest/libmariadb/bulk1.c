@@ -1118,7 +1118,7 @@ static int bulk_with_unit_result_insert(MYSQL *my)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk_with_unit_result_insert");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE bulk_with_unit_result_insert (a int NOT NULL AUTO_INCREMENT, b VARCHAR(255), PRIMARY KEY (a))");
+  rc= mysql_query(mysql, "CREATE TABLE bulk_with_unit_result_insert (a int NOT NULL AUTO_INCREMENT, b VARCHAR(255), PRIMARY KEY (a)) engine=MyISAM");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_stmt_prepare(stmt, SL("INSERT INTO bulk_with_unit_result_insert(b) VALUES (?)"));
