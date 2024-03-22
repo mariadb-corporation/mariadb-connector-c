@@ -1830,7 +1830,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         if (rpl_event->event.rows.extra_data_size - 2 > 0)
         {
           rpl_alloc_set_string_and_len(rpl_event, rpl_event->event.rows.extra_data, ev, rpl_event->event.rows.extra_data_size - 2);
-          ev+= rpl_event->event.rows.extra_data_size;
+          ev+= (rpl_event->event.rows.extra_data_size -2);
         }
       }
       /* END_ROWS_EVENT_V2 */
