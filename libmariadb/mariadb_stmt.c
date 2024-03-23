@@ -1613,6 +1613,12 @@ unsigned int STDCALL mysql_stmt_field_count(MYSQL_STMT *stmt)
 
 my_bool STDCALL mysql_stmt_free_result(MYSQL_STMT *stmt)
 {
+  if (stmt->state < MYSQL_STMT_EXECUTED || !stmt->field_count)
+  {
+    stmt_set_error(stmt, CR_STMT_NO_RESULT, SQLSTATE_UNKNOWN, 0);
+    return 1;
+  }
+
   return madb_reset_stmt(stmt, MADB_RESET_LONGDATA | MADB_RESET_STORED |
                                MADB_RESET_BUFFER | MADB_RESET_ERROR);
 }
@@ -2198,6 +2204,19 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
 {
   MYSQL *mysql= stmt->mysql;
   my_bool ret= 0;
+  LIST *li_stmt= mysql->stmts;
+
+  /* CONC-667: If an other statement has a pending result set, we
+     need to return an error */
+  for (;li_stmt;li_stmt= li_stmt->next)
+  {
+    MYSQL_STMT *s= (MYSQL_STMT *)li_stmt->data;
+    if (s != stmt && s->state == MYSQL_STMT_WAITING_USE_OR_STORE)
+    {
+      stmt_set_error(stmt, CR_COMMANDS_OUT_OF_SYNC, SQLSTATE_UNKNOWN, 0);
+      return 1;
+    }
+  }
 
   if (!stmt->mysql)
   {
@@ -2297,7 +2316,8 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
       stmt->fetch_row_func == stmt_unbuffered_fetch)
     flags|= MADB_RESET_BUFFER;
 
-  ret= madb_reset_stmt(stmt, flags);
+  if (ret= madb_reset_stmt(stmt, flags))
+    return ret;
 
   if (stmt->stmt_id)
   {
