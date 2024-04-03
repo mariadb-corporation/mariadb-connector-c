@@ -1946,7 +1946,18 @@ restart:
   /* We now know the server's capabilities. If the client wants TLS/SSL,
    * but the server doesn't support it, we should immediately abort.
    */
-  if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
+  if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL)
+      /* Unix socket, shared memory, and named pipe are considered secure
+       * even if client requires SSL and server doesn't support it,
+       * because they do not involve off-host network traffic.
+       */
+#ifndef _WIN32
+      && net->pvio->type != PVIO_TYPE_UNIXSOCKET
+      && net->pvio->type != PVIO_TYPE_SHAREDMEM
+#else
+      && net->pvio->type != PVIO_TYPE_NAMEDPIPE
+#endif
+  )
   {
     SET_CLIENT_ERROR(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                      "Client requires TLS/SSL, but the server does not support it");
