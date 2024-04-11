@@ -5115,7 +5115,7 @@ static int test_maxparam(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   MYSQL_BIND* bind;
 
-  bind = calloc(sizeof(MYSQL_BIND), 65535);
+  bind = calloc(65535, sizeof *bind);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
