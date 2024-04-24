@@ -1172,7 +1172,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       len= rpl_event->event_length - (ev - ev_start) - (rpl->use_checksum ? 4 : 0) - (EVENT_HEADER_OFS - 1);
       RPL_CHECK_POS(ev, ev_end, len);
       rpl_event->event.heartbeat.filename.length= len;
-      rpl_event->event.heartbeat.filename.str= ev;
+      rpl_event->event.heartbeat.filename.str= (char *)ev;
       ev+= len;
       break;
 

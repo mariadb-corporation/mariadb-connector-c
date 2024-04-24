@@ -2224,7 +2224,6 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
 {
   MYSQL *mysql= stmt->mysql;
   my_bool ret= 0;
-  LIST *li_stmt= mysql->stmts;
 
   /* CONC-667: If an other statement has a pending result set, we
      need to return an error */
@@ -2332,7 +2331,7 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
       stmt->fetch_row_func == stmt_unbuffered_fetch)
     flags|= MADB_RESET_BUFFER;
 
-  if (ret= madb_reset_stmt(stmt, flags))
+  if ((ret= madb_reset_stmt(stmt, flags)))
     return ret;
 
   if (stmt->stmt_id)
