@@ -549,13 +549,24 @@ static my_bool ignore_self_signed_cert_error(MARIADB_PVIO *pvio)
   "127.0.0.1", "::1", NULL};
   int i;
   if (pvio->type != PVIO_TYPE_SOCKET)
+  {
+    pvio->ctls->cert_info.verify_mode=
+#ifdef WIN32
+      MARIADB_VERIFY_PIPE;
+#else
+      MARIADB_VERIFY_UNIXSOCKET;
+#endif
     return TRUE;
+  }
   if (!hostname)
     return FALSE;
   for (i= 0; local_host_names[i]; i++)
   {
     if (strcmp(hostname, local_host_names[i]) == 0)
+    {
+      pvio->ctls->cert_info.verify_mode= MARIADB_VERIFY_LOCALHOST;
       return TRUE;
+    }
   }
   return FALSE;
 }
@@ -586,6 +597,8 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
          !pvio->mysql->net.tls_self_signed_error &&
          ma_pvio_tls_verify_server_cert(pvio->ctls))
     return 1;
+  else
+    pvio->ctls->cert_info.verify_mode= MARIADB_VERIFY_PEER_CERT;
 
   if (pvio->mysql->options.extension &&
       ((pvio->mysql->options.extension->tls_fp && pvio->mysql->options.extension->tls_fp[0]) ||
@@ -595,6 +608,7 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
           pvio->mysql->options.extension->tls_fp,
           pvio->mysql->options.extension->tls_fp_list))
       return 1;
+      pvio->ctls->cert_info.verify_mode= MARIADB_VERIFY_FINGERPRINT;
     reset_tls_self_signed_error(pvio->mysql); // validated
   }
 

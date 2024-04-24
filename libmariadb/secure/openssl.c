@@ -463,6 +463,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
+  X509 *cert;
 #ifdef OPENSSL_USE_BIOMETHOD
   BIO_METHOD *bio_method= NULL;
   BIO *bio;
@@ -515,7 +516,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       mysql->net.tls_self_signed_error= X509_verify_cert_error_string(x509_err);
     else if (x509_err != X509_V_OK)
     {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                    ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(x509_err));
       /* restore blocking mode */
       if (!blocking)
@@ -528,6 +529,23 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     }
   }
   pvio->ctls->ssl= ctls->ssl= (void *)ssl;
+
+  /* Store peer certificate information */
+  if ((cert= SSL_get_peer_certificate(ssl)))
+  {
+    char fp[33];
+    const ASN1_TIME *not_before= X509_get0_notBefore(cert),
+                    *not_after= X509_get0_notAfter(cert);
+    ctls->cert_info.subject= X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
+    ctls->cert_info.issuer= X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
+    ctls->cert_info.version= X509_get_version(cert) + 1;
+
+    ASN1_TIME_to_tm(not_before, (struct tm *)&ctls->cert_info.not_before);
+    ASN1_TIME_to_tm(not_after, (struct tm *)&ctls->cert_info.not_after);
+
+    ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, 33);
+    mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
+  }
 
   return 0;
 }
@@ -654,6 +672,9 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
   SSL_free(ssl);
   ctls->ssl= NULL;
 
+  OPENSSL_free(ctls->cert_info.issuer);
+  OPENSSL_free(ctls->cert_info.subject);
+
   return rc;
 }
 
@@ -739,33 +760,30 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
   MYSQL *mysql;
   unsigned int fp_len;
   const EVP_MD *hash_alg;
+  unsigned int max_len= EVP_MAX_MD_SIZE;
 
   if (!ctls || !ctls->ssl)
     return 0;
 
   mysql = SSL_get_app_data(ctls->ssl);
 
-  if (len < EVP_MAX_MD_SIZE)
-  {
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                        ER(CR_SSL_CONNECTION_ERROR), 
-                        "Finger print buffer too small");
-    return 0;
-  }
-
   switch (hash_type)
   {
   case MA_HASH_SHA1:
     hash_alg = EVP_sha1();
+    max_len= 20;
     break;
   case MA_HASH_SHA224:
     hash_alg = EVP_sha224();
+    max_len= 28;
     break;
   case MA_HASH_SHA256:
     hash_alg = EVP_sha256();
+    max_len= 32;
     break;
   case MA_HASH_SHA384:
     hash_alg = EVP_sha384();
+    max_len= 48;
     break;
   case MA_HASH_SHA512:
     hash_alg = EVP_sha512();
@@ -774,6 +792,14 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
       ER(CR_SSL_CONNECTION_ERROR),
       "Cannot detect hash algorithm for fingerprint verification");
+    return 0;
+  }
+
+  if (len < max_len)
+  {
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                        ER(CR_SSL_CONNECTION_ERROR), 
+                        "Finger print buffer too small");
     return 0;
   }
   
