@@ -4519,6 +4519,11 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
   va_start(ap, arg);
 
   switch(value) {
+#ifdef HAVE_TLS
+  case MARIADB_TLS_PEER_CERT_INFO:
+    *((MARIADB_X509_INFO **)arg)= mysql->net.pvio->ctls ? (MARIADB_X509_INFO *)&mysql->net.pvio->ctls->cert_info : NULL;
+    break;
+#endif
   case MARIADB_MAX_ALLOWED_PACKET:
     *((size_t *)arg)= (size_t)max_allowed_packet;
     break;
