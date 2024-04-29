@@ -403,8 +403,6 @@ static int test_conc689(MYSQL *my __attribute__((unused)))
     events++;
   }
   FAIL_IF(event->event.heartbeat.filename.length == 0, "Invalid filename");
-  diag("Filename: %.*s", event->event.heartbeat.filename.length,
-        event->event.heartbeat.filename.str);
   mariadb_free_rpl_event(event);
   mariadb_rpl_close(rpl);
   mysql_close(mysql);
