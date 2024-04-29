@@ -127,7 +127,12 @@ void stmt_set_error(MYSQL_STMT *stmt,
    pending result set */
 static my_bool madb_have_pending_results(MYSQL_STMT *stmt)
 {
-  LIST *li_stmt= stmt->mysql->stmts;
+  LIST *li_stmt;
+
+  if (!stmt->mysql)
+    return 0;
+
+  li_stmt= stmt->mysql->stmts;
   for (;li_stmt;li_stmt= li_stmt->next)
   {
     MYSQL_STMT *s= (MYSQL_STMT *)li_stmt->data;
