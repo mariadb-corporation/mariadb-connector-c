@@ -681,7 +681,7 @@ void run_tests(struct my_tests_st *test) {
   int i, rc, total=0;
   MYSQL *mysql;
   my_bool verify= 0;
-  MARIADB_X509_INFO *info;
+  MARIADB_X509_INFO *info= NULL;
 
   while (test[total].function)
     total++;
@@ -710,11 +710,15 @@ void run_tests(struct my_tests_st *test) {
     while ((row= mysql_fetch_row(res)))
       diag("%s: %s", row[0], row[1]);
     mysql_free_result(res);
-    diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+    if (mysql_get_ssl_cipher(mysql))
+      diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
     mariadb_get_infov(mysql, MARIADB_TLS_PEER_CERT_INFO, &info);
-    strcpy(fingerprint, info->fingerprint);
-    diag("Peer certificate fingerprint: %s", fingerprint);
-    diag("--------------------");
+    if (info)
+    {
+      strcpy(fingerprint, info->fingerprint);
+      diag("Peer certificate fingerprint: %s", fingerprint);
+      diag("--------------------");
+    }
   }
   mysql_close(mysql);
 
