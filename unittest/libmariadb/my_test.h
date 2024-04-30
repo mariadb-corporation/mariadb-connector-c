@@ -76,7 +76,7 @@ if (IS_SKYSQL(hostname)) \
 #endif
 
 #define SKIP_TLS \
-if (force_tls)\
+if (force_tls || fingerprint[0])\
 {\
   diag("Test doesn't work with TLS");\
   return SKIP;\
