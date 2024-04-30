@@ -1173,6 +1173,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
   MARIADB_PVIO *pvio;
   int ret;
+  const gnutls_datum_t *cert_list;
+  unsigned int list_size= 0;
 
   if (!mysql)
     return 1;
@@ -1214,6 +1216,39 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     return 1;
   }
   ctls->ssl= (void *)ssl;
+
+  /* retrieve peer certificate information */
+  if ((cert_list= gnutls_certificate_get_peers(ssl, &list_size)))
+  {
+    gnutls_x509_crt_t cert;
+    
+    gnutls_x509_crt_init(&cert);
+    memset(&ctls->cert_info, 0, sizeof(MARIADB_X509_INFO));
+
+    if (!gnutls_x509_crt_import(cert, &cert_list[0], GNUTLS_X509_FMT_DER))
+    {
+      size_t len= 0;
+      time_t notBefore, notAfter;
+
+      ctls->cert_info.version= gnutls_x509_crt_get_version(cert);
+
+      gnutls_x509_crt_get_issuer_dn(cert, NULL, &len);
+      if ((ctls->cert_info.issuer= (char *)malloc(len)))
+        gnutls_x509_crt_get_issuer_dn(cert, ctls->cert_info.issuer, &len);
+
+      gnutls_x509_crt_get_dn(cert, NULL, &len);
+      if ((ctls->cert_info.subject= (char *)malloc(len)))
+        gnutls_x509_crt_get_dn(cert, ctls->cert_info.subject, &len);
+
+      notBefore= gnutls_x509_crt_get_activation_time(cert);
+      memcpy(&ctls->cert_info.not_before, gmtime(&notBefore), sizeof(struct tm));
+
+      notAfter= gnutls_x509_crt_get_expiration_time(cert);
+      memcpy(&ctls->cert_info.not_after, gmtime(&notAfter), sizeof(struct tm));
+
+      ma_tls_get_finger_print(ctls, MA_HASH_SHA256, (char *)&ctls->cert_info.fingerprint, 32);
+    }
+  }
   return 0;
 }
 
@@ -1321,6 +1356,8 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
     gnutls_certificate_free_ca_names(ctx);
     gnutls_certificate_free_credentials(ctx);
     gnutls_deinit((gnutls_session_t )ctls->ssl);
+    free(ctls->cert_info.issuer);
+    free(ctls->cert_info.subject);
     ctls->ssl= NULL;
   }
   return 0;

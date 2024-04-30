@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 #include <stdarg.h>
+#include <time.h>
 
 #if !defined (_global_h) && !defined (MY_GLOBAL_INCLUDED) /* If not standard header */
 #include <sys/types.h>
@@ -297,7 +298,8 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_CONNECTION_EXTENDED_SERVER_CAPABILITIES,
     MARIADB_CONNECTION_CLIENT_CAPABILITIES,
     MARIADB_CONNECTION_BYTES_READ,
-    MARIADB_CONNECTION_BYTES_SENT
+    MARIADB_CONNECTION_BYTES_SENT,
+    MARIADB_TLS_PEER_CERT_INFO,
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -480,6 +482,27 @@ struct st_mysql_client_plugin
 {
   MYSQL_CLIENT_PLUGIN_HEADER
 };
+
+enum mariadb_tls_verification {
+  MARIADB_VERIFY_NONE = 0,
+  MARIADB_VERIFY_PIPE,
+  MARIADB_VERIFY_UNIXSOCKET,
+  MARIADB_VERIFY_LOCALHOST,
+  MARIADB_VERIFY_FINGERPRINT,
+  MARIADB_VERIFY_PEER_CERT
+};
+
+typedef struct
+{
+  int version;
+  char *issuer;
+  char *subject;
+  char fingerprint[65];
+  struct tm not_before;
+  struct tm not_after;
+  enum mariadb_tls_verification verify_mode;
+} MARIADB_X509_INFO;
+
 
 struct st_mysql_client_plugin *
 mysql_load_plugin(struct st_mysql *mysql, const char *name, int type,

@@ -32,6 +32,8 @@ char tls_library_version[] = "Schannel";
 #define PROT_TLS1_2 4
 #define PROT_TLS1_3 8
 
+unsigned int ma_set_tls_x509_info(MARIADB_TLS *ctls);
+
 static struct
 {
   DWORD cipher_id;
@@ -457,6 +459,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       goto end;
   }
 
+  ma_set_tls_x509_info(ctls);
   rc = 0;
 
 end:
@@ -511,6 +514,8 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
       DeleteSecurityContext(&sctx->hCtxt);
   }
   LocalFree(sctx);
+  LocalFree(ctls->cert_info.issuer);
+  LocalFree(ctls->cert_info.subject);
   return 0;
 }
 /* }}} */
@@ -550,6 +555,60 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 
   return cipher_name(&CipherInfo);
 }
+
+unsigned char *ma_cert_blob_to_str(PCERT_NAME_BLOB cnblob)
+{
+  DWORD type= CERT_X500_NAME_STR;
+  DWORD size= CertNameToStrA(X509_ASN_ENCODING, cnblob, type, NULL, 0);
+  char *str= NULL;
+ 
+  if (!size)
+    return NULL;
+
+  str= (char *)LocalAlloc(LMEM_ZEROINIT,size);
+  CertNameToStrA(X509_ASN_ENCODING, cnblob, type, str, size);
+  return str;
+}
+
+static void ma_systime_to_tm(SYSTEMTIME sys_tm, struct tm *tm)
+{
+  memset(tm, 0, sizeof(struct tm));
+  tm->tm_year= sys_tm.wYear - 1900;
+  tm->tm_mon= sys_tm.wMonth - 1;
+  tm->tm_mday= sys_tm.wDay;
+  tm->tm_hour = sys_tm.wHour;
+  tm->tm_min = sys_tm.wMinute;
+}
+
+unsigned int ma_set_tls_x509_info(MARIADB_TLS *ctls)
+{
+  PCCERT_CONTEXT pCertCtx= NULL;
+  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
+  PCERT_INFO pci= NULL;
+  DWORD size´= 0;
+  SYSTEMTIME tm;
+  char fp[33];
+
+  if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pCertCtx) != SEC_E_OK)
+    return 1;
+
+  pci= pCertCtx->pCertInfo;
+
+  ctls->cert_info.version= pci->dwVersion;
+  ctls->cert_info.subject = ma_cert_blob_to_str(&pci->Subject);
+  ctls->cert_info.issuer = ma_cert_blob_to_str(&pci->Issuer);
+
+  FileTimeToSystemTime(&pci->NotBefore, &tm);
+  ma_systime_to_tm(tm, &ctls->cert_info.not_before);
+  FileTimeToSystemTime(&pci->NotAfter, &tm);
+  ma_systime_to_tm(tm, &ctls->cert_info.not_after);
+
+  ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, 33);
+  mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
+
+  return 0; 
+}
+
 
 unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp, unsigned int len)
 {
