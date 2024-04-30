@@ -1369,7 +1369,6 @@ static int test_conc276(MYSQL *unused __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
   int rc;
   my_bool val= 1;
-  MARIADB_X509_INFO *info;
 
   mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &val);
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &val);
@@ -1381,15 +1380,6 @@ static int test_conc276(MYSQL *unused __attribute__((unused)))
     return FAIL;
   }
   diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
-  mariadb_get_infov(mysql, MARIADB_TLS_PEER_CERT_INFO, &info);
-
-  diag("subject: %s", info->subject);
-  diag("issuer: %s", info->issuer);
-  diag("fingerprint: %s", info->fingerprint);
-  diag("not before : %04d.%02d.%02d", info->not_before.tm_year + 1900,
-       info->not_before.tm_mon + 1, info->not_before.tm_mday);
-  diag("not after : %04d.%02d.%02d", info->not_after.tm_year + 1900,
-       info->not_after.tm_mon + 1, info->not_after.tm_mday);
   rc= mariadb_reconnect(mysql);
   check_mysql_rc(rc, mysql);
 
@@ -2325,6 +2315,8 @@ static int test_x509(MYSQL *my __attribute__((unused)))
   my_bool verify= 0;
   char fp[65];
   MARIADB_X509_INFO *info;
+
+  SKIP_MAXSCALE;
 
   mysql1= mysql_init(NULL);
   mysql2= mysql_init(NULL);
