@@ -136,7 +136,8 @@ static my_bool madb_have_pending_results(MYSQL_STMT *stmt)
   for (;li_stmt;li_stmt= li_stmt->next)
   {
     MYSQL_STMT *s= (MYSQL_STMT *)li_stmt->data;
-    if (s != stmt && s->state == MYSQL_STMT_WAITING_USE_OR_STORE)
+    if (s != stmt && s->state == MYSQL_STMT_WAITING_USE_OR_STORE &&
+        !(s->flags & CURSOR_TYPE_READ_ONLY))
       return 1;
   }
   return 0;
