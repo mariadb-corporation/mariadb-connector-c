@@ -605,8 +605,8 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
       (pvio->mysql->options.extension->tls_fp_list && pvio->mysql->options.extension->tls_fp_list[0])))
   {
     if (ma_pvio_tls_check_fp(pvio->ctls, 
-          pvio->mysql->options.extension->tls_fp,
-          pvio->mysql->options.extension->tls_fp_list))
+        pvio->mysql->options.extension->tls_fp,
+        pvio->mysql->options.extension->tls_fp_list))
       return 1;
     pvio->ctls->cert_info.verify_mode= MARIADB_VERIFY_FINGERPRINT;
     reset_tls_self_signed_error(pvio->mysql); // validated
