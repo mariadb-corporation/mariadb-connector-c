@@ -557,9 +557,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     ASN1_TIME_diff(&pday, &psec, (const ASN1_TIME *)not_before, NULL);
     from= now - (pday * 86400 + psec);
     memcpy(&ctls->cert_info.not_before, gmtime64(&from), sizeof(struct tm));
-    ASN1_TIME_diff(&pday, &psec, NULL, (const ASN1_TIME *)not_before);
+    ASN1_TIME_diff(&pday, &psec, NULL, (const ASN1_TIME *)not_after);
     to= now + (pday * 86400 + psec);
-    memcpy(&ctls->cert_info.not_before, gmtime64(&to), sizeof(struct tm));
+    memcpy(&ctls->cert_info.not_after, gmtime64(&to), sizeof(struct tm));
 #endif
     ctls->cert_info.subject= X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
     ctls->cert_info.issuer= X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
