@@ -794,6 +794,10 @@ static int test_conc223(MYSQL *mysql)
   MYSQL_ROW row;
   int found= 0;
   int mdev27266= 0;
+  int unsupported[]= {
+                      579, /* utf8mb3_general1400_as_ci added in 11.5 */
+                      611, /* utf8mb4_general1400_as_ci added in 11.5 */
+                      0};
 
   SKIP_MYSQL(mysql);
 
@@ -839,8 +843,11 @@ static int test_conc223(MYSQL *mysql)
       id= atoi(row[0]);
       if (!mariadb_get_charset_by_nr(id))
       {
-        diag("%04d %s %s", id, row[1], row[2]);
+        int j=0;
         found++;
+        for (j=0; unsupported[j]; j++)
+          if (unsupported[j] == id)
+            found--;
       }
     }
   }
