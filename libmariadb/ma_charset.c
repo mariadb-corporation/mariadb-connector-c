@@ -830,9 +830,11 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   { 576, 1, UTF8_MB3, UTF8_MB3"_croatian_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
   { 577, 1, UTF8_MB3, UTF8_MB3"_myanmar_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
   { 578, 1, UTF8_MB3, UTF8_MB3"_thai_520_w2", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
+  { 579, 1, UTF8_MB3, UTF8_MB3"_general1400_as_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
   { 608, 1, UTF8_MB4, UTF8_MB4"_croatian_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 609, 1, UTF8_MB4, UTF8_MB4"_myanmar_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 610, 1, UTF8_MB4, UTF8_MB4"_thai_520_w2", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 611, 1, UTF8_MB4, UTF8_MB4"_general1400_as_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 640, 1, "ucs2", "ucs2_croatian_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
   { 641, 1, "ucs2", "ucs2_myanmar_ci", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
   { 642, 1, "ucs2", "ucs2_thai_520_w2", "", 1200, "UCS2-BE", 2, 2, mysql_mbcharlen_ucs2, check_mb_ucs2},
