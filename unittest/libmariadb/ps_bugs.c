@@ -5502,6 +5502,8 @@ static int test_conc633(MYSQL *mysql)
   int ret= FAIL;
   int rc;
 
+  SKIP_MYSQL(mysql);
+
   if (!mariadb_stmt_execute_direct(stmt, SL("SÄLECT 1")))
   {
     diag("Syntax error expected");
