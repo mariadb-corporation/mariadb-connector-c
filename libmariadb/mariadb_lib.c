@@ -711,6 +711,7 @@ struct st_default_options mariadb_defaults[] =
   {{MARIADB_OPT_TLS_PASSPHRASE}, MARIADB_OPTION_STR, "tls-passphrase"},
   {{MYSQL_OPT_SSL_ENFORCE}, MARIADB_OPTION_BOOL, "tls-enforce"},
   {{MYSQL_OPT_SSL_VERIFY_SERVER_CERT}, MARIADB_OPTION_BOOL,"tls-verify-peer"},
+  {{MARIADB_OPT_RESTRICTED_AUTH}, MARIADB_OPTION_STR, "restricted-auth"},
   {{0}, 0, NULL}
 };
 
@@ -1442,6 +1443,14 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   char *end= NULL;
   char *connection_handler= (mysql->options.extension) ?
                             mysql->options.extension->connection_handler : 0;
+
+  if ((client_flag & CLIENT_ALLOWED_FLAGS) != client_flag)
+  {
+    my_set_error(mysql, CR_INVALID_CLIENT_FLAG, SQLSTATE_UNKNOWN,
+                 ER(CR_INVALID_CLIENT_FLAG),
+                 client_flag, CLIENT_ALLOWED_FLAGS);
+    return NULL;
+  }
 
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
@@ -4519,6 +4528,11 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
   va_start(ap, arg);
 
   switch(value) {
+#ifdef HAVE_TLS
+  case MARIADB_TLS_PEER_CERT_INFO:
+    *((MARIADB_X509_INFO **)arg)= mysql->net.pvio->ctls ? (MARIADB_X509_INFO *)&mysql->net.pvio->ctls->cert_info : NULL;
+    break;
+#endif
   case MARIADB_MAX_ALLOWED_PACKET:
     *((size_t *)arg)= (size_t)max_allowed_packet;
     break;

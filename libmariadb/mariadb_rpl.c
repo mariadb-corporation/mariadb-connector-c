@@ -1165,20 +1165,15 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     switch(rpl_event->event_type) {
     case UNKNOWN_EVENT:
     case SLAVE_EVENT:
-       return rpl_event;
-       break;
+      return rpl_event;
+      break;
+
     case HEARTBEAT_LOG_EVENT:
-      /* no post header size */
-      RPL_CHECK_POS(ev, ev_end, 11);
-      rpl_event->event.heartbeat.timestamp= uint4korr(ev);
-      ev+= 4;
-      rpl_event->event.heartbeat.next_position= uint4korr(ev);
-      ev+= 4;
-      rpl_event->event.heartbeat.type= (uint8_t)*ev;
-      ev+= 1;
-      rpl_event->event.heartbeat.flags= uint2korr(ev);
-      ev+= 2;
-      
+      len= rpl_event->event_length - (ev - ev_start) - (rpl->use_checksum ? 4 : 0) - (EVENT_HEADER_OFS - 1);
+      RPL_CHECK_POS(ev, ev_end, len);
+      rpl_event->event.heartbeat.filename.length= len;
+      rpl_event->event.heartbeat.filename.str= (char *)ev;
+      ev+= len;
       break;
 
     case BEGIN_LOAD_QUERY_EVENT:
@@ -1835,7 +1830,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         if (rpl_event->event.rows.extra_data_size - 2 > 0)
         {
           rpl_alloc_set_string_and_len(rpl_event, rpl_event->event.rows.extra_data, ev, rpl_event->event.rows.extra_data_size - 2);
-          ev+= rpl_event->event.rows.extra_data_size;
+          ev+= (rpl_event->event.rows.extra_data_size -2);
         }
       }
       /* END_ROWS_EVENT_V2 */

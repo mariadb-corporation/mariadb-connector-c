@@ -76,7 +76,7 @@ if (IS_SKYSQL(hostname)) \
 #endif
 
 #define SKIP_TLS \
-if (force_tls)\
+if (force_tls || fingerprint[0])\
 {\
   diag("Test doesn't work with TLS");\
   return SKIP;\
@@ -224,6 +224,7 @@ MYSQL *my_test_connect(MYSQL *mysql,
 static const char *schema = 0;
 static char *hostname = 0;
 static char *password = 0;
+static char fingerprint[65];
 static unsigned int port = 0;
 static unsigned int ssl_port = 0;
 static char *socketname = 0;
@@ -656,7 +657,9 @@ MYSQL *my_test_connect(MYSQL *mysql,
                        unsigned long clientflag)
 {
   if (force_tls)
-    mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls); 
+    mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
+  if (fingerprint[0])
+    mysql_options(mysql, MARIADB_OPT_SSL_FP, fingerprint);
   if (!mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag))
   {
     diag("error: %s", mysql_error(mysql));
@@ -677,6 +680,8 @@ MYSQL *my_test_connect(MYSQL *mysql,
 void run_tests(struct my_tests_st *test) {
   int i, rc, total=0;
   MYSQL *mysql;
+  my_bool verify= 0;
+  MARIADB_X509_INFO *info= NULL;
 
   while (test[total].function)
     total++;
@@ -684,6 +689,7 @@ void run_tests(struct my_tests_st *test) {
 
 /* display TLS stats */
   mysql= mysql_init(NULL);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
   if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
@@ -691,7 +697,7 @@ void run_tests(struct my_tests_st *test) {
     diag("Error: %s", mysql_error(mysql));
     BAIL_OUT("Can't establish TLS connection to server.");
   }
-
+  fingerprint[0]= 0;
   if (!mysql_query(mysql, "SHOW VARIABLES LIKE '%ssl%'"))
   {
     MYSQL_RES *res;
@@ -704,8 +710,15 @@ void run_tests(struct my_tests_st *test) {
     while ((row= mysql_fetch_row(res)))
       diag("%s: %s", row[0], row[1]);
     mysql_free_result(res);
-    diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
-    diag("--------------------");
+    if (mysql_get_ssl_cipher(mysql))
+      diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
+    mariadb_get_infov(mysql, MARIADB_TLS_PEER_CERT_INFO, &info);
+    if (info)
+    {
+      strcpy(fingerprint, info->fingerprint);
+      diag("Peer certificate fingerprint: %s", fingerprint);
+      diag("--------------------");
+    }
   }
   mysql_close(mysql);
 

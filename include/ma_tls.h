@@ -27,6 +27,7 @@ typedef struct st_ma_pvio_tls {
   void *data;
   MARIADB_PVIO *pvio;
   void *ssl;
+  MARIADB_X509_INFO cert_info;
 } MARIADB_TLS;
 
 /* Function prototypes */

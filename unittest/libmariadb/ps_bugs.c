@@ -5159,7 +5159,7 @@ static int test_maxparam(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   MYSQL_BIND* bind;
 
-  bind = calloc(sizeof(MYSQL_BIND), 65535);
+  bind = calloc(65535, sizeof *bind);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -5741,7 +5741,77 @@ end:
   return ret;
 }
 
+static int test_conc667(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt1, *stmt2;
+  int rc;
+
+  stmt1= mysql_stmt_init(mysql);
+  stmt2= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt1, "SELECT 1", -1);
+  check_stmt_rc(rc, stmt1);
+
+  rc= mysql_stmt_prepare(stmt2, "SELECT 2", -1);
+  check_stmt_rc(rc, stmt2);
+
+  rc= mysql_stmt_execute(stmt1);
+  check_stmt_rc(rc, stmt1);
+
+  rc= mysql_stmt_free_result(stmt2);
+  FAIL_IF(!rc || mysql_stmt_errno(stmt2) != CR_STMT_NO_RESULT,
+           "Expected CR_STMT_NO_RESULT");
+  diag("Error (expected) %s", mysql_stmt_error(stmt2));
+
+  rc= mysql_stmt_reset(stmt2);
+  FAIL_IF(!rc || mysql_stmt_errno(stmt2) != CR_COMMANDS_OUT_OF_SYNC,
+           "Expected commands out of sync error");
+
+  rc= mysql_stmt_fetch(stmt1);
+  check_stmt_rc(rc, stmt1);
+
+  mysql_stmt_free_result(stmt1);
+
+  rc= mysql_stmt_close(stmt1);
+  check_stmt_rc(rc, stmt1);
+  rc= mysql_stmt_close(stmt2);
+  check_stmt_rc(rc, stmt2);
+
+  return OK;
+}
+
+static int test_conc683(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt1, *stmt2;
+  int rc;
+
+  stmt1= mysql_stmt_init(mysql);
+  stmt2= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt1, "SELECT 1 UNION SELECT 2", -1);
+  check_stmt_rc(rc, stmt1);
+
+  rc= mysql_stmt_prepare(stmt2, "SELECT 1", -1);
+  check_stmt_rc(rc, stmt2);
+
+  rc= mysql_stmt_execute(stmt1);
+  check_stmt_rc(rc, stmt1);
+
+  rc= mysql_stmt_close(stmt2);
+  FAIL_IF(!rc || mysql_stmt_errno(stmt2) != CR_COMMANDS_OUT_OF_SYNC,
+           "Expected commands out of sync error");
+
+  rc= mysql_stmt_close(stmt1);
+  check_stmt_rc(rc, stmt1);
+  rc= mysql_stmt_close(stmt2);
+  check_stmt_rc(rc, stmt2);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc683", test_conc683, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc667", test_conc667, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc633", test_conc633, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc623", test_conc623, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc627", test_conc627, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

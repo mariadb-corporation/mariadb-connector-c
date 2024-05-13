@@ -140,7 +140,7 @@ my_ssl_async_check_result(int res, struct mysql_async_context *b, MARIADB_SSL *c
 {
   int ssl_err;
   b->events_to_wait_for= 0;
-  if (res >= 0)
+  if (res > 0)
     return 1;
   ssl_err= SSL_get_error(ssl, res);
   if (ssl_err == SSL_ERROR_WANT_READ)

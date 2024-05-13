@@ -83,8 +83,8 @@ static int bulk1(MYSQL *mysql)
 
   /* allocate memory */
   buffer= calloc(TEST_ARRAY_SIZE, sizeof(char *));
-  lengths= (unsigned long *)calloc(sizeof(long), TEST_ARRAY_SIZE);
-  vals= (unsigned int *)calloc(sizeof(int), TEST_ARRAY_SIZE);
+  lengths= calloc(TEST_ARRAY_SIZE, sizeof *lengths);
+  vals= calloc(TEST_ARRAY_SIZE, sizeof *vals);
 
   for (i=0; i < TEST_ARRAY_SIZE; i++)
   {
