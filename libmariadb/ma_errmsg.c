@@ -120,6 +120,7 @@ const char *mariadb_client_errors[] =
   /* 5023 */ "Semi sync request error: %s",
   /* 5024 */ "Invalid client flags (%lu) specified. Supported flags: %lu",
   /* 5025 */ "Statement has no result set",
+  ""
 };
 
 const char ** NEAR my_errmsg[MAXMAPS]={0,0,0,0};
