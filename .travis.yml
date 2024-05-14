@@ -52,10 +52,6 @@ jobs:
       env: srv=maxscale
     - env: srv=mysql v=5.7 native=1
     - env: srv=mysql v=8.0 native=1
-    - if: type = push AND fork = false
-      env: srv=skysql
-    - if: type = push AND fork = false
-      env: srv=skysql-ha
     - env: server_branch=10.5
     - env: server_branch=10.5 TEST_OPTION=--ps-protocol
 
