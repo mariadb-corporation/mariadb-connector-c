@@ -2785,12 +2785,16 @@ mysql_refresh(MYSQL *mysql,uint options)
 int STDCALL
 mysql_kill(MYSQL *mysql,ulong pid)
 {
-  char buff[26];
+  char buff[16];
 
+  /* process id can't be larger than 4-bytes */
   if (pid & (~0xFFFFFFFFUL))
-    snprintf(buff, sizeof buff, "KILL %llu", (ulonglong)pid);
-  else
-    snprintf(buff, sizeof buff, "KILL %lu", pid);
+  {
+    my_set_error(mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0);
+    return 1;
+  }
+
+  snprintf(buff, sizeof buff, "KILL %lu", pid);
   return mysql_real_query(mysql, (char *)buff, (ulong)strlen(buff));
 }
 
