@@ -1228,6 +1228,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     if (!gnutls_x509_crt_import(cert, &cert_list[0], GNUTLS_X509_FMT_DER))
     {
       size_t len= 0;
+      char fp[33];
       time_t notBefore, notAfter;
 
       ctls->cert_info.version= gnutls_x509_crt_get_version(cert);
@@ -1246,7 +1247,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       notAfter= gnutls_x509_crt_get_expiration_time(cert);
       memcpy(&ctls->cert_info.not_after, gmtime(&notAfter), sizeof(struct tm));
 
-      ma_tls_get_finger_print(ctls, MA_HASH_SHA256, (char *)&ctls->cert_info.fingerprint, 32);
+      ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, sizeof(fp));
+      mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
     }
   }
   return 0;
