@@ -537,7 +537,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if ((cert= SSL_get_peer_certificate(ssl)))
   {
     char fp[33];
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     const ASN1_TIME *not_before= X509_get0_notBefore(cert),
                     *not_after= X509_get0_notAfter(cert);
     ASN1_TIME_to_tm(not_before, (struct tm *)&ctls->cert_info.not_before);
