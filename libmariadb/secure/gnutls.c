@@ -1250,6 +1250,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, sizeof(fp));
       mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
     }
+    gnutls_x509_crt_deinit(cert);
   }
   return 0;
 }
