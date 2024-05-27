@@ -17,13 +17,6 @@ jobs:
     - stage: Community
       env: srv=mariadb v=10.11 local=1 TEST_OPTION=--ps-protocol
       name: "CS 10.11 with ps-protocol"
-    - stage: Other
-      env: server_branch=10.6
-      name: "CS 10.6 Server unit testing"
-    - env: server_branch=10.11
-      name: "CS 10.11 Server unit testing"
-    - env: server_branch=11.3 TEST_OPTION=--ps-protocol
-      name: "11.3 Server unit testing with ps-protocol"
     - env: server_branch=11.4
       name: "11.4 Server unit testing"
 
