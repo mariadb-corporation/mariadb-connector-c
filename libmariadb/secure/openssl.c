@@ -34,8 +34,11 @@
 #include <time.h>
 #endif
 
-#if defined(_WIN32) && !defined(_OPENSSL_Applink) && defined(HAVE_OPENSSL_APPLINK_C)
+#if defined(_WIN32)
+#define gmtime_r(a,b) gmtime_s(b,a)
+#if !defined(_OPENSSL_Applink) && defined(HAVE_OPENSSL_APPLINK_C)
 #include <openssl/applink.c>
+#endif
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
