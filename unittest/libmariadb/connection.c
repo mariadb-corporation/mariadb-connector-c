@@ -2008,10 +2008,11 @@ static int test_conn_str(MYSQL *my __attribute__((unused)))
   char conn_str[1024];
   int rc=OK;
 
-  snprintf(conn_str, sizeof(conn_str)-1, "host=%s;user=%s;password={%s};port=%d;socket=%s",
+  snprintf(conn_str, sizeof(conn_str)-1, "host=%s;user=%s;password={%s};port=%d;socket=%s;tls_fp=%s",
                 hostname ? hostname : "localhost", username ? username : "", 
                 password ? password : "", 
-                port, socketname ? socketname : "");
+                port, socketname ? socketname : "",
+                fingerprint[0] ? fingerprint : "");
 
   /* SkySQL requires secure connection */
   if (IS_SKYSQL(hostname))
@@ -2083,9 +2084,9 @@ static int test_conc365(MYSQL *my __attribute__((unused)))
   char tmp[1024];
 
   snprintf(tmp, sizeof(tmp) - 1,
-   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s",
+   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;tls_fp=%s",
    hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-   port, socketname ? socketname : "");
+   port, socketname ? socketname : "", fingerprint[0] ? fingerprint : "");
 
  if (IS_SKYSQL(hostname))
    strcat(tmp, ";ssl_enforce=1");
@@ -2131,6 +2132,7 @@ static int test_conc365_reconnect(MYSQL *my)
   MYSQL *mysql= mysql_init(NULL);
   char tmp[1024];
   my_bool reconnect= 1;
+
   SKIP_MAXSCALE;
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
@@ -2138,14 +2140,14 @@ static int test_conc365_reconnect(MYSQL *my)
   if (IS_SKYSQL(hostname))
   {
     snprintf(tmp, sizeof(tmp) - 1,
-      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;ssl_enforce=1",
+      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;ssl_enforce=1;tls_fp=%s",
       hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-      ssl_port, socketname ? socketname : "");
+      ssl_port, socketname ? socketname : "", fingerprint[0] ? fingerprint : "");
   } else {
     snprintf(tmp, sizeof(tmp) - 1,
-      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s",
+      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;tls_fp=%s",
       hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-      port, socketname ? socketname : "");
+      port, socketname ? socketname : "", fingerprint[0] ? fingerprint :"");
   }
 
   if (!my_test_connect(mysql, tmp, username,

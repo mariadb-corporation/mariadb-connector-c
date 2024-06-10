@@ -224,7 +224,7 @@ MYSQL *my_test_connect(MYSQL *mysql,
 static const char *schema = 0;
 static char *hostname = 0;
 static char *password = 0;
-static char fingerprint[65];
+static char fingerprint[65]= {0};
 static unsigned int port = 0;
 static unsigned int ssl_port = 0;
 static char *socketname = 0;

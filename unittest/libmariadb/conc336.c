@@ -6,6 +6,7 @@ int main(int argc, char *argv[]) {
 
 	MYSQL *mysql;
 	int i;
+  my_bool verify=0;
 
   if (argc > 1)
     get_options(argc, argv);
@@ -38,6 +39,7 @@ int main(int argc, char *argv[]) {
 
     if (force_tls)
       mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
+    mysql_optionsv(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
 		if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0)) {
 			diag("mysql_real_connect failed: %s", mysql_error(mysql));

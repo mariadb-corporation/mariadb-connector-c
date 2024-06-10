@@ -1638,6 +1638,7 @@ static int test_disable_tls1_0(MYSQL *my __attribute__((unused)))
 
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
   mysql_optionsv(mysql, MARIADB_OPT_TLS_VERSION, disabled_version);
+  mysql_optionsv(mysql, MARIADB_OPT_SSL_FP, fingerprint);
 
   FAIL_IF(!mysql_real_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0), mysql_error(mysql));

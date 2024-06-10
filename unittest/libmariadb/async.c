@@ -156,6 +156,7 @@ static int async1(MYSQL *unused __attribute__((unused)))
     mysql_options(&mysql, MYSQL_OPT_CONNECT_TIMEOUT, &default_timeout);
     mysql_options(&mysql, MYSQL_OPT_WRITE_TIMEOUT, &default_timeout);
     mysql_options(&mysql, MYSQL_READ_DEFAULT_GROUP, "myapp");
+    mysql_options(&mysql, MARIADB_OPT_SSL_FP, fingerprint);
     if (force_tls)
       mysql_ssl_set(&mysql, NULL, NULL, NULL, NULL,NULL);
 
