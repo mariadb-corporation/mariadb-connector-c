@@ -25,14 +25,14 @@ REGISTER_PLUGIN(TARGET mysql_native_password
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS STATIC
                 DEFAULT STATIC
-                SOURCES ${CC_SOURCE_DIR}/plugins/auth/my_auth.c)
+                SOURCES ${AUTH_DIR}/my_auth.c)
 
 #Dialog client authentication plugin
 REGISTER_PLUGIN(TARGET dialog
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
-                SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c
+                SOURCES ${AUTH_DIR}/dialog.c
                         ${CC_SOURCE_DIR}/libmariadb/get_password.c)
 
 
@@ -40,7 +40,7 @@ REGISTER_PLUGIN(TARGET dialog
 IF(CRYPTO_PLUGIN)
 
   #ED25519 client authentication plugin
-  SET(REF10_DIR ${CC_SOURCE_DIR}/plugins/auth/ref10)
+  SET(REF10_DIR ${AUTH_DIR}/ref10)
   SET(REF10_SOURCES ${REF10_DIR}/fe_0.c ${REF10_DIR}/fe_isnegative.c ${REF10_DIR}/fe_sub.c ${REF10_DIR}/ge_p1p1_to_p2.c
                     ${REF10_DIR}/ge_p3_to_cached.c ${REF10_DIR}/open.c ${REF10_DIR}/fe_1.c ${REF10_DIR}/fe_isnonzero.c
                     ${REF10_DIR}/fe_tobytes.c ${REF10_DIR}/ge_p1p1_to_p3.c ${REF10_DIR}/ge_p3_to_p2.c ${REF10_DIR}/sc_muladd.c
@@ -56,7 +56,7 @@ IF(CRYPTO_PLUGIN)
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
-                SOURCES ${CC_SOURCE_DIR}/plugins/auth/ed25519.c 
+                SOURCES ${AUTH_DIR}/ed25519.c
                         ${REF10_SOURCES}
                         ${CRYPT_SOURCE}
                 INCLUDES ${REF10_DIR}
@@ -78,12 +78,12 @@ IF(CRYPTO_PLUGIN)
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
-                SOURCES ${CC_SOURCE_DIR}/plugins/auth/caching_sha2_pw.c 
+                SOURCES ${AUTH_DIR}/caching_sha2_pw.c
                         ${CRYPT_SOURCE}
                 LIBRARIES ${CRYPT_LIBS})
 
   IF(WITH_SSL STREQUAL "GNUTLS" AND NOT WIN32)
-    MESSAGE1(STATUS "sha256_password not supported by GnuTLS due to missing OAEP padding")
+    MESSAGE1(SHA256_PASSWORD "sha256_password not supported by GnuTLS due to missing OAEP padding")
   ELSE()
     REGISTER_PLUGIN(TARGET sha256_password
                     TYPE MARIADB_CLIENT_PLUGIN_AUTH
@@ -116,7 +116,7 @@ IF(GSSAPI_SOURCES)
                   CONFIGURATIONS DYNAMIC STATIC OFF DYNAMIC_AND_STATIC
                   DEFAULT ${AUTH_GSSAPI_DEFAULT_CONFIG}
                   SOURCES ${GSSAPI_SOURCES}
-                  INCLUDES ${CC_SOURCE_DIR}/plugins/auth ${GSSAPI_INCS}
+                  INCLUDES ${AUTH_DIR} ${GSSAPI_INCS}
                   LIBRARIES ${GSSAPI_LIBS})
   IF(CMAKE_C_COMPILER_ID MATCHES "Clang")
     SET_SOURCE_FILES_PROPERTIES(${GSSAPI_SOURCES} PROPERTY COMPILE_FLAGS "-Wno-deprecated-declarations")
