@@ -32,8 +32,6 @@ char tls_library_version[] = "Schannel";
 #define PROT_TLS1_2 4
 #define PROT_TLS1_3 8
 
-unsigned int ma_set_tls_x509_info(MARIADB_TLS *ctls);
-
 static struct
 {
   DWORD cipher_id;
@@ -450,7 +448,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
 
-   verify_certs =  mysql->options.ssl_ca || mysql->options.ssl_capath ||
+  verify_certs =  mysql->options.ssl_ca || mysql->options.ssl_capath ||
      !mysql->options.extension->tls_allow_invalid_server_cert;
 
   if (verify_certs)
@@ -458,8 +456,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     if (!ma_schannel_verify_certs(ctls, !mysql->options.extension->tls_allow_invalid_server_cert))
       goto end;
   }
-
-  ma_set_tls_x509_info(ctls);
   rc = 0;
 
 end:
@@ -580,7 +576,7 @@ static void ma_systime_to_tm(SYSTEMTIME sys_tm, struct tm *tm)
   tm->tm_min = sys_tm.wMinute;
 }
 
-unsigned int ma_set_tls_x509_info(MARIADB_TLS *ctls)
+unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls)
 {
   PCCERT_CONTEXT pCertCtx= NULL;
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
@@ -588,6 +584,13 @@ unsigned int ma_set_tls_x509_info(MARIADB_TLS *ctls)
   DWORD size´= 0;
   SYSTEMTIME tm;
   char fp[33];
+
+  if (!ctls || !sctx)
+    return 1;
+
+  /* Did we already read peer cert information ? */
+  if (ctls->cert_info.version)
+    return 0;
 
   if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pCertCtx) != SEC_E_OK)
     return 1;

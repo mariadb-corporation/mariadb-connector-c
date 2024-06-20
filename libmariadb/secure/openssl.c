@@ -459,6 +459,57 @@ error:
   return NULL;
 }
 
+unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls)
+{
+  X509 *cert;
+  SSL *ssl;
+
+  if (!ctls || !ctls->ssl)
+    return 1;
+
+  /* Did we already read peer cert information ? */
+  if (ctls->cert_info.version)
+    return 0;
+
+  ssl= (SSL *)ctls->ssl;
+
+  /* Store peer certificate information */
+  if ((cert= SSL_get_peer_certificate(ssl)))
+  {
+    char fp[33];
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    const ASN1_TIME *not_before= X509_get0_notBefore(cert),
+                    *not_after= X509_get0_notAfter(cert);
+    ASN1_TIME_to_tm(not_before, (struct tm *)&ctls->cert_info.not_before);
+    ASN1_TIME_to_tm(not_after, (struct tm *)&ctls->cert_info.not_after);
+#else
+    const ASN1_TIME *not_before= X509_get_notBefore(cert),
+                    *not_after= X509_get_notAfter(cert);
+    time_t  now, from, to;
+    int pday, psec;
+    /* ANS1_TIME_diff returns days and seconds between now and the
+       specified ASN1_TIME */
+    time(&now);
+    ASN1_TIME_diff(&pday, &psec, not_before, NULL);
+    from= now - (pday * 86400 + psec);
+    gmtime_r(&from, &ctls->cert_info.not_before);
+    ASN1_TIME_diff(&pday, &psec, NULL, not_after);
+    to= now + (pday * 86400 + psec);
+    gmtime_r(&to, &ctls->cert_info.not_after);
+#endif
+    ctls->cert_info.subject= X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
+    ctls->cert_info.issuer= X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
+    ctls->cert_info.version= X509_get_version(cert) + 1;
+
+    ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, 33);
+    mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
+
+    X509_free(cert);
+    return 0;
+  }
+  return 1;
+}
+
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   SSL *ssl = (SSL *)ctls->ssl;
@@ -466,7 +517,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
-  X509 *cert;
 #ifdef OPENSSL_USE_BIOMETHOD
   BIO_METHOD *bio_method= NULL;
   BIO *bio;
@@ -532,40 +582,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     }
   }
   pvio->ctls->ssl= ctls->ssl= (void *)ssl;
-
-  /* Store peer certificate information */
-  if ((cert= SSL_get_peer_certificate(ssl)))
-  {
-    char fp[33];
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-    const ASN1_TIME *not_before= X509_get0_notBefore(cert),
-                    *not_after= X509_get0_notAfter(cert);
-    ASN1_TIME_to_tm(not_before, (struct tm *)&ctls->cert_info.not_before);
-    ASN1_TIME_to_tm(not_after, (struct tm *)&ctls->cert_info.not_after);
-#else
-    const ASN1_TIME *not_before= X509_get_notBefore(cert),
-                    *not_after= X509_get_notAfter(cert);
-    time_t  now, from, to;
-    int pday, psec;
-    /* ANS1_TIME_diff returns days and seconds between now and the
-       specified ASN1_TIME */
-    time(&now);
-    ASN1_TIME_diff(&pday, &psec, not_before, NULL);
-    from= now - (pday * 86400 + psec);
-    gmtime_r(&from, &ctls->cert_info.not_before);
-    ASN1_TIME_diff(&pday, &psec, NULL, not_after);
-    to= now + (pday * 86400 + psec);
-    gmtime_r(&to, &ctls->cert_info.not_after);
-#endif
-    ctls->cert_info.subject= X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
-    ctls->cert_info.issuer= X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
-    ctls->cert_info.version= X509_get_version(cert) + 1;
-
-    ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, 33);
-    mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
-
-    X509_free(cert);
-  }
 
   return 0;
 }

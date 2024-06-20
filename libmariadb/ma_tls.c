@@ -269,4 +269,9 @@ void ma_pvio_tls_set_connection(MYSQL *mysql)
 {
   ma_tls_set_connection(mysql);
 }
+
+unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls)
+{
+  return ma_tls_get_peer_cert_info(ctls);
+}
 #endif /* HAVE_TLS */

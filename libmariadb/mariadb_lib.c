@@ -4537,7 +4537,13 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
   switch(value) {
 #ifdef HAVE_TLS
   case MARIADB_TLS_PEER_CERT_INFO:
-    *((MARIADB_X509_INFO **)arg)= mysql->net.pvio->ctls ? (MARIADB_X509_INFO *)&mysql->net.pvio->ctls->cert_info : NULL;
+    if (mysql->net.pvio->ctls)
+    {
+      if (!ma_pvio_tls_get_peer_cert_info(mysql->net.pvio->ctls))
+        *((MARIADB_X509_INFO **)arg)= (MARIADB_X509_INFO *)&mysql->net.pvio->ctls->cert_info;
+      return 0;
+    }
+    *((MARIADB_X509_INFO **)arg)= NULL;
     break;
 #endif
   case MARIADB_MAX_ALLOWED_PACKET:
