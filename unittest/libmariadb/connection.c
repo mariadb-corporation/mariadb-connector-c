@@ -2335,8 +2335,7 @@ static int test_x509(MYSQL *my __attribute__((unused)))
     return FAIL;
   }
   mariadb_get_infov(mysql1, MARIADB_TLS_PEER_CERT_INFO, &info);
-  memset(fp, 0, 65);
-  diag("fingerprint: %s", info->fingerprint);
+  memset(fp, 0, sizeof(fp));
   mysql_options(mysql2, MARIADB_OPT_TLS_PEER_FP, info->fingerprint);
   if (!(my_test_connect(mysql2, hostname, username,
                            password, schema, port,
@@ -2346,7 +2345,12 @@ static int test_x509(MYSQL *my __attribute__((unused)))
     return FAIL;
   }
   mariadb_get_infov(mysql2, MARIADB_TLS_PEER_CERT_INFO, &info);
-  FAIL_IF(info->verify_mode != MARIADB_VERIFY_FINGERPRINT, "Fingerprint verification expected");
+
+  if (strcmp(info->fingerprint, fingerprint))
+  {
+    diag("different fingerprints!");
+    return FAIL;
+  }
 
   mysql_close(mysql1);
   mysql_close(mysql2);

@@ -500,7 +500,6 @@ typedef struct
   char fingerprint[65];
   struct tm not_before;
   struct tm not_after;
-  enum mariadb_tls_verification verify_mode;
 } MARIADB_X509_INFO;
 
 

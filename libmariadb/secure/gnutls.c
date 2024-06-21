@@ -1173,8 +1173,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
   MARIADB_PVIO *pvio;
   int ret;
-  const gnutls_datum_t *cert_list;
-  unsigned int list_size= 0;
 
   if (!mysql)
     return 1;
@@ -1217,6 +1215,48 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   }
   ctls->ssl= (void *)ssl;
 
+  return 0;
+}
+
+ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  ssize_t res;
+  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
+  MARIADB_TLS *ctls= pvio->ctls;
+
+  for (;;)
+  {
+    b->events_to_wait_for= 0;
+    res= gnutls_record_send((gnutls_session_t)ctls->ssl, (void *)buffer, length);
+    if (res > 0)
+      return res;
+    if (res == GNUTLS_E_AGAIN)
+      b->events_to_wait_for|= MYSQL_WAIT_WRITE;
+    else
+      return res;
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+    my_context_yield(&b->async_context);
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+  }
+}
+
+unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls)
+{
+  const gnutls_datum_t *cert_list;
+  gnutls_session_t ssl;
+  unsigned int list_size= 0;
+
+  if (!ctls || !ctls->ssl)
+    return 1;
+
+  if (!(ssl = (gnutls_session_t)ctls->ssl))
+    return 1;
+
+  if (ctls->cert_info.version)
+    return 0; /* already loaded */
+
   /* retrieve peer certificate information */
   if ((cert_list= gnutls_certificate_get_peers(ssl, &list_size)))
   {
@@ -1251,32 +1291,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
     }
     gnutls_x509_crt_deinit(cert);
+    return 0;
   }
-  return 0;
-}
-
-ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
-{
-  ssize_t res;
-  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
-  MARIADB_TLS *ctls= pvio->ctls;
-
-  for (;;)
-  {
-    b->events_to_wait_for= 0;
-    res= gnutls_record_send((gnutls_session_t)ctls->ssl, (void *)buffer, length);
-    if (res > 0)
-      return res;
-    if (res == GNUTLS_E_AGAIN)
-      b->events_to_wait_for|= MYSQL_WAIT_WRITE;
-    else
-      return res;
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-    my_context_yield(&b->async_context);
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-  }
+  return 1;
 }
 
 
@@ -1435,7 +1452,6 @@ static int my_verify_callback(gnutls_session_t ssl)
     
     return GNUTLS_E_CERTIFICATE_ERROR;
   }
-  
 
   return 0;
 }
