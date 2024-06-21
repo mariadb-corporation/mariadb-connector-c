@@ -102,6 +102,8 @@ IF(CRYPTO_PLUGIN)
     MESSAGE1(PARSEC "PARSEC requires EVP_PKEY interface when built with OpenSSL.")
   ELSEIF(WITH_SSL STREQUAL "SCHANNEL")
     MESSAGE1(PARSEC "PARSEC does not support SCHANNEL.")
+  ELSEIF(NOT HAVE_C_THREAD_LOCAL)
+    MESSAGE1(PARSEC "PARSEC requires C11 Thread-local variables support by compiler (GNU >= 4.9).")
   ELSE()
     REGISTER_PLUGIN(TARGET parsec
             TYPE MARIADB_CLIENT_PLUGIN_AUTH

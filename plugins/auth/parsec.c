@@ -35,6 +35,7 @@
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
+#include <threads.h>
 
 #define CHALLENGE_SCRAMBLE_LENGTH 32
 #define CHALLENGE_SALT_LENGTH     18
@@ -125,6 +126,7 @@ cleanup:
 #endif
 }
 
+static _Thread_local struct Passwd_in_memory pwd_local;
 
 static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
@@ -144,7 +146,6 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
   struct Passwd_in_memory *params;
   int pkt_len;
-  char *newpw;
   uchar priv_key[ED25519_KEY_LENGTH];
   size_t pwlen= strlen(mysql->passwd);
 
@@ -175,11 +176,7 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_AUTH_PLUGIN_ERR;
 
   /* Save for the future hash_password() call */
-  if ((newpw= realloc(mysql->passwd, pwlen + 1 + sizeof(*params))))
-  {
-    memcpy(newpw + pwlen + 1, params, sizeof(*params));
-    mysql->passwd= newpw;
-  }
+  memcpy(&pwd_local, params, sizeof(*params));
 
   if (vio->write_packet(vio, signed_msg.response.start,
                         sizeof signed_msg.response) != 0)
@@ -196,8 +193,7 @@ static int hash_password(MYSQL *mysql __attribute__((unused)),
   *outlen= sizeof(struct Passwd_in_memory);
 
   /* Use cached value */
-  memcpy(out, mysql->passwd + strlen(mysql->passwd) + 1,
-         sizeof(struct Passwd_in_memory));
+  memcpy(out, &pwd_local, sizeof(struct Passwd_in_memory));
   return 0;
 }
 
