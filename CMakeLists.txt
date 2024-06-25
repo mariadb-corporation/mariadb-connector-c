@@ -310,8 +310,8 @@ IF(NOT WITH_SSL STREQUAL "OFF")
       SET(SSL_SOURCES "${CC_SOURCE_DIR}/libmariadb/secure/openssl.c"
                       "${CC_SOURCE_DIR}/libmariadb/secure/openssl_crypt.c")
       SET(SSL_LIBRARIES ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
-      IF(WIN32)
-        CHECK_INCLUDE_FILES (${OPENSSL_INCLUDE_DIR}/openssl/applink.c HAVE_OPENSSL_APPLINK_C)
+      IF(WIN32 AND EXISTS ${OPENSSL_INCLUDE_DIR}/openssl/applink.c)
+       SET(HAVE_OPENSSL_APPLINK_C 1)
       ENDIF()
       INCLUDE_DIRECTORIES(BEFORE ${OPENSSL_INCLUDE_DIR})
 
