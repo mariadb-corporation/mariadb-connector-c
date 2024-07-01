@@ -498,7 +498,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
         try_connect= 0;
       break;
     case SSL_ERROR_WANT_WRITE:
-      if (pvio->methods->wait_io_or_timeout(pvio, TRUE, mysql->options.connect_timeout) < 1)
+      if (pvio->methods->wait_io_or_timeout(pvio, FALSE, mysql->options.connect_timeout) < 1)
         try_connect= 0;
       break;
     default:
@@ -656,7 +656,7 @@ ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
     int error= SSL_get_error((SSL *)ctls->ssl, rc);
     if (error != SSL_ERROR_WANT_WRITE)
       break;
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.write_timeout) < 1)
+    if (pvio->methods->wait_io_or_timeout(pvio, FALSE, pvio->mysql->options.write_timeout) < 1)
       break;
   }
   if (rc <= 0)
