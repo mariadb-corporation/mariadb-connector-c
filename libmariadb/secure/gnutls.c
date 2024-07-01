@@ -1332,7 +1332,7 @@ ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   {
     if (rc != GNUTLS_E_AGAIN && rc != GNUTLS_E_INTERRUPTED)
       break;
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.write_timeout) < 1)
+    if (pvio->methods->wait_io_or_timeout(pvio, FALSE, pvio->mysql->options.write_timeout) < 1)
       break;
   }
   if (rc <= 0) {
