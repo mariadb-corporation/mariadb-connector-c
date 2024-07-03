@@ -277,22 +277,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     mysql->options.extension->tls_allow_invalid_server_cert= 1;
   }
 
-  /* if server doesn't support SSL and verification of server certificate
-     was set to mandatory, we need to return an error */
-  if (mysql->options.use_ssl && !(mysql->server_capabilities & CLIENT_SSL))
-  {
-    if (!mysql->options.extension->tls_allow_invalid_server_cert ||
-        mysql->options.extension->tls_fp ||
-        mysql->options.extension->tls_fp_list)
-    {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                          ER(CR_SSL_CONNECTION_ERROR), 
-                          "SSL is required, but the server does not support it");
-      goto error;
-    }
-  }
-
-
   /* Remove options that server doesn't support */
   mysql->client_flag= mysql->client_flag &
                        (~(CLIENT_COMPRESS | CLIENT_ZSTD_COMPRESSION | CLIENT_SSL | CLIENT_PROTOCOL_41) 
@@ -371,8 +355,19 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       (mysql->client_flag & CLIENT_SSL))
   {
     /*
-      Send mysql->client_flag, max_packet_size - unencrypted otherwise
-      the server does not know we want to do SSL
+      Send UNENCRYPTED "Login Request" packet with mysql->client_flag
+      and max_packet_size, but no username; without this, the server
+      does not know we want to switch to SSL/TLS
+
+      FIXME: Sending this packet is a very very VERY bad idea. It
+      contains the client's preferred charset and flags in plaintext;
+      this can be used for fingerprinting the client software version,
+      and probable geographic location.
+
+      This offers a glaring opportunity for pervasive attackers to
+      easily target, intercept, and exploit the client-server
+      connection (e.g. "MITM all connections from known-vulnerable
+      client versions originating from countries X, Y, and Z").
     */
     if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
     {
@@ -382,6 +377,9 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                           errno);
       goto error;
     }
+    /* This is where the socket is actually converted from a plain
+     * TCP/IP socket to a TLS/SSL-wrapped socket.
+     */
     if (ma_pvio_start_ssl(mysql->net.pvio))
       goto error;
     if (mysql->net.tls_self_signed_error &&
