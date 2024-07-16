@@ -757,7 +757,7 @@ static int charset_auto(MYSQL *my __attribute__((unused)))
   mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "auto");
 
   FAIL_IF(!my_test_connect(mysql, hostname, username,
-                             password, schema, port, socketname, 0), 
+                             password, schema, port, socketname, 0, 1), 
          mysql_error(mysql));
 
   csname1= mysql_character_set_name(mysql);

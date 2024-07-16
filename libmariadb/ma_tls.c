@@ -103,9 +103,54 @@ my_bool ma_pvio_tls_close(MARIADB_TLS *ctls)
   return ma_tls_close(ctls);
 }
 
-int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls)
+int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
 {
-  return ma_tls_verify_server_cert(ctls);
+  MYSQL *mysql;
+  int rc;
+
+  if (!ctls || !ctls->pvio || !ctls->pvio->mysql)
+    return 0;
+
+  mysql= ctls->pvio->mysql;
+
+  /* Skip peer certificate verification */
+  if (ctls->pvio->mysql->options.extension->tls_allow_invalid_server_cert)
+  {
+    return 0;
+  }
+
+  rc= ma_tls_verify_server_cert(ctls, flags);
+
+  /* Set error messages */
+  if (!mysql->net.last_errno)
+  {
+    if (mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_PERIOD)
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Certificate not yet valid or expired");
+    else if (mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_FINGERPRINT)
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Fingerprint validation of peer certificate failed");
+    else if (mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_REVOKED)
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Certificate revoked");
+    else if (mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_HOST)
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Hostname verification failed");
+    else if (mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_UNKNOWN)
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Peer certificate verification failed");
+    else if (mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_TRUST)
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Peer certificate is not trusted");
+  }
+
+  return rc;
 }
 
 const char *ma_pvio_tls_cipher(MARIADB_TLS *ctls)
@@ -150,8 +195,7 @@ static signed char ma_hex2int(char c)
 
 static my_bool ma_pvio_tls_compare_fp(MARIADB_TLS *ctls,
                                      const char *cert_fp,
-                                     unsigned int cert_fp_len
-)
+                                     unsigned int cert_fp_len)
 {
   const char fp[EVP_MAX_MD_SIZE];
   unsigned int fp_len= EVP_MAX_MD_SIZE;
@@ -206,8 +250,6 @@ static my_bool ma_pvio_tls_compare_fp(MARIADB_TLS *ctls,
     signed char d1, d2;
     if (*p == ':')
       p++;
-    if (p - cert_fp > (int)fp_len - 1)
-      return 1;
     if ((d1 = ma_hex2int(*p)) == -1 ||
       (d2 = ma_hex2int(*(p + 1))) == -1 ||
       (char)(d1 * 16 + d2) != *c)
@@ -270,8 +312,8 @@ void ma_pvio_tls_set_connection(MYSQL *mysql)
   ma_tls_set_connection(mysql);
 }
 
-unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls)
+unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size)
 {
-  return ma_tls_get_peer_cert_info(ctls);
+  return ma_tls_get_peer_cert_info(ctls, size);
 }
 #endif /* HAVE_TLS */

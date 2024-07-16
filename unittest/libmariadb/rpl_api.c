@@ -44,7 +44,7 @@ static int test_rpl_async(MYSQL *my __attribute__((unused)))
     return SKIP;
 
   if (!my_test_connect(mysql, hostname, username,
-                             password, schema, port, socketname, 0))
+                             password, schema, port, socketname, 0, 1))
   {
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -112,7 +112,7 @@ static int test_rpl_semisync(MYSQL *my __attribute__((unused)))
     return SKIP;
 
   if (!my_test_connect(mysql, hostname, username,
-                             password, schema, port, socketname, 0))
+                             password, schema, port, socketname, 0, 1))
   {
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -189,7 +189,7 @@ static int test_conc467(MYSQL *my __attribute__((unused)))
     return SKIP;
 
   if (!my_test_connect(mysql, hostname, username,
-                             password, schema, port, socketname, 0))
+                             password, schema, port, socketname, 0, 1))
   {
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -271,7 +271,7 @@ static int test_conc592(MYSQL *my __attribute__((unused)))
     return SKIP;
 
   if (!my_test_connect(mysql, hostname, username,
-                             password, schema, port, socketname, 0))
+                             password, schema, port, socketname, 0, 1))
   {
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -279,7 +279,7 @@ static int test_conc592(MYSQL *my __attribute__((unused)))
   }
 
   if (!my_test_connect(mysql_check, hostname, username,
-                             password, schema, port, socketname, 0))
+                             password, schema, port, socketname, 0, 1))
   {
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);
@@ -356,7 +356,7 @@ static int test_conc689(MYSQL *my __attribute__((unused)))
     return SKIP;
 
   if (!my_test_connect(mysql, hostname, username,
-                             password, schema, port, socketname, 0))
+                             password, schema, port, socketname, 0, 1))
   {
     diag("Error: %s", mysql_error(mysql));
     mysql_close(mysql);

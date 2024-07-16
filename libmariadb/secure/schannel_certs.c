@@ -33,6 +33,7 @@
 #define _WIN32_WINNT 0x0601
 #endif
 #include "schannel_certs.h"
+#include "ma_schannel.h"
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -594,9 +595,8 @@ Verify server certificate against a wincrypt store
 SECURITY_STATUS schannel_verify_server_certificate(
   const CERT_CONTEXT* cert,
   HCERTSTORE store,
-  BOOL check_revocation,
-  const char* server_name,
-  BOOL check_server_name,
+  const char *server_name,
+  unsigned int verify_flags,
   char* errmsg,
   size_t errmsg_len)
 {
@@ -605,7 +605,7 @@ SECURITY_STATUS schannel_verify_server_certificate(
   DWORD dwVerifyFlags;
   DWORD dwRevocationFlags;
 
-  if (check_server_name)
+  if (verify_flags & MARIADB_TLS_VERIFY_HOST)
   {
     int cchServerName = (int)strlen(server_name) + 1;
     wserver_name = (wchar_t*)LocalAlloc(0,sizeof(wchar_t) * cchServerName);
@@ -621,10 +621,14 @@ SECURITY_STATUS schannel_verify_server_certificate(
 
   dwVerifyFlags = 0;
   dwRevocationFlags = 0;
-  if (check_revocation)
+  if (verify_flags & MARIADB_TLS_VERIFY_REVOKED)
     dwRevocationFlags |= CERT_CHAIN_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT | CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY;
-  if (!check_server_name)
+  if (!(verify_flags & MARIADB_TLS_VERIFY_HOST))
     dwVerifyFlags |= SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
+  /* Period was already checked before */
+  dwVerifyFlags |= SECURITY_FLAG_IGNORE_CERT_DATE_INVALID;
+  if (!(verify_flags & MARIADB_TLS_VERIFY_TRUST))
+    dwVerifyFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA;
 
   status = VerifyServerCertificate(cert, store, wserver_name ? wserver_name : L"SERVER_NAME",
     dwRevocationFlags, dwVerifyFlags, errmsg, errmsg_len);

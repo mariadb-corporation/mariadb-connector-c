@@ -18,14 +18,7 @@ extern unsigned char *mysql_net_store_length(unsigned char *packet, ulonglong le
 extern const char *disabled_plugins;
 
 #define hashing(p)  (p->interface_version >= 0x0101 && p->hash_password_bin)
-
-static int set_error_from_tls_self_signed_error(MYSQL *mysql)
-{
-  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-    ER(CR_SSL_CONNECTION_ERROR), mysql->net.tls_self_signed_error);
-  reset_tls_self_signed_error(mysql);
-  return 1;
-}
+#define password_and_hashing(m,p) ((m)->passwd && (m)->passwd[0] && hashing((p)))
 
 typedef struct {
   int (*read_packet)(struct st_plugin_vio *vio, uchar **buf);
@@ -66,6 +59,49 @@ auth_plugin_t mysql_native_password_client_plugin=
   native_password_auth_client,
   native_password_hash
 };
+
+/**
+  Checks if self-signed certificate error should be ignored.
+*/
+static my_bool is_local_connection(MARIADB_PVIO *pvio)
+{
+  const char *hostname= pvio->mysql->host;
+  const char *local_host_names[]= {
+#ifdef _WIN32
+  /*
+   On Unix, we consider TCP connections with "localhost"
+   an insecure transport, for the single reason to run tests for
+   insecure transport on CI.This is artificial, but should be ok.
+   Default client connections use unix sockets anyway, so it
+   would not hurt much.
+
+   On Windows, the situation is quite different.
+   Default connections type is TCP, default host name is "localhost",
+   non-password plugin gssapi is common (every installation)
+   In this environment, there would be a lot of faux/disruptive
+   "self-signed certificates" errors there. Thus, "localhost" TCP
+   needs to be considered secure transport.
+  */
+  "localhost",
+#endif
+  "127.0.0.1", "::1", NULL};
+  int i;
+
+  if (pvio->type != PVIO_TYPE_SOCKET)
+  {
+    return TRUE;
+  }
+  if (!hostname)
+    return FALSE;
+  for (i= 0; local_host_names[i]; i++)
+  {
+    if (strcmp(hostname, local_host_names[i]) == 0)
+    {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 
 static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
@@ -370,6 +406,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   if (mysql->options.use_ssl &&
       (mysql->client_flag & CLIENT_SSL))
   {
+    unsigned int verify_flags= 0;
     /*
       Send mysql->client_flag, max_packet_size - unencrypted otherwise
       the server does not know we want to do SSL
@@ -382,14 +419,30 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                           errno);
       goto error;
     }
+    mysql->net.tls_verify_status = 0;
     if (ma_pvio_start_ssl(mysql->net.pvio))
       goto error;
-    if (mysql->net.tls_self_signed_error &&
-        (!mysql->passwd || !mysql->passwd[0] || !hashing(mpvio->plugin)))
+
+    verify_flags= MARIADB_TLS_VERIFY_PERIOD | MARIADB_TLS_VERIFY_REVOKED;
+    if (have_fingerprint(mysql))
     {
-     /* cannot use auth to validate the cert */
-      set_error_from_tls_self_signed_error(mysql);
-      goto error;
+      verify_flags|= MARIADB_TLS_VERIFY_FINGERPRINT;
+    } else {
+      verify_flags|= MARIADB_TLS_VERIFY_TRUST | MARIADB_TLS_VERIFY_HOST;
+    }
+
+    if (ma_pvio_tls_verify_server_cert(mysql->net.pvio->ctls, verify_flags) > MARIADB_TLS_VERIFY_OK)
+    {
+      if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_TRUST ||
+          (mysql->options.ssl_ca || mysql->options.ssl_capath))
+        goto error;
+
+      if (is_local_connection(mysql->net.pvio))
+      {
+        CLEAR_CLIENT_ERROR(mysql);
+      }
+      else if (!password_and_hashing(mysql, mpvio->plugin))
+        goto error;
     }
   }
 #endif /* HAVE_TLS */
@@ -769,8 +822,14 @@ retry:
       auth_plugin= &dummy_fallback_client_plugin;
 
     /* can we use this plugin with this tls server cert ? */
-    if (mysql->net.tls_self_signed_error && !hashing(auth_plugin))
-      return set_error_from_tls_self_signed_error(mysql);
+    if ((mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_TRUST) &&
+        !password_and_hashing(mysql, auth_plugin))
+    {
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                   ER(CR_SSL_CONNECTION_ERROR),
+                   "Certificate verification failure: The certificate is NOT trusted.");
+      return 1;
+    }
     goto retry;
   }
   /*
@@ -782,7 +841,9 @@ retry:
   if (ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length))
     return -1;
 
-  if (!mysql->net.tls_self_signed_error)
+  if (!mysql->net.tls_verify_status ||
+      ((mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_TRUST) &&
+       is_local_connection(mysql->net.pvio)))
     return 0;
 
   assert(mysql->options.use_ssl);
@@ -824,6 +885,9 @@ retry:
       return 0; /* phew. self-signed certificate is validated! */
   }
 
-  return set_error_from_tls_self_signed_error(mysql);
+  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+               ER(CR_SSL_CONNECTION_ERROR),
+               "Certificate verification failure: The certificate is NOT trusted.");
+  return 1;
 }
 

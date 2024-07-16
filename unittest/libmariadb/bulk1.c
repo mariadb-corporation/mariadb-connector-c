@@ -1106,7 +1106,7 @@ static int bulk_with_unit_result_insert(MYSQL *my)
   stmt= mysql_stmt_init(mysql);
   mysql_options(mysql, MARIADB_OPT_BULK_UNIT_RESULTS, &unique_result);
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
-                              port, socketname, 0), mysql_error(mysql));
+                              port, socketname, 0, 1), mysql_error(mysql));
   mysql_get_option(mysql, MARIADB_OPT_BULK_UNIT_RESULTS, &bool_val);
   FAIL_UNLESS(bool_val, "bool_val != true");
 
@@ -1223,7 +1223,7 @@ static int bulk_with_unit_result_delete(MYSQL *my)
   stmt= mysql_stmt_init(mysql);
   mysql_options(mysql, MARIADB_OPT_BULK_UNIT_RESULTS, &unique_result);
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
-                              port, socketname, 0), mysql_error(mysql));
+                              port, socketname, 0, 1), mysql_error(mysql));
 
   if (!bulk_enabled)
     return SKIP;
@@ -1331,7 +1331,7 @@ static int bulk_with_unit_result_update(MYSQL *my)
 
   mysql_options(mysql, MARIADB_OPT_BULK_UNIT_RESULTS, &unique_result);
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
-                              port, socketname, 0), mysql_error(mysql));
+                              port, socketname, 0, 1), mysql_error(mysql));
 
   if (!bulk_enabled)
     return SKIP;

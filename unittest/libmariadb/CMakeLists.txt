@@ -19,12 +19,14 @@ ENDIF()
 
 ENABLE_TESTING()
 
+find_package (Python3 COMPONENTS Interpreter)
 
 INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${CC_BINARY_DIR}/include
                     ${CC_SOURCE_DIR}/unittest/mytap
                     ${CC_SOURCE_DIR}/unittest/libmariadb)
 ADD_DEFINITIONS(-DLIBMARIADB)
+
 
 SET(API_TESTS "conc336" "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2")
 IF(WITH_DYNCOL)
@@ -50,6 +52,15 @@ ENDIF()
 
 ADD_LIBRARY(ma_getopt ma_getopt.c)
 
+IF(${Python3_FOUND})
+  CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/tls.c.in
+                 ${CC_BINARY_DIR}/unittest/libmariadb/tls.c)
+
+  ADD_EXECUTABLE(tls ${CC_BINARY_DIR}/unittest/libmariadb/tls.c)
+  TARGET_LINK_LIBRARIES(tls cctap ma_getopt mariadbclient)
+  ADD_TEST(tls ${EXECUTABLE_OUTPUT_PATH}/tls)
+ENDIF()
+
 FOREACH(API_TEST ${API_TESTS})
   IF (NOT TARGET ${API_TEST})
     ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
@@ -63,7 +74,17 @@ FOREACH(API_TEST ${API_TESTS})
   ENDIF()
 ENDFOREACH(API_TEST)
 
+
 FOREACH(API_TEST ${MANUAL_TESTS})
   ADD_EXECUTABLE(${API_TEST} ${API_TEST}.c)
   TARGET_LINK_LIBRARIES(${API_TEST} cctap ma_getopt mariadbclient)
 ENDFOREACH()
+
+SET(ADDITIONAL_FILES "tls_server.py" "certs/server-cert.pem"
+                     "certs/server-cert.crl" "certs/server-key.pem" "certs/cacert.pem")
+FOREACH(FILE ${ADDITIONAL_FILES})
+  CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/${FILE}
+                 ${CC_BINARY_DIR}/unittest/libmariadb/${FILE}
+                 COPYONLY)
+ENDFOREACH()
+

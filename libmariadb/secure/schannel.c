@@ -32,6 +32,8 @@ char tls_library_version[] = "Schannel";
 #define PROT_TLS1_2 4
 #define PROT_TLS1_3 8
 
+static int ma_check_peer_cert_time(MARIADB_TLS *ctls);
+
 static struct
 {
   DWORD cipher_id;
@@ -374,7 +376,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   ALG_ID AlgId[MAX_ALG_ID];
   size_t i;
   DWORD protocol = 0;
-  int verify_certs;
   const CERT_CONTEXT* cert_context = NULL;
 
   if (!ctls)
@@ -448,14 +449,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (ma_schannel_client_handshake(ctls) != SEC_E_OK)
     goto end;
 
-  verify_certs =  mysql->options.ssl_ca || mysql->options.ssl_capath ||
-     !mysql->options.extension->tls_allow_invalid_server_cert;
-
-  if (verify_certs)
-  {
-    if (!ma_schannel_verify_certs(ctls, !mysql->options.extension->tls_allow_invalid_server_cert))
-      goto end;
-  }
   rc = 0;
 
 end:
@@ -516,10 +509,34 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
 }
 /* }}} */
 
-int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
+int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
 {
-  /* Done elsewhere */
-  return 0;
+  MYSQL *mysql;
+  SC_CTX *sctx;
+  if (!ctls || !ctls->ssl || !ctls->pvio || !ctls->pvio->mysql)
+    return 1;
+
+  sctx= (SC_CTX *)ctls->ssl; 
+  mysql= ctls->pvio->mysql;
+
+  if (verify_flags & MARIADB_TLS_VERIFY_PERIOD)
+  {
+    if (ma_check_peer_cert_time(ctls))
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
+      return 1;
+    }
+  }
+
+  if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
+  {
+    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
+    {
+      mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_FINGERPRINT;
+      return 1;
+    }
+  }
+  return ma_schannel_verify_certs(ctls, verify_flags);
 }
 
 static const char *cipher_name(const SecPkgContext_CipherInfo *CipherInfo)
@@ -566,6 +583,34 @@ unsigned char *ma_cert_blob_to_str(PCERT_NAME_BLOB cnblob)
   return str;
 }
 
+static int ma_check_peer_cert_time(MARIADB_TLS *ctls)
+{
+  PCCERT_CONTEXT pCertCtx= NULL;
+  SC_CTX *sctx;
+  PCERT_INFO pci= NULL;
+  FILETIME ft;
+  SYSTEMTIME st;
+
+  if (!ctls || !ctls->ssl || !ctls->pvio || !ctls->pvio->mysql)
+    return 1;
+  
+  sctx= (SC_CTX *)ctls->ssl;
+
+  if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pCertCtx) != SEC_E_OK)
+    return 1;
+
+  pci= pCertCtx->pCertInfo;
+
+  GetSystemTime(&st);
+  SystemTimeToFileTime(&st, &ft);
+
+  if (CompareFileTime(&ft, &pci->NotBefore) == -1 ||
+      CompareFileTime(&pci->NotAfter, &ft) == -1)
+    return 1;
+
+  return 0;
+}
+
 static void ma_systime_to_tm(SYSTEMTIME sys_tm, struct tm *tm)
 {
   memset(tm, 0, sizeof(struct tm));
@@ -576,38 +621,58 @@ static void ma_systime_to_tm(SYSTEMTIME sys_tm, struct tm *tm)
   tm->tm_min = sys_tm.wMinute;
 }
 
-unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls)
+unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int hash_size)
 {
   PCCERT_CONTEXT pCertCtx= NULL;
-  SC_CTX *sctx= (SC_CTX *)ctls->ssl;
+  SC_CTX *sctx;
   PCERT_INFO pci= NULL;
   DWORD size´= 0;
   SYSTEMTIME tm;
-  char fp[33];
+  char fp[129];
+  unsigned int hash_alg;
 
-  if (!ctls || !sctx)
+  if (!ctls || !ctls->ssl || !ctls->pvio || !ctls->pvio->mysql)
     return 1;
+
+  sctx= (SC_CTX *)ctls->ssl;
+
+  switch (hash_size) {
+    case 0:
+    case 256:
+      hash_alg= MA_HASH_SHA256;
+      break;
+    case 384:
+      hash_alg= MA_HASH_SHA384;
+      break;
+    case 512:
+      hash_alg= MA_HASH_SHA512;
+      break;
+    default:
+      my_set_error(ctls->pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                   ER(CR_SSL_CONNECTION_ERROR),
+                   "Cannot detect hash algorithm for fingerprint verification");
+      return 1;
+  }
 
   /* Did we already read peer cert information ? */
-  if (ctls->cert_info.version)
-    return 0;
+  if (!ctls->cert_info.version)
+  {
+    if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pCertCtx) != SEC_E_OK)
+      return 1;
 
-  if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pCertCtx) != SEC_E_OK)
-    return 1;
+    pci= pCertCtx->pCertInfo;
 
-  pci= pCertCtx->pCertInfo;
+    ctls->cert_info.version= pci->dwVersion;
+    ctls->cert_info.subject = ma_cert_blob_to_str(&pci->Subject);
+    ctls->cert_info.issuer = ma_cert_blob_to_str(&pci->Issuer);
 
-  ctls->cert_info.version= pci->dwVersion;
-  ctls->cert_info.subject = ma_cert_blob_to_str(&pci->Subject);
-  ctls->cert_info.issuer = ma_cert_blob_to_str(&pci->Issuer);
-
-  FileTimeToSystemTime(&pci->NotBefore, &tm);
-  ma_systime_to_tm(tm, &ctls->cert_info.not_before);
-  FileTimeToSystemTime(&pci->NotAfter, &tm);
-  ma_systime_to_tm(tm, &ctls->cert_info.not_after);
-
-  ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, 33);
-  mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
+    FileTimeToSystemTime(&pci->NotBefore, &tm);
+    ma_systime_to_tm(tm, &ctls->cert_info.not_before);
+    FileTimeToSystemTime(&pci->NotAfter, &tm);
+    ma_systime_to_tm(tm, &ctls->cert_info.not_after);
+  }
+  ma_tls_get_finger_print(ctls, hash_alg, fp, sizeof(fp));
+  mysql_hex_string(ctls->cert_info.fingerprint, fp, (unsigned long)ma_hash_digest_size(hash_alg));
 
   return 0; 
 }

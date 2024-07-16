@@ -482,10 +482,10 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
 }
 /* }}} */
 #include "win32_errmsg.h"
-my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls, BOOL verify_server_name)
+unsigned int ma_schannel_verify_certs(MARIADB_TLS *ctls, unsigned int verify_flags)
 {
   SECURITY_STATUS status;
-
+  unsigned int verify_status = MARIADB_TLS_VERIFY_ERROR;
   MARIADB_PVIO *pvio= ctls->pvio;
   MYSQL *mysql= pvio->mysql;
   SC_CTX *sctx = (SC_CTX *)ctls->ssl;
@@ -497,6 +497,12 @@ my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls, BOOL verify_server_name)
   char errmsg[256];
   HCERTSTORE store= NULL;
   int ret= 0;
+
+  if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
+  {
+    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
+      return MARIADB_TLS_VERIFY_FINGERPRINT;
+  }
 
   status = schannel_create_store(ca_file, ca_path, crl_file, crl_path, &store, errmsg, sizeof(errmsg));
   if(status)
@@ -513,33 +519,48 @@ my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls, BOOL verify_server_name)
   status = schannel_verify_server_certificate(
       pServerCert,
       store,
-      crl_file != 0 || crl_path != 0,
       mysql->host,
-      verify_server_name,
+      verify_flags,
       errmsg, sizeof(errmsg));
 
   if (status)
     goto end;
+
+  verify_status= MARIADB_TLS_VERIFY_OK;
 
   ret= 1;
 
 end:
   if (!ret)
   {
-    /* postpone the error for self signed certificates if CA isn't set */
-    if (status == CERT_E_UNTRUSTEDROOT && !ca_file && !ca_path)
-    {
-      mysql->net.tls_self_signed_error= strdup(errmsg);
-      ret= 1;
+    switch (status) {
+      case CERT_E_UNTRUSTEDROOT:
+        if ((verify_flags & MARIADB_TLS_VERIFY_TRUST))
+        {
+          mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_TRUST;
+        }
+        break;
+      case CERT_E_EXPIRED:
+        mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
+        break;
+      case CRYPT_E_REVOKED:
+        mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_REVOKED;
+        break;
+      case CERT_E_INVALID_NAME:
+      case CERT_E_CN_NO_MATCH:
+        mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+        break;
+      default:
+        mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
+        break;
     }
-    else
-     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);
+    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);
   }
   if (pServerCert)
     CertFreeCertificateContext(pServerCert);
   if(store)
     schannel_free_store(store);
-  return ret;
+  return verify_status;
 }
 
 

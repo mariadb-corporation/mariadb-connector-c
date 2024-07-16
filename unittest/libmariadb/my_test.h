@@ -219,12 +219,13 @@ MYSQL *my_test_connect(MYSQL *mysql,
                        const char *db,
                        unsigned int port,
                        const char *unix_socket,
-                       unsigned long clientflag);
+                       unsigned long clientflag,
+                       my_bool auto_fingerprint);
 
 static const char *schema = 0;
 static char *hostname = 0;
 static char *password = 0;
-static char fingerprint[65]= {0};
+static char fingerprint[129]= {0};
 static unsigned int port = 0;
 static unsigned int ssl_port = 0;
 static char *socketname = 0;
@@ -542,7 +543,7 @@ MYSQL *test_connect(struct my_tests_st *test)
     }
   }
   if (!(my_test_connect(mysql, hostname, username, password,
-                           schema, port, socketname, (test) ? test->connect_flags:0)))
+                           schema, port, socketname, (test) ? test->connect_flags:0, 1)))
   {
     diag("Couldn't establish connection to server %s. Error (%d): %s", 
                    hostname, mysql_errno(mysql), mysql_error(mysql));
@@ -654,12 +655,18 @@ MYSQL *my_test_connect(MYSQL *mysql,
                        const char *db,
                        unsigned int port,
                        const char *unix_socket,
-                       unsigned long clientflag)
+                       unsigned long clientflag,
+                       my_bool auto_fingerprint)
 {
+  char *have_fp;
   if (force_tls)
     mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
-  if (fingerprint[0])
+  mysql_get_optionv(mysql, MARIADB_OPT_SSL_FP, &have_fp);
+  if (fingerprint[0] && auto_fingerprint)
+  {
+    printf("setting fingerprint\n");
     mysql_options(mysql, MARIADB_OPT_SSL_FP, fingerprint);
+  }
   if (!mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag))
   {
     diag("error: %s", mysql_error(mysql));
@@ -712,11 +719,12 @@ void run_tests(struct my_tests_st *test) {
     mysql_free_result(res);
     if (mysql_get_ssl_cipher(mysql))
       diag("Cipher in use: %s", mysql_get_ssl_cipher(mysql));
-    mariadb_get_infov(mysql, MARIADB_TLS_PEER_CERT_INFO, &info);
+    mariadb_get_infov(mysql, MARIADB_TLS_PEER_CERT_INFO, &info, 384);
     if (info)
     {
       strcpy(fingerprint, info->fingerprint);
       diag("Peer certificate fingerprint: %s", fingerprint);
+      diag("Subject: %s", info->subject);
       diag("--------------------");
     }
   }

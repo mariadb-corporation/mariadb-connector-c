@@ -43,6 +43,11 @@
 #include <windows.h>
 #include <sspi.h>
 
+#include <ma_global.h>
+#include <ma_sys.h>
+#include <ma_pvio.h>
+#include <ma_tls.h>
+
 #define SC_IO_BUFFER_SIZE 0x4000
 
 
@@ -75,7 +80,7 @@ extern my_bool ca_Check, crl_Check;
 SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls);
 SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRead, SecBuffer *pExtraData);
 
-my_bool ma_schannel_verify_certs(MARIADB_TLS *ctls, BOOL verify_server_name);
+unsigned int ma_schannel_verify_certs(MARIADB_TLS *ctls, unsigned int verify_flags);
 ssize_t ma_schannel_write_encrypt(MARIADB_PVIO *pvio,
                                  uchar *WriteBuffer,
                                  size_t WriteBufferSize);

@@ -297,10 +297,10 @@ typedef struct st_net {
   unsigned char reading_or_writing;
   char save_char;
   char unused_1;
-  my_bool unused_2;
+  my_bool tls_verify_status;
   my_bool compress;
-  my_bool unused_3;
-  const char *tls_self_signed_error;
+  my_bool unused_2;
+  char *unused_3;
   unsigned int last_errno;
   unsigned char error;
   my_bool unused_5;

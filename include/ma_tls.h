@@ -21,6 +21,12 @@ enum enum_pvio_tls_type {
 #define PROTOCOL_MAX PROTOCOL_TLS_1_3
 
 #define TLS_VERSION_LENGTH 64
+
+#define have_fingerprint(m) \
+((m)->options.extension) && \
+(((m)->options.extension->tls_fp && (m)->options.extension->tls_fp[0]) ||\
+((m)->options.extension->tls_fp_list && (m)->options.extension->tls_fp_list[0]))
+
 extern char tls_library_version[TLS_VERSION_LENGTH];
 
 typedef struct st_ma_pvio_tls {
@@ -111,11 +117,12 @@ my_bool ma_tls_close(MARIADB_TLS *ctls);
    validation check of server certificate
    Parameter:
      MARIADB_TLS  MariaDB SSL container
+     flags        verification flags
    Returns:
-     ß            success
+     0            success
      1            error
 */
-int ma_tls_verify_server_cert(MARIADB_TLS *ctls);
+int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags);
 
 /* ma_tls_get_cipher
    returns cipher for current ssl connection
@@ -134,6 +141,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ssl);
      hash_type    hash_type as defined in ma_hash.h
      fp           buffer for fingerprint
      fp_len       buffer length
+     my_bool      verify_period
 
    Returns:
      actual size of finger print
@@ -150,7 +158,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
 int ma_tls_get_protocol_version(MARIADB_TLS *ctls);
 const char *ma_pvio_tls_get_protocol_version(MARIADB_TLS *ctls);
 int ma_pvio_tls_get_protocol_version_id(MARIADB_TLS *ctls);
-unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls);
+unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size);
 void ma_tls_set_connection(MYSQL *mysql);
 
 /* Function prototypes */
@@ -159,12 +167,12 @@ my_bool ma_pvio_tls_connect(MARIADB_TLS *ctls);
 ssize_t ma_pvio_tls_read(MARIADB_TLS *ctls, const uchar *buffer, size_t length);
 ssize_t ma_pvio_tls_write(MARIADB_TLS *ctls, const uchar *buffer, size_t length);
 my_bool ma_pvio_tls_close(MARIADB_TLS *ctls);
-int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls);
+int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags);
 const char *ma_pvio_tls_cipher(MARIADB_TLS *ctls);
 my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list);
 my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
 void ma_pvio_tls_set_connection(MYSQL *mysql);
 void ma_pvio_tls_end();
-unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls);
+unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size);
 
 #endif /* _ma_tls_h_ */

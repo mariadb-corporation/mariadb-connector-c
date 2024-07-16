@@ -33,6 +33,7 @@
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #include <time.h>
 #endif
+#include <ma_crypt.h>
 
 #if defined(_WIN32) && !defined(_OPENSSL_Applink) && defined(HAVE_OPENSSL_APPLINK_C)
 #include <openssl/applink.c>
@@ -87,6 +88,7 @@ static int ma_bio_write(BIO *h, const char *buf, int size);
 static BIO_METHOD ma_BIO_method;
 #endif
 
+static int ma_verification_callback(int preverify_ok, X509_STORE_CTX *ctx);
 
 static long ma_tls_version_options(const char *version)
 {
@@ -459,55 +461,70 @@ error:
   return NULL;
 }
 
-unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls)
+unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, uint hash_size)
 {
   X509 *cert;
+  unsigned int hash_alg;
   SSL *ssl;
+  char fp[129];
+
+  switch (hash_size) {
+    case 0:
+    case 256:
+      hash_alg= MA_HASH_SHA256;
+      break;
+    case 384:
+      hash_alg= MA_HASH_SHA384;
+      break;
+    case 512:
+      hash_alg= MA_HASH_SHA512;
+      break;
+    default:
+      return 1;
+  }
 
   if (!ctls || !ctls->ssl)
     return 1;
 
-  /* Did we already read peer cert information ? */
-  if (ctls->cert_info.version)
-    return 0;
-
   ssl= (SSL *)ctls->ssl;
 
   /* Store peer certificate information */
-  if ((cert= SSL_get_peer_certificate(ssl)))
+  if (!ctls->cert_info.version)
   {
-    char fp[33];
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-    const ASN1_TIME *not_before= X509_get0_notBefore(cert),
-                    *not_after= X509_get0_notAfter(cert);
-    ASN1_TIME_to_tm(not_before, (struct tm *)&ctls->cert_info.not_before);
-    ASN1_TIME_to_tm(not_after, (struct tm *)&ctls->cert_info.not_after);
-#else
-    const ASN1_TIME *not_before= X509_get_notBefore(cert),
-                    *not_after= X509_get_notAfter(cert);
-    time_t  now, from, to;
-    int pday, psec;
-    /* ANS1_TIME_diff returns days and seconds between now and the
-       specified ASN1_TIME */
-    time(&now);
-    ASN1_TIME_diff(&pday, &psec, not_before, NULL);
-    from= now - (pday * 86400 + psec);
-    gmtime_r(&from, &ctls->cert_info.not_before);
-    ASN1_TIME_diff(&pday, &psec, NULL, not_after);
-    to= now + (pday * 86400 + psec);
-    gmtime_r(&to, &ctls->cert_info.not_after);
-#endif
-    ctls->cert_info.subject= X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
-    ctls->cert_info.issuer= X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
-    ctls->cert_info.version= X509_get_version(cert) + 1;
-
-    ma_tls_get_finger_print(ctls, MA_HASH_SHA256, fp, 33);
-    mysql_hex_string(ctls->cert_info.fingerprint, fp, 32);
-
-    X509_free(cert);
-    return 0;
+    if ((cert= SSL_get_peer_certificate(ssl)))
+    {
+  #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+      const ASN1_TIME *not_before= X509_get0_notBefore(cert),
+                      *not_after= X509_get0_notAfter(cert);
+      ASN1_TIME_to_tm(not_before, (struct tm *)&ctls->cert_info.not_before);
+      ASN1_TIME_to_tm(not_after, (struct tm *)&ctls->cert_info.not_after);
+  #else
+      const ASN1_TIME *not_before= X509_get_notBefore(cert),
+                      *not_after= X509_get_notAfter(cert);
+      time_t  now, from, to;
+      int pday, psec;
+      /* ANS1_TIME_diff returns days and seconds between now and the
+         specified ASN1_TIME */
+      time(&now);
+      ASN1_TIME_diff(&pday, &psec, not_before, NULL);
+      from= now - (pday * 86400 + psec);
+      gmtime_r(&from, &ctls->cert_info.not_before);
+      ASN1_TIME_diff(&pday, &psec, NULL, not_after);
+      to= now + (pday * 86400 + psec);
+      gmtime_r(&to, &ctls->cert_info.not_after);
+  #endif
+      ctls->cert_info.subject= X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
+      ctls->cert_info.issuer= X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
+      ctls->cert_info.version= X509_get_version(cert) + 1;
+      X509_free(cert);
+    }
+    else
+      return 1;
   }
-  return 1;
+  ma_tls_get_finger_print(ctls, hash_alg, fp, sizeof(fp));
+  mysql_hex_string(ctls->cert_info.fingerprint, fp, (unsigned long)ma_hash_digest_size(hash_alg));
+
+  return 0;
 }
 
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
@@ -539,6 +556,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 #else
   SSL_set_fd(ssl, (int)mysql_get_socket(mysql));
 #endif
+  if (!mysql->options.extension->tls_allow_invalid_server_cert)
+    SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
 
   while (try_connect && (rc= SSL_connect(ssl)) == -1)
   {
@@ -556,31 +575,12 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     }
   }
 
-  /* In case handshake failed or if a root certificate (ca) was specified,
-     we need to check the result code of X509 verification. A detailed check
-     of the peer certificate (hostname checking will follow later) */
-  if (rc != 1 || !mysql->options.extension->tls_allow_invalid_server_cert ||
-      mysql->options.ssl_ca || mysql->options.ssl_capath)
+  if (rc != 1)
   {
-    long x509_err= SSL_get_verify_result(ssl);
-    if ((x509_err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT ||
-         x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN) && rc == 1 &&
-        !mysql->options.ssl_ca && !mysql->options.ssl_capath)
-      mysql->net.tls_self_signed_error= X509_verify_cert_error_string(x509_err);
-    else if (x509_err != X509_V_OK)
-    {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                   ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(x509_err));
-      /* restore blocking mode */
-      if (!blocking)
-        pvio->methods->blocking(pvio, FALSE, 0);
-
-      return 1;
-    } else if (rc != 1) {
-      ma_tls_set_error(mysql);
-      return 1;
-    }
+    ma_tls_set_error(mysql);
+    return 1;
   }
+
   pvio->ctls->ssl= ctls->ssl= (void *)ssl;
 
   return 0;
@@ -714,9 +714,40 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
   return rc;
 }
 
-int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
+/** Check for possible errors, and store the result in net.tls_verify_status.
+    verification will happen after handshake by ma_tls_verify_server_cert().
+    To retrieve all errors, this callback function returns always true.
+    (By default OpenSSL stops verification after first error
+*/
+static int ma_verification_callback(int preverify_ok __attribute__((unused)), X509_STORE_CTX *ctx)
 {
-  X509 *cert;
+  SSL *ssl;
+
+  int x509_err= X509_STORE_CTX_get_error(ctx);
+
+  if ((ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx())))
+  {
+    MYSQL *mysql= (MYSQL *)SSL_get_app_data(ssl);
+
+    if ((x509_err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT ||
+         x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN))
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_TRUST;
+    else if (x509_err == X509_V_ERR_CERT_REVOKED)
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_REVOKED;
+    else if (x509_err == X509_V_ERR_CERT_NOT_YET_VALID ||
+            x509_err == X509_V_ERR_CERT_HAS_EXPIRED)
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
+    else if (x509_err != X509_V_OK)
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_UNKNOWN;
+  }
+
+  /* continue verification */
+  return 1;
+}
+
+int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
+{
+  X509 *cert= NULL;
   MYSQL *mysql;
   SSL *ssl;
   MARIADB_PVIO *pvio;
@@ -734,52 +765,97 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
 
-  if (!mysql->host)
+  if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
   {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                    ER(CR_SSL_CONNECTION_ERROR), "Invalid (empty) hostname");
+    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
+    {
+      mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_FINGERPRINT;
+      return 1;
+    }
+
+    /* if certificates are valid and no revocation error occured,
+       we can return */
+    if (!(mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_PERIOD) &&
+        !(mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_REVOKED))
+    {
+      mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_OK;
+      return 0;
+    }
+  }
+
+  if (mysql->net.tls_verify_status & verify_flags)
+  {
     return 1;
   }
 
-  if (!(cert= SSL_get_peer_certificate(ssl)))
+  if (verify_flags & MARIADB_TLS_VERIFY_HOST)
   {
-    pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                    ER(CR_SSL_CONNECTION_ERROR), "Unable to get server certificate");
-    return 1;
+    if (!mysql->host)
+    {
+      pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                      ER(CR_SSL_CONNECTION_ERROR), "Invalid (empty) hostname");
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      return MARIADB_TLS_VERIFY_ERROR;
+    }
+
+    if (!(cert= SSL_get_peer_certificate(ssl)))
+    {
+      pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                      ER(CR_SSL_CONNECTION_ERROR), "Unable to get server certificate");
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      return MARIADB_TLS_VERIFY_ERROR;
+    }
+
+  #ifdef HAVE_OPENSSL_CHECK_HOST
+    if (X509_check_host(cert, mysql->host, strlen(mysql->host), 0, 0) != 1
+       && X509_check_ip_asc(cert, mysql->host, 0) != 1)
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      goto error;
+    }
+  #else
+    x509sn= X509_get_subject_name(cert);
+
+    if ((cn_pos= X509_NAME_get_index_by_NID(x509sn, NID_commonName, -1)) < 0)
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      goto error;
+    }
+
+    if (!(cn_entry= X509_NAME_get_entry(x509sn, cn_pos)))
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      goto error;
+    }
+
+    if (!(cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry)))
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      goto error;
+    }
+
+    cn_str = (char *)ASN1_STRING_data(cn_asn1);
+
+    /* Make sure there is no embedded \0 in the CN */
+    if ((size_t)ASN1_STRING_length(cn_asn1) != strlen(cn_str))
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      goto error;
+    }
+
+    if (strcmp(cn_str, mysql->host))
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      goto error;
+    }
+  #endif
+    X509_free(cert);
   }
-#ifdef HAVE_OPENSSL_CHECK_HOST
-  if (X509_check_host(cert, mysql->host, strlen(mysql->host), 0, 0) != 1
-     && X509_check_ip_asc(cert, mysql->host, 0) != 1)
-    goto error;
-#else
-  x509sn= X509_get_subject_name(cert);
-
-  if ((cn_pos= X509_NAME_get_index_by_NID(x509sn, NID_commonName, -1)) < 0)
-    goto error;
-
-  if (!(cn_entry= X509_NAME_get_entry(x509sn, cn_pos)))
-    goto error;
-
-  if (!(cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry)))
-    goto error;
-
-  cn_str = (char *)ASN1_STRING_data(cn_asn1);
-
-  /* Make sure there is no embedded \0 in the CN */
-  if ((size_t)ASN1_STRING_length(cn_asn1) != strlen(cn_str))
-    goto error;
-
-  if (strcmp(cn_str, mysql->host))
-    goto error;
-#endif
-  X509_free(cert);
-
   return 0;
 error:
-  X509_free(cert);
+  if (cert)
+    X509_free(cert);
 
-  pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                  ER(CR_SSL_CONNECTION_ERROR), "Validation of SSL server certificate failed");
   return 1;
 }
 
@@ -854,7 +930,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
                         "invalid finger print of server certificate");
     goto end;
   }
-  
+
   X509_free(cert);
   return (fp_len);
 end:  

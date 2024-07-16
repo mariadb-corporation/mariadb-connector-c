@@ -1295,7 +1295,7 @@ mysql_init(MYSQL *mysql)
   }
   else
   {
-    memset((char*) (mysql), 0, sizeof(*(mysql)));
+    memset(mysql, 0, sizeof(MYSQL));
     mysql->net.pvio= 0;
     mysql->free_me= 0;
     mysql->net.extension= 0;
@@ -1462,7 +1462,7 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->options.extension || !mysql->options.extension->status_callback)
     mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, NULL, NULL);
 
-  reset_tls_self_signed_error(mysql);
+  reset_tls_error(mysql);
 
   /* if host contains a semicolon, we need to parse connection string */
   if (host && strchr(host, ';'))
@@ -2468,7 +2468,7 @@ mysql_close(MYSQL *mysql)
     mysql_close_memory(mysql);
     mysql_close_options(mysql);
     ma_clear_session_state(mysql);
-    reset_tls_self_signed_error(mysql);
+    reset_tls_error(mysql);
 
     if (mysql->net.extension)
     {
@@ -4542,11 +4542,17 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
   case MARIADB_TLS_PEER_CERT_INFO:
     if (mysql->net.pvio->ctls)
     {
-      if (!ma_pvio_tls_get_peer_cert_info(mysql->net.pvio->ctls))
+      unsigned int size;
+
+      size= va_arg(ap, unsigned int);
+      if (!ma_pvio_tls_get_peer_cert_info(mysql->net.pvio->ctls, size))
         *((MARIADB_X509_INFO **)arg)= (MARIADB_X509_INFO *)&mysql->net.pvio->ctls->cert_info;
       return 0;
     }
     *((MARIADB_X509_INFO **)arg)= NULL;
+    break;
+  case MARIADB_TLS_VERIFY_STATUS:
+    *((unsigned int *)arg)= (unsigned int)mysql->net.tls_verify_status;
     break;
 #endif
   case MARIADB_MAX_ALLOWED_PACKET:

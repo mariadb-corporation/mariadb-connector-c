@@ -63,7 +63,7 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_IF(!(my_test_connect(mysql, hostname, username, password,
-                           schema, port, socketname, 0)), "my_test_connect failed");
+                           schema, port, socketname, 0, 1)), "my_test_connect failed");
 
   /* 1. Status is inited, so prepare should work */
 
@@ -845,7 +845,7 @@ static int test_prepare_alter(MYSQL *mysql)
   mysql_new= mysql_init(NULL);
   FAIL_IF(!mysql_new, "mysql_init failed");
   FAIL_IF(!(my_test_connect(mysql_new, hostname, username, password,
-                           schema, port, socketname, 0)), "my_test_connect failed");
+                           schema, port, socketname, 0, 1)), "my_test_connect failed");
   rc= mysql_query(mysql_new, "ALTER TABLE test_prep_alter change id id_new varchar(20)");
   diag("Error: %d %s", mysql_errno(mysql_new), mysql_error(mysql_new));
   check_mysql_rc(rc, mysql_new);

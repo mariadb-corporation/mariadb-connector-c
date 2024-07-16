@@ -300,6 +300,7 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_CONNECTION_BYTES_READ,
     MARIADB_CONNECTION_BYTES_SENT,
     MARIADB_TLS_PEER_CERT_INFO,
+    MARIADB_TLS_VERIFY_STATUS
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -448,6 +449,16 @@ typedef struct st_mysql_time
 #define MYSQL_WAIT_EXCEPT    4
 #define MYSQL_WAIT_TIMEOUT   8
 
+#define MARIADB_TLS_VERIFY_OK                  0
+#define MARIADB_TLS_VERIFY_TRUST               1
+#define MARIADB_TLS_VERIFY_HOST                2
+#define MARIADB_TLS_VERIFY_PERIOD              4
+#define MARIADB_TLS_VERIFY_FINGERPRINT         8
+#define MARIADB_TLS_VERIFY_REVOKED            16
+#define MARIADB_TLS_VERIFY_UNKNOWN            32
+#define MARIADB_TLS_VERIFY_ERROR             128  /* last */
+
+
 typedef struct character_set
 {
   unsigned int      number;     /* character set number              */
@@ -497,7 +508,7 @@ typedef struct
   int version;
   char *issuer;
   char *subject;
-  char fingerprint[65];
+  char fingerprint[129];
   struct tm not_before;
   struct tm not_after;
 } MARIADB_X509_INFO;
