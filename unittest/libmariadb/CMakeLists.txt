@@ -19,7 +19,14 @@ ENDIF()
 
 ENABLE_TESTING()
 
-find_package (Python3 COMPONENTS Interpreter)
+IF(WIN32 AND DEFINED ENV{TRAVIS})
+  SET(Python3_EXECUTABLE c:/python312/python.exe)
+  SET(Python3_FOUND TRUE)
+ELSE()
+  # Always use highest version number
+  set(Python3_FIND_STRATEGY VERSION)
+  find_package (Python3 COMPONENTS Interpreter)
+ENDIF()
 
 INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${CC_BINARY_DIR}/include
