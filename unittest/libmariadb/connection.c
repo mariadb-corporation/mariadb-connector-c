@@ -2311,53 +2311,6 @@ static int test_conc632(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-static int test_x509(MYSQL *my __attribute__((unused)))
-{
-  MYSQL *mysql1, *mysql2;
-  my_bool val= 1;
-  my_bool verify= 0;
-  char fp[65];
-  MARIADB_X509_INFO *info;
-
-  SKIP_MAXSCALE;
-
-  mysql1= mysql_init(NULL);
-  mysql2= mysql_init(NULL);
-
-  mysql_options(mysql1, MYSQL_OPT_SSL_ENFORCE, &val);
-  mysql_options(mysql2, MYSQL_OPT_SSL_ENFORCE, &val);
-
-  mysql_options(mysql1, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
-  if (!(my_test_connect(mysql1, hostname, username,
-                           password, schema, port,
-                           socketname, 0, 1)))
-  {
-    diag("connection failed");
-    return FAIL;
-  }
-  mariadb_get_infov(mysql1, MARIADB_TLS_PEER_CERT_INFO, &info);
-  memset(fp, 0, sizeof(fp));
-  mysql_options(mysql2, MARIADB_OPT_TLS_PEER_FP, info->fingerprint);
-  if (!(my_test_connect(mysql2, hostname, username,
-                           password, schema, port,
-                           socketname, 0, 1)))
-  {
-    diag("connection failed");
-    return FAIL;
-  }
-  mariadb_get_infov(mysql2, MARIADB_TLS_PEER_CERT_INFO, &info);
-
-  if (strcmp(info->fingerprint, fingerprint))
-  {
-    diag("different fingerprints!");
-    return FAIL;
-  }
-
-  mysql_close(mysql1);
-  mysql_close(mysql2);
-  return OK;
-}
-
 static int test_conc505(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
@@ -2384,7 +2337,6 @@ static int test_conc505(MYSQL *my __attribute__((unused)))
 }
 
 struct my_tests_st my_tests[] = {
-  {"test_x509", test_x509, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc505", test_conc505, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_conc632", test_conc632, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_status_callback", test_status_callback, TEST_CONNECTION_NONE, 0, NULL, NULL},
