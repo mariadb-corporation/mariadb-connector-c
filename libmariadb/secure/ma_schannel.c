@@ -498,12 +498,6 @@ unsigned int ma_schannel_verify_certs(MARIADB_TLS *ctls, unsigned int verify_fla
   HCERTSTORE store= NULL;
   int ret= 0;
 
-  if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
-  {
-    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
-      return MARIADB_TLS_VERIFY_FINGERPRINT;
-  }
-
   status = schannel_create_store(ca_file, ca_path, crl_file, crl_path, &store, errmsg, sizeof(errmsg));
   if(status)
     goto end;
@@ -551,7 +545,7 @@ end:
         mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
         break;
       default:
-        mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
+        mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_UNKNOWN;
         break;
     }
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);

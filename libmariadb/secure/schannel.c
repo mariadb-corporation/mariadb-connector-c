@@ -662,7 +662,7 @@ unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int hash_size
 
     pci= pCertCtx->pCertInfo;
 
-    ctls->cert_info.version= pci->dwVersion;
+    ctls->cert_info.version= pci->dwVersion + 1;
     ctls->cert_info.subject = ma_cert_blob_to_str(&pci->Subject);
     ctls->cert_info.issuer = ma_cert_blob_to_str(&pci->Issuer);
 
