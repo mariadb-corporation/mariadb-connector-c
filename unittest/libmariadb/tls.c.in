@@ -447,7 +447,7 @@ static int test_pw_check(MYSQL *my)
   char query[1024];
   int ret= FAIL;
 
-  /* connect with pasword */
+  /* connect with password */
   sprintf(query, "CREATE OR REPLACE USER '%s'@'%s' IDENTIFIED BY '%s'", "tlsuser", this_host, "mypw");
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
@@ -455,8 +455,11 @@ static int test_pw_check(MYSQL *my)
   diag("expected to pass with self signed");
   if (!my_test_connect(mysql, hostname, "tlsuser", "mypw", NULL, port, socketname, 0, 0))
   {
-    diag("Error (password + self signed)");
-    goto end;
+    /* We connected to a pre 11.4 server, so skip further tests */
+    CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_TRUST, "trust validation flag not set");
+    mysql_close(mysql);
+    diag("Test will not work with server < 11.4");
+    return SKIP;
   }
   CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_TRUST, "Trust verification flag not set");
 
