@@ -453,7 +453,7 @@ static int test_pw_check(MYSQL *my)
   check_mysql_rc(rc, my);
 
   diag("expected to pass with self signed");
-  if (!my_test_connect(mysql, hostname, "tlsuser", "mypw", NULL, 0, NULL, 0, 0))
+  if (!my_test_connect(mysql, hostname, "tlsuser", "mypw", NULL, port, socketname, 0, 0))
   {
     diag("Error (password + self signed)");
     goto end;
@@ -470,7 +470,7 @@ static int test_pw_check(MYSQL *my)
     rc= mysql_query(my, query);
     check_mysql_rc(rc, my);
 
-    if (my_test_connect(mysql, hostname, "tlsuser", NULL, NULL, 0, NULL, 0, 0))
+    if (my_test_connect(mysql, hostname, "tlsuser", NULL, NULL, port, socketname, 0, 0))
     {
       diag("Error expected since no password was specified");
       goto end;
@@ -490,7 +490,7 @@ static int test_pw_check(MYSQL *my)
     rc= mysql_query(my, "SET GLOBAL secure_auth=0");
     check_mysql_rc(rc, my);
 
-    if (my_test_connect(mysql, hostname, "tlsuser", "foo", NULL, 0, NULL, 0, 0))
+    if (my_test_connect(mysql, hostname, "tlsuser", "foo", NULL, port, socketname, 0, 0))
     {
       diag("Error expected since old_password was specified");
       goto end;
@@ -555,7 +555,7 @@ static int test_wrong_ca(MYSQL *my __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
 
   mysql_ssl_set(mysql, NULL, NULL, "selfsigned.pem", NULL, NULL);
-  if (my_test_connect(mysql, hostname, "tlsuser", "foo", NULL, 0, NULL, 0, 0))
+  if (my_test_connect(mysql, hostname, "tlsuser", "foo", NULL, port, socketname, 0, 0))
   {
     diag("self signed error expected");
     return FAIL;
