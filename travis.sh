@@ -66,14 +66,14 @@ else
 
   if [ "$TRAVIS_OS_NAME" = "windows" ] ; then
     echo "build from windows"
-    set MARIADB_CC_TEST=1
-    set MYSQL_TEST_DB=testc
-    set MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
-    set MYSQL_TEST_USER=%TEST_DB_USER%
-    set MYSQL_TEST_HOST=%TEST_DB_HOST%
-    set MYSQL_TEST_PASSWD=%TEST_DB_PASSWORD%
-    set MYSQL_TEST_PORT=%TEST_DB_PORT%
-    set MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
+    export MARIADB_CC_TEST=1
+    export MYSQL_TEST_DB=testc
+    export MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
+    export MYSQL_TEST_USER=%TEST_DB_USER%
+    export MYSQL_TEST_HOST=%TEST_DB_HOST%
+    export MYSQL_TEST_PASSWD=%TEST_DB_PASSWORD%
+    export MYSQL_TEST_PORT=%TEST_DB_PORT%
+    export MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
     cmake --build . --config RelWithDebInfo
   else
     echo "build from linux"

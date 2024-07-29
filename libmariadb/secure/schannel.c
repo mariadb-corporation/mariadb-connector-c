@@ -206,13 +206,14 @@ void ma_tls_end()
 }
 
 /* {{{ static int ma_tls_set_client_certs(MARIADB_TLS *ctls) */
-static int ma_tls_set_client_certs(MARIADB_TLS *ctls,const CERT_CONTEXT **cert_ctx)
+static int ma_tls_set_client_certs(MARIADB_TLS *ctls, client_cert_handle *cert_handle)
 {
   MYSQL *mysql= ctls->pvio->mysql;
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
   MARIADB_PVIO *pvio= ctls->pvio;
   char errmsg[256];
+  SECURITY_STATUS status;
 
   if (!certfile && keyfile)
     certfile= keyfile;
@@ -222,8 +223,8 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls,const CERT_CONTEXT **cert_c
   if (!certfile)
     return 0;
 
-  *cert_ctx = schannel_create_cert_context(certfile, keyfile, errmsg, sizeof(errmsg));
-  if (!*cert_ctx)
+  status = schannel_create_cert_context(certfile, keyfile, cert_handle, errmsg, sizeof(errmsg));
+  if (status)
   {
     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);
     return 1;
@@ -372,7 +373,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   size_t i;
   DWORD protocol = 0;
   int verify_certs;
-  const CERT_CONTEXT* cert_context = NULL;
+  client_cert_handle cert_handle= {0};
 
   if (!ctls)
     return 1;
@@ -429,16 +430,18 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     Cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
 
 
-  if (ma_tls_set_client_certs(ctls, &cert_context))
+  if (ma_tls_set_client_certs(ctls, &cert_handle))
     goto end;
 
-  if (cert_context)
+  if (cert_handle.cert)
   {
     Cred.cCreds = 1;
-    Cred.paCred = &cert_context;
+    Cred.paCred = &cert_handle.cert;
   }
   sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
                                        NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL);
+  /* We do not need to keep certificates after this point */
+  schannel_free_cert_context(&cert_handle);
   if (sRet)
   {
     ma_schannel_set_sec_error(pvio, sRet);
@@ -459,8 +462,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   rc = 0;
 
 end:
-  if (cert_context)
-    schannel_free_cert_context(cert_context);
+  if (cert_handle.cert)
+    schannel_free_cert_context(&cert_handle);
   return rc;
 }
 
