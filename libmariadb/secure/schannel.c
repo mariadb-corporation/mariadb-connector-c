@@ -472,13 +472,50 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
   DWORD dlength= 0;
-  SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->hCtxt, &dlength, (uchar *)buffer, (DWORD)length);
-  if (status == SEC_I_CONTEXT_EXPIRED)
-    return 0; /* other side shut down the connection. */
-  if (status == SEC_I_RENEGOTIATE)
-    return -1; /* Do not handle renegotiate yet */
+  SECURITY_STATUS status;
+  SecBuffer tmp_extra_buf= {0};
 
-  return (status == SEC_E_OK)? (ssize_t)dlength : -1;
+retry:
+  status= ma_schannel_read_decrypt(pvio, &sctx->hCtxt, &dlength,
+                                  (uchar *) buffer, (DWORD) length);
+  if (tmp_extra_buf.cbBuffer)
+  {
+    /*
+      This memory was allocated in renegotiation processing
+      below, free it.
+    */
+    LocalFree(tmp_extra_buf.pvBuffer);
+    tmp_extra_buf.cbBuffer= 0;
+  }
+  switch (status) {
+  case SEC_E_OK:
+    return (ssize_t) dlength;
+  case SEC_I_CONTEXT_EXPIRED:
+    /* Other side shut down the connection. */
+    return 0;
+  case SEC_I_RENEGOTIATE:
+    /* Rerun handshake steps */
+    tmp_extra_buf= sctx->extraBuf;
+    tmp_extra_buf.BufferType= SECBUFFER_TOKEN;
+    sctx->extraBuf.cbBuffer= 0;
+    sctx->extraBuf.pvBuffer= NULL;
+    status= ma_schannel_handshake_loop(pvio, FALSE, &tmp_extra_buf);
+    sctx->extraBuf= tmp_extra_buf;
+    if (status != SEC_E_OK)
+      return -1;
+    /*
+      If decrypt returned some decrypted bytes prior to
+      renegotiation,  return them.
+      Otherwise, retry the read-decrypt again
+    */
+    if (dlength)
+      return dlength;
+
+    goto retry;
+
+  default:
+    return -1;
+  }
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
