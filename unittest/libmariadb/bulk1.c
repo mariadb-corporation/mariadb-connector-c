@@ -723,7 +723,7 @@ static int test_char_conv2(MYSQL *mysql)
     return SKIP;
 
   stmt= mysql_stmt_init(mysql);
-  buffer[0]= calloc(1, 7);
+  buffer[0]= calloc(7, 1);
   strcpy (buffer[0], "\xC3\x82\xC3\x83\xC3\x84\x00");
 
   rc= mysql_query(mysql, "SET NAMES UTF8");
@@ -1126,7 +1126,7 @@ static int bulk_with_unit_result_insert(MYSQL *my)
 
   /* allocate memory */
   buffer= calloc(TEST_ARRAY_SIZE, sizeof(char *));
-  lengths= (unsigned long *)calloc(sizeof(long), TEST_ARRAY_SIZE);
+  lengths= (unsigned long *)calloc(TEST_ARRAY_SIZE, sizeof(long));
 
   for (i=0; i < TEST_ARRAY_SIZE; i++)
   {
@@ -1251,7 +1251,7 @@ static int bulk_with_unit_result_delete(MYSQL *my)
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
 
-  vals= (unsigned int *)calloc(sizeof(int), 5);
+  vals= (unsigned int *)calloc(5, sizeof(int));
   memset(bind, 0, sizeof(MYSQL_BIND) * 1);
   bind[0].buffer_type= MYSQL_TYPE_LONG;
   bind[0].buffer= vals;
@@ -1359,7 +1359,7 @@ static int bulk_with_unit_result_update(MYSQL *my)
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
 
-  vals= (unsigned int *)calloc(sizeof(int), 5);
+  vals= (unsigned int *)calloc(5, sizeof(int));
   memset(bind, 0, sizeof(MYSQL_BIND) * 1);
   bind[0].buffer_type= MYSQL_TYPE_LONG;
   bind[0].buffer= vals;
