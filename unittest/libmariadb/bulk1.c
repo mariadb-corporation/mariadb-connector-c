@@ -1125,8 +1125,8 @@ static int bulk_with_unit_result_insert(MYSQL *my)
   check_stmt_rc(rc, stmt);
 
   /* allocate memory */
-  buffer= calloc(TEST_ARRAY_SIZE, sizeof(char *));
-  lengths= (unsigned long *)calloc(sizeof(long), TEST_ARRAY_SIZE);
+  buffer= calloc(TEST_ARRAY_SIZE, sizeof *buffer);
+  lengths= calloc(TEST_ARRAY_SIZE, sizeof *lengths);
 
   for (i=0; i < TEST_ARRAY_SIZE; i++)
   {
@@ -1251,7 +1251,7 @@ static int bulk_with_unit_result_delete(MYSQL *my)
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
 
-  vals= (unsigned int *)calloc(sizeof(int), 5);
+  vals= calloc(5, sizeof *vals);
   memset(bind, 0, sizeof(MYSQL_BIND) * 1);
   bind[0].buffer_type= MYSQL_TYPE_LONG;
   bind[0].buffer= vals;
@@ -1359,7 +1359,7 @@ static int bulk_with_unit_result_update(MYSQL *my)
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
   check_stmt_rc(rc, stmt);
 
-  vals= (unsigned int *)calloc(sizeof(int), 5);
+  vals= calloc(5, sizeof *vals);
   memset(bind, 0, sizeof(MYSQL_BIND) * 1);
   bind[0].buffer_type= MYSQL_TYPE_LONG;
   bind[0].buffer= vals;
