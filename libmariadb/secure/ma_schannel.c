@@ -289,8 +289,6 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   SecBufferDesc	BufferOut;
   SecBuffer  BuffersOut;
 
-  SecBufferDesc *pBuffersIn= NULL;
-
   if (!ctls || !ctls->pvio)
     return 1;
 

@@ -657,7 +657,6 @@ static SECURITY_STATUS load_private_key(client_cert_handle *cert_handle, char *p
   DWORD keyblob_len = 0;
   BYTE* keyblob = NULL;
 
-  CERT_KEY_CONTEXT cert_key_context = { 0 };
   PCRYPT_PRIVATE_KEY_INFO  pki = NULL;
   DWORD pki_len = 0;
   SECURITY_STATUS status = SEC_E_OK;
@@ -752,7 +751,6 @@ static SECURITY_STATUS create_client_certificate_mem(
   char* errmsg,
   size_t errmsg_len)
 {
-  CERT_CONTEXT* ctx = NULL;
   char* begin;
   char* end;
   CERT_BLOB cert_blob;
