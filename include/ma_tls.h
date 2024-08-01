@@ -141,7 +141,6 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ssl);
      hash_type    hash_type as defined in ma_hash.h
      fp           buffer for fingerprint
      fp_len       buffer length
-     my_bool      verify_period
 
    Returns:
      actual size of finger print

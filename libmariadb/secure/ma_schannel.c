@@ -502,6 +502,9 @@ unsigned int ma_schannel_verify_certs(MARIADB_TLS *ctls, unsigned int verify_fla
   if(status)
     goto end;
 
+  if (!crl_file && !crl_path) // backward compatible behavior
+    verify_flags &= ~MARIADB_TLS_VERIFY_REVOKED;
+
   status = QueryContextAttributesA(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert);
   if (status)
   {

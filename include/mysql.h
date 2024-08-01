@@ -452,8 +452,8 @@ typedef struct st_mysql_time
 #define MARIADB_TLS_VERIFY_OK                  0
 #define MARIADB_TLS_VERIFY_TRUST               1
 #define MARIADB_TLS_VERIFY_HOST                2
-#define MARIADB_TLS_VERIFY_PERIOD              4
-#define MARIADB_TLS_VERIFY_FINGERPRINT         8
+#define MARIADB_TLS_VERIFY_FINGERPRINT         4
+#define MARIADB_TLS_VERIFY_PERIOD              8
 #define MARIADB_TLS_VERIFY_REVOKED            16
 #define MARIADB_TLS_VERIFY_UNKNOWN            32
 #define MARIADB_TLS_VERIFY_ERROR             128  /* last */

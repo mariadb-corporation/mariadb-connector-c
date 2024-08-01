@@ -516,13 +516,17 @@ unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, uint hash_size)
       ctls->cert_info.subject= X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
       ctls->cert_info.issuer= X509_NAME_oneline(X509_get_issuer_name(cert), NULL, 0);
       ctls->cert_info.version= X509_get_version(cert) + 1;
+      ctls->cert_info.fingerprint[0]= 0;
       X509_free(cert);
     }
     else
       return 1;
   }
-  ma_tls_get_finger_print(ctls, hash_alg, fp, sizeof(fp));
-  mysql_hex_string(ctls->cert_info.fingerprint, fp, (unsigned long)ma_hash_digest_size(hash_alg));
+  if (strlen(ctls->cert_info.fingerprint) != hash_size/4)
+  {
+    ma_tls_get_finger_print(ctls, hash_alg, fp, sizeof(fp));
+    mysql_hex_string(ctls->cert_info.fingerprint, fp, hash_size/8);
+  }
 
   return 0;
 }
@@ -723,22 +727,30 @@ static int ma_verification_callback(int preverify_ok __attribute__((unused)), X5
 {
   SSL *ssl;
 
-  int x509_err= X509_STORE_CTX_get_error(ctx);
-
   if ((ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx())))
   {
     MYSQL *mysql= (MYSQL *)SSL_get_app_data(ssl);
+    int x509_err= X509_STORE_CTX_get_error(ctx);
+    my_bool verify_status= MARIADB_TLS_VERIFY_OK;
 
     if ((x509_err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT ||
          x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN))
-      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_TRUST;
+      verify_status= MARIADB_TLS_VERIFY_TRUST;
     else if (x509_err == X509_V_ERR_CERT_REVOKED)
-      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_REVOKED;
+      verify_status= MARIADB_TLS_VERIFY_REVOKED;
     else if (x509_err == X509_V_ERR_CERT_NOT_YET_VALID ||
             x509_err == X509_V_ERR_CERT_HAS_EXPIRED)
-      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
+      verify_status= MARIADB_TLS_VERIFY_PERIOD;
     else if (x509_err != X509_V_OK)
-      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_UNKNOWN;
+      verify_status= MARIADB_TLS_VERIFY_UNKNOWN;
+
+    if (verify_status)
+    {
+      if (mysql->net.tls_verify_status < verify_status)
+        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+           ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(x509_err));
+      mysql->net.tls_verify_status|= verify_status;
+    }
   }
 
   /* continue verification */
@@ -765,6 +777,12 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
 
+  if ((mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_FINGERPRINT) ||
+      (mysql->net.tls_verify_status & verify_flags))
+  {
+    return 1;
+  }
+
   if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
   {
     if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
@@ -773,19 +791,8 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
       return 1;
     }
 
-    /* if certificates are valid and no revocation error occured,
-       we can return */
-    if (!(mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_PERIOD) &&
-        !(mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_REVOKED))
-    {
-      mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_OK;
-      return 0;
-    }
-  }
-
-  if (mysql->net.tls_verify_status & verify_flags)
-  {
-    return 1;
+    mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_OK;
+    return 0;
   }
 
   if (verify_flags & MARIADB_TLS_VERIFY_HOST)
@@ -802,7 +809,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
     {
       pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                       ER(CR_SSL_CONNECTION_ERROR), "Unable to get server certificate");
-      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_UNKNOWN;
       return MARIADB_TLS_VERIFY_ERROR;
     }
 
@@ -853,8 +860,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
   }
   return 0;
 error:
-  if (cert)
-    X509_free(cert);
+  X509_free(cert);
 
   return 1;
 }

@@ -234,7 +234,10 @@ static SECURITY_STATUS add_certs_to_store(
 
   file_buffer = pem_file_to_string(file, errmsg, errmsg_len);
   if (!file_buffer)
+  {
+    status = ERROR_FILE_NOT_FOUND;
     goto cleanup;
+  }
 
   for (cur = file_buffer; ; cur = end)
   {

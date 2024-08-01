@@ -431,7 +431,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       verify_flags|= MARIADB_TLS_VERIFY_TRUST | MARIADB_TLS_VERIFY_HOST;
     }
 
-    if (ma_pvio_tls_verify_server_cert(mysql->net.pvio->ctls, verify_flags) > MARIADB_TLS_VERIFY_OK)
+    if (ma_pvio_tls_verify_server_cert(mysql->net.pvio->ctls, verify_flags))
     {
       if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_TRUST ||
           (mysql->options.ssl_ca || mysql->options.ssl_capath))
@@ -440,6 +440,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       if (is_local_connection(mysql->net.pvio))
       {
         CLEAR_CLIENT_ERROR(mysql);
+        mysql->net.tls_verify_status&= ~MARIADB_TLS_VERIFY_TRUST;
       }
       else if (!password_and_hashing(mysql, mpvio->plugin))
         goto error;
@@ -841,9 +842,7 @@ retry:
   if (ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length))
     return -1;
 
-  if (!mysql->net.tls_verify_status ||
-      ((mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_TRUST) &&
-       is_local_connection(mysql->net.pvio)))
+  if (!mysql->net.tls_verify_status)
     return 0;
 
   assert(mysql->options.use_ssl);

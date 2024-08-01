@@ -88,6 +88,8 @@ unittest/libmariadb/ssl
 unittest/libmariadb/t_aurora
 unittest/libmariadb/t_conc173
 unittest/libmariadb/thread
+unittest/libmariadb/tls
+unittest/libmariadb/tls.c
 unittest/libmariadb/view
 unittest/libmariadb/conc336
 

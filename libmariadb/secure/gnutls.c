@@ -1483,7 +1483,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
       goto end;
     }
 
-    rc= gnutls_x509_crt_check_hostname2(cert, mysql->host, flags);
+    rc= gnutls_x509_crt_check_hostname2(cert, mysql->host, 0);
     gnutls_x509_crt_deinit(cert);
 
     if (!rc)
@@ -1528,7 +1528,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
 
   switch (hash_type)
   {
-#ifdef WEAK_HASH
+#ifndef DISABLE_WEAK_HASH
   case MA_HASH_SHA1:
     hash_alg = GNUTLS_DIG_SHA1;
     break;
