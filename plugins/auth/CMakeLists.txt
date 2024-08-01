@@ -108,10 +108,12 @@ IF(CRYPTO_PLUGIN)
     REGISTER_PLUGIN(TARGET parsec
             TYPE MARIADB_CLIENT_PLUGIN_AUTH
             CONFIGURATIONS DYNAMIC STATIC OFF
-            DEFAULT DYNAMIC
+            DEFAULT OFF
             SOURCES ${AUTH_DIR}/parsec.c
             LIBRARIES ${CRYPT_LIBS})
-    set_property(TARGET parsec PROPERTY C_STANDARD 11)
+    if (TARGET parsec)
+      set_property(TARGET parsec PROPERTY C_STANDARD 11)
+    endif()
   ENDIF()
 
 ENDIF()
