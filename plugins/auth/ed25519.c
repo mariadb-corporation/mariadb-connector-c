@@ -88,15 +88,20 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   auth_ed25519_hash
 };
 
+#ifdef HAVE_THREAD_LOCAL
+/* pk will be used in the future auth_ed25519_hash() call, after the authentication */
+static _Thread_local unsigned char pk[CRYPTO_PUBLICKEYBYTES];
+#endif
 
 static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
   unsigned char *packet,
-                signature[CRYPTO_BYTES + NONCE_BYTES],
-                pk[CRYPTO_PUBLICKEYBYTES];
+                signature[CRYPTO_BYTES + NONCE_BYTES];
+#ifndef HAVE_THREAD_LOCAL
+  unsigned char pk[CRYPTO_PUBLICKEYBYTES];
+#endif
   unsigned long long pkt_len;
   size_t pwlen= strlen(mysql->passwd);
-  char *newpw;
 
   /*
      Step 1: Server sends nonce
@@ -117,26 +122,27 @@ static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (vio->write_packet(vio, signature, CRYPTO_BYTES))
     return CR_ERROR;
 
-  /* save pk for the future auth_ed25519_hash() call */
-  if ((newpw= realloc(mysql->passwd, pwlen + 1 + sizeof(pk))))
-  {
-    memcpy(newpw + pwlen + 1, pk, sizeof(pk));
-    mysql->passwd= newpw;
-  }
-
   return CR_OK;
 }
 /* }}} */
 
 /* {{{ static int auth_ed25519_hash */
-static int auth_ed25519_hash(MYSQL *mysql, unsigned char *out, size_t *outlen)
+static int auth_ed25519_hash(MYSQL *mysql __attribute__((unused)),
+                             unsigned char *out, size_t *outlen)
 {
+#ifndef HAVE_THREAD_LOCAL
+  unsigned char pk[CRYPTO_PUBLICKEYBYTES];
+#endif
   if (*outlen < CRYPTO_PUBLICKEYBYTES)
     return 1;
   *outlen= CRYPTO_PUBLICKEYBYTES;
 
+#ifndef HAVE_THREAD_LOCAL
+  crypto_sign_keypair(pk, (unsigned char*)mysql->passwd, strlen(mysql->passwd));
+#endif
+
   /* use the cached value */
-  memcpy(out, mysql->passwd + strlen(mysql->passwd) + 1, CRYPTO_PUBLICKEYBYTES);
+  memcpy(out, pk, CRYPTO_PUBLICKEYBYTES);
   return 0;
 }
 /* }}} */
