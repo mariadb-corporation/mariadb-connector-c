@@ -634,17 +634,29 @@ cleanup:
   return status;
 }
 
+/*
+  Generate a random key container name.
+  Used to store private key in Windows key store.
+*/
+#define KEY_CONTAINER_NAME_PREFIX L"MariaDB-Connector-C-"
+static void generate_key_container_name(wchar_t* key_container_name, size_t key_container_name_len)
+{
+   LARGE_INTEGER now;
+   QueryPerformanceCounter(&now);
+   swprintf_s(key_container_name, key_container_name_len,
+              L"MariaDB-Connector-C-%u-%u-%lld",GetCurrentProcessId(),GetCurrentThreadId(),now.QuadPart);
+}
 
 /* Attach private key (in PEM format) to client certificate */
-static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_str, size_t len, char* errmsg, size_t errmsg_len)
+static SECURITY_STATUS load_private_key(client_cert_handle *cert_handle, char *private_key_str,
+                                        size_t len, char *errmsg,
+                                        size_t errmsg_len)
 {
   DWORD derlen = (DWORD)len;
   BYTE* derbuf = NULL;
   DWORD keyblob_len = 0;
   BYTE* keyblob = NULL;
-  HCRYPTPROV hProv = 0;
-  HCRYPTKEY hKey = 0;
-  CERT_KEY_CONTEXT cert_key_context = { 0 };
+
   PCRYPT_PRIVATE_KEY_INFO  pki = NULL;
   DWORD pki_len = 0;
   SECURITY_STATUS status = SEC_E_OK;
@@ -693,24 +705,30 @@ static SECURITY_STATUS load_private_key(CERT_CONTEXT* cert, char* private_key_st
   {
     FAIL("Failed to parse private key");
   }
+  generate_key_container_name(cert_handle->key_container_name, sizeof(cert_handle->key_container_name) / sizeof(wchar_t));
 
-  if (!CryptAcquireContext(&hProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+  if (!CryptAcquireContextW(&cert_handle->prov,
+                            cert_handle->key_container_name, MS_ENHANCED_PROV_W,
+                            PROV_RSA_FULL, CRYPT_NEWKEYSET))
   {
     FAIL("CryptAcquireContext failed");
   }
 
-  if (!CryptImportKey(hProv, keyblob, keyblob_len, 0, 0, (HCRYPTKEY*)&hKey))
+  if (!CryptImportKey(cert_handle->prov, keyblob, keyblob_len, 0, 0,
+                      &cert_handle->key))
   {
     FAIL("CryptImportKey failed");
   }
-  cert_key_context.hCryptProv = hProv;
-  cert_key_context.dwKeySpec = AT_KEYEXCHANGE;
-  cert_key_context.cbSize = sizeof(cert_key_context);
-
-  /* assign private key to certificate context */
-  if (!CertSetCertificateContextProperty(cert, CERT_KEY_CONTEXT_PROP_ID,
-                                         CERT_STORE_NO_CRYPT_RELEASE_FLAG,
-                                         &cert_key_context))
+  // Link the private key to the certificate
+  CRYPT_KEY_PROV_INFO keyProvInfo= {0};
+  keyProvInfo.pwszContainerName= cert_handle->key_container_name;
+  keyProvInfo.pwszProvName= NULL;
+  keyProvInfo.dwProvType= PROV_RSA_FULL;
+  keyProvInfo.dwFlags= 0;
+  keyProvInfo.cProvParam= 0;
+  keyProvInfo.rgProvParam= NULL;
+  keyProvInfo.dwKeySpec= AT_KEYEXCHANGE;
+  if (!CertSetCertificateContextProperty(cert_handle->cert, CERT_KEY_PROV_INFO_PROP_ID, 0, &keyProvInfo))
   {
     FAIL("CertSetCertificateContextProperty failed");
   }
@@ -719,13 +737,6 @@ cleanup:
   LocalFree(derbuf);
   LocalFree(keyblob);
   LocalFree(pki);
-  if (hKey)
-    CryptDestroyKey(hKey);
-  if (status)
-  {
-    if (hProv)
-      CryptReleaseContext(hProv, 0);
-  }
   return status;
 }
 
@@ -733,13 +744,13 @@ cleanup:
  Given PEM strings for certificate and private key,
  create a client certificate*
 */
-static CERT_CONTEXT* create_client_certificate_mem(
+static SECURITY_STATUS create_client_certificate_mem(
   char* cert_file_content,
   char* key_file_content,
+  client_cert_handle* cert_handle,
   char* errmsg,
   size_t errmsg_len)
 {
-  CERT_CONTEXT* ctx = NULL;
   char* begin;
   char* end;
   CERT_BLOB cert_blob;
@@ -762,7 +773,7 @@ static CERT_CONTEXT* create_client_certificate_mem(
     CERT_QUERY_OBJECT_BLOB, &cert_blob,
     CERT_QUERY_CONTENT_FLAG_CERT,
     CERT_QUERY_FORMAT_FLAG_ALL, 0, NULL, &actual_content_type,
-    NULL, NULL, NULL, (const void**)&ctx))
+    NULL, NULL, NULL, (const void**)&cert_handle->cert))
   {
     FAIL("Can't parse client certficate");
   }
@@ -775,7 +786,7 @@ static CERT_CONTEXT* create_client_certificate_mem(
     if (begin && end)
     {
       /* Assign key to certificate.*/
-      status = load_private_key(ctx, begin, (end - begin), errmsg, errmsg_len);
+      status = load_private_key(cert_handle, begin, (end - begin), errmsg, errmsg_len);
       goto cleanup;
     }
   }
@@ -787,21 +798,20 @@ static CERT_CONTEXT* create_client_certificate_mem(
   }
 
 cleanup:
-  if (status && ctx)
-  {
-    CertFreeCertificateContext(ctx);
-    ctx = NULL;
-  }
-  return ctx;
+  return status;
 }
 
 
 /* Given cert and key, as PEM file names, create a client certificate */
-CERT_CONTEXT* schannel_create_cert_context(char* cert_file, char* key_file, char* errmsg, size_t errmsg_len)
+SECURITY_STATUS schannel_create_cert_context(char* cert_file, char* key_file,
+    client_cert_handle *cert_handle,
+    char* errmsg, size_t errmsg_len)
 {
-  CERT_CONTEXT* ctx = NULL;
   char* key_file_content = NULL;
   char* cert_file_content = NULL;
+  SECURITY_STATUS status= SEC_E_INTERNAL_ERROR;
+
+  memset(cert_handle, 0, sizeof(client_cert_handle));
 
   cert_file_content = pem_file_to_string(cert_file, errmsg, errmsg_len);
 
@@ -819,34 +829,45 @@ CERT_CONTEXT* schannel_create_cert_context(char* cert_file, char* key_file, char
       goto cleanup;
   }
 
-  ctx = create_client_certificate_mem(cert_file_content, key_file_content, errmsg, errmsg_len);
+  status = create_client_certificate_mem(cert_file_content, key_file_content, cert_handle, errmsg, errmsg_len);
 
 cleanup:
   LocalFree(cert_file_content);
   if (cert_file != key_file)
     LocalFree(key_file_content);
-
-  return ctx;
+  if (status)
+    schannel_free_cert_context(cert_handle);
+  return status;
 }
 
 /*
   Free certificate, and all resources, created by schannel_create_cert_context()
 */
-void schannel_free_cert_context(const CERT_CONTEXT* cert)
+void schannel_free_cert_context(client_cert_handle* cert_handle)
 {
-  /* release provider handle which was acquires in load_private_key() */
-  CERT_KEY_CONTEXT cert_key_context = { 0 };
-  cert_key_context.cbSize = sizeof(cert_key_context);
-  DWORD cbData = sizeof(CERT_KEY_CONTEXT);
-  HCRYPTPROV hProv = 0;
-
-  if (CertGetCertificateContextProperty(cert, CERT_KEY_CONTEXT_PROP_ID, &cert_key_context, &cbData))
+  if (cert_handle->key)
   {
-    hProv = cert_key_context.hCryptProv;
+    CryptDestroyKey(cert_handle->key);
+    cert_handle->key = 0;
   }
-  CertFreeCertificateContext(cert);
-  if (hProv)
+  if (cert_handle->prov)
   {
-    CryptReleaseContext(cert_key_context.hCryptProv, 0);
+    CryptReleaseContext(cert_handle->prov, 0);
+    cert_handle->prov = 0;
+  }
+  if (cert_handle->cert)
+  {
+    CertFreeCertificateContext(cert_handle->cert);
+    cert_handle->cert = 0;
+  }
+  if (cert_handle->key_container_name[0])
+  {
+    if (!CryptAcquireContextW(&cert_handle->prov, cert_handle->key_container_name,
+                              MS_ENHANCED_PROV_W, PROV_RSA_FULL,
+                              CRYPT_DELETEKEYSET))
+    {
+      assert(GetLastError() == NTE_BAD_KEYSET);
+    }
+    cert_handle->key_container_name[0] = 0;
   }
 }

@@ -21,6 +21,15 @@
 #pragma once
 #include <windows.h>
 #include <wincrypt.h>
+typedef struct _client_cert_handle {
+  HCRYPTPROV prov; /* provider */
+  HCRYPTKEY  key;  /* private key */
+  PCCERT_CONTEXT cert; /* client certificate */
+  wchar_t key_container_name[64]; /* key container name */
+} client_cert_handle;
+
+
+void schannel_destroy_client_cert_handle(client_cert_handle *cert);
 
 extern SECURITY_STATUS schannel_create_store(
   const char* CAFile,
@@ -43,11 +52,12 @@ extern SECURITY_STATUS schannel_verify_server_certificate(
 
 extern void schannel_free_store(HCERTSTORE store);
 
-extern CERT_CONTEXT* schannel_create_cert_context(
+extern SECURITY_STATUS schannel_create_cert_context(
   char* cert_file,
   char* key_file,
+  client_cert_handle* cert_handle,
   char* errmsg,
   size_t errmsg_len);
 
-extern void schannel_free_cert_context(const CERT_CONTEXT* cert);
+extern void schannel_free_cert_context(client_cert_handle *cert_handle);
 
