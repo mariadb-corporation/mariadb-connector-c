@@ -630,6 +630,8 @@ int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
     return PROTOCOL_TLS_1_1;
   case SP_PROT_TLS1_2_CLIENT:
     return PROTOCOL_TLS_1_2;
+  case SP_PROT_TLS1_3_CLIENT:
+    return PROTOCOL_TLS_1_3;
   default:
     return -1;
   }
