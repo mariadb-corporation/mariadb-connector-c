@@ -35,7 +35,6 @@
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
-#include <threads.h>
 
 #define CHALLENGE_SCRAMBLE_LENGTH 32
 #define CHALLENGE_SALT_LENGTH     18
