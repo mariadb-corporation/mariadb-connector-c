@@ -4,6 +4,9 @@
 #include "ge.h"
 #include "sc.h"
 
+#ifdef __GNUC__
+__attribute__((no_sanitize("shift")))
+#endif
 int ma_crypto_sign(
   unsigned char *sm, unsigned char *pk,
   const unsigned char *m,unsigned long long mlen,
