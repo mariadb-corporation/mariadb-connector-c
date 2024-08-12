@@ -304,9 +304,14 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   /* CONC-635: For connections via named pipe or shared memory the server
                indicates the capability for secure connections (TLS), but
-               doesn't support it. */
+               doesn't support it.
+     MDEV-34730: using TLS over UNIX socket adds no extra security while causing
+               problems when using real valid certificates, which are not covered
+               by tls_self_signed_error checks and therefore fail the verification
+               over UNIX socket */
   if ((mysql->server_capabilities & CLIENT_SSL) &&
       (mysql->net.pvio->type == PVIO_TYPE_NAMEDPIPE ||
+       mysql->net.pvio->type == PVIO_TYPE_UNIXSOCKET ||
        mysql->net.pvio->type == PVIO_TYPE_SHAREDMEM))
   {
     mysql->server_capabilities &= ~(CLIENT_SSL);
