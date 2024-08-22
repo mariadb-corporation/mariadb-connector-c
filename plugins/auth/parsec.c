@@ -153,6 +153,11 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   if (pkt_len != CHALLENGE_SCRAMBLE_LENGTH)
     return CR_SERVER_HANDSHAKE_ERR;
 
+
+  // Save the scramble for the further SSL authentication
+  memmove(mysql->scramble_buff, serv_scramble, SCRAMBLE_LENGTH);
+  mysql->scramble_buff[SCRAMBLE_LENGTH] = 0;
+
   memcpy(signed_msg.server_scramble, serv_scramble, CHALLENGE_SCRAMBLE_LENGTH);
 
   if (vio->write_packet(vio, 0, 0) != 0) // Empty packet = "need salt"
