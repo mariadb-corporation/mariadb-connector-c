@@ -203,6 +203,8 @@ struct st_mysql_client_plugin_AUTHENTICATION parsec_client_plugin=
 struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 #endif
 {
+  .type   = MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
+  .interface_version = MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   .name   = "parsec",
   .author = "Nikita Maliavin",
   .desc   = "Password Authentication using Response Signed with Elliptic Curve",
