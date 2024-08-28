@@ -197,12 +197,17 @@ static int hash_password(MYSQL *mysql __attribute__((unused)),
   return 0;
 }
 
-mysql_declare_client_plugin(AUTHENTICATION)
+#ifndef PLUGIN_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION parsec_client_plugin=
+#else
+struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+#endif
+{
   .name   = "parsec",
   .author = "Nikita Maliavin",
   .desc   = "Password Authentication using Response Signed with Elliptic Curve",
   .version= {0,1,1},
   .license= "LGPL",
   .authenticate_user= auth,
-  .hash_password_bin= hash_password,
-mysql_end_client_plugin;
+  .hash_password_bin= hash_password
+};
