@@ -17,11 +17,8 @@ ELSEIF(WITH_SSL STREQUAL "GNUTLS")
   INCLUDE(${CC_SOURCE_DIR}/cmake/FindHogweed.cmake)
   IF (NOT SSL_LIBRARIES MATCHES "^.*\\.a$")
     SET(CRYPT_LIBS ${SSL_LIBRARIES})
-  IF (${NETTLE_FOUND})
-    SET(PARSEC_EXTRA_LIBS ${NETTLE_LIBRARIES})
-  ENDIF()
-  IF (${HOGWEED_FOUND})
-    SET(PARSEC_EXTRA_LIBS ${PARSEC_EXTRA_LIBS} ${HOGWEED_LIBRARIES})
+  IF (NETTLE_FOUND AND HOGWEED_FOUND)
+    SET(PARSEC_EXTRA_LIBS ${NETTLE_LIBRARIES} ${HOGWEED_LIBRARIES})
   ENDIF()
   ENDIF()
 ELSE()
@@ -55,6 +52,7 @@ REGISTER_PLUGIN(TARGET dialog
 IF(CRYPTO_PLUGIN)
 
   #ED25519 client authentication plugin
+
   SET(REF10_DIR ${AUTH_DIR}/ref10)
   SET(REF10_SOURCES ${REF10_DIR}/fe_0.c ${REF10_DIR}/fe_isnegative.c ${REF10_DIR}/fe_sub.c ${REF10_DIR}/ge_p1p1_to_p2.c
                     ${REF10_DIR}/ge_p3_to_cached.c ${REF10_DIR}/open.c ${REF10_DIR}/fe_1.c ${REF10_DIR}/fe_isnonzero.c
@@ -67,26 +65,33 @@ IF(CRYPTO_PLUGIN)
                     ${REF10_DIR}/ge_p3_dbl.c ${REF10_DIR}/ge_tobytes.c ${REF10_DIR}/fe_invert.c ${REF10_DIR}/fe_sq.c
                     ${REF10_DIR}/ge_msub.c ${REF10_DIR}/ge_p3_tobytes.c ${REF10_DIR}/keypair.c)
 
+  IF(MSVC)
+     # Silence conversion (integer truncation) warnings from reference code
+     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146 -DHAVE_THREAD_LOCAL")
+  ELSEIF(HAVE_C_THREAD_LOCAL)
+     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_DEFINITIONS "-DMYSQL_CLIENT=1 -DHAVE_THREAD_LOCAL")
+  ENDIF()
+
+  INCLUDE_DIRECTORIES(${REF10_DIR})
+  ADD_LIBRARY(ed25519_ref10 OBJECT ${REF10_SOURCES})
+
+  IF(WITH_SSL STREQUAL "SCHANNEL")
+    SET(PARSEC_EXTRA_LIBS ed25519_ref10)
+  ENDIF()
+
   REGISTER_PLUGIN(TARGET client_ed25519
                 TYPE MARIADB_CLIENT_PLUGIN_AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/ed25519.c
-                        ${REF10_SOURCES}
                         ${CRYPT_SOURCE}
                 INCLUDES ${REF10_DIR}
-                LIBRARIES ${CRYPT_LIBS}
-                COMPILE_OPTIONS -DMYSQL_CLIENT=1)
-  SET_PROPERTY(TARGET client_ed25519 PROPERTY C_STANDARD 11)
+                LIBRARIES ${CRYPT_LIBS} ed25519_ref10)
 
-  IF(HAVE_C_THREAD_LOCAL)
-    TARGET_COMPILE_DEFINITIONS(client_ed25519 PRIVATE -DHAVE_THREAD_LOCAL)
+  IF (TARGET client_ed25519)
+    SET_PROPERTY(TARGET client_ed25519 PROPERTY C_STANDARD 11)
   ENDIF()
 
-  IF(MSVC)
-     # Silence conversion (integer truncation) warnings from reference code
-     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146")
-  ENDIF()
 
   IF(CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION LESS 11
      AND CMAKE_C_COMPILER_VERSION GREATER 6)
@@ -114,15 +119,10 @@ IF(CRYPTO_PLUGIN)
                     LIBRARIES ${CRYPT_LIBS})
   ENDIF()
 
-  find_path(NETTLE_INCLUDE_DIR NAMES nettle/version.h
-            HINTS ${NETTLE_ROOT_DIR}/include)
-
-  IF(WITH_SSL STREQUAL "GNUTLS" AND NETTLE_INCLUDE_DIR STREQUAL "NETTLE_INCLUDE_DIR-NOTFOUND")
-    MESSAGE1(PARSEC "PARSEC requires nettle library and headers when built with GnuTLS.")
+  IF(WITH_SSL STREQUAL "GNUTLS" AND (NOT NETTLE_FOUND OR NOT HOGWEED_FOUND))
+    MESSAGE1(PARSEC "PARSEC requires nettle and hogweed libraries and headers when built with GnuTLS.")
   ELSEIF(WITH_SSL STREQUAL "OPENSSL" AND NOT HAVE_evp_pkey)
     MESSAGE1(PARSEC "PARSEC requires EVP_PKEY interface when built with OpenSSL.")
-  ELSEIF(WITH_SSL STREQUAL "SCHANNEL")
-    MESSAGE1(PARSEC "PARSEC does not support SCHANNEL.")
   ELSEIF(NOT HAVE_C_THREAD_LOCAL)
     MESSAGE1(PARSEC "PARSEC requires C11 Thread-local variables support by compiler (GNU >= 4.9).")
   ELSE()
@@ -130,7 +130,7 @@ IF(CRYPTO_PLUGIN)
             TYPE MARIADB_CLIENT_PLUGIN_AUTH
             CONFIGURATIONS DYNAMIC STATIC OFF
             DEFAULT OFF 
-            SOURCES ${AUTH_DIR}/parsec.c
+            SOURCES ${AUTH_DIR}/parsec.c ${CRYPT_SOURCE}
             LIBRARIES ${CRYPT_LIBS} ${PARSEC_EXTRA_LIBS})
     if (TARGET parsec)
       set_property(TARGET parsec PROPERTY C_STANDARD 11)

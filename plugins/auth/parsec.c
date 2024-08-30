@@ -19,7 +19,7 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 #define random_bytes(B,L) RAND_bytes(B,L)
-#elif defined HAVE_GNUTLS
+#elif defined(HAVE_GNUTLS)
 #include <nettle/eddsa.h>
 #include <nettle/pbkdf2.h>
 #include <nettle/sha2.h>
@@ -27,7 +27,12 @@
 #include <nettle/hmac.h>
 #include <gnutls/crypto.h>
 #define random_bytes(B,L) gnutls_rnd(GNUTLS_RND_NONCE, B, L)
-#elif defined HAVE_WINCRYPT
+#elif defined(HAVE_SCHANNEL)
+#include <windows.h>
+#include <ma_crypt.h>
+#include <bcrypt.h>
+#include <crypto_sign.h>
+#define random_bytes(B,L) BCryptGenRandom(NULL ,(PUCHAR)(B),(L), BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 #endif
 
 #include <errmsg.h>
@@ -35,7 +40,9 @@
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
+#ifndef _MSC_VER
 #include <threads.h>
+#endif
 
 #define CHALLENGE_SCRAMBLE_LENGTH 32
 #define CHALLENGE_SALT_LENGTH     18
@@ -74,12 +81,12 @@ int compute_derived_key(const char* password, size_t pass_len,
                         const struct Passwd_in_memory *params,
                         uchar *derived_key)
 {
-#if HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   return !PKCS5_PBKDF2_HMAC(password, (int)pass_len, params->salt,
                             CHALLENGE_SALT_LENGTH,
                             1 << (params->iterations + 10),
                             EVP_sha512(), PBKDF2_HASH_LENGTH, derived_key);
-#else /* HAVE_GNUTLS */
+#elif defined(HAVE_GNUTLS) /* HAVE_GNUTLS */
   struct hmac_sha512_ctx ctx;
   hmac_sha512_set_key(&ctx, pass_len, (const uint8_t *)password);
 
@@ -87,9 +94,21 @@ int compute_derived_key(const char* password, size_t pass_len,
          (nettle_hash_digest_func *)hmac_sha512_digest, SHA512_DIGEST_SIZE,
          1024 << params->iterations, CHALLENGE_SALT_LENGTH, params->salt,
          PBKDF2_HASH_LENGTH, derived_key);
+#elif defined(HAVE_SCHANNEL)
+  BCRYPT_ALG_HANDLE algHdl;
+  NTSTATUS status;
 
-  return 0;
+  if ((status = BCryptOpenAlgorithmProvider(&algHdl, BCRYPT_SHA512_ALGORITHM, NULL, BCRYPT_ALG_HANDLE_HMAC_FLAG)) != 0)
+    goto end;
+
+  if ((status = BCryptDeriveKeyPBKDF2(algHdl, (BYTE*)password, (ULONG)pass_len, (BYTE*)params->salt, CHALLENGE_SALT_LENGTH, 1024 << params->iterations, derived_key, PBKDF2_HASH_LENGTH, 0)) != 0)
+    goto end;
+
+end:
+  BCryptCloseAlgorithmProvider(algHdl, 0);
+  return (int)status;
 #endif
+  return 0;
 }
 
 int ed25519_sign(const uchar *response, size_t response_len,
@@ -97,7 +116,7 @@ int ed25519_sign(const uchar *response, size_t response_len,
                  uchar *public_key)
 {
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   int res= 1;
   size_t sig_len= ED25519_SIG_LENGTH, pklen= ED25519_KEY_LENGTH;
   EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, NULL,
@@ -118,13 +137,22 @@ cleanup:
   EVP_MD_CTX_free(ctx);
   EVP_PKEY_free(pkey);
   return res;
-#else /* HAVE_GNUTLS */
+#elif defined(HAVE_GNUTLS) /* HAVE_GNUTLS */
   ed25519_sha512_public_key((uint8_t*)public_key, (uint8_t*)private_key);
   ed25519_sha512_sign((uint8_t*)public_key, (uint8_t*)private_key,
                       response_len, (uint8_t*)response, (uint8_t*)signature);
-  return 0;
+#elif defined(HAVE_SCHANNEL)
+  unsigned char sig[ED25519_SIG_LENGTH + CHALLENGE_SCRAMBLE_LENGTH * 2];
+
+  ma_crypto_sign((unsigned char *)sig, public_key, response, response_len, private_key, ED25519_KEY_LENGTH);
+  memcpy(signature, sig, ED25519_SIG_LENGTH);
 #endif
+  return 0;
 }
+
+#ifdef _MSC_VER
+  #define _Thread_local  __declspec(thread)
+#endif
 
 static _Thread_local struct Passwd_in_memory pwd_local;
 

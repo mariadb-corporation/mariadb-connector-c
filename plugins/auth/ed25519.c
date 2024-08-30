@@ -89,6 +89,10 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
 };
 
 #ifdef HAVE_THREAD_LOCAL
+#ifdef _MSC_VER
+#define _Thread_local __declspec(thread)
+#endif
+
 /* pk will be used in the future auth_ed25519_hash() call, after the authentication */
 static _Thread_local unsigned char pk[CRYPTO_PUBLICKEYBYTES];
 #endif
