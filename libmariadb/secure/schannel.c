@@ -512,11 +512,9 @@ my_bool ma_tls_close(MARIADB_TLS *ctls)
 int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
 {
   MYSQL *mysql;
-  SC_CTX *sctx;
   if (!ctls || !ctls->ssl || !ctls->pvio || !ctls->pvio->mysql)
     return 1;
 
-  sctx= (SC_CTX *)ctls->ssl; 
   mysql= ctls->pvio->mysql;
 
   if (verify_flags & MARIADB_TLS_VERIFY_PERIOD)
@@ -569,7 +567,7 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   return cipher_name(&CipherInfo);
 }
 
-unsigned char *ma_cert_blob_to_str(PCERT_NAME_BLOB cnblob)
+char *ma_cert_blob_to_str(PCERT_NAME_BLOB cnblob)
 {
   DWORD type= CERT_X500_NAME_STR;
   DWORD size= CertNameToStrA(X509_ASN_ENCODING, cnblob, type, NULL, 0);
@@ -626,7 +624,6 @@ unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int hash_size
   PCCERT_CONTEXT pCertCtx= NULL;
   SC_CTX *sctx;
   PCERT_INFO pci= NULL;
-  DWORD size´= 0;
   SYSTEMTIME tm;
   char fp[129];
   unsigned int hash_alg;
@@ -684,7 +681,6 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
 
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   PCCERT_CONTEXT pRemoteCertContext = NULL;
-  int rc= 0;
 
   if (hash_type == MA_HASH_SHA224)
   {
@@ -700,7 +696,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
 
   hash_ctx = ma_hash_new(hash_type);
   ma_hash_input(hash_ctx, pRemoteCertContext->pbCertEncoded, pRemoteCertContext->cbCertEncoded);
-  ma_hash_result(hash_ctx, fp);
+  ma_hash_result(hash_ctx, (unsigned char *)fp);
   ma_hash_free(hash_ctx);
 
   CertFreeCertificateContext(pRemoteCertContext);
