@@ -1636,6 +1636,11 @@ static int test_disable_tls1_0(MYSQL *my __attribute__((unused)))
   MYSQL_ROW row;
   int rc;
 
+#ifdef HAVE_SCHANNEL
+  diag("Test doesn't work with new Schannel TLSv1.3 implementation");
+  return SKIP;
+#endif
+
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
   mysql_optionsv(mysql, MARIADB_OPT_TLS_VERSION, disabled_version);
   mysql_optionsv(mysql, MARIADB_OPT_SSL_FP, fingerprint);
