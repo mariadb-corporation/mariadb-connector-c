@@ -68,11 +68,21 @@ else
 
     echo "build from windows"
     export MARIADB_CC_TEST=1
+<<<<<<< HEAD
     export MYSQL_TEST_USER=$TEST_DB_USER
     export MYSQL_TEST_HOST=$TEST_DB_HOST
     export MYSQL_TEST_PASSWD=$TEST_DB_PASSWORD
     export MYSQL_TEST_PORT=$TEST_DB_PORT
     export MYSQL_TEST_DB=testc
+=======
+    export MYSQL_TEST_DB=testc
+    export MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
+    export MYSQL_TEST_USER=%TEST_DB_USER%
+    export MYSQL_TEST_HOST=%TEST_DB_HOST%
+    export MYSQL_TEST_PASSWD=%TEST_DB_PASSWORD%
+    export MYSQL_TEST_PORT=%TEST_DB_PORT%
+    export MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
+>>>>>>> 3.3
     cmake --build . --config RelWithDebInfo
   else
     echo "build from linux"

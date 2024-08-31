@@ -17,6 +17,11 @@
   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
  *************************************************************************************/
+
+#define SCHANNEL_USE_BLACKLISTS
+#include <windows.h>
+#include <winternl.h>
+
 #include "ma_schannel.h"
 #include "schannel_certs.h"
 #include <string.h>
@@ -27,10 +32,11 @@
 extern my_bool ma_tls_initialized;
 char tls_library_version[] = "Schannel";
 
-#define PROT_SSL3 1
-#define PROT_TLS1_0 2
-#define PROT_TLS1_2 4
-#define PROT_TLS1_3 8
+#define PROT_SSL3   SP_PROT_SSL3_CLIENT
+#define PROT_TLS1_0 SP_PROT_TLS1_0_CLIENT
+#define PROT_TLS1_1 SP_PROT_TLS1_1_CLIENT
+#define PROT_TLS1_2 SP_PROT_TLS1_2_CLIENT
+#define PROT_TLS1_3 SP_PROT_TLS1_3_CLIENT
 
 static int ma_check_peer_cert_time(MARIADB_TLS *ctls);
 
@@ -211,13 +217,14 @@ void ma_tls_end()
 }
 
 /* {{{ static int ma_tls_set_client_certs(MARIADB_TLS *ctls) */
-static int ma_tls_set_client_certs(MARIADB_TLS *ctls,const CERT_CONTEXT **cert_ctx)
+static int ma_tls_set_client_certs(MARIADB_TLS *ctls, client_cert_handle *cert_handle)
 {
   MYSQL *mysql= ctls->pvio->mysql;
   char *certfile= mysql->options.ssl_cert,
        *keyfile= mysql->options.ssl_key;
   MARIADB_PVIO *pvio= ctls->pvio;
   char errmsg[256];
+  SECURITY_STATUS status;
 
   if (!certfile && keyfile)
     certfile= keyfile;
@@ -227,8 +234,8 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls,const CERT_CONTEXT **cert_c
   if (!certfile)
     return 0;
 
-  *cert_ctx = schannel_create_cert_context(certfile, keyfile, errmsg, sizeof(errmsg));
-  if (!*cert_ctx)
+  status = schannel_create_cert_context(certfile, keyfile, cert_handle, errmsg, sizeof(errmsg));
+  if (status)
   {
     pvio->set_error(pvio->mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0, errmsg);
     return 1;
@@ -268,6 +275,7 @@ static struct _tls_version {
   DWORD protocol;
 } tls_version[]= {
     {"TLSv1.0", PROT_TLS1_0},
+    {"TLSv1.1", PROT_TLS1_1},
     {"TLSv1.2", PROT_TLS1_2},
     {"TLSv1.3", PROT_TLS1_3},
     {"SSLv3",   PROT_SSL3}
@@ -365,16 +373,184 @@ static size_t set_cipher(char * cipher_str, DWORD protocol, ALG_ID *arr , size_t
   return pos;
 }
 
+static LONG ma_RtlGetVersion(RTL_OSVERSIONINFOEXW *osvi)
+{
+  typedef LONG (WINAPI * func_RtlGetVersion)(RTL_OSVERSIONINFOEXW *);
+  static func_RtlGetVersion pRtlGetVersion;
+  if (!pRtlGetVersion)
+      pRtlGetVersion = (func_RtlGetVersion) (void*) GetProcAddress(GetModuleHandleW(L"ntdll.dll"),
+                                          "RtlGetVersion");
+  if (pRtlGetVersion)
+  {
+    return pRtlGetVersion(osvi);
+  }
+  return STATUS_ENTRYPOINT_NOT_FOUND;
+}
+
+/** Check if OS is modern enough to support SCH_CREDENTIALS struct */
+static BOOL os_version_greater_equal(DWORD major, DWORD minor, DWORD build)
+{
+  RTL_OSVERSIONINFOEXW osvi;
+  osvi.dwOSVersionInfoSize = sizeof(osvi);
+  if (!ma_RtlGetVersion(&osvi))
+  {
+    return (osvi.dwMajorVersion > major)
+      || (osvi.dwMajorVersion == major && osvi.dwMinorVersion > minor)
+      || (osvi.dwMajorVersion == major && osvi.dwMinorVersion == minor && osvi.dwBuildNumber >= build);
+  }
+  return FALSE;
+}
+
+typedef struct _MA_SCHANNEL_CREDENTIALS {
+  BOOL use_old_cred_structure;
+  SCHANNEL_CRED schannel_cred;
+  SCH_CREDENTIALS sch_credentials;
+  ALG_ID AlgId[MAX_ALG_ID];
+  TLS_PARAMETERS tls_parameters;
+} MA_SCHANNEL_CREDENTIALS;
+
+/**
+  Initialize authentication data for the client side, before passing
+  it to AcquireCredentialsHandle()
+
+  Take care of specific TLS versions and cipher suites.
+
+  This function choses between the legacy and new credential structures
+  (SCHANNEL_CRED rsp SCH_CREDENTIALS) based on the OS version and the
+  requested cipher suite.
+
+  The new SCH_CREDENTIALS structure is not used, if a cipher suite is
+  requested, specific TLS protocol prior to TLSv1.3 is requested, or before
+  Windows 11 / Windows Server 2022.
+
+  @param ma_cred  Pointer to the MA_SCHANNEL_CREDENTIALS structure
+  @param ssl_cipher  The requested cipher suite
+  @param tls_ver     The requested TLS version(s), comma separated
+
+  @return SEC_E_OK on success,
+      SEC_E_ALGORITHM_MISMATCH, if the requested  cipher suite is not known,
+      SEC_E_UNSUPPORTED_FUNCTION,. TLSv1.3 is requested on an older Windows
+*/
+static SECURITY_STATUS init_auth_data(MA_SCHANNEL_CREDENTIALS *ma_cred,
+                                      char *ssl_cipher,
+                                      const char *tls_ver)
+{
+  ma_cred->use_old_cred_structure = FALSE;
+  SCHANNEL_CRED *schannel_cred= &ma_cred->schannel_cred;
+  SCH_CREDENTIALS *sch_credentials= &ma_cred->sch_credentials;
+  DWORD protocol= 0;
+  BOOL ssl_cipher_is_protocol= FALSE;
+
+  if (ssl_cipher || tls_ver)
+  {
+    for (int i= 0; i < sizeof(tls_version) / sizeof(tls_version[0]); i++)
+    {
+      const char *v= tls_version[i].tls_version;
+      if (ssl_cipher && (_stricmp(ssl_cipher, v) == 0))
+      {
+        ssl_cipher_is_protocol= TRUE;
+        protocol|= tls_version[i].protocol;
+      }
+      else if (tls_ver && strstr(tls_ver, v))
+      {
+        protocol|= tls_version[i].protocol;
+      }
+    }
+  }
+
+  if (ssl_cipher && !ssl_cipher_is_protocol)
+  {
+    ma_cred->use_old_cred_structure= TRUE;
+  }
+
+  if (!os_version_greater_equal(10, 0, 22000))
+  {
+    ma_cred->use_old_cred_structure= TRUE;
+  }
+
+  if(protocol == PROT_TLS1_3 && ma_cred->use_old_cred_structure)
+  {
+    return SEC_E_UNSUPPORTED_FUNCTION;
+  }
+
+  if ((protocol != 0) && (protocol != PROT_TLS1_3))
+  {
+    ma_cred->use_old_cred_structure= TRUE;
+  }
+
+  if (ma_cred->use_old_cred_structure)
+  {
+    memset(schannel_cred, 0, sizeof(*schannel_cred));
+    schannel_cred->dwVersion= SCHANNEL_CRED_VERSION;
+    /*
+      check if a protocol was specified as a cipher:
+      In this case don't allow cipher suites which belong to newer protocols
+      Please note: There are no cipher suites for TLS1.1
+     */
+    if (ssl_cipher)
+    {
+      memset(ma_cred->AlgId, 0, sizeof(ma_cred->AlgId));
+      schannel_cred->cSupportedAlgs=
+          (DWORD) set_cipher(ssl_cipher, protocol, ma_cred->AlgId, MAX_ALG_ID);
+      if (schannel_cred->cSupportedAlgs)
+      {
+        schannel_cred->palgSupportedAlgs= ma_cred->AlgId;
+      }
+      else if (!ssl_cipher_is_protocol)
+      {
+        /* Don't know those protocols. */
+        return SEC_E_ALGORITHM_MISMATCH;
+      }
+    }
+    schannel_cred->grbitEnabledProtocols= protocol & ~PROT_TLS1_3;
+    schannel_cred->dwFlags= SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS |
+                  SCH_CRED_MANUAL_CRED_VALIDATION;
+  }
+  else
+  {
+    memset(sch_credentials, 0, sizeof(*sch_credentials));
+    sch_credentials->dwVersion= SCH_CREDENTIALS_VERSION;
+    sch_credentials->dwFlags= SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS |
+                              SCH_CRED_MANUAL_CRED_VALIDATION;
+    if (protocol)
+    {
+      TLS_PARAMETERS *tls_parameters= &ma_cred->tls_parameters;
+      memset(tls_parameters, 0, sizeof(*tls_parameters));
+
+      tls_parameters->grbitDisabledProtocols= ~protocol;
+      sch_credentials->pTlsParameters= tls_parameters;
+      sch_credentials->cTlsParameters= 1;
+    }
+  }
+  return SEC_E_OK;
+}
+
+static void set_auth_data_cert(MA_SCHANNEL_CREDENTIALS *ma_cred, PCCERT_CONTEXT *cert)
+{
+  if (!cert)
+   return;
+  if (ma_cred->use_old_cred_structure)
+  {
+   ma_cred->schannel_cred.cCreds= 1;
+   ma_cred->schannel_cred.paCred= cert;
+  }
+  else
+  {
+    ma_cred->sch_credentials.cCreds= 1;
+    ma_cred->sch_credentials.paCred= cert;
+  }
+}
+
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   MYSQL *mysql;
-  SCHANNEL_CRED Cred = {0};
+  MA_SCHANNEL_CREDENTIALS ma_cred;
+  void *auth_data;
+
   MARIADB_PVIO *pvio;
   my_bool rc= 1;
   SC_CTX *sctx;
   SECURITY_STATUS sRet;
-  ALG_ID AlgId[MAX_ALG_ID];
-  size_t i;
   DWORD protocol = 0;
   const CERT_CONTEXT* cert_context = NULL;
 
@@ -390,57 +566,37 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   if (!mysql)
     return 1;
 
-  /* Set cipher */
-  if (mysql->options.ssl_cipher)
+  sRet= init_auth_data(&ma_cred, mysql->options.ssl_cipher, 
+      mysql->options.extension->tls_version);
+  switch(sRet)
   {
-
-   /* check if a protocol was specified as a cipher:
-     * In this case don't allow cipher suites which belong to newer protocols
-     * Please note: There are no cipher suites for TLS1.1
-     */
-    for (i = 0; i < sizeof(tls_version) / sizeof(tls_version[0]); i++)
-    {
-      if (!_stricmp(mysql->options.ssl_cipher, tls_version[i].tls_version))
-        protocol |= tls_version[i].protocol;
-    }
-    memset(AlgId, 0, sizeof(AlgId));
-    Cred.cSupportedAlgs = (DWORD)set_cipher(mysql->options.ssl_cipher, protocol, AlgId, MAX_ALG_ID);
-    if (Cred.cSupportedAlgs)
-    {
-      Cred.palgSupportedAlgs = AlgId;
-    }
-    else if (!protocol)
-    {
-      ma_schannel_set_sec_error(pvio, SEC_E_ALGORITHM_MISMATCH);
+    case SEC_E_UNSUPPORTED_FUNCTION:
+     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
+       "TLS1.3 is not supported on Windows before Windows 11 or Windows Server 2022");
+     goto end;
+    case SEC_E_ALGORITHM_MISMATCH:
+      pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
+                     "Unknown cipher suite");
       goto end;
-    }
+    case SEC_E_OK:
+      break;
+    default:
+      assert(0);
+      pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
+                      "Unknown error before the handshake");
+      goto end;
   }
-  
-  Cred.dwVersion= SCHANNEL_CRED_VERSION;
 
-  Cred.dwFlags = SCH_CRED_NO_SERVERNAME_CHECK | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION;
-
-  if (mysql->options.extension && mysql->options.extension->tls_version)
-  {
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.1"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_1_CLIENT;
-    if (strstr(mysql->options.extension->tls_version, "TLSv1.2"))
-      Cred.grbitEnabledProtocols|= SP_PROT_TLS1_2_CLIENT;
-  }
-  if (!Cred.grbitEnabledProtocols)
-    Cred.grbitEnabledProtocols = SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
-
-
-  if (ma_tls_set_client_certs(ctls, &cert_context))
+  if (ma_tls_set_client_certs(ctls, &cert_handle))
     goto end;
+  set_auth_data_cert(&ma_cred, cert_handle.cert?&cert_handle.cert:NULL);
+  auth_data= ma_cred.use_old_cred_structure ? (void*) &ma_cred.schannel_cred :(void*) &ma_cred.sch_credentials;
 
-  if (cert_context)
-  {
-    Cred.cCreds = 1;
-    Cred.paCred = &cert_context;
-  }
-  sRet= AcquireCredentialsHandleA(NULL, UNISP_NAME_A, SECPKG_CRED_OUTBOUND,
-                                       NULL, &Cred, NULL, NULL, &sctx->CredHdl, NULL);
+  sRet= AcquireCredentialsHandle(NULL, UNISP_NAME, SECPKG_CRED_OUTBOUND,
+                                 NULL, auth_data, NULL, NULL, &sctx->CredHdl, NULL);
+
+  /* We do not need to keep certificates after this point */
+  schannel_free_cert_context(&cert_handle);
   if (sRet)
   {
     ma_schannel_set_sec_error(pvio, sRet);
@@ -452,8 +608,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   rc = 0;
 
 end:
-  if (cert_context)
-    schannel_free_cert_context(cert_context);
+  if (cert_handle.cert)
+    schannel_free_cert_context(&cert_handle);
   return rc;
 }
 
@@ -462,13 +618,50 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   SC_CTX *sctx= (SC_CTX *)ctls->ssl;
   MARIADB_PVIO *pvio= ctls->pvio;
   DWORD dlength= 0;
-  SECURITY_STATUS status = ma_schannel_read_decrypt(pvio, &sctx->hCtxt, &dlength, (uchar *)buffer, (DWORD)length);
-  if (status == SEC_I_CONTEXT_EXPIRED)
-    return 0; /* other side shut down the connection. */
-  if (status == SEC_I_RENEGOTIATE)
-    return -1; /* Do not handle renegotiate yet */
+  SECURITY_STATUS status;
+  SecBuffer tmp_extra_buf= {0};
 
-  return (status == SEC_E_OK)? (ssize_t)dlength : -1;
+retry:
+  status= ma_schannel_read_decrypt(pvio, &sctx->hCtxt, &dlength,
+                                  (uchar *) buffer, (DWORD) length);
+  if (tmp_extra_buf.cbBuffer)
+  {
+    /*
+      This memory was allocated in renegotiation processing
+      below, free it.
+    */
+    LocalFree(tmp_extra_buf.pvBuffer);
+    tmp_extra_buf.cbBuffer= 0;
+  }
+  switch (status) {
+  case SEC_E_OK:
+    return (ssize_t) dlength;
+  case SEC_I_CONTEXT_EXPIRED:
+    /* Other side shut down the connection. */
+    return 0;
+  case SEC_I_RENEGOTIATE:
+    /* Rerun handshake steps */
+    tmp_extra_buf= sctx->extraBuf;
+    tmp_extra_buf.BufferType= SECBUFFER_TOKEN;
+    sctx->extraBuf.cbBuffer= 0;
+    sctx->extraBuf.pvBuffer= NULL;
+    status= ma_schannel_handshake_loop(pvio, FALSE, &tmp_extra_buf);
+    sctx->extraBuf= tmp_extra_buf;
+    if (status != SEC_E_OK)
+      return -1;
+    /*
+      If decrypt returned some decrypted bytes prior to
+      renegotiation,  return them.
+      Otherwise, retry the read-decrypt again
+    */
+    if (dlength)
+      return dlength;
+
+    goto retry;
+
+  default:
+    return -1;
+  }
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
