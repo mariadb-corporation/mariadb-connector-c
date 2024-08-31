@@ -551,6 +551,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   my_bool rc= 1;
   SC_CTX *sctx;
   SECURITY_STATUS sRet;
+  client_cert_handle cert_handle= {0};
   DWORD protocol = 0;
   const CERT_CONTEXT* cert_context = NULL;
 

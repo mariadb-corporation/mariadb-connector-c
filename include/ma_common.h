@@ -117,6 +117,7 @@ struct st_mariadb_extension {
   unsigned long mariadb_client_flag; /* MariaDB specific client flags */
   unsigned long mariadb_server_capabilities; /* MariaDB specific server capabilities */
   my_bool auto_local_infile;
+  my_bool tls_validation;
 };
 
 #define OPT_EXT_VAL(a,key) \

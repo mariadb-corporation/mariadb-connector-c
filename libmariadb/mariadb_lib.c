@@ -4552,7 +4552,7 @@ my_bool mariadb_get_infov(MYSQL *mysql, enum mariadb_value value, void *arg, ...
     *((MARIADB_X509_INFO **)arg)= NULL;
     break;
   case MARIADB_TLS_VERIFY_STATUS:
-    *((unsigned int *)arg)= (unsigned int)mysql->net.tls_verify_status;
+    *((unsigned int *)arg)= (unsigned int)mysql->extension->tls_validation;
     break;
 #endif
   case MARIADB_MAX_ALLOWED_PACKET:
