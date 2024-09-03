@@ -108,7 +108,7 @@ static int test_start_tls_server(MYSQL *my __attribute__((unused)))
   PROCESS_INFORMATION pi;
   char szCmdline[1024];
 
-  snprintf(szCmdline, sizeof(szCmdline), "%s tls_server.py --host=%s --port=%d", "@Python3_EXECUTABLE@", tls_dummy_host, tls_dummy_port);
+  snprintf(szCmdline, sizeof(szCmdline), "%s @CC_SOURCE_DIR@/unittest/libmariadb/tls_server.py --host=%s --port=%d", "@Python3_EXECUTABLE@", tls_dummy_host, tls_dummy_port);
 
   ZeroMemory(&si, sizeof(si));
   ZeroMemory(&pi, sizeof(pi));
@@ -573,7 +573,7 @@ static int test_crl(MYSQL *my __attribute__((unused)))
   MYSQL *mysql;
 
   /* Set validity in future */
-  if (set_tls_dummy_options("CMD:KEY_FILE='./certs/server-key.pem' CERT_FILE='./certs/server-cert.pem'"))
+  if (set_tls_dummy_options("CMD:KEY_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-key.pem' CERT_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.pem'"))
   {
     diag("Error when setting TLS options");
     return FAIL;
@@ -581,8 +581,8 @@ static int test_crl(MYSQL *my __attribute__((unused)))
 
   mysql= mysql_init(NULL);
 
-  mysql_optionsv(mysql, MYSQL_OPT_SSL_CRL, "./certs/server-cert.crl");
-  mysql_ssl_set(mysql, NULL, NULL, "./certs/cacert.pem", NULL, NULL);
+  mysql_optionsv(mysql, MYSQL_OPT_SSL_CRL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.crl");
+  mysql_ssl_set(mysql, NULL, NULL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/cacert.pem", NULL, NULL);
 
   if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
   {
@@ -601,7 +601,7 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
   const char *fp= "4B:EE:BB:12:6D:30:1A:B2:2A:4A:F8:6D:82:7F:63:44:1F:8F:F4:6B:D3:F2:CA:68:0B:D5:E3:5D:1C:47:A7:16";
 
   /* Set validity in future */
-  if (set_tls_dummy_options("CMD:KEY_FILE='./certs/server-key.pem' CERT_FILE='./certs/server-cert.pem'"))
+  if (set_tls_dummy_options("CMD:KEY_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-key.pem' CERT_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.pem'"))
   {
     diag("Error when setting TLS options");
     return FAIL;
@@ -610,8 +610,8 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
   mysql= mysql_init(NULL);
   mysql_optionsv(mysql, MARIADB_OPT_SSL_FP, fp);
 
-  mysql_optionsv(mysql, MYSQL_OPT_SSL_CRL, "./certs/server-cert.crl");
-  mysql_ssl_set(mysql, NULL, NULL, "./certs/cacert.pem", NULL, NULL);
+  mysql_optionsv(mysql, MYSQL_OPT_SSL_CRL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.crl");
+  mysql_ssl_set(mysql, NULL, NULL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/cacert.pem", NULL, NULL);
 
   if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
   {
