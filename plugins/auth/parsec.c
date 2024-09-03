@@ -148,9 +148,9 @@ cleanup:
 }
 
 #ifdef _MSC_VER
-  static __declspec(thread) Passwd_in_memory pwd_local;
+  static __declspec(thread) struct Passwd_in_memory pwd_local;
 #else
-  static __thread Passwd_in_memory pwd_local;
+  static __thread struct Passwd_in_memory pwd_local;
 #endif
 
 static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
