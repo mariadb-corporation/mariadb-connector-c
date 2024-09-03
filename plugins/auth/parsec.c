@@ -40,9 +40,6 @@
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
-#ifndef _MSC_VER
-#include <threads.h>
-#endif
 
 #define CHALLENGE_SCRAMBLE_LENGTH 32
 #define CHALLENGE_SALT_LENGTH     18
@@ -151,10 +148,10 @@ cleanup:
 }
 
 #ifdef _MSC_VER
-  #define _Thread_local  __declspec(thread)
+  static __declspec(thread) Passwd_in_memory pwd_local;
+#else
+  static __thread Passwd_in_memory pwd_local;
 #endif
-
-static _Thread_local struct Passwd_in_memory pwd_local;
 
 static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {

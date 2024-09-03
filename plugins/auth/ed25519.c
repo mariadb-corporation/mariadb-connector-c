@@ -88,22 +88,17 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   auth_ed25519_hash
 };
 
-#ifdef HAVE_THREAD_LOCAL
-#ifdef _MSC_VER
-#define _Thread_local __declspec(thread)
-#endif
-
 /* pk will be used in the future auth_ed25519_hash() call, after the authentication */
-static _Thread_local unsigned char pk[CRYPTO_PUBLICKEYBYTES];
+#ifdef _MSC_VER
+static __declspec(thread) unsigned char pk[CRYPTO_PUBLICKEYBYTES];
+#else
+static __thread unsigned char pk[CRYPTO_PUBLICKEYBYTES];
 #endif
 
 static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
   unsigned char *packet,
                 signature[CRYPTO_BYTES + NONCE_BYTES];
-#ifndef HAVE_THREAD_LOCAL
-  unsigned char pk[CRYPTO_PUBLICKEYBYTES];
-#endif
   unsigned long long pkt_len;
   size_t pwlen= strlen(mysql->passwd);
 
