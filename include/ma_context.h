@@ -34,10 +34,16 @@
 #define MY_CONTEXT_USE_I386_GCC_ASM
 #elif defined(__GNUC__) && __GNUC__ >= 3 && defined(__aarch64__)
 #define MY_CONTEXT_USE_AARCH64_GCC_ASM
+#elif defined(HAVE_BOOST_CONTEXT_H)
+#define MY_CONTEXT_USE_BOOST_CONTEXT
 #elif defined(HAVE_UCONTEXT_H)
 #define MY_CONTEXT_USE_UCONTEXT
 #else
 #define MY_CONTEXT_DISABLE
+#endif
+
+#ifdef   __cplusplus
+extern "C" {
 #endif
 
 #ifdef MY_CONTEXT_USE_WIN32_FIBERS
@@ -124,6 +130,32 @@ struct my_context {
 #endif
 };
 #endif
+
+
+#ifdef MY_CONTEXT_USE_BOOST_CONTEXT
+/*
+  boost::context is a C++-library that provides a portable co-routine fallback
+  for architectures that lack a native my_context implementation, and which is
+  available on some platforms where ucontext is not (ucontext has been
+  deprecated in Posix).
+
+  Since boost::context is in C++, the implementation details must be put into
+  a separate source file ma_boost_context.cc and hidden in an opaque void *.
+*/
+struct my_context {
+  /* Pointer to state that uses C++-types and cannot be compiled in C. */
+  void *internal_context;
+  void *stack;
+  size_t stack_size;
+#ifndef DBUG_OFF
+  void *dbug_state;
+#endif
+  int active;
+#ifdef HAVE_VALGRIND
+  unsigned int valgrind_stack_id;
+#endif
+};
+#endif /* MY_CONTEXT_USE_BOOST_CONTEXT */
 
 
 #ifdef MY_CONTEXT_DISABLE
@@ -259,3 +291,7 @@ struct mysql_async_context {
   */
   struct my_context async_context;
 };
+
+#ifdef   __cplusplus
+}
+#endif
