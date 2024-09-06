@@ -1463,13 +1463,12 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
     if (status & GNUTLS_CERT_REVOKED)
       mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_REVOKED;
     if (status & GNUTLS_CERT_SIGNER_NOT_FOUND)
-      if (flags & MARIADB_TLS_VERIFY_TRUST)
-        mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_TRUST;
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_TRUST;
     if ((status & GNUTLS_CERT_NOT_ACTIVATED) || (status & GNUTLS_CERT_EXPIRED))
       mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
   }
 
-  if (!status && (flags & MARIADB_TLS_VERIFY_HOST))
+  if ((flags & MARIADB_TLS_VERIFY_HOST))
   {
     gnutls_x509_crt_t cert= ma_get_cert(ctls);
     int rc;
