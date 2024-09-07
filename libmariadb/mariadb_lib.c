@@ -1954,6 +1954,8 @@ restart:
       goto error;
     }
   }
+  memmove(mysql->scramble_buff, scramble_data, SCRAMBLE_LENGTH);
+  mysql->scramble_buff[SCRAMBLE_LENGTH]= 0;
 
   /* Set character set */
   if (mysql->options.charset_name)

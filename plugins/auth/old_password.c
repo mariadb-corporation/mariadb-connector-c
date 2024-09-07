@@ -94,10 +94,6 @@ static int auth_old_password(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     if (pkt_len != SCRAMBLE_LENGTH_323 + 1 &&
         pkt_len != SCRAMBLE_LENGTH + 1)
         return CR_SERVER_HANDSHAKE_ERR;
-
-    /* save it in MYSQL */
-    memmove(mysql->scramble_buff, pkt, pkt_len - 1);
-    mysql->scramble_buff[pkt_len - 1] = 0;
   }
 
   if (mysql && mysql->passwd[0])
