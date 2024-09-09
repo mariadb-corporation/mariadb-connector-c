@@ -3853,6 +3853,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
   case MARIADB_OPT_BULK_UNIT_RESULTS:
     OPT_SET_EXTENDED_VALUE_INT(&mysql->options, bulk_unit_results, *(my_bool *)arg1);
     break;
+  case MARIADB_OPT_TLS_VERIFICATION_CALLBACK:
+    OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verification_callback, arg1);
+    break;
   default:
     va_end(ap);
     SET_CLIENT_ERROR(mysql, CR_NOT_IMPLEMENTED, SQLSTATE_UNKNOWN, 0);

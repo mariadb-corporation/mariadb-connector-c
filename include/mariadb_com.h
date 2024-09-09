@@ -297,7 +297,7 @@ typedef struct st_net {
   unsigned char reading_or_writing;
   char save_char;
   char unused_1;
-  my_bool tls_verify_status;
+  unsigned char tls_verify_status;
   my_bool compress;
   my_bool unused_2;
   char *unused_3;

@@ -88,6 +88,7 @@ struct st_mysql_options_extension {
   void (*status_callback)(void *ptr, enum enum_mariadb_status_info type, ...);
   void *status_data;
   my_bool tls_allow_invalid_server_cert;
+  my_bool (*tls_verification_callback)(MYSQL *mysql, unsigned int *verification_flags, my_bool verified);
 };
 
 typedef struct st_connection_handler

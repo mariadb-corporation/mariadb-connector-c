@@ -42,11 +42,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
   FAIL_IF(!(status & (flag)), (text));\
 }
 
-#define CHECK_NO_TLS_FLAGS(m)\
+#define CHECK_NO_TLS_FLAG(m, flag, text)\
 {\
   unsigned int status;\
   mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);\
-  FAIL_IF(status), "Expected MARIADB_TLS_VERIFY_OK");\
+  FAIL_IF((status & (flag)), (text));\
 }
 
 my_bool auto_generated_cert= 0;
@@ -141,7 +141,7 @@ static int test_start_tls_server(MYSQL *my __attribute__((unused)))
 
     snprintf(hostname, sizeof(hostname), "--host=%s", tls_dummy_host);
     snprintf(port, sizeof(port), "--port=%d", tls_dummy_port);
-    execlp("@Python3_EXECUTABLE@", "@Python3_EXECUTABLE@", "tls_server.py", hostname, port, NULL);
+    execlp("@Python3_EXECUTABLE@", "@Python3_EXECUTABLE@", "@CC_SOURCE_DIR@/unittest/libmariadb/tls_server.py", hostname, port, NULL);
   }
   
 #endif
@@ -658,11 +658,72 @@ static int stop_tls_server(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+my_bool tls_wildcard_callback(MYSQL *mysql, unsigned int *flags, my_bool verified)
+{
+  if (!verified)
+  {
+    free(mysql->host);
+    mysql->host= strdup("test.example.com");
+    *flags= MARIADB_TLS_VERIFY_HOST;
+    return 0;
+  }
+  /* Indicate error, since the dummy server can't handle further client server
+     communication after TLS handshake */
+  mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
+  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+               ER(CR_SSL_CONNECTION_ERROR),
+               "Certificate verification aborted by callback");
+  return 1;
+}
+
+static int test_cert_wildcard(MYSQL *my __attribute((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  if (set_tls_dummy_options("CMD:create_new=True commonName='*.example.com'"))
+  {
+    diag("Error when setting TLS options");
+    return FAIL;
+  }
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_wildcard_callback);
+
+  if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
+  {
+    CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass");
+    CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_TRUST, "Self signed certificate expected");
+    mysql_close(mysql);
+  } else {
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  mysql= mysql_init(NULL);
+  if (set_tls_dummy_options("CMD:create_new=True commonName='*.noexample.com'"))
+  {
+    diag("Error when setting TLS options");
+    return FAIL;
+  }
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_wildcard_callback);
+
+  if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
+  {
+    CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification passed with wrong wildcard");
+    mysql_close(mysql);
+  } else {
+    mysql_close(mysql);
+    return FAIL;
+  }
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
   /* Don't add test above, test_init needs to be run first */
   {"test_start_tls_server", test_start_tls_server, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_init", test_init, TEST_CONNECTION_NONE, 0, NULL, NULL},
   /* Here you can add more tests */
+  {"test_cert_wildcard", test_cert_wildcard, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_cert_expired", test_cert_expired, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_pw_check", test_pw_check, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_ca_cert_check", test_ca_cert_check, TEST_CONNECTION_NONE, 0, NULL, NULL},
