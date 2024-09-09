@@ -428,7 +428,9 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     {
       verify_flags|= MARIADB_TLS_VERIFY_FINGERPRINT;
     } else {
-      verify_flags|= MARIADB_TLS_VERIFY_TRUST | MARIADB_TLS_VERIFY_HOST;
+      verify_flags|= MARIADB_TLS_VERIFY_TRUST;
+      if (!is_local_connection(mysql->net.pvio))
+        verify_flags |= MARIADB_TLS_VERIFY_HOST;
     }
 
     if (ma_pvio_tls_verify_server_cert(mysql->net.pvio->ctls, verify_flags))

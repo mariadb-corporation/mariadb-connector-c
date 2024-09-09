@@ -101,6 +101,19 @@ static my_bool ignore_self_signed_cert_error(MYSQL *mysql)
   return FALSE;
 }
 
+static my_bool tls_abort_after_handhake_cb(MYSQL *mysql, unsigned int *flags __attribute((unused)), my_bool verified)
+{
+  if (verified)
+  {
+    mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
+    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                 ER(CR_SSL_CONNECTION_ERROR),
+                 "Certificate verification aborted by callback");
+    return 1;
+  }
+  return 0;
+}
+
 static int test_start_tls_server(MYSQL *my __attribute__((unused)))
 {
 #ifdef WIN32
@@ -260,7 +273,7 @@ static int test_no_cert_check(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-static int test_ca_cert_check(MYSQL *my __attribute__((unused)))
+static int test_conc712(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   int rc= FAIL;
@@ -273,6 +286,7 @@ static int test_ca_cert_check(MYSQL *my __attribute__((unused)))
   /* Force use of TLS with faked ca, which contains the server
      certificate */
   mysql_ssl_set(mysql, NULL, NULL, "./selfsigned.pem", NULL, NULL);
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handhake_cb);
 
   if (my_test_connect(mysql, tls_dummy_host, username, password, schema,
                       tls_dummy_port, socketname, 0, 0))
@@ -280,8 +294,7 @@ static int test_ca_cert_check(MYSQL *my __attribute__((unused)))
     diag("Error: %s", mysql_error(mysql));
     goto end;
   }
-  diag("flags: %d\n", mysql->net.tls_verify_status);
-  CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_HOST, "Host verification flag not set");
+  CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass");
   rc= OK;
 end:
   mysql_close(mysql);
@@ -623,31 +636,6 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-
-static int test_wrong_hostname(MYSQL *my __attribute__((unused)))
-{
-  MYSQL *mysql;
-
-  if (set_tls_dummy_options("CMD:create_new=True"))
-  {
-    diag("Error when setting TLS options");
-    return FAIL;
-  }
-
-  mysql= mysql_init(NULL);
-
-  mysql_ssl_set(mysql, NULL, NULL, "./selfsigned.pem", NULL, NULL);
-
-  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Error expected since hostname doesn't match");
-    return FAIL;
-  }
-  CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_HOST, "Host name validation flag not set")
-  mysql_close(mysql);
-  return OK;
-}
-
 static int stop_tls_server(MYSQL *my __attribute__((unused)))
 {
   if (set_tls_dummy_options("QUIT"))
@@ -658,7 +646,7 @@ static int stop_tls_server(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-my_bool tls_wildcard_callback(MYSQL *mysql, unsigned int *flags, my_bool verified)
+static my_bool tls_wildcard_callback(MYSQL *mysql, unsigned int *flags, my_bool verified)
 {
   if (!verified)
   {
@@ -726,14 +714,13 @@ struct my_tests_st my_tests[] = {
   {"test_cert_wildcard", test_cert_wildcard, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_cert_expired", test_cert_expired, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_pw_check", test_pw_check, TEST_CONNECTION_NEW, 0, NULL, NULL},
-  {"test_ca_cert_check", test_ca_cert_check, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_conc712", test_conc712, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_fp_garbage", test_fp_garbage, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_peer_cert_info_fp", test_peer_cert_info_fp, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_no_cert_check", test_no_cert_check, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_fp", test_fp, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_fp_colon", test_fp_colon, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_wrong_ca", test_wrong_ca, TEST_CONNECTION_NONE, 0, NULL, NULL},
-  {"test_wrong_hostname", test_wrong_hostname, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_crl", test_crl, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_crl_with_fp", test_crl_with_fp, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"stop_tls_server", stop_tls_server, TEST_CONNECTION_NONE, 0, NULL, NULL},
