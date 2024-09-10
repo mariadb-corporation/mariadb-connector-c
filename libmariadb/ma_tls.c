@@ -119,17 +119,7 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
     return 0;
   }
 
-  if (mysql->options.extension->tls_verification_callback &&
-      mysql->options.extension->tls_verification_callback(mysql, &flags, 0))
-    rc= 1;
-  else {
-    rc= ma_tls_verify_server_cert(ctls, flags);
-    if (mysql->options.extension->tls_verification_callback &&
-        mysql->options.extension->tls_verification_callback(mysql, &flags, 1))
-    {
-      rc= 1;
-    }
-  }
+  rc= ma_tls_verify_server_cert(ctls, flags);
 
   /* Set error messages */
   if (!mysql->net.last_errno)

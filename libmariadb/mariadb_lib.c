@@ -1318,6 +1318,7 @@ mysql_init(MYSQL *mysql)
   mysql->extension->auto_local_infile= ENABLED_LOCAL_INFILE == LOCAL_INFILE_MODE_AUTO
                                        ? WAIT_FOR_QUERY : ALWAYS_ACCEPT;
   mysql->options.reconnect= 0;
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, ma_pvio_tls_verify_server_cert);
   return mysql;
 error:
   if (mysql->free_me)
@@ -3854,7 +3855,12 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_EXTENDED_VALUE_INT(&mysql->options, bulk_unit_results, *(my_bool *)arg1);
     break;
   case MARIADB_OPT_TLS_VERIFICATION_CALLBACK:
-    OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verification_callback, arg1);
+    if (!arg1)
+    {
+      OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verification_callback, ma_pvio_tls_verify_server_cert);
+    } else {
+      OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verification_callback, arg1);
+    }
     break;
   default:
     va_end(ap);

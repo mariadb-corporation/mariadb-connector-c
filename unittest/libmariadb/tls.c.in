@@ -35,6 +35,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <openssl/ssl.h>
 #endif
 
+static const char *strong_pwd= "!1_5rd_D%A1$f48Hk1$";
+
 #define CHECK_TLS_FLAGS(m, flag, text) \
 {\
   unsigned int status;\
@@ -101,17 +103,17 @@ static my_bool ignore_self_signed_cert_error(MYSQL *mysql)
   return FALSE;
 }
 
-static my_bool tls_abort_after_handhake_cb(MYSQL *mysql, unsigned int *flags __attribute((unused)), my_bool verified)
+static my_bool tls_abort_after_handshake(MARIADB_TLS *ctls, unsigned int flags)
 {
-  if (verified)
-  {
-    mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
-    my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                 ER(CR_SSL_CONNECTION_ERROR),
-                 "Certificate verification aborted by callback");
-    return 1;
-  }
-  return 0;
+  MYSQL *mysql= ctls->pvio->mysql;
+
+  ma_pvio_tls_verify_server_cert(ctls, flags);
+
+  mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
+  my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+               ER(CR_SSL_CONNECTION_ERROR),
+               "Certificate verification aborted.");
+  return 1;
 }
 
 static int test_start_tls_server(MYSQL *my __attribute__((unused)))
@@ -212,7 +214,6 @@ static int test_init(MYSQL *my __attribute__((unused)))
   int ret= FAIL;
   MYSQL_RES *result;
   MYSQL_ROW row;
-  char query[1024];
 
   diag("test_init");
 
@@ -240,14 +241,6 @@ static int test_init(MYSQL *my __attribute__((unused)))
   diag("ignore self signed certificates: %d", ignore_self_signed);
 
   ret= OK;
-
-  sprintf(query, "CREATE OR REPLACE USER 'tls_user1'@'%s' IDENTIFIED BY 'tls_password'", hostname);
-  rc= mysql_query(mysql, query);
-  check_mysql_rc(rc, mysql);
-
-  sprintf(query, "CREATE OR REPLACE USER 'tls_user2'@'%s'", hostname);
-  rc= mysql_query(mysql, query);
-  check_mysql_rc(rc, mysql);
 
   mysql_close(mysql);
   return ret;
@@ -286,7 +279,7 @@ static int test_conc712(MYSQL *my __attribute__((unused)))
   /* Force use of TLS with faked ca, which contains the server
      certificate */
   mysql_ssl_set(mysql, NULL, NULL, "./selfsigned.pem", NULL, NULL);
-  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handhake_cb);
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handshake);
 
   if (my_test_connect(mysql, tls_dummy_host, username, password, schema,
                       tls_dummy_port, socketname, 0, 0))
@@ -461,12 +454,12 @@ static int test_pw_check(MYSQL *my)
   int ret= FAIL;
 
   /* connect with password */
-  sprintf(query, "CREATE OR REPLACE USER '%s'@'%s' IDENTIFIED BY '%s'", "tlsuser", this_host, "mypw");
+  sprintf(query, "CREATE OR REPLACE USER '%s'@'%s' IDENTIFIED BY '%s'", "tlsuser", this_host, strong_pwd);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
 
   diag("expected to pass with self signed");
-  if (!my_test_connect(mysql, hostname, "tlsuser", "mypw", NULL, port, socketname, 0, 0))
+  if (!my_test_connect(mysql, hostname, "tlsuser", strong_pwd, NULL, port, socketname, 0, 0))
   {
     /* We connected to a pre 11.4 server, so skip further tests */
     CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_TRUST, "trust validation flag not set");
@@ -646,21 +639,22 @@ static int stop_tls_server(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-static my_bool tls_wildcard_callback(MYSQL *mysql, unsigned int *flags, my_bool verified)
+static my_bool tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
 {
-  if (!verified)
-  {
-    free(mysql->host);
-    mysql->host= strdup("test.example.com");
-    *flags= MARIADB_TLS_VERIFY_HOST;
-    return 0;
-  }
+  MYSQL *mysql= ctls->pvio->mysql;
+  
+  free(mysql->host);
+  mysql->host= strdup("test.example.com");
+  flags= MARIADB_TLS_VERIFY_HOST;
+
+  ma_pvio_tls_verify_server_cert(ctls, flags);
+
   /* Indicate error, since the dummy server can't handle further client server
      communication after TLS handshake */
   mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
   my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                ER(CR_SSL_CONNECTION_ERROR),
-               "Certificate verification aborted by callback");
+               "Certificate verification aborted.");
   return 1;
 }
 

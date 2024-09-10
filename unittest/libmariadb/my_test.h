@@ -664,7 +664,6 @@ MYSQL *my_test_connect(MYSQL *mysql,
   mysql_get_optionv(mysql, MARIADB_OPT_SSL_FP, &have_fp);
   if (fingerprint[0] && auto_fingerprint)
   {
-    printf("setting fingerprint\n");
     mysql_options(mysql, MARIADB_OPT_SSL_FP, fingerprint);
   }
   if (!mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag))

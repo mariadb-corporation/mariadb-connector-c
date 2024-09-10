@@ -433,7 +433,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
         verify_flags |= MARIADB_TLS_VERIFY_HOST;
     }
 
-    if (ma_pvio_tls_verify_server_cert(mysql->net.pvio->ctls, verify_flags))
+    if (mysql->options.extension->tls_verification_callback(mysql->net.pvio->ctls, verify_flags))
     {
       /* Save original verification result */
       mysql->extension->tls_validation= mysql->net.tls_verify_status;
