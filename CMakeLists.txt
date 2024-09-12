@@ -53,6 +53,7 @@ ENDMACRO()
 ### Options ###
 IF(NOT WIN32)
   ADD_OPTION(WITH_MYSQLCOMPAT "creates libmysql* symbolic links" OFF)
+  ADD_OPTION(WITH_DOCS "creates manpages" OFF)
 ELSE()
   ADD_OPTION(WITH_MSI "Build MSI installation package" OFF)
   ADD_OPTION(WITH_SIGNCODE "digitally sign files" OFF)
@@ -147,7 +148,6 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE "RelWithDebInfo")
 ENDIF()
 
-# various defines for generating include/mysql_version.h
 INCLUDE(FindGit)
 IF(GIT_EXECUTABLE AND EXISTS ${CC_SOURCE_DIR}/.git)
   EXECUTE_PROCESS(
@@ -157,7 +157,12 @@ IF(GIT_EXECUTABLE AND EXISTS ${CC_SOURCE_DIR}/.git)
    IF(RES EQUAL 0)
     STRING(REGEX REPLACE "\n$" "" CC_SOURCE_REVISION "${OUT}")
   ENDIF()
+  EXECUTE_PROCESS(
+    COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+            WORKING_DIRECTORY ${CC_SOURCE_DIR})
 ENDIF()
+
+# various defines for generating include/mysql_version.h
 SET(PROTOCOL_VERSION 10) # we adapted new password option from PHP's mysqlnd !
 
 # if C/C is build as subproject inside MariaDB server tree we will
@@ -439,14 +444,16 @@ IF(IS_DIRECTORY ${CC_SOURCE_DIR}/unittest)
   ENDIF()
 ENDIF()
 
-IF(CLIENT_DOCS)
-  INSTALL(DIRECTORY ${CLIENT_DOCS}
-          DESTINATION ${DOCS_INSTALL_DIR_${INSTALL_LAYOUT}}
-          COMPONENT SharedLibraries)
-ENDIF()
+#IF(CLIENT_DOCS)
+#  INSTALL(DIRECTORY ${CLIENT_DOCS}
+#          DESTINATION ${DOCS_INSTALL_DIR_${INSTALL_LAYOUT}}
+#          COMPONENT SharedLibraries)
+#ENDIF()
 
 IF(UNIX)
-  ADD_SUBDIRECTORY(man)
+  IF(WITH_DOCS)
+    ADD_SUBDIRECTORY(man)
+  ENDIF()
 ENDIF()
 
 IF(WIN32 AND WITH_MSI AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
