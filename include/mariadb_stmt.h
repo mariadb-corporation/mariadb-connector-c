@@ -154,7 +154,7 @@ typedef struct st_mysql_error_info
 
 typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row);
 typedef void (*ps_result_callback)(void *data, unsigned int column, unsigned char **row);
-typedef my_bool *(*ps_param_callback)(void *data, MYSQL_BIND *bind, unsigned int row_nr);
+typedef my_bool (*ps_param_callback)(void *data, MYSQL_BIND *bind, unsigned int row_nr);
 
 struct st_mysql_stmt
 {
