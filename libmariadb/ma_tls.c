@@ -114,7 +114,9 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
   mysql= ctls->pvio->mysql;
 
   /* Skip peer certificate verification */
-  if (ctls->pvio->mysql->options.extension->tls_allow_invalid_server_cert)
+  if ((mysql->options.extension->tls_allow_invalid_server_cert ||
+      getenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION")) &&
+      (!mysql->options.extension->tls_fp && !mysql->options.extension->tls_fp_list))
   {
     return 0;
   }
