@@ -27,6 +27,8 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include <fileapi.h>
+#include <string.h>
 #include "shlwapi.h"
 
 #define access _access
@@ -34,6 +36,7 @@
 static const char *ini_exts[]= {"ini", "cnf", 0};
 #define R_OK 4
 #else
+#include <dirent.h>
 #include <unistd.h>
 static const char *ini_exts[]= {"cnf", 0};
 #endif
@@ -152,6 +155,32 @@ static my_bool is_group(char *ptr, const char **groups)
   return 0;
 }
 
+static my_bool is_config_file(char *path)
+{
+  char *end;
+  if (access(path, R_OK)) {
+    return 0;
+  }
+  end = path + strlen(path);
+  for (int exts = 0; ini_exts[exts]; exts++) {
+    size_t ext_length = strlen(ini_exts[exts]);
+    char *ext_start = end - ext_length - 1;
+
+    if ((ext_start >= path) && (*ext_start == '.')) {
+      #ifdef _WIN32
+      if (!_stricmp(ext_start + 1, ini_exts[exts])) {
+	return 1;
+      }
+      #else      
+      if (!strcmp(ext_start + 1, ini_exts[exts])) {
+	return 1;
+      }
+      #endif
+    }
+  }
+  return 0;
+}
+
 static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
                                                const char *config_file,
                                                const char *group,
@@ -200,8 +229,36 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
       end= strchr(val, 0);
       for ( ; isspace(end[-1]) ; end--) ;	/* Remove end space */
       *end= 0;
-      if (!strcmp(ptr, "includedir"))
-        _mariadb_read_options(mysql, (const char *)val, NULL, group, recursion + 1);
+      if (!strcmp(ptr, "includedir")) {
+        /* _mariadb_read_options(mysql, (const char *)val, NULL, group, recursion + 1); */
+	#ifdef _WIN32
+	HANDLE hFind = NULL;
+	WIN32_FIND_DATA fdFile;
+	TCHAR cIncConfigPath[4096 + MAX_PATH]; 
+	if ((hFind = FindFirstFile((const char *)val)) == INVALID_HANDLE_VALUE) {
+	  goto err;
+	}	
+	do {
+	  snprintf(cIncConfigPath, 4096 + MAX_PATH, "%s/%s", val, fdFile.cFileName);
+	  if (is_config_file(cIncConfigPath)) {
+	    _mariadb_read_options(mysql, NULL, (const char *)cIncConfigPath, group, recursion + 1);
+	  }
+	} while (FindNextFile(hFind, &fdFile));
+	#else
+	DIR *dir;
+	struct dirent *ent;
+	char inc_config_path[4096 + 256];
+	if (!(dir = opendir((const char *)val))) {
+	  goto err;
+	}
+	while ((ent = readdir(dir))) {
+	  snprintf(inc_config_path, 4096 + 256, "%s/%s", val, ent->d_name);
+	  if (is_config_file(inc_config_path)) {
+	    _mariadb_read_options(mysql, NULL, (const char *)inc_config_path, group, recursion + 1);
+	  }
+	}
+	#endif
+      }
       else if (!strcmp(ptr, "include"))
         _mariadb_read_options(mysql, NULL, (const char *)val, group, recursion + 1);
       continue;
