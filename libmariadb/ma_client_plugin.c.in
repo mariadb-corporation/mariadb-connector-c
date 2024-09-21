@@ -138,7 +138,11 @@ static struct st_mysql_client_plugin *find_plugin(const char *name, int type)
     return 0;
 
   if (!name)
-    return plugin_list[plugin_nr]->plugin;
+  {
+    if (plugin_list[plugin_nr])
+      return plugin_list[plugin_nr]->plugin;
+    return NULL;
+  }
 
   for (p= plugin_list[plugin_nr]; p; p= p->next)
   {
