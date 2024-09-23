@@ -234,12 +234,14 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
 	#ifdef _WIN32
 	HANDLE hFind = NULL;
 	WIN32_FIND_DATA fdFile;
+    TCHAR cIncDirFilePattern[4096 + 2];
 	TCHAR cIncConfigPath[4096 + MAX_PATH]; 
-	if ((hFind = FindFirstFile((const char *)val)) == INVALID_HANDLE_VALUE) {
+    snprintf(cIncDirFilePattern, 4096 + 2, "%s\\*", val);
+	if ((hFind = FindFirstFile((const char *)cIncDirFilePattern, &fdFile)) == INVALID_HANDLE_VALUE) {
 	  goto err;
 	}	
 	do {
-	  snprintf(cIncConfigPath, 4096 + MAX_PATH, "%s/%s", val, fdFile.cFileName);
+	  snprintf(cIncConfigPath, 4096 + MAX_PATH, "%s\\%s", val, fdFile.cFileName);
 	  if (is_config_file(cIncConfigPath)) {
 	    _mariadb_read_options(mysql, NULL, (const char *)cIncConfigPath, group, recursion + 1);
 	  }
