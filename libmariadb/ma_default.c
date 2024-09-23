@@ -234,18 +234,21 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
 	#ifdef _WIN32
 	HANDLE hFind = NULL;
 	WIN32_FIND_DATA fdFile;
-    TCHAR cIncDirFilePattern[4096 + 2];
-	TCHAR cIncConfigPath[4096 + MAX_PATH]; 
-    snprintf(cIncDirFilePattern, 4096 + 2, "%s\\*", val);
-	if ((hFind = FindFirstFile((const char *)cIncDirFilePattern, &fdFile)) == INVALID_HANDLE_VALUE) {
-	  goto err;
-	}	
-	do {
-	  snprintf(cIncConfigPath, 4096 + MAX_PATH, "%s\\%s", val, fdFile.cFileName);
-	  if (is_config_file(cIncConfigPath)) {
-	    _mariadb_read_options(mysql, NULL, (const char *)cIncConfigPath, group, recursion + 1);
-	  }
-	} while (FindNextFile(hFind, &fdFile));
+    TCHAR cIncDirFilePattern[4096 + MAX_PATH];
+	TCHAR cIncConfigPath[4096 + MAX_PATH];
+    for (int exts = 0; ini_exts[exts]; exts++) {
+        snprintf(cIncDirFilePattern, 4096 + MAX_PATH, "%s\\*.%s", val, ini_exts[exts]);
+        if ((hFind = FindFirstFile((const char*)cIncDirFilePattern, &fdFile)) == INVALID_HANDLE_VALUE) {
+            continue;
+        }
+        do {
+            snprintf(cIncConfigPath, 4096 + MAX_PATH, "%s\\%s", val, fdFile.cFileName);
+            if (!access(cIncConfigPath, R_OK)) {
+                _mariadb_read_options(mysql, NULL, (const char*)cIncConfigPath, group, recursion + 1);
+            }
+        } while (FindNextFile(hFind, &fdFile));
+    }
+
 	#else
 	DIR *dir;
 	struct dirent *ent;
