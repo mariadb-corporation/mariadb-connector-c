@@ -247,7 +247,6 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
 	HANDLE hFind = NULL;
 	WIN32_FIND_DATA fdFile;
 	TCHAR cIncDirFilePattern[MAX_INCLUDE_PATH_LENGTH];
-	TCHAR inc_config_path[MAX_INCLUDE_PATH_LENGTH];
 	const TCHAR *sep = "\\";
 	#else
 	#define MAX_INCLUDE_PATH_LENGTH 4096 + 256
@@ -266,8 +265,8 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
 	  do {
             snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%s%s", val, sep, fdFile.cFileName);
             if (!access(inc_config_path, R_OK)) {
-	      char *filename = strdup(fd.cFilename)
-	      ma_insert_dynamic(&filenames, (gptr)&filename);
+                char* filename = strdup(fdFile.cFileName);
+	            ma_insert_dynamic(&filenames, (gptr)&filename);
             }
 	  } while (FindNextFile(hFind, &fdFile));
 	  FindClose(hFind);
