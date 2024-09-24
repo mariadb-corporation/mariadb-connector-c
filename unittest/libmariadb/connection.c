@@ -1603,19 +1603,29 @@ static int test_conc396(MYSQL *unused __attribute__((unused)))
   char cnf_dir[FN_REFLEN + 1];
   char cnf_file2[FN_REFLEN + 1];
   char cnf_file3[FN_REFLEN + 1];
+  char tmp_dir[FN_REFLEN + 1];
   const char *env = getenv("MYSQL_TMP_DIR");
   fp1 = fp2 = fp3 = NULL;
 
-  if (!env)
-    env= "/tmp";
 
-  snprintf(cnf_file1, FN_REFLEN, "%s%cfoo.cnf", env, FN_LIBCHAR);
-  snprintf(cnf_dir, FN_REFLEN, "%s%cconf.d", env, FN_LIBCHAR);
-  snprintf(cnf_file2, FN_REFLEN, "%s%cconf.d%cconfig_a.cnf", env, FN_LIBCHAR, FN_LIBCHAR);
-  snprintf(cnf_file3, FN_REFLEN, "%s%cconf.d%cconfig_b.cnf", env, FN_LIBCHAR, FN_LIBCHAR);
+  if (env) {
+      strncpy(tmp_dir, env, FN_REFLEN + 1);
+  }
+  else {
+#ifdef _WIN32
+      GetTempPath(FN_REFLEN + 1, tmp_dir);
+#else
+      strncpy(tmp_dir, "/tmp", FN_REFLEN + 1);
+#endif
+  }
+
+  snprintf(cnf_file1, FN_REFLEN, "%s%cfoo.cnf", tmp_dir, FN_LIBCHAR);
+  snprintf(cnf_dir, FN_REFLEN, "%s%cconf.d", tmp_dir, FN_LIBCHAR);
+  snprintf(cnf_file2, FN_REFLEN, "%s%cconfig_a.cnf", cnf_dir, FN_LIBCHAR);
+  snprintf(cnf_file3, FN_REFLEN, "%s%cconfig_b.cnf", cnf_dir, FN_LIBCHAR);
 
   #ifdef _WIN32
-  CreateDirectory(cnf_dir);
+  CreateDirectory(cnf_dir, NULL);
   #else
   mkdir(cnf_dir, 0777);
   #endif
