@@ -247,10 +247,8 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
         HANDLE hFind = NULL;
         WIN32_FIND_DATA fdFile;
         TCHAR cIncDirFilePattern[MAX_INCLUDE_PATH_LENGTH];
-        const TCHAR *sep = "\\";
         #else
         #define MAX_INCLUDE_PATH_LENGTH 4096 + 256
-        const char *sep = "/";
         DIR *dir;
         struct dirent *ent;
         #endif
@@ -258,12 +256,12 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
         ma_init_dynamic_array(&filenames, sizeof(char*), 10, 10);
         #ifdef _WIN32
         for (int exts = 0; ini_exts[exts]; exts++) {
-          snprintf(cIncDirFilePattern, MAX_INCLUDE_PATH_LENGTH, "%s%s*.%s", val, sep, ini_exts[exts]);
+          snprintf(cIncDirFilePattern, MAX_INCLUDE_PATH_LENGTH, "%s%c*.%s", val, FN_LIBCHAR, ini_exts[exts]);
           if ((hFind = FindFirstFile((const char*)cIncDirFilePattern, &fdFile)) == INVALID_HANDLE_VALUE) {
             continue;
           }
           do {
-            snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%s%s", val, sep, fdFile.cFileName);
+            snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%c%s", val, FN_LIBCHAR, fdFile.cFileName);
             if (!access(inc_config_path, R_OK)) {
               char* filename = strdup(fdFile.cFileName);
               ma_insert_dynamic(&filenames, (gptr)&filename);
@@ -276,7 +274,7 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
           goto err;
         }
         while ((ent = readdir(dir))) {
-          snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%s%s", val, sep, ent->d_name);
+          snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%c%s", val, FN_LIBCHAR, ent->d_name);
           if (is_config_file(inc_config_path)) {
             /* _mariadb_read_options(mysql, NULL, (const char *)inc_config_path, group, recursion + 1); */
             char *filename = strdup(ent->d_name);
@@ -289,7 +287,7 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
         for (uint fi = 0; fi < filenames.elements; fi++) {
           char* filename;
           ma_get_dynamic(&filenames, (void *)&filename, fi);
-          snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%s%s", val, sep, filename);
+          snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%c%s", val, FN_LIBCHAR, filename);
           _mariadb_read_options(mysql, NULL, (const char *)inc_config_path, group, recursion + 1);
           free(filename);
         }
