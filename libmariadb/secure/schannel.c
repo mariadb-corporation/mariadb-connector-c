@@ -719,15 +719,6 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
       return 1;
     }
   }
-
-  if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
-  {
-    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
-    {
-      mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_FINGERPRINT;
-      return 1;
-    }
-  }
   return ma_schannel_verify_certs(ctls, verify_flags);
 }
 

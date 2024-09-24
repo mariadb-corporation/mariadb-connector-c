@@ -60,6 +60,15 @@ ENDIF()
 ADD_LIBRARY(ma_getopt ma_getopt.c)
 
 IF(${Python3_FOUND})
+  execute_process(COMMAND ${Python3_EXECUTABLE} -m pip show pyopenssl
+                  RESULT_VARIABLE EXIT_CODE
+                  OUTPUT_QUIET)
+  if (${EXIT_CODE} EQUAL 0)
+    SET(RUN_TLS 1)
+  endif()
+ENDIF()
+
+IF(${RUN_TLS})
   CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/tls.c.in
                  ${CC_BINARY_DIR}/unittest/libmariadb/tls.c)
 

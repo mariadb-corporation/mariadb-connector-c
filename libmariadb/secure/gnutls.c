@@ -1445,15 +1445,6 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
 
   CLEAR_CLIENT_ERROR(mysql);
 
-  if (flags & MARIADB_TLS_VERIFY_FINGERPRINT)
-  {
-    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
-    {
-      mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_FINGERPRINT;
-      goto end;
-    }
-  }
-
   if (gnutls_certificate_verify_peers2(ssl, &status))
     return GNUTLS_E_CERTIFICATE_ERROR;
 

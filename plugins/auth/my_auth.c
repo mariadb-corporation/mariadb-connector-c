@@ -435,8 +435,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
     if (mysql->options.extension->tls_verification_callback(mysql->net.pvio->ctls, verify_flags))
     {
-      /* Save original verification result */
-      mysql->extension->tls_validation= mysql->net.tls_verify_status;
       if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_TRUST ||
           (mysql->options.ssl_ca || mysql->options.ssl_capath))
         goto error;
@@ -449,8 +447,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       else if (!password_and_hashing(mysql, mpvio->plugin))
         goto error;
     }
-    else
-      mysql->extension->tls_validation= mysql->net.tls_verify_status;
   }
 #endif /* HAVE_TLS */
 

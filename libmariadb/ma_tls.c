@@ -118,9 +118,33 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
       getenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION")) &&
       (!mysql->options.extension->tls_fp && !mysql->options.extension->tls_fp_list))
   {
+    /* Since OpenSSL implementation sets status during TLS handshake
+       we need to clear verification status */
+    mysql->net.tls_verify_status= 0;
     return 0;
   }
 
+  if (flags & MARIADB_TLS_VERIFY_FINGERPRINT)
+  {
+    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_FINGERPRINT;
+      mysql->extension->tls_validation= mysql->net.tls_verify_status;
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Fingerprint validation of peer certificate failed");
+      return 1;
+    }
+#ifdef HAVE_OPENSSL
+    /* verification already happened via callback */
+    if (!(mysql->net.tls_verify_status & flags))
+    {
+      mysql->extension->tls_validation= mysql->net.tls_verify_status;
+      mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_OK;
+      return 0;
+    }
+#endif
+  }
   rc= ma_tls_verify_server_cert(ctls, flags);
 
   /* Set error messages */
@@ -151,7 +175,9 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
         ER(CR_SSL_CONNECTION_ERROR),
         "Peer certificate is not trusted");
   }
-
+  /* Save original validation, since we might unset trust flag in 
+     my_auth */
+  mysql->extension->tls_validation= mysql->net.tls_verify_status;
   return rc;
 }
 

@@ -672,7 +672,9 @@ static int test_cert_wildcard(MYSQL *my __attribute((unused)))
   if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
   {
     CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass");
+#ifndef HAVE_SCHANNEL
     CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_TRUST, "Self signed certificate expected");
+#endif
     mysql_close(mysql);
   } else {
     mysql_close(mysql);
@@ -699,12 +701,91 @@ static int test_cert_wildcard(MYSQL *my __attribute((unused)))
   return OK;
 }
 
+static int test_env_var(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc= FAIL;
+  unsigned int status;
+
+#ifdef _WIN32
+  _putenv_s("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "1");
+#else
+  setenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "1", 1);
+#endif
+
+  if (!my_test_connect(mysql, hostname, username, password, schema,
+                       port, socketname, 0, 0))
+  {
+    diag("expected to pass, since environment variable was set");
+    goto end;
+  }
+
+  mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);
+
+  if (status)
+  {
+    diag("expected status=0, since environment variable was set");
+    goto end;
+  }
+
+  rc= OK;
+
+end:
+#ifdef _WIN32
+  _putenv_s("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "");
+#else
+  unsetenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION");
+#endif
+  mysql_close(mysql);
+  return rc;
+}
+
+static int test_fp_and_verify(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc= FAIL;
+#ifndef HAVE_SCHANNEL
+  unsigned int status;
+#endif
+  my_bool verify= 1;
+
+  mysql_options(mysql, MARIADB_OPT_SSL_FP, fingerprint);
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+
+  if (!my_test_connect(mysql, hostname, username, password, schema,
+                       port, socketname, 0, 0))
+  {
+    diag("expected to pass, since fingerprint was specified");
+    diag("error: %s", mysql_error(mysql));
+    goto end;
+  }
+
+/* Schannel aborts on first error, if fingerprint was specified,
+   MARIADB_TLS_VERIFY_TRUST is unset */
+#ifndef HAVE_SCHANNEL
+  mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);
+
+  if (!status)
+  {
+    diag("expected status flag set (self signed)");
+    goto end;
+  }
+#endif
+  rc= OK;
+
+end:
+  mysql_close(mysql);
+  return rc;
+}
+
 
 struct my_tests_st my_tests[] = {
   /* Don't add test above, test_init needs to be run first */
   {"test_start_tls_server", test_start_tls_server, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_init", test_init, TEST_CONNECTION_NONE, 0, NULL, NULL},
   /* Here you can add more tests */
+  {"test_fp_and_verify", test_fp_and_verify, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_env_var", test_env_var, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_cert_wildcard", test_cert_wildcard, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_cert_expired", test_cert_expired, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_pw_check", test_pw_check, TEST_CONNECTION_NEW, 0, NULL, NULL},
