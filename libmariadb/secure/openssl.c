@@ -560,8 +560,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 #else
   SSL_set_fd(ssl, (int)mysql_get_socket(mysql));
 #endif
-  if (!mysql->options.extension->tls_allow_invalid_server_cert)
-    SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
+
+  /* CONC-732: Always set verification callback to avoid OpenSSL output */
+  SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
 
   while (try_connect && (rc= SSL_connect(ssl)) == -1)
   {
