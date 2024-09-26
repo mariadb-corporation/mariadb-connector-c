@@ -1684,8 +1684,9 @@ bump_up:
         Bfree(b, &alloc);
         b= b1;
       }
-      if ((j= b5 - m5))
-        b= pow5mult(b, j, &alloc);
+      // redundant comparison, as m5 == b5
+      //if ((j= b5 - m5))
+      //  b= pow5mult(b, j, &alloc);
     }
     else
       b= pow5mult(b, b5, &alloc);

@@ -377,7 +377,7 @@ my_bool ma_hashtbl_insert(MA_HASHTBL *info,const uchar *record)
       gpos->data=ptr_to_rec;
       gpos->next=NO_RECORD;
     }
-    if ((flag & (HIGHFIND | HIGHUSED)) == HIGHFIND)
+    if (gpos2 && (flag & (HIGHFIND | HIGHUSED)) == HIGHFIND)
     {
       gpos2->data=ptr_to_rec2;
       gpos2->next=NO_RECORD;

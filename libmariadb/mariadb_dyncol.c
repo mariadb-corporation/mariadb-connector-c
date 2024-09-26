@@ -3830,7 +3830,8 @@ mariadb_dyncol_val_str(DYNAMIC_STRING *str, DYNAMIC_COLUMN_VALUE *val,
         return ER_DYNCOL_RESOURCE;
       if (quote)
         str->str[str->length++]= quote;
-      ma_dynstr_append_mem(str, buff, len);
+      if (ma_dynstr_append_mem(str, buff, len))
+        return ER_DYNCOL_RESOURCE;
       if (quote)
         str->str[str->length++]= quote;
       break;

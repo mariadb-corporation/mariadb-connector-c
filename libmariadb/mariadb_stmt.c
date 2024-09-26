@@ -454,7 +454,8 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
         if (!stmt->bind[i].is_null)
           stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
         *stmt->bind[i].is_null= 0;
-        mysql_ps_fetch_functions[stmt->fields[i].type].func(&stmt->bind[i], &stmt->fields[i], &row);
+        if (mysql_ps_fetch_functions[stmt->fields[i].type].func != NULL)
+          mysql_ps_fetch_functions[stmt->fields[i].type].func(&stmt->bind[i], &stmt->fields[i], &row);
         if (stmt->mysql->options.report_data_truncation)
           truncations+= *stmt->bind[i].error;
       }
@@ -1597,7 +1598,8 @@ int STDCALL mysql_stmt_fetch_column(MYSQL_STMT *stmt, MYSQL_BIND *bind, unsigned
     *bind[0].error= 0;
     bind[0].offset= offset;
     save_ptr= stmt->bind[column].u.row_ptr;
-    mysql_ps_fetch_functions[stmt->fields[column].type].func(&bind[0], &stmt->fields[column], &stmt->bind[column].u.row_ptr);
+    if (mysql_ps_fetch_functions[stmt->fields[column].type].func != NULL)
+      mysql_ps_fetch_functions[stmt->fields[column].type].func(&bind[0], &stmt->fields[column], &stmt->bind[column].u.row_ptr);
     stmt->bind[column].u.row_ptr= save_ptr;
   }
   return(0);
