@@ -85,6 +85,7 @@
 #define MA_RPL_VERSION_HACK "5.5.5-"
 
 #define CHARSET_NAME_LEN 64
+#define INSTANT_FAILOVER_LIMIT 8
 
 #undef max_allowed_packet
 #undef net_buffer_length
@@ -668,6 +669,7 @@ struct st_default_options mariadb_defaults[] =
   {{MYSQL_SET_CHARSET_NAME}, MARIADB_OPTION_STR, "default-character-set"},
   {{MARIADB_OPT_INTERACTIVE}, MARIADB_OPTION_NONE, "interactive-timeout"},
   {{MYSQL_OPT_CONNECT_TIMEOUT}, MARIADB_OPTION_INT, "connect-timeout"},
+  {{MARIADB_OPT_FOLLOW_INSTANT_FAILOVERS}, MARIADB_OPTION_BOOL, "follow-instant-failovers"},
   {{MYSQL_OPT_LOCAL_INFILE}, MARIADB_OPTION_BOOL, "local-infile"},
   {{0}, 0 ,"disable-local-infile",},
   {{MYSQL_OPT_SSL_CIPHER}, MARIADB_OPTION_STR, "ssl-cipher"},
@@ -1308,6 +1310,7 @@ mysql_init(MYSQL *mysql)
     goto error;
   mysql->options.report_data_truncation= 1;
   mysql->options.connect_timeout=CONNECT_TIMEOUT;
+  mysql->options.follow_instant_failovers= TRUE;
   mysql->charset= mysql_find_charset_name(MARIADB_DEFAULT_CHARSET);
   mysql->methods= &MARIADB_DEFAULT_METHODS;
   strcpy(mysql->net.sqlstate, "00000");
@@ -1604,7 +1607,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   my_bool is_multi= 0;
   char *host_copy= NULL;
   struct st_host *host_list= NULL;
-  int connect_attempts= 0;
+  int connect_attempts= 0, instant_failovers=0;
 
   if (!mysql->methods)
     mysql->methods= &MARIADB_DEFAULT_METHODS;
@@ -1744,6 +1747,7 @@ restart:
   else
 #endif
   {
+  tcp_redirect:
     cinfo.unix_socket=0;				/* This is not used */
     if (!port)
       port=mysql_port;
@@ -1976,7 +1980,46 @@ restart:
 
   if (run_plugin_auth(mysql, scramble_data, scramble_len,
                              scramble_plugin, db))
+  {
+    if (mysql->net.last_errno == ER_INSTANT_FAILOVER)
+    {
+      if (!mysql->options.follow_instant_failovers)
+      {
+        /* Client has disabled instant failover. Fall through and treat this
+         * as a "normal" error. */
+      }
+      else if (instant_failovers >= INSTANT_FAILOVER_LIMIT)
+      {
+        /* Too many instant failovers */
+        my_set_error(mysql, ER_INSTANT_FAILOVER, SQLSTATE_UNKNOWN,
+                     "Too many instant failovers (>= %d)",
+                     INSTANT_FAILOVER_LIMIT);
+      }
+      else
+      {
+        char *p= mysql->net.last_error; /* Should look like '|message|host[:port]' */
+        if (p && p[0] == '|')
+          p= strchr(p + 1, '|') ? : NULL;
+        if (p && *++p) {
+          host= p;
+          p= strchr(p, ':') ? : NULL;
+          if (p) {
+            *p++ = '\0';
+            port= atoi(p);
+          }
+          else
+          {
+            /* Restore to the default port, rather than reusing our current one */
+            port= 0;
+          }
+        fprintf(stderr, "Got instant failover to '%s' (port %d)\n", host, port);
+          ++instant_failovers;
+          goto tcp_redirect;
+        }
+      }
+    }
     goto error;
+  }
 
   if (mysql->client_flag & CLIENT_COMPRESS ||
       mysql->client_flag & CLIENT_ZSTD_COMPRESSION)
@@ -3489,6 +3532,9 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_RECONNECT:
     mysql->options.reconnect= *(my_bool *)arg1;
+    break;
+  case MARIADB_OPT_FOLLOW_INSTANT_FAILOVERS:
+    mysql->options.follow_instant_failovers= *(my_bool *)arg1;
     break;
   case MYSQL_OPT_PROTOCOL:
     mysql->options.protocol= *((uint *)arg1);
