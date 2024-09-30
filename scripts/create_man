@@ -31,8 +31,8 @@ parser.add_argument('--docs', type=str, metavar='docs', help='Directory of Maria
 parser.add_argument('--funcs', type=str, metavar='funcs', help='File which contains exported functions.')
 parser.add_argument('--version', type=str, metavar='version', help='Connector/C version')
 parser.add_argument('--out', type=str, metavar='outputdir', help='Output directory')
+parser.add_argument('--warn', type=int, default=0, metavar='warnings', help='Show warnings (off)')
 args= parser.parse_args()
-print(args)
 
 func_list= read_content(args.funcs)
 funcs= func_list.split(";")
@@ -40,11 +40,11 @@ funcs= func_list.split(";")
 for function in funcs:
 
     try:
-        print("%s/%s.md" % (args.docs, function))
         content= read_content("%s/%s.md" % (args.docs, function))
         
     except:
-        print("warning: No documentation for function %s found" % function)
+        if args.warn > 0:
+            print("warning: Function '%s' is not documented yet" % function)
         continue
 
     f= open("%s/%s.3.md" % (args.out, function), "w")
