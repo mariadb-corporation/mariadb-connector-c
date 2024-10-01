@@ -460,7 +460,7 @@ ENDIF()
 
 IF(UNIX)
   IF(WITH_DOCS)
-    ADD_SUBDIRECTORY(man)
+    ADD_SUBDIRECTORY(man3)
   ENDIF()
 ENDIF()
 
@@ -566,5 +566,4 @@ MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- Include files will be installed in ${INSTALL_INCLUDEDIR}
 -- Libraries will be installed in ${INSTALL_LIBDIR}
 -- Binaries will be installed in ${INSTALL_BINDIR}
--- Documentation included from ${CLIENT_DOCS}
 -- Required: ${CMAKE_REQUIRED_LIBRARIES}")
