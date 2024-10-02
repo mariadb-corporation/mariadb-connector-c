@@ -19,6 +19,8 @@ int main(int argc, char *argv[]) {
   if (IS_SKYSQL(hostname))
     return 0;
 
+  SKIP_TRAVIS(();
+
   if (IS_XPAND())
     SKIP_XPAND;
 

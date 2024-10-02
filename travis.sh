@@ -64,7 +64,7 @@ else
   cd bld
   if [ "$TRAVIS_OS_NAME" = "windows" ] ; then
     export WIX="c:/Program Files (x86)/WiX Toolset v3.14"
-    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCERT_PATH=${SSLCERT} -DWITH_MSI=ON -DWITH_CURL=ON -DPython_ROOT_DIR=c:\python312
+    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_GENERATOR_PLATFORM=x64 -DCERT_PATH=${SSLCERT} -DWITH_MSI=ON -DWITH_CURL=ON -DPython_ROOT_DIR=c:\python312
 
     echo "build from windows"
     export MARIADB_CC_TEST=1
