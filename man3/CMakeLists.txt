@@ -123,7 +123,7 @@ mysql_warning_count.3)
 set(Python3_FIND_STRATEGY VERSION)
 find_package (Python3 REQUIRED)
 
-find_package(Doxygen REQUIRED)
+find_package(Pandoc REQUIRED)
 
 ADD_CUSTOM_COMMAND(OUTPUT ${CC_MAN_PAGES_3}
                    COMMAND python3 ${CC_SOURCE_DIR}/scripts/create_man
