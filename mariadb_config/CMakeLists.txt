@@ -14,9 +14,15 @@ FUNCTION(GET_LIB_NAME LIB_NAME LIB_OUT)
     SET(LIB_FILE ${LIB_NAME})
   ENDIF()
 
+  # Apparently `LIB_NAME` can be either a library file name,
+  # or a general linker arguments (e.g. `-L...` or absolute path
+  # `/path/to/lib.a`).
+  # We prefix library names with `-l`; all other arguments
+  # need to be passed on unmodified.
+  # We detect those by inspecting the first character.
   STRING(SUBSTRING ${LIB_NAME} 0 1 LIB_PREFIX)
 
-  IF(NOT ${LIB_PREFIX} STREQUAL "-")
+  IF(NOT (${LIB_PREFIX} STREQUAL "-" OR ${LIB_PREFIX} STREQUAL "/"))
     SET(LIB_FILE "-l${LIB_FILE}")
     STRING(REPLACE "-llib" "-l" LIB_FILE ${LIB_FILE})
     SET(${LIB_OUT} ${LIB_FILE} PARENT_SCOPE)
