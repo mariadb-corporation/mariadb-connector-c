@@ -693,6 +693,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   case MYSQL_TYPE_LONG_BLOB:
   case MYSQL_TYPE_BLOB:
   case MYSQL_TYPE_VARCHAR:
+  case MYSQL_TYPE_VECTOR:
   case MYSQL_TYPE_VAR_STRING:
   case MYSQL_TYPE_STRING:
   case MYSQL_TYPE_JSON:
@@ -845,6 +846,7 @@ unsigned char* ma_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t 
         case MYSQL_TYPE_LONG_BLOB:
         case MYSQL_TYPE_BLOB:
         case MYSQL_TYPE_VARCHAR:
+        case MYSQL_TYPE_VECTOR:
         case MYSQL_TYPE_VAR_STRING:
         case MYSQL_TYPE_STRING:
         case MYSQL_TYPE_JSON:
@@ -1068,6 +1070,7 @@ unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *r
           case MYSQL_TYPE_LONG_BLOB:
           case MYSQL_TYPE_BLOB:
           case MYSQL_TYPE_VARCHAR:
+          case MYSQL_TYPE_VECTOR:
           case MYSQL_TYPE_VAR_STRING:
           case MYSQL_TYPE_STRING:
           case MYSQL_TYPE_JSON:

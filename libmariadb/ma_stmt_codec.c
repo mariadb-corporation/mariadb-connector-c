@@ -1318,6 +1318,10 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_VARCHAR].pack_len  = MYSQL_PS_SKIP_RESULT_STR;
   mysql_ps_fetch_functions[MYSQL_TYPE_VARCHAR].max_len  = -1;
 
+  mysql_ps_fetch_functions[MYSQL_TYPE_VECTOR].func    = ps_fetch_string;
+  mysql_ps_fetch_functions[MYSQL_TYPE_VECTOR].pack_len  = MYSQL_PS_SKIP_RESULT_STR;
+  mysql_ps_fetch_functions[MYSQL_TYPE_VECTOR].max_len  = -1;
+
   mysql_ps_fetch_functions[MYSQL_TYPE_STRING].func      = ps_fetch_string;
   mysql_ps_fetch_functions[MYSQL_TYPE_STRING].pack_len    = MYSQL_PS_SKIP_RESULT_STR;
   mysql_ps_fetch_functions[MYSQL_TYPE_STRING].max_len  = -1;

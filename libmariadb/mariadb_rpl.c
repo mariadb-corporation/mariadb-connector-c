@@ -298,6 +298,7 @@ static uint8_t rpl_metadata_size(enum enum_field_types field_type)
     case MYSQL_TYPE_SET:
     case MYSQL_TYPE_NEWDECIMAL:
     case MYSQL_TYPE_VARCHAR:
+    case MYSQL_TYPE_VECTOR:
     case MYSQL_TYPE_VAR_STRING:
     case MYSQL_TYPE_BIT:
       return 2;
@@ -617,6 +618,7 @@ mariadb_rpl_extract_rows(MARIADB_RPL *rpl,
           break;
         }
         case MYSQL_TYPE_VARCHAR:
+        case MYSQL_TYPE_VECTOR:
         case MYSQL_TYPE_VAR_STRING:
         {
           uint32_t s_len= uint2korr(metadata);
