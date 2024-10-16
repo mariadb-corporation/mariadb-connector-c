@@ -24,9 +24,12 @@
 #include <mysql.h>
 #include <ma_common.h>
 #include <mariadb/ma_io.h>
+#include <stdlib.h>
 
 #ifdef _WIN32
 #include <io.h>
+#include <fileapi.h>
+#include <string.h>
 #include "shlwapi.h"
 
 #define access _access
@@ -34,6 +37,7 @@
 static const char *ini_exts[]= {"ini", "cnf", 0};
 #define R_OK 4
 #else
+#include <dirent.h>
 #include <unistd.h>
 static const char *ini_exts[]= {"cnf", 0};
 #endif
@@ -152,6 +156,42 @@ static my_bool is_group(char *ptr, const char **groups)
   return 0;
 }
 
+static my_bool is_config_file(char *path)
+{
+  char *end;
+  if (access(path, R_OK)) {
+    return 0;
+  }
+  end = path + strlen(path);
+  for (int exts = 0; ini_exts[exts]; exts++) {
+    size_t ext_length = strlen(ini_exts[exts]);
+    char *ext_start = end - ext_length - 1;
+    
+    if ((ext_start >= path) && (*ext_start == '.')) {
+      #ifdef _WIN32
+      if (!_stricmp(ext_start + 1, ini_exts[exts])) {
+        return 1;
+      }
+      #else      
+      if (!strcmp(ext_start + 1, ini_exts[exts])) {
+        return 1;
+      }
+      #endif
+    }
+  }
+  return 0;
+}
+
+static int compare_filenames(const void* a, const void* b) {
+  const char *name_a = *(const char **)a;
+  const char *name_b = *(const char **)b;
+  #ifdef _WIN32
+  return _stricmp(name_a, name_b);
+  #else
+  return strcmp(name_a, name_b);
+  #endif  
+}
+
 static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
                                                const char *config_file,
                                                const char *group,
@@ -200,8 +240,59 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
       end= strchr(val, 0);
       for ( ; isspace(end[-1]) ; end--) ;	/* Remove end space */
       *end= 0;
-      if (!strcmp(ptr, "includedir"))
-        _mariadb_read_options(mysql, (const char *)val, NULL, group, recursion + 1);
+      if (!strcmp(ptr, "includedir")) {
+        DYNAMIC_ARRAY filenames;
+        #ifdef _WIN32
+        #define MAX_INCLUDE_PATH_LENGTH 4096 + MAX_PATH
+        HANDLE hFind = NULL;
+        WIN32_FIND_DATA fdFile;
+        TCHAR cIncDirFilePattern[MAX_INCLUDE_PATH_LENGTH];
+        #else
+        #define MAX_INCLUDE_PATH_LENGTH 4096 + 256
+        DIR *dir;
+        struct dirent *ent;
+        #endif
+        char inc_config_path[MAX_INCLUDE_PATH_LENGTH];
+        ma_init_dynamic_array(&filenames, sizeof(char*), 10, 10);
+        #ifdef _WIN32
+        for (int exts = 0; ini_exts[exts]; exts++) {
+          snprintf(cIncDirFilePattern, MAX_INCLUDE_PATH_LENGTH, "%s%c*.%s", val, FN_LIBCHAR, ini_exts[exts]);
+          if ((hFind = FindFirstFile((const char*)cIncDirFilePattern, &fdFile)) == INVALID_HANDLE_VALUE) {
+            continue;
+          }
+          do {
+            snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%c%s", val, FN_LIBCHAR, fdFile.cFileName);
+            if (!access(inc_config_path, R_OK)) {
+              char* filename = strdup(fdFile.cFileName);
+              ma_insert_dynamic(&filenames, (gptr)&filename);
+            }
+          } while (FindNextFile(hFind, &fdFile));
+          FindClose(hFind);
+        }
+        #else
+        if (!(dir = opendir((const char *)val))) {
+          goto err;
+        }
+        while ((ent = readdir(dir))) {
+          snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%c%s", val, FN_LIBCHAR, ent->d_name);
+          if (is_config_file(inc_config_path)) {
+            /* _mariadb_read_options(mysql, NULL, (const char *)inc_config_path, group, recursion + 1); */
+            char *filename = strdup(ent->d_name);
+            ma_insert_dynamic(&filenames, (gptr)&filename);
+          }
+        }
+        closedir(dir);
+        #endif
+        qsort(filenames.buffer, filenames.elements, filenames.size_of_element, compare_filenames);
+        for (uint fi = 0; fi < filenames.elements; fi++) {
+          char* filename;
+          ma_get_dynamic(&filenames, (void *)&filename, fi);
+          snprintf(inc_config_path, MAX_INCLUDE_PATH_LENGTH, "%s%c%s", val, FN_LIBCHAR, filename);
+          _mariadb_read_options(mysql, NULL, (const char *)inc_config_path, group, recursion + 1);
+          free(filename);
+        }
+        ma_delete_dynamic(&filenames);
+      }
       else if (!strcmp(ptr, "include"))
         _mariadb_read_options(mysql, NULL, (const char *)val, group, recursion + 1);
       continue;

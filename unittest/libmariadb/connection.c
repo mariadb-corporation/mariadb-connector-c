@@ -26,6 +26,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include "my_test.h"
+#ifdef _WIN32
+#include <fileapi.h>
+#else
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 
 static int test_conc66(MYSQL *my)
 {
@@ -1589,6 +1595,102 @@ static int test_conc327(MYSQL *unused __attribute__((unused)))
 }
 #endif
 
+static int test_conc396(MYSQL *unused __attribute__((unused)))
+{
+  MYSQL *mysql;
+  FILE *fp1, *fp2, *fp3;
+  char cnf_file1[FN_REFLEN + 10];
+  char cnf_dir[FN_REFLEN + 10];
+  char cnf_file2[FN_REFLEN + 30];
+  char cnf_file3[FN_REFLEN + 30];
+  char tmp_dir[FN_REFLEN + 1];
+  const char *env = getenv("MYSQL_TMP_DIR");
+  fp1 = fp2 = fp3 = NULL;
+
+
+  if (env) {
+      strncpy(tmp_dir, env, FN_REFLEN + 1);
+  }
+  else {
+#ifdef _WIN32
+      GetTempPath(FN_REFLEN + 1, tmp_dir);
+#else
+      strncpy(tmp_dir, "/tmp", FN_REFLEN + 1);
+#endif
+  }
+
+  snprintf(cnf_file1, FN_REFLEN + 10, "%s%cfoo.cnf", tmp_dir, FN_LIBCHAR);
+  snprintf(cnf_dir, FN_REFLEN + 10, "%s%cconf.d", tmp_dir, FN_LIBCHAR);
+  snprintf(cnf_file2, FN_REFLEN + 30, "%s%cconfig_a.cnf", cnf_dir, FN_LIBCHAR);
+  snprintf(cnf_file3, FN_REFLEN + 30, "%s%cconfig_b.cnf", cnf_dir, FN_LIBCHAR);
+
+  #ifdef _WIN32
+  CreateDirectory(cnf_dir, NULL);
+  #else
+  mkdir(cnf_dir, 0777);
+  #endif
+
+  mysql = mysql_init(NULL);
+
+  fp1 = fopen(cnf_file1, "w");
+  FAIL_IF(!fp1, "fopen");
+  fprintf(fp1, "[client]\n!includedir %s\n", cnf_dir);
+  fclose(fp1);
+
+  /* config_b is alphabetically later, so it should take precendence. */
+  fp2 = fopen(cnf_file2, "w");
+  FAIL_IF(!fp2, "fopen");
+  fprintf(fp2, "[client]\ndefault-character-set = latin2\n");
+  fclose(fp2);
+
+  fp3 = fopen(cnf_file3, "w");
+  FAIL_IF(!fp3, "fopen");
+  fprintf(fp3, "[client]\ndefault-character-set = utf8mb3\n");
+  fclose(fp3);
+
+  mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, cnf_file1);
+  my_test_connect(mysql, hostname, username, password,
+                  schema, port, socketname, 0, 1);
+
+  remove(cnf_file1);
+  remove(cnf_file2);
+  remove(cnf_file3);
+
+  FAIL_IF(strcmp(mysql_character_set_name(mysql), "utf8mb3"), "expected charset utf8mb3");
+
+  mysql_close(mysql);
+  mysql = mysql_init(NULL);
+
+  fp1 = fopen(cnf_file1, "w");
+  FAIL_IF(!fp1, "fopen");
+  fprintf(fp1, "[client]\n!includedir %s\n", cnf_dir);
+  fclose(fp1);
+
+  fp2 = fopen(cnf_file2, "w");
+  FAIL_IF(!fp2, "fopen");
+  fprintf(fp2, "[client]\ndefault-character-set = utf8mb3\n");
+  fclose(fp2);
+
+  fp3 = fopen(cnf_file3, "w");
+  FAIL_IF(!fp3, "fopen");
+  fprintf(fp3, "[client]\ndefault-character-set = latin2\n");
+  fclose(fp3);
+
+  mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, cnf_file1);
+  my_test_connect(mysql, hostname, username, password,
+                  schema, port, socketname, 0, 1);
+
+  remove(cnf_file1);
+  remove(cnf_file2);
+  remove(cnf_file3);
+
+  FAIL_IF(strcmp(mysql_character_set_name(mysql), "latin2"), "expected charset latin2");
+
+  mysql_close(mysql);
+
+  return OK;
+}
+
 static int test_conc332(MYSQL *unused __attribute__((unused)))
 {
   int rc;
@@ -2045,7 +2147,7 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
   if (!(fp= fopen("./conc274.cnf", "w")))
     return FAIL;
 
-  sprintf(conn_str, "connection=host=%s;user=%s;password=%s;port=%d;ssl_enforce=1;socket=%s",
+  sprintf(conn_str, "connection=host=%s;user=%s;password={%s};port=%d;ssl_enforce=1;socket=%s",
                 hostname ? hostname : "localhost", username ? username : "", 
                 password ? password : "", ssl_port, socketname ? socketname : "");
 
@@ -2084,7 +2186,7 @@ static int test_conc365(MYSQL *my __attribute__((unused)))
   char tmp[1024];
 
   snprintf(tmp, sizeof(tmp) - 1,
-   "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;tls_fp=%s",
+   "host=127.0.0.1:3300,%s;user=%s;password={%s};port=%d;socket=%s;tls_fp=%s",
    hostname ? hostname : "localhost", username ? username : "", password ? password : "",
    port, socketname ? socketname : "", fingerprint[0] ? fingerprint : "");
 
@@ -2140,12 +2242,12 @@ static int test_conc365_reconnect(MYSQL *my)
   if (IS_SKYSQL(hostname))
   {
     snprintf(tmp, sizeof(tmp) - 1,
-      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;ssl_enforce=1;tls_fp=%s",
+      "host=127.0.0.1:3300,%s;user=%s;password={%s};port=%d;socket=%s;ssl_enforce=1;tls_fp=%s",
       hostname ? hostname : "localhost", username ? username : "", password ? password : "",
       ssl_port, socketname ? socketname : "", fingerprint[0] ? fingerprint : "");
   } else {
     snprintf(tmp, sizeof(tmp) - 1,
-      "host=127.0.0.1:3300,%s;user=%s;password=%s;port=%d;socket=%s;tls_fp=%s",
+      "host=127.0.0.1:3300,%s;user=%s;password={%s};port=%d;socket=%s;tls_fp=%s",
       hostname ? hostname : "localhost", username ? username : "", password ? password : "",
       port, socketname ? socketname : "", fingerprint[0] ? fingerprint :"");
   }
@@ -2432,6 +2534,7 @@ struct my_tests_st my_tests[] = {
   {"test_conc327", test_conc327, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc317", test_conc317, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #endif
+  {"test_conc396", test_conc396, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc315", test_conc315, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_expired_pw", test_expired_pw, TEST_CONNECTION_DEFAULT, 0, NULL,  NULL},
   {"test_conc276", test_conc276, TEST_CONNECTION_NONE, 0, NULL,  NULL},
