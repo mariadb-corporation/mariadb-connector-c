@@ -27,14 +27,14 @@ ENDIF()
 
 #native password
 REGISTER_PLUGIN(TARGET mysql_native_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS STATIC
                 DEFAULT STATIC
                 SOURCES ${AUTH_DIR}/my_auth.c)
 
 #Dialog client authentication plugin
 REGISTER_PLUGIN(TARGET dialog
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/dialog.c
@@ -72,7 +72,7 @@ IF(CRYPTO_PLUGIN)
   ENDIF()
 
   REGISTER_PLUGIN(TARGET client_ed25519
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/ed25519.c
@@ -89,7 +89,7 @@ IF(CRYPTO_PLUGIN)
 
   # SHA256 caching plugin for MySQL 8.0 connection
   REGISTER_PLUGIN(TARGET caching_sha2_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/caching_sha2_pw.c
@@ -100,7 +100,7 @@ IF(CRYPTO_PLUGIN)
     MESSAGE1(SHA256_PASSWORD "sha256_password not supported by GnuTLS due to missing OAEP padding")
   ELSE()
     REGISTER_PLUGIN(TARGET sha256_password
-                    TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                    TYPE AUTH
                     CONFIGURATIONS DYNAMIC STATIC OFF
                     DEFAULT DYNAMIC
                     SOURCES ${AUTH_DIR}/sha256_pw.c
@@ -140,7 +140,7 @@ ELSE()
 ENDIF()
 IF(GSSAPI_SOURCES)
   REGISTER_PLUGIN(TARGET auth_gssapi_client
-                  TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                  TYPE AUTH
                   CONFIGURATIONS DYNAMIC STATIC OFF DYNAMIC_AND_STATIC
                   DEFAULT ${AUTH_GSSAPI_DEFAULT_CONFIG}
                   SOURCES ${GSSAPI_SOURCES}
@@ -156,7 +156,7 @@ ENDIF()
 
 # old_password plugin
 REGISTER_PLUGIN(TARGET mysql_old_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS STATIC DYNAMIC OFF
                 DEFAULT STATIC
                 DISABLED YES
@@ -164,7 +164,7 @@ REGISTER_PLUGIN(TARGET mysql_old_password
 
 # Cleartext
 REGISTER_PLUGIN(TARGET mysql_clear_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/mariadb_cleartext.c)

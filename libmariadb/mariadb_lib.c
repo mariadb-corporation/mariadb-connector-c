@@ -1465,8 +1465,8 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
 
   reset_tls_error(mysql);
 
-  /* if host contains a semicolon, we need to parse connection string */
-  if (host && strchr(host, ';'))
+  /* if host contains a semicolon or equal sign, we need to parse connection string */
+  if (host && (strchr(host, ';') || strchr(host, '=')))
   {
     if (parse_connection_string(mysql, NULL, host, strlen(host)))
       return NULL;
@@ -2122,7 +2122,9 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
     my_context_install_suspend_resume_hook(ctxt, my_suspend_hook, &hook_data);
   }
 
-  if (!mysql_real_connect(&tmp_mysql,mysql->host,mysql->user,mysql->passwd,
+  if (!mysql_real_connect(&tmp_mysql,
+        mysql->options.host ? NULL : mysql->host,
+        mysql->user,mysql->passwd,
 			  mysql->db, mysql->port, mysql->unix_socket,
 			  mysql->client_flag | CLIENT_REMEMBER_OPTIONS) ||
       mysql_set_character_set(&tmp_mysql, mysql->charset->csname))
