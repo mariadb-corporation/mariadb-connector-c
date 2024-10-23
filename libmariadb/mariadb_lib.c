@@ -66,7 +66,6 @@
 #ifndef INADDR_NONE
 #define INADDR_NONE -1
 #endif
-#include <ma_sha1.h>
 #ifndef _WIN32
 #include <poll.h>
 #endif

@@ -324,7 +324,6 @@ ma_compress.c
 ma_init.c
 ma_password.c
 ma_ll2str.c
-ma_sha1.c
 mariadb_stmt.c
 ma_loaddata.c
 ma_stmt_codec.c
