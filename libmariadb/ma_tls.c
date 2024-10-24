@@ -175,9 +175,9 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
         ER(CR_SSL_CONNECTION_ERROR),
         "Peer certificate is not trusted");
   }
-  /* Save original validation, since we might unset trust flag in 
-     my_auth */
+  /* Save original validation */
   mysql->extension->tls_validation= mysql->net.tls_verify_status;
+  mysql->net.tls_verify_status&= flags;
   return rc;
 }
 

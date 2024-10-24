@@ -1459,7 +1459,8 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
       mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
   }
 
-  if ((flags & MARIADB_TLS_VERIFY_HOST))
+  if (flags & MARIADB_TLS_VERIFY_HOST &&
+      !(mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_TRUST))
   {
     gnutls_x509_crt_t cert= ma_get_cert(ctls);
     int rc;
@@ -1485,7 +1486,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
     }    
   }
 end:
-  return (mysql->net.tls_verify_status > 0);
+  return mysql->net.tls_verify_status & flags;
 }
 
 const char *ma_tls_get_cipher(MARIADB_TLS *ctls)

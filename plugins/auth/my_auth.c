@@ -267,6 +267,8 @@ error:
   return res;
 }
 
+#define MARIADB_TLS_VERIFY_AUTO (MARIADB_TLS_VERIFY_HOST | MARIADB_TLS_VERIFY_TRUST)
+
 static int send_client_reply_packet(MCPVIO_EXT *mpvio,
                                     const uchar *data, int data_len)
 {
@@ -437,14 +439,14 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
     if (mysql->options.extension->tls_verification_callback(mysql->net.pvio->ctls, verify_flags))
     {
-      if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_TRUST ||
+      if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_AUTO ||
           (mysql->options.ssl_ca || mysql->options.ssl_capath))
         goto error;
 
       if (is_local_connection(mysql->net.pvio))
       {
         CLEAR_CLIENT_ERROR(mysql);
-        mysql->net.tls_verify_status&= ~MARIADB_TLS_VERIFY_TRUST;
+        mysql->net.tls_verify_status&= ~MARIADB_TLS_VERIFY_AUTO;
       }
       else if (!password_and_hashing(mysql, mpvio->plugin))
         goto error;
