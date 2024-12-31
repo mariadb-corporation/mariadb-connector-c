@@ -433,12 +433,6 @@ typedef SOCKET_SIZE_TYPE size_socket;
 /* #define FN_UPPER_CASE TRUE */
 
 /*
-  Io buffer size; Must be a power of 2 and a multiple of 512. May be
-  smaller what the disk page size. This influences the speed of the
-  isam btree library. eg to big to slow.
-*/
-#define IO_SIZE			4096
-/*
   How much overhead does malloc have. The code often allocates
   something like 1024-MALLOC_OVERHEAD bytes
 */

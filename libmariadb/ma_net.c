@@ -41,6 +41,11 @@
 
 #define MAX_PACKET_LENGTH (256L*256L*256L-1)
 
+#ifndef NET_BUF_ALIGN
+#define NET_BUF_ALIGN 4096U
+#endif
+#define align_network_buffer(len) (((len)+NET_BUF_ALIGN-1) & ~(NET_BUF_ALIGN-1))
+
 /* net_buffer_length and max_allowed_packet are defined in mysql.h
    See bug conc-57
  */
@@ -128,7 +133,7 @@ static my_bool net_realloc(NET *net, size_t length)
     net->last_errno=ER_NET_PACKET_TOO_LARGE;
     return(1);
   }
-  pkt_length = (length+IO_SIZE-1) & ~(IO_SIZE-1);
+  pkt_length = align_network_buffer(length);
   /* reallocate buffer:
      size= pkt_length + NET_HEADER_SIZE + COMP_HEADER_SIZE */
   if (!(buff=(uchar*) realloc(net->buff, 
