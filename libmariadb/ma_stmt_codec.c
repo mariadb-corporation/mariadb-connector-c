@@ -1106,6 +1106,7 @@ static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, en
   }
 }
 
+static const uint32_t sec_part_digits[]= {1000000, 100000, 10000, 1000, 100, 10, 1};
 
 /* {{{ ps_fetch_datetime */
 static
@@ -1151,7 +1152,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
         {
           uint8_t decimals= (field->decimals == AUTO_SEC_PART_DIGITS) ? SEC_PART_DIGITS : field->decimals;
           length= sprintf(dtbuffer, "%s%02u:%02u:%02u.%0*u", (tm.neg ? "-" : ""), tm.hour, tm.minute, tm.second,
-                          decimals, (uint32_t)(tm.second_part / pow(10, 6 - decimals)));
+                          decimals, (uint32_t)(tm.second_part / sec_part_digits[decimals]));
         } else
           length= sprintf(dtbuffer, "%s%02u:%02u:%02u", (tm.neg ? "-" : ""), tm.hour, tm.minute, tm.second);
         break;
@@ -1162,7 +1163,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
         {
           uint8_t decimals= (field->decimals == AUTO_SEC_PART_DIGITS) ? SEC_PART_DIGITS : field->decimals;
           length= sprintf(dtbuffer, "%04u-%02u-%02u %02u:%02u:%02u.%0*u", tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second,
-                          decimals, (uint32_t)(tm.second_part / pow(10, 6 - decimals)));
+                          decimals, (uint32_t)(tm.second_part / sec_part_digits[decimals]));
         } else
           length= sprintf(dtbuffer, "%04u-%02u-%02u %02u:%02u:%02u", tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second);
         break;
