@@ -387,6 +387,7 @@ mthd_my_send_cmd(MYSQL *mysql,enum enum_server_command command, const char *arg,
                (socket) is still available */
   if (command != COM_QUIT && mysql->options.reconnect && ma_pvio_is_alive(mysql->net.pvio))
   {
+    ma_pvio_close(mysql->net.pvio);
     mysql->net.pvio= NULL;
     mysql->net.error= 1;
   }
@@ -2117,15 +2118,12 @@ void my_set_error(MYSQL *mysql,
 
 void mysql_close_slow_part(MYSQL *mysql)
 {
-  if (mysql->net.pvio)
-  {
-    free_old_query(mysql);
-    mysql->status=MYSQL_STATUS_READY; /* Force command */
-    mysql->options.reconnect=0;
-    if (mysql->net.pvio && mysql->net.buff)
-      ma_simple_command(mysql, COM_QUIT,NullS,0,1,0);
-    end_server(mysql);
-  }
+  free_old_query(mysql);
+  mysql->status=MYSQL_STATUS_READY; /* Force command */
+  mysql->options.reconnect=0;
+  if (mysql->net.pvio && mysql->net.buff)
+    ma_simple_command(mysql, COM_QUIT,NullS,0,1,0);
+  end_server(mysql);
 }
 
 static void ma_clear_session_state(MYSQL *mysql)
