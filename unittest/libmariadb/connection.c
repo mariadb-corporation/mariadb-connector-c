@@ -1966,7 +1966,8 @@ static int test_conc632(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-#if defined(HAVE_GNUTLS) || defined(HAVE_OPENSSL)
+#if defined(HAVE_GNUTLS) && GNUTLS_VERSION_NUMBER >= 0x030700 || defined(HAVE_OPENSSL)
+#define HAVE_test_conc748
 static int test_conc748(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql;
@@ -2048,7 +2049,7 @@ static int test_conc589(MYSQL *my)
 
 struct my_tests_st my_tests[] = {
   {"test_conc589", test_conc589, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
-#if defined(HAVE_GNUTLS) || defined(HAVE_OPENSSL)
+#ifdef HAVE_test_conc748
   {"test_conc748", test_conc748, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #endif
   {"test_conc632", test_conc632, TEST_CONNECTION_NONE, 0, NULL, NULL},
