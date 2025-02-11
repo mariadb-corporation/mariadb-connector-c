@@ -5618,6 +5618,7 @@ static int test_conc623(MYSQL *mysql)
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CB_PARAM, conc623_param_callback);
   check_stmt_rc(rc, stmt);
 
+  memset(&bind, 0, sizeof(MYSQL_BIND));
   bind.buffer_type= MYSQL_TYPE_LONG;
   rc= mysql_stmt_bind_param(stmt, &bind);
   check_stmt_rc(rc, stmt);
