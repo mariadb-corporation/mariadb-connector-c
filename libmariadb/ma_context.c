@@ -92,6 +92,8 @@ my_context_spawn(struct my_context *c, void (*f)(void *), void *d)
 {
   int err;
   union pass_void_ptr_as_2_int u;
+  u.a[0]= 0;
+  u.a[1]= 0;
 
   err= getcontext(&c->spawned_context);
   if (err)
