@@ -35,7 +35,7 @@ if [ -n "$server_branch" ] ; then
   if [ -n "$TRAVIS_PULL_REQUEST" ] && [ "$TRAVIS_PULL_REQUEST" != "false" ] ; then
     git submodule update --init --remote libmariadb
     cd libmariadb
-    git fetch origin ${TRAVIS_PULL_REQUEST}
+    git fetch origin pull/${TRAVIS_PULL_REQUEST}/head
     git checkout -qf FETCH_HEAD
   else
     git submodule set-branch -b ${TRAVIS_BRANCH} libmariadb
