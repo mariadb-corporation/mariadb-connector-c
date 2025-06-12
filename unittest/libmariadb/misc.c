@@ -1524,6 +1524,12 @@ static int test_conc458(MYSQL *my __attribute__((unused)))
 
 static int test_conc163(MYSQL *mysql)
 {
+  if (!is_mariadb)
+  {
+    diag("feature not supported by MySQL server");
+    return SKIP;
+  }
+
   int rc;
   MYSQL_STMT *stmt;
 
