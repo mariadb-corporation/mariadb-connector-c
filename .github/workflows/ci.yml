@@ -36,6 +36,57 @@ jobs:
       - id: set-matrix
         name: build matrix
         uses: rusher/mariadb-test-build-matrix@main
+  ci-server:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [ 11.4 ]
+    steps:
+      - name: Retrieve server ${{ matrix.version }}
+        shell: bash
+        run: |
+          # get latest server
+          git clone -b ${server_branch} https://github.com/mariadb/server ./workdir-server --depth=1
+        env:
+          server_branch: ${{ matrix.version }}
+      
+      - name: Update libmariadb submodule for PR
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git submodule update --init --remote libmariadb
+          cd libmariadb
+          git fetch origin ${{ github.event.pull_request.head.sha }}
+          git checkout -qf FETCH_HEAD
+      
+      - name: Update libmariadb submodule for non-PR
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          git submodule set-branch -b ${{ github.ref_name }} libmariadb
+          git submodule sync
+          git submodule update --init --remote libmariadb
+          cd libmariadb
+          git checkout ${{ github.sha }}
+          
+
+      - name: Make server
+        shell: bash
+        run: |
+          cd ./workdir-server
+          git add libmariadb
+          mkdir bld
+          cd bld
+          cmake .. -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
+          make -j9
+
+      - name: Run test suite
+        shell: bash
+        run: |
+          cd mysql-test/
+          ./mysql-test-run.pl --suite=main,unit ${TEST_OPTION} --parallel=auto --skip-test=session_tracker_last_gtid
+        env:
+          TEST_OPTION: ${{ matrix.test-option }}
 
   ci:
     name: ${{ matrix.name }}
