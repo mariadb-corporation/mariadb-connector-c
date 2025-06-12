@@ -1,0 +1,153 @@
+---
+name: Run CI Tests
+
+on:
+  push:
+    branches: ['3.*']
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MYSQL_TEST_HOST: mariadb.example.com
+  MYSQL_TEST_PORT: 3306
+  MYSQL_TEST_USER: root
+  MYSQL_TEST_PASSWD: "heyPassw-!*20oRd"
+  MYSQL_TEST_DB: testc
+
+jobs:
+
+  setup:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name != 'schedule' || 
+      github.ref == 'refs/heads/3.4' || 
+      github.ref == 'refs/heads/3.1' || 
+      github.ref == 'refs/heads/3.2'
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.final-matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        name: build matrix
+        uses: rusher/mariadb-test-build-matrix@main
+
+  ci-server:
+    name: server ${{ matrix.server.version }} test suite ${{ matrix.server.env && format(' {0}', matrix.server.env) || '' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        server:
+          - version: '10.5'
+          - version: '10.5'
+            env: TEST_OPTION=--ps-protocol
+    steps:
+      - name: Retrieve server ${{ matrix.server.version }}
+        shell: bash
+        run: |
+          # get latest server
+          git clone -b ${server_branch} https://github.com/mariadb/server ./workdir-server --depth=1
+        env:
+          server_branch: ${{ matrix.server.version }}
+      
+      - name: Update libmariadb submodule for PR
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          cd ./workdir-server
+          git submodule update --init --remote libmariadb
+          cd libmariadb
+          git fetch origin ${{ github.event.pull_request.head.sha }}
+          git checkout -qf FETCH_HEAD
+      
+      - name: Update libmariadb submodule for non-PR
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          cd ./workdir-server
+          git submodule set-branch -b ${{ github.ref_name }} libmariadb
+          git submodule sync
+          git submodule update --init --remote libmariadb
+          cd libmariadb
+          git checkout ${{ github.sha }}
+          
+
+      - name: Make server
+        shell: bash
+        run: |
+          cd ./workdir-server
+          git add libmariadb
+          mkdir bld
+          cd bld
+          cmake .. -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
+          make -j9
+
+      - name: Run test suite
+        shell: bash
+        run: |
+          ls -lrt
+          cd ./workdir-server/bld/mysql-test/
+          ls -lrt
+          ./mysql-test-run.pl --suite=main,unit ${TEST_OPTION} --parallel=auto --skip-test=session_tracker_last_gtid
+        env:
+          TEST_OPTION: ${{ matrix.server.env.TEST_OPTION }}
+
+  ci:
+    name: ${{ matrix.name }}
+    needs: setup
+    timeout-minutes: 50
+    strategy:
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Test Environment
+        id: setup-env
+        uses: rusher/mariadb-test-setup@master
+        with:
+          node-version: ${{ matrix.node }}
+          db-type: ${{ matrix.db-type }}
+          db-tag: ${{ matrix.db-tag }}
+          test-db-password: ${{ env.MYSQL_TEST_PASSWD }}
+          test-db-database: ${{ env.MYSQL_TEST_DB }}
+          test-db-port: ${{ env.MYSQL_TEST_PORT }}
+          additional-conf: ${{ matrix.additional-conf || '' }}
+          registry-user: ${{ matrix.db-type == 'enterprise' && secrets.ENTERPRISE_USER || (secrets.DOCKER_PWD != '' && 'mariadbtest' || '') }}
+          registry-password: ${{ matrix.db-type == 'enterprise' && secrets.ENTERPRISE_TOKEN || secrets.DOCKER_PWD }}
+          os: ${{ matrix.os }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: make ubuntu/macos
+        if: ${{ !startsWith(matrix.os, 'windows') }}
+        run: |
+          cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_EXTERNAL_ZLIB=On
+          make
+
+      - name: make windows
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: |
+          cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_CURL=ON
+          cmake --build . --config RelWithDebInfo
+
+      - name: Run test suite
+        shell: bash
+        run: |
+          cd unittest/libmariadb
+          ctest -V
+        env:
+          MARIADB_CC_TEST: 1
+          MYSQL_TEST_TLS: 0
+          MARIADB_PLUGIN_DIR: ${{ github.workspace }}
