@@ -803,7 +803,7 @@ my_bool _mariadb_set_conf_option(MYSQL *mysql, const char *config_option, const 
   {
     int i;
     char *c;
-    
+
     /* CONC-395: replace underscore "_" by dash "-" */
     while ((c= strchr(config_option, '_')))
       *c= '-';
@@ -1513,7 +1513,9 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->options.extension || !mysql->options.extension->status_callback)
     mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, NULL, NULL);
 
+#ifdef HAVE_TLS
   reset_tls_error(mysql);
+#endif
 
   /* if host contains a semicolon or equal sign, we need to parse connection string */
   if (host && (strchr(host, ';') || strchr(host, '=')))
@@ -1982,7 +1984,7 @@ restart:
   {
     net->last_errno=CR_CANT_READ_CHARSET;
     sprintf(net->last_error,ER(net->last_errno),
-      mysql->options.charset_name ? mysql->options.charset_name : 
+      mysql->options.charset_name ? mysql->options.charset_name :
                                     MARIADB_DEFAULT_CHARSET,
       "compiled_in");
     goto error;
@@ -2000,7 +2002,7 @@ restart:
     if (!compression_plugin(net) ||
         (!(compression_ctx(net) = compression_plugin(net)->init_ctx(COMPRESSION_LEVEL_DEFAULT))))
     {
-      int alg= (mysql->client_flag & CLIENT_ZSTD_COMPRESSION) ? 
+      int alg= (mysql->client_flag & CLIENT_ZSTD_COMPRESSION) ?
                COMPRESSION_ZSTD : COMPRESSION_ZLIB;
       compression_plugin(net)= NULL;
       my_set_error(mysql, CR_ERR_LOAD_PLUGIN, SQLSTATE_UNKNOWN, NULL,
@@ -2491,7 +2493,9 @@ mysql_close(MYSQL *mysql)
     mysql_close_memory(mysql);
     mysql_close_options(mysql);
     ma_clear_session_state(mysql);
+#ifdef HAVE_TLS
     reset_tls_error(mysql);
+#endif
 
     if (mysql->net.extension)
     {
@@ -2611,7 +2615,7 @@ void ma_save_session_track_info(void *ptr, enum enum_mariadb_status_info type, .
 
 mem_error:
   SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-  return; 
+  return;
 }
 
 int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
