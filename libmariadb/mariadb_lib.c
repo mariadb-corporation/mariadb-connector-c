@@ -1493,8 +1493,10 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   char *connection_handler= (mysql->options.extension) ?
                             mysql->options.extension->connection_handler : 0;
 
+#ifdef HAVE_TLS
   if (!mysql->options.extension || !mysql->options.extension->tls_verification_callback)
     mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, ma_pvio_tls_verify_server_cert);
+#endif
 
   if ((client_flag & CLIENT_ALLOWED_FLAGS) != client_flag)
   {
@@ -1511,7 +1513,9 @@ mysql_real_connect(MYSQL *mysql, const char *host, const char *user,
   if (!mysql->options.extension || !mysql->options.extension->status_callback)
     mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, NULL, NULL);
 
+#ifdef HAVE_TLS
   reset_tls_error(mysql);
+#endif
 
   /* if host contains a semicolon or equal sign, we need to parse connection string */
   if (host && (strchr(host, ';') || strchr(host, '=')))
@@ -2489,7 +2493,9 @@ mysql_close(MYSQL *mysql)
     mysql_close_memory(mysql);
     mysql_close_options(mysql);
     ma_clear_session_state(mysql);
+#ifdef HAVE_TLS
     reset_tls_error(mysql);
+#endif
 
     if (mysql->net.extension)
     {
@@ -3880,12 +3886,16 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     OPT_SET_EXTENDED_VALUE_INT(&mysql->options, bulk_unit_results, *(my_bool *)arg1);
     break;
   case MARIADB_OPT_TLS_VERIFICATION_CALLBACK:
+#ifdef HAVE_TLS
     if (!arg1)
     {
       OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verification_callback, ma_pvio_tls_verify_server_cert);
     } else {
       OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verification_callback, arg1);
     }
+#else
+      OPT_SET_EXTENDED_VALUE(&mysql->options, tls_verification_callback, arg1);
+#endif
     break;
   case MYSQL_OPT_ZSTD_COMPRESSION_LEVEL:
     OPT_SET_EXTENDED_VALUE(&mysql->options, zstd_compression_level, *((unsigned char *)arg1));
