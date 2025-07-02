@@ -2343,7 +2343,7 @@ static int test_bug4030(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == 0, "rc != 0");
   FAIL_UNLESS(memcmp(&time_canonical, &time_out, sizeof(time_out)) == 0, "time_canonical != time_out");
-  FAIL_UNLESS(memcmp(&date_canonical, &date_out, sizeof(date_out)) == 0, "date_canoncical != date_out");
+  FAIL_UNLESS(memcmp(&date_canonical, &date_out, sizeof(date_out)) == 0, "date_canonical != date_out");
   FAIL_UNLESS(memcmp(&datetime_canonical, &datetime_out, sizeof(datetime_out)) == 0, "datetime_canonical != datetime_out");
   mysql_stmt_close(stmt);
   return OK;
@@ -4030,7 +4030,7 @@ static int test_conc154(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  /* 3rd: non empty result without free_result */
+  /* 3rd: non-empty result without free_result */
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES ('test_conc154')");
   check_mysql_rc(rc, mysql);
 
@@ -4052,7 +4052,7 @@ static int test_conc154(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  /* 4th non empty result set with free_result */
+  /* 4th non-empty result set with free_result */
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(stmtstr));
   check_stmt_rc(rc, stmt);
@@ -5369,7 +5369,7 @@ static int test_conc525(MYSQL *mysql)
   fclose(fp);
 
   /* Test: prepare and execute
-     should fail due to non existing file */
+     should fail due to non-existing file */
   stmt= mysql_stmt_init(mysql);
 
   rc= mysql_stmt_prepare(stmt, SL("LOAD DATA LOCAL INFILE './test.notexist' INTO table t1"));
@@ -6011,7 +6011,7 @@ static int test_conc762(MYSQL *mysql)
 
   mysql_stmt_fetch(stmt);
   FAIL_IF(is_null[0]==0, "Expected NULL value");
-  FAIL_IF(is_null[1]==1, "Expected non NULL value");
+  FAIL_IF(is_null[1]==1, "Expected non-NULL value");
   FAIL_IF(length[0]!=0, "Expected length=0");
   FAIL_IF(length[1]!=3, "Expected length=3");
 

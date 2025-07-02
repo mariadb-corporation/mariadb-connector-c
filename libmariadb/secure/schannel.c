@@ -414,7 +414,7 @@ typedef struct _MA_SCHANNEL_CREDENTIALS {
 
   Take care of specific TLS versions and cipher suites.
 
-  This function choses between the legacy and new credential structures
+  This function chooses between the legacy and new credential structures
   (SCHANNEL_CRED rsp SCH_CREDENTIALS) based on the OS version and the
   requested cipher suite.
 

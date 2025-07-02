@@ -440,7 +440,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       verify_flags|= MARIADB_TLS_VERIFY_FINGERPRINT;
     } else {
       /*
-        Don't check host name on local (non globally resolvable) addresses
+        Don't check host name on local (non-globally resolvable) addresses
         For local connections, only check CA if CA is given.
       */
       if (!is_local_connection(mysql->net.pvio))

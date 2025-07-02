@@ -303,7 +303,7 @@ int mysql_client_plugin_init()
 /**
   Deinitializes the client plugin layer.
 
-  Unloades all client plugins and frees any associated resources.
+  Unloads all client plugins and frees any associated resources.
 */
 
 void mysql_client_plugin_deinit()

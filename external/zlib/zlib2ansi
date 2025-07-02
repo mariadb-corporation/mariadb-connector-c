@@ -8,7 +8,7 @@
 
 # TODO
 #
-# Asumes no function pointer parameters. unless they are typedefed.
+# Assumes no function pointer parameters. unless they are typedefed.
 # Assumes no literal strings that look like function definitions
 # Assumes functions start at the beginning of a line
 
@@ -104,7 +104,7 @@ sub StripComments
 
   no warnings;
 
-  # Strip C & C++ coments
+  # Strip C & C++ comments
   # From the perlfaq
   $_[0] =~
 
@@ -119,7 +119,7 @@ sub StripComments
 
      |         ##     OR  C++ Comment
        //          ## Start of C++ comment //
-       [^\n]*      ## followed by 0-or-more non end of line characters
+       [^\n]*      ## followed by 0-or-more non-end-of-line characters
 
      |         ##     OR  various things which aren't comments:
 

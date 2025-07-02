@@ -290,8 +290,8 @@ typedef unsigned short ushort;
 /* From old s-system.h */
 
 /*
-  Support macros for non ansi & other old compilers. Since such
-  things are no longer supported we do nothing. We keep then since
+  Support macros for non-ansi & other old compilers. Since such
+  things are no longer supported we do nothing. We keep them since
   some of our code may still be needed to upgrade old customers.
 */
 #define _VARARGS(X) X
@@ -394,7 +394,7 @@ typedef SOCKET_SIZE_TYPE size_socket;
 #define FN_EXTCHAR	'.'
 #define FN_HOMELIB	'~'	/* ~/ is used as abbrev for home dir */
 #define FN_CURLIB	'.'	/* ./ is used as abbrev for current dir */
-#define FN_PARENTDIR	".."	/* Parentdirectory; Must be a string */
+#define FN_PARENTDIR	".."	/* Parent directory; Must be a string */
 #define FN_DEVCHAR	':'
 
 #ifndef FN_LIBCHAR

@@ -263,7 +263,7 @@ ZEXTERN int ZEXPORT deflate(z_streamp strm, int flush);
     processing will resume at this point for the next call of deflate().
 
   - Generate more output starting at next_out and update next_out and avail_out
-    accordingly.  This action is forced if the parameter flush is non zero.
+    accordingly.  This action is forced if the parameter flush is non-zero.
     Forcing flush frequently degrades the compression ratio, so this parameter
     should be set only when necessary.  Some output may be provided even if
     flush is zero.
@@ -897,7 +897,7 @@ ZEXTERN int ZEXPORT inflateSetDictionary(z_streamp strm,
    deflateSetDictionary).  For raw inflate, this function can be called at any
    time to set the dictionary.  If the provided dictionary is smaller than the
    window and there is already data in the window, then the provided dictionary
-   will amend what's there.  The application must insure that the dictionary
+   will amend what's there.  The application must ensure that the dictionary
    that was used for compression is provided.
 
      inflateSetDictionary returns Z_OK if success, Z_STREAM_ERROR if a

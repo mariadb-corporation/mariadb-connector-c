@@ -1394,7 +1394,7 @@ Changes in 1.0.3 (2 Jul 96)
   versions for these models. (No effect in large model or on other systems.)
 - return OK instead of BUF_ERROR if previous deflate call returned with
   avail_out as zero but there is nothing to do
-- added memcmp for non STDC compilers
+- added memcmp for non-STDC compilers
 - define NO_DUMMY_DECL for more Mac compilers (.h files merged incorrectly)
 - define __32BIT__ if __386__ or i386 is defined (pb. with Watcom and SCO)
 - better check for 16-bit mode MSC (avoids problem with Symantec)
@@ -1507,7 +1507,7 @@ Changes in 0.94 (13 Aug 95)
 - fix deflateReset (zlib header was incorrectly suppressed)
 - added support for VMS
 - allow a compression level in gzopen()
-- gzflush now calls fflush
+- gzflush now calls flush
 - For deflate with flush, flush even if no more input is provided
 - rename libgz.a as libz.a
 - avoid complex expression in infcodes.c triggering Turbo C bug

@@ -146,7 +146,7 @@ do {\
 do {\
   if (!mariadb_connection(mysql))\
   {\
-    diag("Skip test for non MariaDB server");\
+    diag("Skip test for non-MariaDB server");\
     return OK;\
   }\
 } while(0)
@@ -428,7 +428,7 @@ my_bool query_int_variable(MYSQL *con, const char *var_name, int *var_value)
           (const char *) var_name);
 
   FAIL_IF(mysql_query(con, query_buffer), "Query failed");
-  FAIL_UNLESS(rs= mysql_store_result(con), "Invaliid result set");
+  FAIL_UNLESS(rs= mysql_store_result(con), "Invalid result set");
   FAIL_UNLESS(row= mysql_fetch_row(rs), "Nothing to fetch");
 
   is_null= row[0] == NULL;

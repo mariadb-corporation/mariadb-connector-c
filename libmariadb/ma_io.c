@@ -56,7 +56,7 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
     }
   }
 #ifdef _WIN32
-  /* See CONC-44: we need to support non ascii filenames too, so we convert
+  /* See CONC-44: we need to support non-ascii filenames too, so we convert
      current character set to wchar_t and try to open the file via _wsopen */
   else
    {

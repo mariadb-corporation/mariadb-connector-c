@@ -301,7 +301,7 @@ struct mysql_async_context {
   void (*suspend_resume_hook)(my_bool suspend, void *user_data);
   void *suspend_resume_hook_user_data;
 
-  /* If non-NULL,  this is a poitner to the result of getaddrinfo() currently
+  /* If non-NULL, this is a pointer to the result of getaddrinfo() currently
    * under traversal in pvio_socket_connect(). It gets reset to NULL when a
    * connection has been established to a server. The main objective is to
    * free this memory resource in mysql_close() while an initiated connection

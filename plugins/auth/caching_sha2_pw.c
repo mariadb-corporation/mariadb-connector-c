@@ -62,7 +62,7 @@
 #define CACHED_LOGIN_SUCCEEDED 3
 #define RSA_LOGIN_REQUIRED 4
 
-/* MySQL server allows requesting public key only for non secure connections.
+/* MySQL server allows requesting public key only for non-secure connections.
    secure connections are:
      - TLS/SSL connections
      - unix_socket connections

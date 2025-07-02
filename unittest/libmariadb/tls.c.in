@@ -433,7 +433,7 @@ static int test_fp_garbage(MYSQL *my __attribute__((unused)))
 
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
-  /* 1) use non hex chars */
+  /* 1) use non-hex chars */
   strcpy(fp, "IJKLMNOPQRSTUVWXYZABCDEXXXXXX67IJKLMNOPQRSTUVWXYZABCDEXXXXXX679X");
   if (mysql_optionsv(mysql, MARIADB_OPT_SSL_FP, fp))
     return FAIL;

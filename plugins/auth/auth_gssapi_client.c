@@ -110,7 +110,7 @@ struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   "auth_gssapi_client",
   "Shuang Qiu, Robbie Harwood, Vladislav Vaintroub, Georg Richter",
-  "GSSAPI/SSPI based authentication",
+  "GSSAPI/SSPI-based authentication",
   {0, 1, 0},
   "BSD",
   NULL,

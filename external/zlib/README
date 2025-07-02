@@ -74,7 +74,7 @@ Notes for some targets:
 - For PalmOs, see http://palmzlib.sourceforge.net/
 
 
-Acknowledgments:
+Acknowledgements:
 
   The deflate format used by zlib was defined by Phil Katz.  The deflate and
   zlib specifications were written by L.  Peter Deutsch.  Thanks to all the

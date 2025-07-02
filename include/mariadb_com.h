@@ -170,7 +170,7 @@ enum enum_server_command
 #define CLIENT_SSL_VERIFY_SERVER_CERT_OBSOLETE CLIENT_SSL_VERIFY_SERVER_CERT
 #define CLIENT_REMEMBER_OPTIONS  (1UL << 31)
 
-/* MariaDB specific capabilities */
+/* MariaDB-specific capabilities */
 #define MARIADB_CLIENT_FLAGS 0xFFFFFFFF00000000ULL
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
 #define MARIADB_CLIENT_RESERVED_1 (1ULL << 33) /* Former COM_MULTI, don't use */

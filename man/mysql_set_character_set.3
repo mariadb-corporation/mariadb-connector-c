@@ -13,7 +13,7 @@ int mysql_set_character_set(MYSQL * mysql,
                             const char * csname);
 .EE
 .SS Description
-Sets the default character setfor the current connection.
+Sets the default character set for the current connection.
 Returns zero on success, non\-zero on failure.
 .SS Parameters
 .IP \[bu] 2
@@ -26,7 +26,7 @@ It\[cq]s strongly recommended to use mysql_set_character_set() instead
 of \f[CR]SET NAMES ...\f[R] since \f[B]mysql_real_escape_string(3)\f[R]
 might fail or deliver unexpected results.
 .SS Return value
-Zero on success, non zero if an error occurred
+Zero on success, non-zero if an error occurred
 .SS Supported character sets
 The client library supports the following character sets:
 .PP

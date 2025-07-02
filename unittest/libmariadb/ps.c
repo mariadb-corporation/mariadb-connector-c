@@ -4030,7 +4030,7 @@ static int test_rename(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
-  FAIL_IF(!rc, "Errr expected");
+  FAIL_IF(!rc, "Error expected");
 
   rc= mysql_query(mysql, "rename table t2 to t1, t4 to t3");
   check_mysql_rc(rc, mysql);

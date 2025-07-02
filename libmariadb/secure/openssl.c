@@ -546,7 +546,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
 
-  /* Set socket to non blocking if not already set */
+  /* Set socket to non-blocking if not already set */
   if (!(blocking= pvio->methods->is_blocking(pvio)))
     pvio->methods->blocking(pvio, FALSE, 0);
 

@@ -362,7 +362,7 @@ int ma_net_real_write(NET *net, const char *packet, size_t len)
 }
 
 /*****************************************************************************
- ** Read something from server/clinet
+ ** Read something from server/client
  *****************************************************************************/
 static ulong ma_real_read(NET *net, size_t *complen)
 {
@@ -381,7 +381,7 @@ static ulong ma_real_read(NET *net, size_t *complen)
   {
     while (remain > 0)
     {
-      /* First read is done with non blocking mode */
+      /* First read is done with non-blocking mode */
       if ((length=ma_pvio_cache_read(net->pvio, pos,remain)) <= 0L)
       {
         len= packet_error;

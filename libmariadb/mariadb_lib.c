@@ -324,7 +324,7 @@ static int cli_report_progress(MYSQL *mysql, uchar *packet, uint length)
   return 0;
 }
 
-/* Get the length of next field. Change parameter to point at fieldstart */
+/* Get the length of next field. Change parameter to point at field start */
 ulong
 net_field_length(uchar **packet)
 {
@@ -1931,7 +1931,7 @@ restart:
     mysql->server_capabilities|= (unsigned int)(uint2korr(end + 5)) << 16;
     pkt_scramble_len= uint1korr(end + 7);
 
-    /* check if MariaD2B specific capabilities are available */
+    /* check if MariaDB-specific capabilities are available */
     if (mariadb_connection(mysql) && !(mysql->server_capabilities & CLIENT_MYSQL))
     {
       mysql->extension->mariadb_server_capabilities= (ulonglong) uint4korr(end + 14);
@@ -3012,7 +3012,7 @@ mysql_store_result(MYSQL *mysql)
 
 
 /**************************************************************************
-** Alloc struct for use with unbuffered reads. Data is fetched by domand
+** Alloc struct for use with unbuffered reads. Data is fetched by demand
 ** when calling to mysql_fetch_row.
 ** mysql_data_seek is a noop.
 **

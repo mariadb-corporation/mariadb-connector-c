@@ -62,7 +62,7 @@ important files for developers can be found in the zlib127.zip source package
 available from http://zlib.net/ - review that package's README file for details.
 
 
-Acknowledgments:
+Acknowledgements:
 
 The deflate format used by zlib was defined by Phil Katz.  The deflate and
 zlib specifications were written by L.  Peter Deutsch.  Thanks to all the

@@ -1215,7 +1215,7 @@ size_t mysql_cset_escape_slashes(const MARIADB_CHARSET_INFO * cset, char *newstr
         escape_overflow = TRUE;
         break;
       }
-      /* copy non escaped character */
+      /* copy non-escaped character */
       *newstr++ = *escapestr;
     }
   }
@@ -1397,7 +1397,7 @@ struct st_madb_os_charset MADB_OS_CHARSET[]=
   {"57011", "ISCII Punjabi", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"65000", "utf-7 Unicode (UTF-7)", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"65001", "utf-8 Unicode (UTF-8)", "utf8", NULL, MADB_CS_EXACT},
-  /* non Windows */
+  /* non-Windows */
 #else
   /* iconv encodings */
   {"ASCII", "US-ASCII", "ascii", "ASCII", MADB_CS_APPROX},

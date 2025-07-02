@@ -965,7 +965,7 @@ static uint8_t mariadb_rpl_send_semisync_ack(MARIADB_RPL* rpl, MARIADB_RPL_EVENT
   }
   if (!event->is_semi_sync || (event->semi_sync_flags != SEMI_SYNC_ACK_REQ))
   {
-    rpl_set_error(rpl, CR_BINLOG_SEMI_SYNC_ERROR, 0, "This event doesn't require to send semi synchronous acknoledgement");
+    rpl_set_error(rpl, CR_BINLOG_SEMI_SYNC_ERROR, 0, "This event doesn't require to send semi synchronous acknowledgement");
     return 1;
   }
 
@@ -1110,7 +1110,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       RPL_CHECK_POS(ev, ev_end, 1);
       rpl_event->ok= *ev++;
 
-      /* CONC-470: add support for semi snychronous replication */
+      /* CONC-470: add support for semi synchronous replication */
       if (rpl->is_semi_sync && (rpl_event->is_semi_sync= (*ev == SEMI_SYNC_INDICATOR)))
       {
         RPL_CHECK_POS(ev, ev_end, 1);
@@ -1296,7 +1296,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= 4;
       rpl->fd_header_len= rpl_event->event.format_description.header_len= *ev;
       ev+= 1;
-      /*Post header lengths: 1 byte for each event, non used events/gaps in enum should
+      /*Post header lengths: 1 byte for each event, non-used events/gaps in enum should
                              have a zero value */
       len= ev_end - ev - 5;
       rpl_set_string_and_len(&rpl_event->event.format_description.post_header_lengths, ev, len);
@@ -1762,7 +1762,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
          WRITE/UPDATE/DELETE_ROWS_EVENT_COMPRESSED_V1 (MariaDB only)
          WRITE/UPDATE/DELETE_ROWS_EVENT (MySQL only)
 
-         ROWS events are written for row based replicatoin if data is
+         ROWS events are written for row-based replication if data is
          inserted, deleted or updated.
 
          Header

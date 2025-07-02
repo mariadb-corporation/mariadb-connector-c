@@ -81,7 +81,7 @@ local const uch bl_order[BL_CODES]
 #define DIST_CODE_LEN  512 /* see definition of array dist_code below */
 
 #if defined(GEN_TREES_H) || !defined(STDC)
-/* non ANSI compilers may not accept trees.h */
+/* non-ANSI compilers may not accept trees.h */
 
 local ct_data static_ltree[L_CODES+2];
 /* The static literal tree. Since the bit lengths are imposed, there is no
@@ -627,7 +627,7 @@ local void build_tree(deflate_state *s, tree_desc *desc) {
     const ct_data *stree  = desc->stat_desc->static_tree;
     int elems             = desc->stat_desc->elems;
     int n, m;          /* iterate over heap elements */
-    int max_code = -1; /* largest code with non zero frequency */
+    int max_code = -1; /* largest code with non-zero frequency */
     int node;          /* new node being created */
 
     /* Construct the initial heap, with least frequent element in
@@ -648,7 +648,7 @@ local void build_tree(deflate_state *s, tree_desc *desc) {
     /* The pkzip format requires that at least one distance code exists,
      * and that at least one bit should be sent even if there is only one
      * possible code. So to avoid special checks later on we force at least
-     * two codes of non zero frequency.
+     * two codes of non-zero frequency.
      */
     while (s->heap_len < 2) {
         node = s->heap[++(s->heap_len)] = (max_code < 2 ? ++max_code : 0);
@@ -796,7 +796,7 @@ local void send_tree(deflate_state *s, ct_data *tree, int max_code) {
  * bl_order of the last bit length code to send.
  */
 local int build_bl_tree(deflate_state *s) {
-    int max_blindex;  /* index of last bit length code of non zero freq */
+    int max_blindex;  /* index of last bit length code of non-zero freq */
 
     /* Determine the bit length frequencies for literal and distance trees */
     scan_tree(s, (ct_data *)s->dyn_ltree, s->l_desc.max_code);
@@ -995,7 +995,7 @@ local int detect_data_type(deflate_state *s) {
 void ZLIB_INTERNAL _tr_flush_block(deflate_state *s, charf *buf,
                                    ulg stored_len, int last) {
     ulg opt_lenb, static_lenb; /* opt_len and static_len in bytes */
-    int max_blindex = 0;  /* index of last bit length code of non zero freq */
+    int max_blindex = 0;  /* index of last bit length code of non-zero freq */
 
     /* Build the Huffman trees unless a stored block is forced */
     if (s->level > 0) {

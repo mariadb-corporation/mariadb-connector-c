@@ -295,7 +295,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   pvio= ctls->pvio;
   sctx= (SC_CTX *)ctls->ssl;
 
-  /* Initialie securifty context */
+  /* Initialize security context */
   BuffersOut.BufferType= SECBUFFER_TOKEN;
   BuffersOut.cbBuffer= 0;
   BuffersOut.pvBuffer= NULL;
