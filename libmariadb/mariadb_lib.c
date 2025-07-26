@@ -660,7 +660,7 @@ struct st_default_options {
   const char *conf_key;
 };
 
-struct st_default_options mariadb_defaults[] =
+const struct st_default_options mariadb_defaults[] =
 {
   {{MARIADB_OPT_PORT}, MARIADB_OPTION_INT,"port"},
   {{MARIADB_OPT_UNIXSOCKET}, MARIADB_OPTION_STR, "socket"},

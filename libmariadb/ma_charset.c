@@ -1242,7 +1242,7 @@ struct st_madb_os_charset {
 #define MADB_CS_EXACT 2
 
 /* Please add new character sets at the end. */
-struct st_madb_os_charset MADB_OS_CHARSET[]=
+const struct st_madb_os_charset MADB_OS_CHARSET[]=
 {
 #ifdef _WIN32
   /* Windows code pages */
