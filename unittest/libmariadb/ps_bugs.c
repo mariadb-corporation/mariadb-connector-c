@@ -3545,7 +3545,7 @@ static int test_explain_bug(MYSQL *mysql)
 
   if ( mysql_get_server_version(mysql) >= 50027 )
   {
-    /*  The patch for bug#23037 changes column type of DEAULT to blob */
+    /*  The patch for bug#23037 changes column type of DEFAULT to blob */
     if (verify_prepare_field(result, 4, "Default", "COLUMN_DEFAULT",
                          MYSQL_TYPE_BLOB, 0, 0,
                          mysql_get_server_version(mysql) <= 50400 ? "" : "information_schema",

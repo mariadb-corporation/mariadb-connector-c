@@ -295,7 +295,7 @@ enum opt_metadata_field_type
 /* ?? */
 #define LOG_EVENT_MTS_ISOLATE_F             0x0200
 
-/* if session variable @@skip_repliation was set, this flag will be
+/* if session variable @@skip_replication was set, this flag will be
    reported for events which should be skipped. */
 #define LOG_EVENT_SKIP_REPLICATION_F        0x8000
 

@@ -810,7 +810,7 @@ static SECURITY_STATUS create_client_certificate_mem(
     CERT_QUERY_FORMAT_FLAG_ALL, 0, NULL, &actual_content_type,
     NULL, NULL, NULL, (const void**)&cert_handle->cert))
   {
-    FAIL("Can't parse client certficate");
+    FAIL("Can't parse client certificate");
   }
 
   /* Parse key */
