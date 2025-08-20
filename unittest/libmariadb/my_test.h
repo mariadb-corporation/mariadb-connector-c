@@ -154,6 +154,7 @@ do {\
   {\
     diag("Error (%d): %s (%d) in %s line %d", rc, mysql_error(mysql), \
          mysql_errno(mysql), __FILE__, __LINE__);\
+    mysql_close(mysql); \
     return(FAIL);\
   }\
 } while(0)
@@ -163,6 +164,7 @@ do {\
   if (rc)\
   {\
     diag("Error: %s (%s: %d)", mysql_stmt_error(stmt), __FILE__, __LINE__);\
+    mysql_stmt_close(stmt); \
     return(FAIL);\
   }\
 } while(0)
