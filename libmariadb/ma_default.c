@@ -78,7 +78,7 @@ char **get_default_configuration_dirs()
 #ifdef _WIN32
   char dirname[FN_REFLEN];
 #endif
-  char *env;
+  const char *env;
 
   configuration_dirs= (char **)calloc(1, (MAX_CONFIG_DIRS + 1) * sizeof(char *));
   if (!configuration_dirs)
@@ -322,7 +322,7 @@ my_bool _mariadb_read_options(MYSQL *mysql,
   char filename[FN_REFLEN + 1];
   unsigned int recursion_stop= 64;
 #ifndef _WIN32
-  char *env;
+  const char *env;
 #endif
 
   if (recursion >= recursion_stop)
