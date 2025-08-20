@@ -1138,11 +1138,6 @@ unpack_fields(const MYSQL *mysql,
     field->flags= uint2korr(p);
     p+= 2;
     field->decimals= (uint) p[0];
-    p++;
-
-    /* filler */
-    p+= 2;
-
     if (INTERNAL_NUM_FIELD(field))
       field->flags|= NUM_FLAG;
 

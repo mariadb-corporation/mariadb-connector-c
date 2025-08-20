@@ -91,7 +91,7 @@ wait_for_mysql(MYSQL *mysql, int status)
 #else
   struct pollfd pfd;
   int timeout;
-  int res= -1;
+  int res;
 
   pfd.fd= mysql_get_socket(mysql);
   pfd.events=

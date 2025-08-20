@@ -2279,7 +2279,7 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
 static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
 {
   MYSQL *mysql= stmt->mysql;
-  my_bool ret= 1;
+  my_bool ret;
   unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR;
   unsigned int last_status;
 

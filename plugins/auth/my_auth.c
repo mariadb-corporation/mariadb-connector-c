@@ -66,7 +66,6 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
       we use the old scramble.
     */
     pkt= (uchar*)mysql->scramble_buff;
-    pkt_len= SCRAMBLE_LENGTH + 1;
   }
   else
   {
@@ -216,7 +215,6 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
   buff= malloc(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
-  end= buff;
 
   mysql->client_flag|= mysql->options.client_flag;
   mysql->client_flag|= CLIENT_CAPABILITIES;

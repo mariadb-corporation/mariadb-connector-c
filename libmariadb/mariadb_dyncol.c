@@ -2322,7 +2322,7 @@ dynamic_column_get_internal(DYNAMIC_COLUMN *str,
                             uint num_key, LEX_STRING *str_key)
 {
   DYN_HEADER header;
-  enum enum_dyncol_func_result rc= ER_DYNCOL_FORMAT;
+  enum enum_dyncol_func_result rc;
   memset(&header, 0, sizeof(header));
 
   if (str->length == 0)
@@ -3739,7 +3739,6 @@ mariadb_dyncol_check(DYNAMIC_COLUMN *str)
         goto end;
       }
     }
-    prev_num= num;
     prev_name= name;
     prev_data_offset= data_offset;
     prev_name_offset= name_offset;

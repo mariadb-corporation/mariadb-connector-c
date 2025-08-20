@@ -299,7 +299,6 @@ static my_bool _mariadb_read_options_from_file(MYSQL *mysql,
       }
       *ptr=0;
       set_option(mysql, key, optval);
-      key= optval= 0;
     }
   }
   rc= 0;
