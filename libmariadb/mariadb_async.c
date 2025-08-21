@@ -71,7 +71,8 @@ my_connect_async(MARIADB_PVIO *pvio,
   struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
   my_socket sock;
 
-  ma_pvio_get_handle(pvio, &sock);
+  if (ma_pvio_get_handle(pvio, &sock))
+    return -1;
 
   /* Make the socket non-blocking. */
   ma_pvio_blocking(pvio, 0, 0);
