@@ -1074,7 +1074,7 @@ static my_bool ma_get_rset_field_lengths(MYSQL_ROW row, unsigned int field_count
                                unsigned long *lengths)
 {
   unsigned long *last_length= 0;
-  char *pos= 0;
+  const char *pos= 0;
   MYSQL_ROW end= row + field_count + 1;
   my_bool rc= 0;
 
@@ -1088,7 +1088,8 @@ static my_bool ma_get_rset_field_lengths(MYSQL_ROW row, unsigned int field_count
     } else {
       /* NULL_LENGTH (see also CONC-709) */
       rc= 1;
-      *last_length= 0;
+      if (last_length)
+        *last_length= 0;
     }
     last_length= lengths++;
     row++;
