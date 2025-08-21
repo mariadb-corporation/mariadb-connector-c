@@ -769,7 +769,7 @@ static int test_conc118(MYSQL *mysql)
 
   mysql->options.unused_1= 1;
 
-  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  mysql_kill(mysql, mysql_thread_id(mysql));
 
   mysql_ping(mysql);
 
@@ -778,7 +778,7 @@ static int test_conc118(MYSQL *mysql)
 
   FAIL_IF(mysql->options.unused_1 != 1, "options got lost");
 
-  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  mysql_kill(mysql, mysql_thread_id(mysql));
 
   mysql_ping(mysql);
   rc= mysql_query(mysql, "SET @a:=1");
