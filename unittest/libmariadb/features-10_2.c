@@ -172,6 +172,7 @@ static int conc_212(MYSQL *mysql)
 
 
   rc= mysql_stmt_close(stmt);
+  check_stmt_rc(rc, stmt);
 
   return OK;
 }
