@@ -1258,7 +1258,6 @@ static int test_mdev13100(MYSQL *my __attribute__((unused)))
   mysql_close(mysql);
 
   /* value from client-mariadb group */
-  mysql= mysql_init(NULL);
   if (!(fp= fopen("./mdev13100.cnf", "w")))
     return FAIL;
 
@@ -1269,6 +1268,9 @@ static int test_mdev13100(MYSQL *my __attribute__((unused)))
 
   fclose(fp);
 
+  mysql= mysql_init(NULL);
+  if (!mysql)
+   return FAIL;
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
   check_mysql_rc(rc, mysql);
 
