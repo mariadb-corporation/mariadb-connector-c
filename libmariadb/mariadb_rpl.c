@@ -1076,6 +1076,8 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
       if (ma_feof(rpl->fp))
       {
+        rpl_set_error(rpl, CR_BINLOG_ERROR, 0, "Error closing file/stream");
+        mariadb_free_rpl_event(rpl_event);
         return NULL;
       }
 
