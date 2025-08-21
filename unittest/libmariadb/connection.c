@@ -821,6 +821,11 @@ static int test_bind_address(MYSQL *my)
   int rc;
 
   SKIP_SKYSQL;
+  if (!bind_addr)
+  {
+    diag("Missing env variable MYSQL_TEST_BINDADDR");
+    return SKIP;
+  }
 
   if (!hostname || !strcmp(hostname, "localhost"))
   {
@@ -828,8 +833,9 @@ static int test_bind_address(MYSQL *my)
     return SKIP;
   }
 
-  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", username, bind_addr);
   rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
 
   sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", username, bind_addr, password);
   rc= mysql_query(my, query);
