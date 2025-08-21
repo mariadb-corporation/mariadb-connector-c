@@ -129,6 +129,8 @@ static int conc_213(MYSQL *mysql)
   MYSQL_STMT *stmt;
 
   stmt = mysql_stmt_init(mysql);
+  if (!stmt)
+    return FAIL;
 
   memset(&bind, '\0', sizeof(bind));
 
