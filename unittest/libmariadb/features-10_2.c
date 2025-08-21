@@ -86,6 +86,7 @@ static int execute_direct_example(MYSQL *mysql)
   rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS execute_direct", -1);
   check_stmt_rc(rc, stmt);
   rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE execute_direct (a int, b varchar(20))", -1);
+  check_stmt_rc(rc, stmt);
   rc= mysql_stmt_close(stmt);
   stmt= mysql_stmt_init(mysql);
   check_stmt_rc(rc, stmt);
