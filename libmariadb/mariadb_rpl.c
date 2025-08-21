@@ -842,6 +842,7 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   {
     char *buf[RPL_BINLOG_MAGIC_SIZE];
     MYSQL mysql;
+    int ret_val= 0;
 
     /* Semi sync doesn't work when processing files */
     rpl->is_semi_sync = 0;
@@ -849,26 +850,37 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
     if (rpl->fp)
       ma_close(rpl->fp);
 
+    if (!mysql_init(&mysql))
+    {
+      rpl_set_error(rpl, CR_OUT_OF_MEMORY, 0);
+      return ENOMEM;
+    }
+
     if (!(rpl->fp= ma_open((const char *)rpl->filename, "r", &mysql)))
     {
       rpl_set_error(rpl, CR_FILE_NOT_FOUND, 0, rpl->filename, errno);
-      return errno;
+      ret_val= errno;
+      goto error;
     }
 
     if (ma_read(buf, 1, RPL_BINLOG_MAGIC_SIZE, rpl->fp) != 4)
     {
       rpl_set_error(rpl, CR_FILE_READ, 0, rpl->filename, errno);
-      return errno;
+      ret_val= errno;
+      goto error;
     }
 
     /* check if it is a valid binlog file */
     if (memcmp(buf, RPL_BINLOG_MAGIC, RPL_BINLOG_MAGIC_SIZE) != 0)
     {
       rpl_set_error(rpl, CR_BINLOG_INVALID_FILE, 0, rpl->filename, errno);
-      return errno;
+      ret_val= errno;
     }
 
-    return 0;
+error:
+
+    mysql_close(&mysql);
+    return ret_val;
   }
 }
 
