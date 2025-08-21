@@ -1416,8 +1416,9 @@ static int test_expired_pw(MYSQL *my)
     diag("Server doesn't support password expiration");
     return SKIP;
   }
-  sprintf(query, "DROP USER 'foo'@'%s'", this_host);
+  sprintf(query, "DROP USER IF EXISTS 'foo'@'%s'", this_host);
   rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
 
   sprintf(query, "CREATE USER 'foo'@'%s' IDENTIFIED BY 'foo'", this_host);
   rc= mysql_query(my, query);
