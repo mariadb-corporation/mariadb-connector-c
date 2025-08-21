@@ -1082,6 +1082,7 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   if (!(fp= fopen("./dummy_sock", "w")))
   {
     diag("couldn't create dummy socket");
+    mysql_close(mysql);
     return FAIL;
   }
   fclose(fp);
