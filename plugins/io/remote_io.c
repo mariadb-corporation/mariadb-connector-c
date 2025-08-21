@@ -314,6 +314,7 @@ MA_FILE *ma_rio_open(const char *url,const char *operation)
     /* cleanup */ 
     curl_easy_cleanup(rf->curl);
 
+    free(rf);
     free(file);
 
     file = NULL;
