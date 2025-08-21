@@ -1967,13 +1967,15 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
   switch (option) {
   case MARIADB_RPL_FILENAME:
   {
-    char *arg1= va_arg(ap, char *);
+    const char *arg1= va_arg(ap, char *);
     rpl->filename_length= (uint32_t)va_arg(ap, size_t);
     free((void *)rpl->filename);
     rpl->filename= NULL;
     if (rpl->filename_length)
     {
       rpl->filename= (char *)malloc(rpl->filename_length);
+      if (!rpl->filename)
+	goto malloc_fail;
       memcpy((void *)rpl->filename, arg1, rpl->filename_length);
     }
     else if (arg1)
@@ -1981,6 +1983,7 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
       rpl->filename= strdup((const char *)arg1);
       if (!rpl->filename)
       {
+malloc_fail:
         va_end(ap);
         rpl_set_error(rpl, CR_OUT_OF_MEMORY, 0);
         return 1;
