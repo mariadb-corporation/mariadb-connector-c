@@ -1367,10 +1367,11 @@ mysql_init(MYSQL *mysql)
   mysql->options.reconnect= 0;
   return mysql;
 error:
+  if (mysql->net.extension)
+     free(mysql->net.extension);
+  mysql->net.extension= 0;
   if (mysql->free_me)
   {
-    if (mysql->net.extension)
-      free(mysql->net.extension);
     free(mysql);
   }
   return 0;
@@ -2115,11 +2116,9 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   {
     /* extensions may have failed to allocate */
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-    tmp_mysql.free_me= 0;
     mysql_close(&tmp_mysql);
     return(1);
   }
-  tmp_mysql.free_me= 0;
   tmp_mysql.options=mysql->options;
   if (mysql->extension->conn_hdlr)
   {
