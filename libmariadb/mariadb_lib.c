@@ -2116,7 +2116,6 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   {
     /* extensions may have failed to allocate */
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-    mysql_close(&tmp_mysql);
     return(1);
   }
   tmp_mysql.options=mysql->options;
