@@ -1626,6 +1626,14 @@ int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
   return gnutls_protocol_get_version(ctls->ssl) - 1;
 }
 
+my_bool ma_tls_has_buffered_data(MARIADB_TLS *ctls)
+{
+  if (!ctls || !ctls->ssl)
+    return FALSE;
+  
+  return gnutls_record_check_pending((gnutls_session_t)ctls->ssl) > 0;
+}
+
 void ma_tls_set_connection(MYSQL *mysql)
 {
   (void)gnutls_session_set_ptr(mysql->net.pvio->ctls->ssl, (void *)mysql);

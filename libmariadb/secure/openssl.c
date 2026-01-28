@@ -954,6 +954,14 @@ int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
   return SSL_version(ctls->ssl) & 0xFF;
 }
 
+my_bool ma_tls_has_buffered_data(MARIADB_TLS *ctls)
+{
+  if (!ctls || !ctls->ssl)
+    return FALSE;
+  
+  return SSL_pending((SSL *)ctls->ssl) > 0;
+}
+
 void ma_tls_set_connection(MYSQL *mysql)
 {
   (void)SSL_set_app_data(mysql->net.pvio->ctls->ssl, mysql);

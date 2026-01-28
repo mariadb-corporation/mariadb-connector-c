@@ -88,6 +88,22 @@ my_bool ma_pvio_tls_connect(MARIADB_TLS *ctls)
   return rc;
 }
 
+#ifdef HAVE_NONBLOCK
+void ma_pvio_tls_init_async(MARIADB_TLS *ctls)
+{
+  if (!ctls || !ctls->pvio || ctls->async_methods)
+    return;
+  
+  ctls->async_methods = malloc(sizeof(PVIO_METHODS));
+  if (ctls->async_methods)
+  {
+    *((PVIO_METHODS*)ctls->async_methods) = *ctls->pvio->methods;
+    ((PVIO_METHODS*)ctls->async_methods)->read = ctls->pvio->methods->async_read;
+    ((PVIO_METHODS*)ctls->async_methods)->write = ctls->pvio->methods->async_write;
+  }
+}
+#endif
+
 ssize_t ma_pvio_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   return ma_tls_read(ctls, buffer, length);
@@ -100,6 +116,13 @@ ssize_t ma_pvio_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 
 my_bool ma_pvio_tls_close(MARIADB_TLS *ctls)
 {
+#ifdef HAVE_NONBLOCK
+  if (ctls && ctls->async_methods)
+  {
+    free(ctls->async_methods);
+    ctls->async_methods = NULL;
+  }
+#endif
   return ma_tls_close(ctls);
 }
 

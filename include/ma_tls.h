@@ -35,6 +35,7 @@ typedef struct st_ma_pvio_tls {
   MARIADB_PVIO *pvio;
   void *ssl;
   MARIADB_X509_INFO cert_info;
+  void *async_methods;
 } MARIADB_TLS;
 
 /* Function prototypes */
@@ -161,6 +162,15 @@ int ma_pvio_tls_get_protocol_version_id(MARIADB_TLS *ctls);
 unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size);
 void ma_tls_set_connection(MYSQL *mysql);
 
+/* ma_tls_has_buffered_data
+   checks if SSL/TLS has buffered decrypted data available
+   Parameter:
+     MARIADB_TLS    MariaDB SSL container
+   Returns:
+     TRUE if buffered data is available, FALSE otherwise
+*/
+my_bool ma_tls_has_buffered_data(MARIADB_TLS *ctls);
+
 /* Function prototypes */
 MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql);
 my_bool ma_pvio_tls_connect(MARIADB_TLS *ctls);
@@ -174,5 +184,8 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
 void ma_pvio_tls_set_connection(MYSQL *mysql);
 void ma_pvio_tls_end();
 unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size);
+#ifdef HAVE_NONBLOCK
+void ma_pvio_tls_init_async(MARIADB_TLS *ctls);
+#endif
 
 #endif /* _ma_tls_h_ */

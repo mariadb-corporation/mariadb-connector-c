@@ -21,6 +21,8 @@
  *************************************************************************************/
 #include "ma_schannel.h"
 #include "schannel_certs.h"
+#include <ma_pvio.h>
+#include <mariadb_async.h>
 #include <assert.h>
 
 #define SC_IO_BUFFER_SIZE 0x4000
@@ -667,5 +669,64 @@ int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
   default:
     return -1;
   }
+}
+/* }}} */
+
+/* {{{ my_bool ma_tls_has_buffered_data(MARIADB_TLS *ctls) */
+my_bool ma_tls_has_buffered_data(MARIADB_TLS *ctls)
+{
+  SC_CTX *sctx;
+  
+  if (!ctls || !ctls->ssl)
+    return FALSE;
+  
+  sctx = (SC_CTX *)ctls->ssl;
+  return (sctx->dataBuf.cbBuffer > 0);
+}
+/* }}} */
+
+#include <mariadb_async.h>
+#include <ma_context.h>
+
+#define IS_BLOCKING_ERROR()                   \
+  IF_WIN(WSAGetLastError() != WSAEWOULDBLOCK, \
+         (errno != EAGAIN && errno != EINTR))
+
+
+/* {{{ ssize_t ma_tls_read_async */
+ssize_t ma_tls_read_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  MARIADB_TLS *ctls= pvio->ctls;
+  PVIO_METHODS *original_methods;
+  ssize_t ret;
+  
+  if (!ctls || !ctls->ssl || !ctls->async_methods)
+    return -1;
+  
+  original_methods = pvio->methods;
+  pvio->methods = (PVIO_METHODS*)ctls->async_methods;
+  ret = ma_tls_read(ctls, buffer, length);
+  pvio->methods = original_methods;
+  
+  return ret;
+}
+/* }}} */
+
+/* {{{ ssize_t ma_tls_write_async */
+ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  MARIADB_TLS *ctls= pvio->ctls;
+  PVIO_METHODS *original_methods;
+  ssize_t ret;
+  
+  if (!ctls || !ctls->ssl || !ctls->async_methods)
+    return -1;
+  
+  original_methods = pvio->methods;
+  pvio->methods = (PVIO_METHODS*)ctls->async_methods;
+  ret = ma_tls_write(ctls, buffer, length);
+  pvio->methods = original_methods;
+  
+  return ret;
 }
 /* }}} */

@@ -36,6 +36,7 @@ jobs:
   ci-server:
     name: server ${{ matrix.server.version }} test suite ${{ matrix.server.env && format(' {0}', matrix.server.env) || '' }}
     runs-on: ubuntu-latest
+    if: github.repository == 'mariadb-corporation/mariadb-connector-c'
     continue-on-error: true
     strategy:
       matrix:

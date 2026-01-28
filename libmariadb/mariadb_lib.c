@@ -3602,6 +3602,17 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       FIX_SSL_VERIFY_SERVER_CERT(&mysql->options);
     }
     mysql->options.extension->async_context= ctxt;
+    
+    /* If setting MYSQL_OPT_NONBLOCK on an already-connected session,
+       switch the socket to non-blocking mode to support async operations */
+    if (mysql->net.pvio)
+    {
+      ma_pvio_blocking(mysql->net.pvio, FALSE, NULL);
+#if defined(HAVE_TLS) && defined(HAVE_NONBLOCK)
+      if (mysql->net.pvio->ctls)
+        ma_pvio_tls_init_async(mysql->net.pvio->ctls);
+#endif
+    }
     break;
   case MYSQL_OPT_MAX_ALLOWED_PACKET:
     if (mysql)

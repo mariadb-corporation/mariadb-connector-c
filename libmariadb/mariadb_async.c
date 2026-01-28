@@ -33,6 +33,9 @@
 #include "ma_pvio.h"
 #include "mariadb_async.h"
 #include <string.h>
+#ifdef HAVE_TLS
+#include "ma_tls.h"
+#endif
 
 
 #ifdef _WIN32
@@ -50,6 +53,21 @@
 
 extern void mysql_close_slow_part(MYSQL *mysql);
 
+/*
+  Check if SSL/TLS has buffered data available.
+  This optimization prevents unnecessary event loop iterations when
+  decrypted data is already available in SSL internal buffers.
+*/
+static inline my_bool mysql_async_check_ssl_buffered_data(MYSQL *mysql)
+{
+#ifdef HAVE_TLS
+  if (mysql && mysql->net.pvio && mysql->net.pvio->ctls)
+  {
+    return ma_tls_has_buffered_data(mysql->net.pvio->ctls);
+  }
+#endif
+  return FALSE;
+}
 
 void
 my_context_install_suspend_resume_hook(struct mysql_async_context *b,
@@ -248,6 +266,13 @@ my_ssl_write_async(struct mysql_async_context *b, SSL *ssl,
     set_mariadb_error((mysql_val), CR_COMMANDS_OUT_OF_SYNC, unknown_sqlstate);  \
     *ret= err_val;                                                            \
     return 0;                                                                 \
+  }                                                                           \
+                                                                              \
+  /* If SSL has buffered data and we're waiting for read, continue immediately without waiting for socket I/O */                   \
+  if ((b->events_to_wait_for & MYSQL_WAIT_READ) &&                           \
+      mysql_async_check_ssl_buffered_data(mysql_val))                         \
+  {                                                                           \
+    ready_status= MYSQL_WAIT_READ;                                            \
   }                                                                           \
                                                                               \
   b->active= 1;                                                               \
