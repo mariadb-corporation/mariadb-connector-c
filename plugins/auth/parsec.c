@@ -202,7 +202,7 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_SERVER_HANDSHAKE_ERR;
   if (params->algorithm != 'P')
     return CR_AUTH_PLUGIN_ERR;
-  if (params->iterations > 3)
+  if (params->iterations > 15)
     return CR_AUTH_PLUGIN_ERR;
 
   random_bytes(signed_msg.response.client_scramble, CHALLENGE_SCRAMBLE_LENGTH);
