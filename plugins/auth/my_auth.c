@@ -163,13 +163,19 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   {
     if (mysql->client_flag & CLIENT_SECURE_CONNECTION)
     {
-      DBUG_ASSERT(data_len <= 255);
-      if (data_len > 255)
+      if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)
       {
-        my_set_error(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
-        goto error;
+        end= (char *)mysql_net_store_length((uchar *)end, data_len);
       }
-      *end++= data_len;
+      else
+      {
+        if (data_len > 255)
+        {
+          my_set_error(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
+          goto error;
+        }
+        *end++= data_len;
+      }
     }
     else
     {
