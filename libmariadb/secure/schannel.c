@@ -844,6 +844,11 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
     return 0;
 
   hash_ctx = ma_hash_new(hash_type);
+  if (!hash_ctx)
+  {
+    CertFreeCertificateContext(pRemoteCertContext);
+    return 0;
+  }
   ma_hash_input(hash_ctx, pRemoteCertContext->pbCertEncoded, pRemoteCertContext->cbCertEncoded);
   ma_hash_result(hash_ctx, (unsigned char *)fp);
   ma_hash_free(hash_ctx);

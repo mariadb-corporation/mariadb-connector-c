@@ -11,7 +11,8 @@ int crypto_sign_keypair(
   unsigned char az[64];
   ge_p3 A;
 
-  crypto_hash_sha512(az,pw,pwlen);
+  if (crypto_hash_sha512(az,pw,pwlen))
+    return -1;
   az[0] &= 248;
   az[31] &= 63;
   az[31] |= 64;

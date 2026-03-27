@@ -98,21 +98,25 @@ void my_crypt(unsigned char *buffer, const unsigned char *s1, const unsigned cha
 	}
 }
 
-void ma_scramble_41(const unsigned char *buffer, const char *scramble, const char *password)
+int ma_scramble_41(const unsigned char *buffer, const char *scramble, const char *password)
 {
 	MA_HASH_CTX *ctx;
 	unsigned char sha1[MA_SHA1_HASH_SIZE];
 	unsigned char sha2[MA_SHA1_HASH_SIZE];
-	
+
 
 	/* Phase 1: hash password */
-  ma_hash(MA_HASH_SHA1, (unsigned char *)password, strlen(password), sha1);
+  if (ma_hash(MA_HASH_SHA1, (unsigned char *)password, strlen(password), sha1))
+    return 1;
 
 	/* Phase 2: hash sha1 */
-  ma_hash(MA_HASH_SHA1, (unsigned char *)sha1, MA_SHA1_HASH_SIZE, sha2);
+  if (ma_hash(MA_HASH_SHA1, (unsigned char *)sha1, MA_SHA1_HASH_SIZE, sha2))
+    return 1;
 
 	/* Phase 3: hash scramble + sha2 */
   ctx= ma_hash_new(MA_HASH_SHA1);
+  if (!ctx)
+    return 1;
   ma_hash_input(ctx, (unsigned char *)scramble, SCRAMBLE_LENGTH);
   ma_hash_input(ctx, (unsigned char *)sha2, MA_SHA1_HASH_SIZE);
   ma_hash_result(ctx, (unsigned char *)buffer);
@@ -120,6 +124,7 @@ void ma_scramble_41(const unsigned char *buffer, const char *scramble, const cha
 
 	/* let's crypt buffer now */
 	my_crypt((uchar *)buffer, (const unsigned char *)buffer, (const unsigned  char *)sha1, MA_SHA1_HASH_SIZE);
+	return 0;
 }
 /* }}} */
 

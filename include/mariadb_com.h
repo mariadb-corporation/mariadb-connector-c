@@ -471,7 +471,7 @@ extern "C" {
 #endif
   
 char *ma_scramble_323(char *to,const char *message,const char *password);
-void ma_scramble_41(const unsigned char *buffer, const char *scramble, const char *password);
+int ma_scramble_41(const unsigned char *buffer, const char *scramble, const char *password);
 void ma_hash_password(unsigned long *result, const char *password, size_t len);
 void ma_make_scrambled_password(char *to,const char *password);
 

@@ -116,7 +116,8 @@ static int auth_ed25519_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_SERVER_HANDSHAKE_ERR;
 
   /* Sign nonce: the crypto_sign function is part of ref10 */
-  ma_crypto_sign(signature, pk, packet, NONCE_BYTES, (unsigned char*)mysql->passwd, pwlen);
+  if (ma_crypto_sign(signature, pk, packet, NONCE_BYTES, (unsigned char*)mysql->passwd, pwlen))
+    return CR_ERROR;
 
   /* send signature to server */
   if (vio->write_packet(vio, signature, CRYPTO_BYTES))
@@ -138,7 +139,8 @@ static int auth_ed25519_hash(MYSQL *mysql __attribute__((unused)),
   *outlen= CRYPTO_PUBLICKEYBYTES;
 
 #ifndef HAVE_THREAD_LOCAL
-  crypto_sign_keypair(pk, (unsigned char*)mysql->passwd, strlen(mysql->passwd));
+  if (crypto_sign_keypair(pk, (unsigned char*)mysql->passwd, strlen(mysql->passwd)))
+    return 1;
 #endif
 
   /* use the cached value */

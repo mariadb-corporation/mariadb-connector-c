@@ -155,7 +155,10 @@ cleanup:
 #elif defined(HAVE_SCHANNEL)
   unsigned char sig[ED25519_SIG_LENGTH + CHALLENGE_SCRAMBLE_LENGTH * 2];
 
-  ma_crypto_sign((unsigned char *)sig, public_key, response, response_len, private_key, ED25519_KEY_LENGTH);
+  if (ma_crypto_sign((unsigned char *)sig, public_key,
+                     response, response_len,
+                     private_key, ED25519_KEY_LENGTH))
+    return 1;
   memcpy(signature, sig, ED25519_SIG_LENGTH);
 #endif
   return 0;

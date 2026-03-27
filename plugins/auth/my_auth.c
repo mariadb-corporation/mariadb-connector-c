@@ -136,7 +136,12 @@ static int native_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   {
     char scrambled[SCRAMBLE_LENGTH + 1];
     memset(scrambled, 0, SCRAMBLE_LENGTH + 1);
-    ma_scramble_41((uchar *)scrambled, (char*)pkt, mysql->passwd);
+    if (ma_scramble_41((uchar *)scrambled, (char*)pkt, mysql->passwd))
+    {
+      SET_CLIENT_ERROR(mysql, CR_AUTH_PLUGIN_ERR, SQLSTATE_UNKNOWN,
+                       "SHA1 hash computation failed");
+      return CR_ERROR;
+    }
     if (vio->write_packet(vio, (uchar*)scrambled, SCRAMBLE_LENGTH))
       return CR_ERROR;
   }
@@ -156,9 +161,11 @@ static int native_password_hash(MYSQL *mysql, unsigned char *out, size_t *out_le
   *out_length= MA_SHA1_HASH_SIZE;
 
   /* would it be better to reuse instead of recalculating here? see ed25519 */
-  ma_hash(MA_HASH_SHA1, (unsigned char*)mysql->passwd, strlen(mysql->passwd),
-          digest);
-  ma_hash(MA_HASH_SHA1, digest, sizeof(digest), out);
+  if (ma_hash(MA_HASH_SHA1, (unsigned char*)mysql->passwd, strlen(mysql->passwd),
+              digest))
+    return 1;
+  if (ma_hash(MA_HASH_SHA1, digest, sizeof(digest), out))
+    return 1;
 
   return 0;
 }

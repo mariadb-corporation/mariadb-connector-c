@@ -23,7 +23,8 @@ int crypto_sign_open(
   memmove(scopy,sm + 32,32);
 
   memmove(sm + 32,pk,32);
-  crypto_hash_sha512(h,sm,smlen);
+  if (crypto_hash_sha512(h,sm,smlen))
+    goto badsig;
   sc_reduce(h);
 
   ge_double_scalarmult_vartime(&R,h,&A,scopy);
