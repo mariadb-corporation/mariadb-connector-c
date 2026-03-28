@@ -541,6 +541,7 @@ static int test_compress(MYSQL *mysql)
 
   /* use compressed protocol */
   rc= mysql_options(mysql, MYSQL_OPT_COMPRESS, NULL);
+  check_mysql_rc(rc, mysql);
 
   if (!(my_test_connect(mysql, hostname, username,
                            password, schema, port,
@@ -645,6 +646,8 @@ int test_conc21(MYSQL *mysql)
 int test_conc26(MYSQL *unused __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
+  if (!mysql)
+    return FAIL;
   mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "ascii");
 
   FAIL_IF(my_test_connect(mysql, hostname, "notexistinguser", "password", schema, port, socketname, CLIENT_REMEMBER_OPTIONS),
@@ -766,7 +769,7 @@ static int test_conc118(MYSQL *mysql)
 
   mysql->options.unused_1= 1;
 
-  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  mysql_kill(mysql, mysql_thread_id(mysql));
 
   mysql_ping(mysql);
 
@@ -775,7 +778,7 @@ static int test_conc118(MYSQL *mysql)
 
   FAIL_IF(mysql->options.unused_1 != 1, "options got lost");
 
-  rc= mysql_kill(mysql, mysql_thread_id(mysql));
+  mysql_kill(mysql, mysql_thread_id(mysql));
 
   mysql_ping(mysql);
   rc= mysql_query(mysql, "SET @a:=1");
@@ -818,6 +821,11 @@ static int test_bind_address(MYSQL *my)
   int rc;
 
   SKIP_SKYSQL;
+  if (!bind_addr)
+  {
+    diag("Missing env variable MYSQL_TEST_BINDADDR");
+    return SKIP;
+  }
 
   if (!hostname || !strcmp(hostname, "localhost"))
   {
@@ -825,8 +833,9 @@ static int test_bind_address(MYSQL *my)
     return SKIP;
   }
 
-  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", username, bind_addr);
   rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
 
   sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", username, bind_addr, password);
   rc= mysql_query(my, query);
@@ -1073,6 +1082,7 @@ static int test_unix_socket_close(MYSQL *unused __attribute__((unused)))
   if (!(fp= fopen("./dummy_sock", "w")))
   {
     diag("couldn't create dummy socket");
+    mysql_close(mysql);
     return FAIL;
   }
   fclose(fp);
@@ -1248,7 +1258,6 @@ static int test_mdev13100(MYSQL *my __attribute__((unused)))
   mysql_close(mysql);
 
   /* value from client-mariadb group */
-  mysql= mysql_init(NULL);
   if (!(fp= fopen("./mdev13100.cnf", "w")))
     return FAIL;
 
@@ -1259,6 +1268,9 @@ static int test_mdev13100(MYSQL *my __attribute__((unused)))
 
   fclose(fp);
 
+  mysql= mysql_init(NULL);
+  if (!mysql)
+   return FAIL;
   rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./mdev13100.cnf");
   check_mysql_rc(rc, mysql);
 
@@ -1404,8 +1416,9 @@ static int test_expired_pw(MYSQL *my)
     diag("Server doesn't support password expiration");
     return SKIP;
   }
-  sprintf(query, "DROP USER 'foo'@'%s'", this_host);
+  sprintf(query, "DROP USER IF EXISTS 'foo'@'%s'", this_host);
   rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
 
   sprintf(query, "CREATE USER 'foo'@'%s' IDENTIFIED BY 'foo'", this_host);
   rc= mysql_query(my, query);

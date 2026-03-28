@@ -774,18 +774,31 @@ struct st_default_options mariadb_defaults[] =
 #define OPT_SET_VALUE_INT(OPTS, KEY, VAL)                         \
     (OPTS)->KEY= (VAL)
 
-static void options_add_initcommand(struct st_mysql_options *options,
+static my_bool options_add_initcommand(struct st_mysql_options *options,
                                      const char *init_cmd)
 {
   char *insert= strdup(init_cmd);
+  if (!insert)
+    return TRUE;
+
   if (!options->init_command)
   {
     options->init_command= (DYNAMIC_ARRAY*)malloc(sizeof(DYNAMIC_ARRAY));
+    if (!options->init_command)
+    {
+      free(insert);
+      return TRUE;
+    }
     ma_init_dynamic_array(options->init_command, sizeof(char*), 5, 5);
   }
 
   if (ma_insert_dynamic(options->init_command, (gptr)&insert))
+  {
     free(insert);
+    return TRUE;
+  }
+
+  return FALSE;
 }
 my_bool _mariadb_set_conf_option(MYSQL *mysql, const char *config_option, const char *config_value)
 {
@@ -1061,7 +1074,7 @@ static my_bool ma_get_rset_field_lengths(MYSQL_ROW row, unsigned int field_count
                                unsigned long *lengths)
 {
   unsigned long *last_length= 0;
-  char *pos= 0;
+  const char *pos= 0;
   MYSQL_ROW end= row + field_count + 1;
   my_bool rc= 0;
 
@@ -1075,7 +1088,8 @@ static my_bool ma_get_rset_field_lengths(MYSQL_ROW row, unsigned int field_count
     } else {
       /* NULL_LENGTH (see also CONC-709) */
       rc= 1;
-      *last_length= 0;
+      if (last_length)
+        *last_length= 0;
     }
     last_length= lengths++;
     row++;
@@ -1138,11 +1152,6 @@ unpack_fields(const MYSQL *mysql,
     field->flags= uint2korr(p);
     p+= 2;
     field->decimals= (uint) p[0];
-    p++;
-
-    /* filler */
-    p+= 2;
-
     if (INTERNAL_NUM_FIELD(field))
       field->flags|= NUM_FLAG;
 
@@ -1358,10 +1367,11 @@ mysql_init(MYSQL *mysql)
   mysql->options.reconnect= 0;
   return mysql;
 error:
+  if (mysql->net.extension)
+     free(mysql->net.extension);
+  mysql->net.extension= 0;
   if (mysql->free_me)
   {
-    if (mysql->net.extension)
-      free(mysql->net.extension);
     free(mysql);
   }
   return 0;
@@ -2106,11 +2116,8 @@ my_bool STDCALL mariadb_reconnect(MYSQL *mysql)
   {
     /* extensions may have failed to allocate */
     SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-    tmp_mysql.free_me= 0;
-    mysql_close(&tmp_mysql);
     return(1);
   }
-  tmp_mysql.free_me= 0;
   tmp_mysql.options=mysql->options;
   if (mysql->extension->conn_hdlr)
   {
@@ -3484,7 +3491,11 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     }
     break;
   case MYSQL_INIT_COMMAND:
-    options_add_initcommand(&mysql->options, (char *)arg1);
+    if (options_add_initcommand(&mysql->options, (char *)arg1))
+    {
+      SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      goto end;
+    }
     break;
   case MYSQL_READ_DEFAULT_FILE:
     OPT_SET_VALUE_STR(&mysql->options, my_cnf_file, (char *)arg1);
@@ -3566,6 +3577,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
       if(!(mysql->options.extension= (struct st_mysql_options_extension *)
         calloc(1, sizeof(struct st_mysql_options_extension))))
       {
+        my_context_destroy(&ctxt->async_context);
         free(ctxt);
         SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
         goto end;

@@ -2289,7 +2289,7 @@ static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
 static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
 {
   MYSQL *mysql= stmt->mysql;
-  my_bool ret= 1;
+  my_bool ret;
   unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR;
   unsigned int last_status;
 
@@ -2421,6 +2421,11 @@ my_bool STDCALL mysql_stmt_send_long_data(MYSQL_STMT *stmt, uint param_number,
     int ret;
     size_t packet_len= STMT_ID_LENGTH + 2 + length;
     uchar *cmd_buff= (uchar *)calloc(1, packet_len);
+    if (!cmd_buff)
+    {
+      stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      return(1);
+    }
     int4store(cmd_buff, stmt->stmt_id);
     int2store(cmd_buff + STMT_ID_LENGTH, param_number);
     memcpy(cmd_buff + STMT_ID_LENGTH + 2, data, length);

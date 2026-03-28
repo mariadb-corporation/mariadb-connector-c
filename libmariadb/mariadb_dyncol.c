@@ -675,6 +675,7 @@ init_read_hdr(DYN_HEADER *hdr, DYNAMIC_COLUMN *str)
   if (read_fixed_header(hdr, str))
     return ER_DYNCOL_FORMAT;
   hdr->header= (uchar*)str->str + fmt_data[hdr->format].fixed_hdr;
+  hdr->offset= 0;
   calc_param(&hdr->entry_size, &hdr->header_size,
              fmt_data[hdr->format].fixed_hdr_entry, hdr->offset_size,
              hdr->column_count);
@@ -2322,7 +2323,7 @@ dynamic_column_get_internal(DYNAMIC_COLUMN *str,
                             uint num_key, LEX_STRING *str_key)
 {
   DYN_HEADER header;
-  enum enum_dyncol_func_result rc= ER_DYNCOL_FORMAT;
+  enum enum_dyncol_func_result rc;
   memset(&header, 0, sizeof(header));
 
   if (str->length == 0)
@@ -3739,7 +3740,6 @@ mariadb_dyncol_check(DYNAMIC_COLUMN *str)
         goto end;
       }
     }
-    prev_num= num;
     prev_name= name;
     prev_data_offset= data_offset;
     prev_name_offset= name_offset;

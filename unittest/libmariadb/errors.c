@@ -291,6 +291,7 @@ static int test_mdev35935(MYSQL *mysql)
   SKIP_MYSQL(mysql);
 
   rc= mysql_select_db(mysql, schema);
+  check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS bulk1");
   check_mysql_rc(rc, mysql);

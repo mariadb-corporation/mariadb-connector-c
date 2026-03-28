@@ -441,7 +441,6 @@ int bin2decimal(const char *from, decimal *to, int precision, int scale)
       default: DBUG_ASSERT(0); x= 0;
     }
     *buf= (x ^ mask) * powers10[DIG_PER_DEC1 - frac0x];
-    buf++;
   }
   return error;
 }

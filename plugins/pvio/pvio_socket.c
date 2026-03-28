@@ -345,7 +345,7 @@ ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 */   
 ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
-  ssize_t r= -1;
+  ssize_t r;
 #ifndef _WIN32
   int read_flags= MSG_DONTWAIT;
 #endif
@@ -418,7 +418,7 @@ static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags
 */   
 ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
-  ssize_t r= -1;
+  ssize_t r;
   struct st_pvio_socket *csock= NULL;
 #ifndef _WIN32
   int write_flags= MSG_DONTWAIT;

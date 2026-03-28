@@ -643,6 +643,8 @@ static Bigint *Balloc(int k, Stack_alloc *alloc)
     else
       rv= (Bigint*) malloc(len);
 
+    if (!rv)
+      return rv;
     rv->k= k;
     rv->maxwds= x;
   }

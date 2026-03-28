@@ -842,6 +842,7 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
   {
     char *buf[RPL_BINLOG_MAGIC_SIZE];
     MYSQL mysql;
+    int ret_val= 0;
 
     /* Semi sync doesn't work when processing files */
     rpl->is_semi_sync = 0;
@@ -849,26 +850,37 @@ int STDCALL mariadb_rpl_open(MARIADB_RPL *rpl)
     if (rpl->fp)
       ma_close(rpl->fp);
 
+    if (!mysql_init(&mysql))
+    {
+      rpl_set_error(rpl, CR_OUT_OF_MEMORY, 0);
+      return ENOMEM;
+    }
+
     if (!(rpl->fp= ma_open((const char *)rpl->filename, "r", &mysql)))
     {
       rpl_set_error(rpl, CR_FILE_NOT_FOUND, 0, rpl->filename, errno);
-      return errno;
+      ret_val= errno;
+      goto error;
     }
 
     if (ma_read(buf, 1, RPL_BINLOG_MAGIC_SIZE, rpl->fp) != 4)
     {
       rpl_set_error(rpl, CR_FILE_READ, 0, rpl->filename, errno);
-      return errno;
+      ret_val= errno;
+      goto error;
     }
 
     /* check if it is a valid binlog file */
     if (memcmp(buf, RPL_BINLOG_MAGIC, RPL_BINLOG_MAGIC_SIZE) != 0)
     {
       rpl_set_error(rpl, CR_BINLOG_INVALID_FILE, 0, rpl->filename, errno);
-      return errno;
+      ret_val= errno;
     }
 
-    return 0;
+error:
+
+    mysql_close(&mysql);
+    return ret_val;
   }
 }
 
@@ -1064,6 +1076,8 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
       if (ma_feof(rpl->fp))
       {
+        rpl_set_error(rpl, CR_BINLOG_ERROR, 0, "Error closing file/stream");
+        mariadb_free_rpl_event(rpl_event);
         return NULL;
       }
 
@@ -1175,7 +1189,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       rpl_event->event.heartbeat.type= (uint8_t)*ev;
       ev+= 1;
       rpl_event->event.heartbeat.flags= uint2korr(ev);
-      ev+= 2;
       
       break;
 
@@ -1192,7 +1205,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= strlen((char *)ev);
       /* terminating zero */
       RPL_CHECK_POS(ev, ev_end, 1);
-      ev++;
       break;
 
     case START_ENCRYPTION_EVENT:
@@ -1203,7 +1215,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= 4;
       memcpy(rpl_event->event.start_encryption.nonce, ev, 12);
       memcpy(rpl->nonce, ev, 12);
-      ev+= 12;
       rpl->encrypted= 1;
       break;
 
@@ -1247,7 +1258,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       len= rpl_event->event_length - (ev - ev_start) - (rpl->use_checksum ? 4 : 0) - (EVENT_HEADER_OFS - 1);
       RPL_CHECK_POS(ev, ev_end, len);
       rpl_set_string_and_len(&rpl_event->event.execute_load_query.statement, ev, len);
-      ev+= len;
       break;
     }
     case BINLOG_CHECKPOINT_EVENT:
@@ -1261,7 +1271,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       rpl_set_string_and_len(&rpl_event->event.checkpoint.filename, ev, len);
       if (ma_set_rpl_filename(rpl, ev, len))
         goto mem_error;
-      ev+= len;
       break;
 
     case FORMAT_DESCRIPTION_EVENT:
@@ -1312,7 +1321,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       if ((rpl->use_checksum= *ev++))
       {
         rpl_event->checksum= uint4korr(ev);
-        ev+= 4;
       }
       break;
 
@@ -1441,7 +1449,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       if (len > 0)  /* optional metadata */
       {
         rpl_parse_opt_metadata(rpl_event, ev, len);
-        ev+= len;
       }
 
       break;
@@ -1451,7 +1458,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       rpl_event->event.rand.first_seed= uint8korr(ev);
       ev+= 8;
       rpl_event->event.rand.second_seed= uint8korr(ev);
-      ev+= 8;
 
       break;
     }
@@ -1461,7 +1467,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       rpl_event->event.intvar.type= *ev;
       ev++;
       rpl_event->event.intvar.value= uint8korr(ev);
-      ev+= 8;
       break;
 
     case USER_VAR_EVENT:
@@ -1527,7 +1532,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         ev+= len;
         if ((unsigned long)(ev - rpl_event->raw_data) < rpl_event->raw_data_size)
           rpl_event->event.uservar.flags= *ev;
-        ev++;
       }
       break;
 
@@ -1562,7 +1566,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       if (ma_set_rpl_filename(rpl, ev, len))
         goto mem_error;
       
-      ev+= len;
       break;
 
     case XID_EVENT:
@@ -1630,7 +1633,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       {
         rpl_event->event.previous_gtid.content.data= ev;
         rpl_event->event.previous_gtid.content.length= len;
-        ev+= len;
       }
       break;
     }
@@ -1652,7 +1654,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       memcpy(rpl_event->event.gtid_log.source_id, ev, 16);
       ev+= 16;
       rpl_event->event.gtid_log.sequence_nr= uint8korr(ev);
-      ev+= 8;
       break;
 
     case GTID_EVENT:
@@ -1684,7 +1685,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       {
         RPL_CHECK_POS(ev, ev_end, 8);
         rpl_event->event.gtid.commit_id= uint8korr(ev);
-        ev+= 8;
       }
       else if (rpl_event->event.gtid.flags & (FL_PREPARED_XA | FL_COMPLETED_XA))
       {
@@ -1699,10 +1699,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         len= rpl_event->event.gtid.gtrid_len + rpl_event->event.gtid.bqual_len;
         RPL_CHECK_POS(ev, ev_end, len);
         rpl_set_string_and_len(&rpl_event->event.gtid.xid, ev, len);
-        ev+= len;
       }
-      else
-        ev+= 6;
       break;
 
     case GTID_LIST_EVENT:
@@ -1970,13 +1967,15 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
   switch (option) {
   case MARIADB_RPL_FILENAME:
   {
-    char *arg1= va_arg(ap, char *);
+    const char *arg1= va_arg(ap, char *);
     rpl->filename_length= (uint32_t)va_arg(ap, size_t);
     free((void *)rpl->filename);
     rpl->filename= NULL;
     if (rpl->filename_length)
     {
       rpl->filename= (char *)malloc(rpl->filename_length);
+      if (!rpl->filename)
+	goto malloc_fail;
       memcpy((void *)rpl->filename, arg1, rpl->filename_length);
     }
     else if (arg1)
@@ -1984,6 +1983,7 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
       rpl->filename= strdup((const char *)arg1);
       if (!rpl->filename)
       {
+malloc_fail:
         va_end(ap);
         rpl_set_error(rpl, CR_OUT_OF_MEMORY, 0);
         return 1;
