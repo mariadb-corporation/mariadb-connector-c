@@ -2171,18 +2171,9 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
   if (!(fp= fopen("./conc274.cnf", "w")))
     return FAIL;
 
-  if (IS_SKYSQL(hostname))
-  {
-    snprintf(tmp, sizeof(tmp) - 1,
-      "host=127.0.0.1:3300,%s;user=%s;password={%s};port=%d;socket=%s;ssl_enforce=1;tls_fp=%s",
-      hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-      ssl_port, socketname ? socketname : "", fingerprint[0] ? fingerprint : "");
-  } else {
-    snprintf(tmp, sizeof(tmp) - 1,
-      "host=127.0.0.1:3300,%s;user=%s;password={%s};port=%d;socket=%s;tls_fp=%s",
-      hostname ? hostname : "localhost", username ? username : "", password ? password : "",
-      port, socketname ? socketname : "", fingerprint[0] ? fingerprint :"");
-  }
+  sprintf(conn_str, "connection=host=%s;user=%s;password={%s};port=%d;ssl_enforce=1;socket=%s",
+                hostname ? hostname : "localhost", username ? username : "",
+                password ? password : "", ssl_port, socketname ? socketname : "");
 
   fprintf(fp, "[client]\n");
   fprintf(fp, "%s\n", conn_str);
