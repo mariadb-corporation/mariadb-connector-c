@@ -119,7 +119,6 @@ void rpl_set_error(MARIADB_RPL *rpl,
 
   const char *errmsg;
 
-  return;
   if (!format)
   {
     if (error_nr >= CR_MIN_ERROR && error_nr <= CR_MYSQL_LAST_ERROR)
@@ -965,7 +964,7 @@ static uint8_t mariadb_rpl_send_semisync_ack(MARIADB_RPL* rpl, MARIADB_RPL_EVENT
   }
   if (!event->is_semi_sync || (event->semi_sync_flags != SEMI_SYNC_ACK_REQ))
   {
-    rpl_set_error(rpl, CR_BINLOG_SEMI_SYNC_ERROR, 0, "This event doesn't require to send semi synchronous acknoledgement");
+    rpl_set_error(rpl, CR_BINLOG_SEMI_SYNC_ERROR, 0, "This event doesn't require to send semi synchronous acknowledgement");
     return 1;
   }
 
@@ -1110,7 +1109,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       RPL_CHECK_POS(ev, ev_end, 1);
       rpl_event->ok= *ev++;
 
-      /* CONC-470: add support for semi snychronous replication */
+      /* CONC-470: add support for semi synchronous replication */
       if (rpl->is_semi_sync && (rpl_event->is_semi_sync= (*ev == SEMI_SYNC_INDICATOR)))
       {
         RPL_CHECK_POS(ev, ev_end, 1);
@@ -1166,8 +1165,6 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
     case UNKNOWN_EVENT:
     case SLAVE_EVENT:
       return rpl_event;
-      break;
-
     case HEARTBEAT_LOG_EVENT:
       len= rpl_event->event_length - (ev - ev_start) - (rpl->use_checksum ? 4 : 0) - (EVENT_HEADER_OFS - 1);
       RPL_CHECK_POS(ev, ev_end, len);
@@ -1296,7 +1293,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       ev+= 4;
       rpl->fd_header_len= rpl_event->event.format_description.header_len= *ev;
       ev+= 1;
-      /*Post header lengths: 1 byte for each event, non used events/gaps in enum should
+      /*Post header lengths: 1 byte for each event, non-used events/gaps in enum should
                              have a zero value */
       len= ev_end - ev - 5;
       rpl_set_string_and_len(&rpl_event->event.format_description.post_header_lengths, ev, len);
@@ -1762,7 +1759,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
          WRITE/UPDATE/DELETE_ROWS_EVENT_COMPRESSED_V1 (MariaDB only)
          WRITE/UPDATE/DELETE_ROWS_EVENT (MySQL only)
 
-         ROWS events are written for row based replicatoin if data is
+         ROWS events are written for row-based replication if data is
          inserted, deleted or updated.
 
          Header
@@ -1887,13 +1884,12 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
       /* We need to report an error if this event can't be ignored */
       if (!(rpl_event->flags & LOG_EVENT_IGNORABLE_F))
       {
-        mariadb_free_rpl_event(rpl_event);
         rpl_set_error(rpl, CR_UNKNOWN_BINLOG_EVENT, 0, RPL_ERR_POS(rpl),
                       rpl_event->event_type);
+        mariadb_free_rpl_event(rpl_event);
         return 0;
       }
       return rpl_event;
-      break;
     }
 
     /* check if we have to send acknowledgement to primary
@@ -1980,6 +1976,12 @@ int STDCALL mariadb_rpl_optionsv(MARIADB_RPL *rpl,
     else if (arg1)
     {
       rpl->filename= strdup((const char *)arg1);
+      if (!rpl->filename)
+      {
+        va_end(ap);
+        rpl_set_error(rpl, CR_OUT_OF_MEMORY, 0);
+        return 1;
+      }
       rpl->filename_length= (uint32_t)strlen(rpl->filename);
     }
     break;
@@ -2087,7 +2089,6 @@ int STDCALL mariadb_rpl_get_optionsv(MARIADB_RPL *rpl,
   default:
     va_end(ap);
     return 1;
-    break;
   }
   va_end(ap);
   return 0;

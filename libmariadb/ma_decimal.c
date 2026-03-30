@@ -19,7 +19,7 @@
 /*
 =======================================================================
   NOTE: this library implements SQL standard "exact numeric" type
-  and is not at all generic, but rather intentinally crippled to
+  and is not at all generic, but rather intentionally crippled to
   follow the standard :)
 =======================================================================
   Quoting the standard

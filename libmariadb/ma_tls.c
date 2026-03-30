@@ -114,11 +114,36 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
   mysql= ctls->pvio->mysql;
 
   /* Skip peer certificate verification */
-  if (ctls->pvio->mysql->options.extension->tls_allow_invalid_server_cert)
+  if (mysql->options.extension->tls_allow_invalid_server_cert &&
+      (!mysql->options.extension->tls_fp && !mysql->options.extension->tls_fp_list))
   {
+    /* Since OpenSSL implementation sets status during TLS handshake
+       we need to clear verification status */
+    mysql->net.tls_verify_status= 0;
     return 0;
   }
 
+  if (flags & MARIADB_TLS_VERIFY_FINGERPRINT)
+  {
+    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
+    {
+      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_FINGERPRINT;
+      mysql->extension->tls_validation= mysql->net.tls_verify_status;
+      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+        ER(CR_SSL_CONNECTION_ERROR),
+        "Fingerprint validation of peer certificate failed");
+      return 1;
+    }
+#ifdef HAVE_OPENSSL
+    /* verification already happened via callback */
+    if (!(mysql->net.tls_verify_status & flags))
+    {
+      mysql->extension->tls_validation= mysql->net.tls_verify_status;
+      mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_OK;
+      return 0;
+    }
+#endif
+  }
   rc= ma_tls_verify_server_cert(ctls, flags);
 
   /* Set error messages */
@@ -149,7 +174,9 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
         ER(CR_SSL_CONNECTION_ERROR),
         "Peer certificate is not trusted");
   }
-
+  /* Save original validation */
+  mysql->extension->tls_validation= mysql->net.tls_verify_status;
+  mysql->net.tls_verify_status&= flags;
   return rc;
 }
 
@@ -197,7 +224,7 @@ static my_bool ma_pvio_tls_compare_fp(MARIADB_TLS *ctls,
                                      const char *cert_fp,
                                      unsigned int cert_fp_len)
 {
-  const char fp[EVP_MAX_MD_SIZE];
+  char fp[EVP_MAX_MD_SIZE];
   unsigned int fp_len= EVP_MAX_MD_SIZE;
   unsigned int hash_type;
 
@@ -239,11 +266,11 @@ static my_bool ma_pvio_tls_compare_fp(MARIADB_TLS *ctls,
     }
   }
 
-  if (!ma_tls_get_finger_print(ctls, hash_type, (char *)fp, fp_len))
+  if (!ma_tls_get_finger_print(ctls, hash_type, fp, fp_len))
     return 1;
 
   p= (char *)cert_fp;
-  c = (char *)fp;
+  c = fp;
 
   for (p = (char*)cert_fp; p < cert_fp + cert_fp_len; c++, p += 2)
   {

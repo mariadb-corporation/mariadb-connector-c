@@ -287,6 +287,8 @@ static int test_frm_bug(MYSQL *mysql)
   }
 
   rc= mysql_query(mysql, "SHOW TABLE STATUS like 'test_frm_bug'");
+
+  fclose(test_file);
   check_mysql_rc(rc, mysql);
 
   result= mysql_store_result(mysql);
@@ -307,7 +309,6 @@ static int test_frm_bug(MYSQL *mysql)
   mysql_free_result(result);
   mysql_stmt_close(stmt);
 
-  fclose(test_file);
   mysql_query(mysql, "drop table if exists test_frm_bug");
   unlink(test_frm);
   return OK;
@@ -1534,6 +1535,46 @@ static int test_conc458(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_conc163(MYSQL *mysql)
+{
+  int rc;
+  MYSQL_STMT *stmt;
+
+  rc= mysql_query(mysql, "SET @a:=1");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql_info(mysql) != NULL, "mysql_info: expected NULL");
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 AS SELECT 1");
+  check_mysql_rc(rc, mysql);
+
+  FAIL_IF(mysql_info(mysql) == NULL, "mysql_info: expected != NULL");
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mariadb_stmt_execute_direct(stmt, SL("SET @a:=1"));
+  check_stmt_rc(rc, stmt);
+  FAIL_IF(mysql_info(mysql) != NULL, "mysql_info: expected NULL");
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mariadb_stmt_execute_direct(stmt, SL("CREATE TABLE t1 AS SELECT 1"));
+  check_stmt_rc(rc, stmt);
+  FAIL_IF(mysql_info(mysql) == NULL, "mysql_info: expected != NULL");
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 
 static int test_conc533(MYSQL *mysql)
 {
@@ -1623,8 +1664,13 @@ int display_extended_field_attribute(MYSQL *mysql)
 
 static int test_ext_field_attr(MYSQL *mysql)
 {
+  if (!is_mariadb)
+  {
+    diag("feature not supported by MySQL server");
+    return SKIP;
+  }
   display_extended_field_attribute(mysql);
-  
+
   return OK;
 }
 
@@ -1662,11 +1708,35 @@ static int test_disable_tls1_0(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+static int test_null_handles(MYSQL *mysql __attribute__((unused)))
+{
+  mysql_close(NULL);
+  mysql_stmt_close(NULL);
+  return OK;
+}
+
+
+static int test_comp_level(MYSQL *my __attribute__((unused)))
+{
+  unsigned char clevel= 5;
+  unsigned char clevel1= 0;
+  MYSQL *mysql= mysql_init(NULL);
+
+  mysql_optionsv(mysql, MYSQL_OPT_ZSTD_COMPRESSION_LEVEL, &clevel);
+  mysql_get_optionv(mysql, MYSQL_OPT_ZSTD_COMPRESSION_LEVEL, &clevel1);
+
+  FAIL_IF(clevel != clevel1, "Different compression levels");
+  mysql_close(mysql);
+
+  return OK;
+}
 
 struct my_tests_st my_tests[] = {
   {"test_disable_tls1_0", test_disable_tls1_0, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_comp_level", test_comp_level, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_ext_field_attr", test_ext_field_attr, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_conc163", test_conc163, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #if !__has_feature(memory_sanitizer)
   {"test_conc457", test_conc457, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
@@ -1707,7 +1777,8 @@ struct my_tests_st my_tests[] = {
   {"test_ldi_path", test_ldi_path, TEST_CONNECTION_NEW, 0, NULL, NULL},
 #ifdef _WIN32
   {"test_conc44", test_conc44, TEST_CONNECTION_NEW, 0, NULL, NULL},
-#endif 
+#endif
+  {"test_null_handles", test_null_handles, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, 0}
 };
 

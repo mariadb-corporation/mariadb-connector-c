@@ -66,7 +66,8 @@ struct st_ma_pvio_methods pvio_shm_methods= {
 #ifndef PLUGIN_DYNAMIC
 MARIADB_PVIO_PLUGIN pvio_shmem_client_plugin=
 #else
-MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_=
+MARIADB_CLIENT_PLUGIN_EXPORT MARIADB_PVIO_PLUGIN
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MARIADB_CLIENT_PVIO_PLUGIN,

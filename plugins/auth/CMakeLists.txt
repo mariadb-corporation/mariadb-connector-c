@@ -4,40 +4,40 @@ INCLUDE_DIRECTORIES(${AUTH_DIR})
 INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
 
 SET(CRYPTO_PLUGIN 1)
-IF(WIN32)
-  ADD_DEFINITIONS(-DHAVE_WINCRYPT)
-  SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/win_crypt.c)
-  SET(CRYPT_LIBS crypt32 bcrypt)
-ELSEIF(WITH_SSL STREQUAL "OPENSSL")
+
+IF(WITH_SSL STREQUAL "OPENSSL")
   SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/openssl_crypt.c)
   SET(CRYPT_LIBS ${SSL_LIBRARIES})
 ELSEIF(WITH_SSL STREQUAL "GNUTLS")
   SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/gnutls_crypt.c)
   INCLUDE(${CC_SOURCE_DIR}/cmake/FindNettle.cmake)
   INCLUDE(${CC_SOURCE_DIR}/cmake/FindHogweed.cmake)
-  IF (NOT SSL_LIBRARIES MATCHES "^.*\\.a$")
-    SET(CRYPT_LIBS ${SSL_LIBRARIES})
+  SET(CRYPT_LIBS ${SSL_LIBRARIES})
   IF (NETTLE_FOUND AND HOGWEED_FOUND)
     SET(PARSEC_EXTRA_LIBS ${NETTLE_LIBRARIES} ${HOGWEED_LIBRARIES})
   ENDIF()
-  ENDIF()
+ELSEIF(WITH_SSL STREQUAL "SCHANNEL")
+  ADD_DEFINITIONS(-DHAVE_WINCRYPT)
+  SET(CRYPT_SOURCE ${CC_SOURCE_DIR}/libmariadb/secure/win_crypt.c)
+  SET(CRYPT_LIBS crypt32 bcrypt)
 ELSE()
   UNSET(CRYPTO_PLUGIN)
 ENDIF()
 
 #native password
 REGISTER_PLUGIN(TARGET mysql_native_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS STATIC
                 DEFAULT STATIC
                 SOURCES ${AUTH_DIR}/my_auth.c)
 
 #Dialog client authentication plugin
 REGISTER_PLUGIN(TARGET dialog
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
-                SOURCES ${AUTH_DIR}/dialog.c
+                LIBRARIES ${CMAKE_DL_LIBS}
+                SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c
                         ${CC_SOURCE_DIR}/libmariadb/get_password.c)
 
 
@@ -60,20 +60,19 @@ IF(CRYPTO_PLUGIN)
 
   IF(MSVC)
      # Silence conversion (integer truncation) warnings from reference code
-     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1 /wd4244 /wd4146 -DHAVE_THREAD_LOCAL")
-  ELSE()
-     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "-DMYSQL_CLIENT=1")
+     SET_SOURCE_FILES_PROPERTIES(${REF10_SOURCES} PROPERTY COMPILE_FLAGS "/wd4244 /wd4146 -DHAVE_THREAD_LOCAL")
   ENDIF()
 
   INCLUDE_DIRECTORIES(${REF10_DIR})
   ADD_LIBRARY(ed25519_ref10 OBJECT ${REF10_SOURCES})
+  SET_PROPERTY(TARGET ed25519_ref10 PROPERTY POSITION_INDEPENDENT_CODE ON)
 
   IF(WITH_SSL STREQUAL "SCHANNEL")
     SET(PARSEC_EXTRA_LIBS ed25519_ref10)
   ENDIF()
 
   REGISTER_PLUGIN(TARGET client_ed25519
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/ed25519.c
@@ -90,7 +89,7 @@ IF(CRYPTO_PLUGIN)
 
   # SHA256 caching plugin for MySQL 8.0 connection
   REGISTER_PLUGIN(TARGET caching_sha2_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/caching_sha2_pw.c
@@ -101,7 +100,7 @@ IF(CRYPTO_PLUGIN)
     MESSAGE1(SHA256_PASSWORD "sha256_password not supported by GnuTLS due to missing OAEP padding")
   ELSE()
     REGISTER_PLUGIN(TARGET sha256_password
-                    TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                    TYPE AUTH
                     CONFIGURATIONS DYNAMIC STATIC OFF
                     DEFAULT DYNAMIC
                     SOURCES ${AUTH_DIR}/sha256_pw.c
@@ -116,7 +115,7 @@ IF(CRYPTO_PLUGIN)
     REGISTER_PLUGIN(TARGET parsec
             TYPE MARIADB_CLIENT_PLUGIN_AUTH
             CONFIGURATIONS DYNAMIC STATIC OFF
-            DEFAULT OFF
+            DEFAULT DYNAMIC
             SOURCES ${AUTH_DIR}/parsec.c ${CRYPT_SOURCE}
             LIBRARIES ${CRYPT_LIBS} ${PARSEC_EXTRA_LIBS})
   ENDIF()
@@ -141,7 +140,7 @@ ELSE()
 ENDIF()
 IF(GSSAPI_SOURCES)
   REGISTER_PLUGIN(TARGET auth_gssapi_client
-                  TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                  TYPE AUTH
                   CONFIGURATIONS DYNAMIC STATIC OFF DYNAMIC_AND_STATIC
                   DEFAULT ${AUTH_GSSAPI_DEFAULT_CONFIG}
                   SOURCES ${GSSAPI_SOURCES}
@@ -157,7 +156,7 @@ ENDIF()
 
 # old_password plugin
 REGISTER_PLUGIN(TARGET mysql_old_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS STATIC DYNAMIC OFF
                 DEFAULT STATIC
                 DISABLED YES
@@ -165,7 +164,7 @@ REGISTER_PLUGIN(TARGET mysql_old_password
 
 # Cleartext
 REGISTER_PLUGIN(TARGET mysql_clear_password
-                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                TYPE AUTH
                 CONFIGURATIONS DYNAMIC STATIC OFF
                 DEFAULT DYNAMIC
                 SOURCES ${AUTH_DIR}/mariadb_cleartext.c)

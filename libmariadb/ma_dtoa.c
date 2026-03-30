@@ -597,7 +597,7 @@ typedef struct Bigint
 } Bigint;
 
 
-/* A simple stack-memory based allocator for Bigints */
+/* A simple stack-memory-based allocator for Bigints */
 
 typedef struct Stack_alloc
 {

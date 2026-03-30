@@ -35,7 +35,7 @@ static int test_rpl_async(MYSQL *my __attribute__((unused)))
   MYSQL_ROW row;
   MARIADB_RPL_EVENT *event= NULL;
   MARIADB_RPL *rpl;
-  int events= 0, rc;
+  int rc;
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
@@ -83,12 +83,8 @@ static int test_rpl_async(MYSQL *my __attribute__((unused)))
   if (mariadb_rpl_open(rpl))
     return FAIL;
 
-  /* We run rpl_api as very last test, too make sure
-     binary log contains > 10000 events.
-   */
   while((event= mariadb_rpl_fetch(rpl, event)) && event->event_type != HEARTBEAT_LOG_EVENT)
   {
-    events++;
   }
   mariadb_free_rpl_event(event);
   mariadb_rpl_close(rpl);
@@ -103,7 +99,7 @@ static int test_rpl_semisync(MYSQL *my __attribute__((unused)))
   MYSQL_ROW row;
   MARIADB_RPL_EVENT *event= NULL;
   MARIADB_RPL *rpl;
-  int events= 0, rc;
+  int rc;
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
@@ -165,7 +161,6 @@ static int test_rpl_semisync(MYSQL *my __attribute__((unused)))
 
   while((event= mariadb_rpl_fetch(rpl, event)) && event->event_type != HEARTBEAT_LOG_EVENT)
   {
-    events++;
   }
   mariadb_free_rpl_event(event);
   mariadb_rpl_close(rpl);
@@ -347,7 +342,7 @@ static int test_conc689(MYSQL *my __attribute__((unused)))
   MYSQL_ROW row;
   MARIADB_RPL_EVENT *event= NULL;
   MARIADB_RPL *rpl;
-  int events= 0, rc;
+  int rc;
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
@@ -395,12 +390,8 @@ static int test_conc689(MYSQL *my __attribute__((unused)))
   if (mariadb_rpl_open(rpl))
     return FAIL;
 
-  /* We run rpl_api as very last test, too make sure
-     binary log contains > 10000 events.
-   */
   while((event= mariadb_rpl_fetch(rpl, event)) && event->event_type != HEARTBEAT_LOG_EVENT)
   {
-    events++;
   }
   FAIL_IF(event->event.heartbeat.filename.length == 0, "Invalid filename");
   mariadb_free_rpl_event(event);

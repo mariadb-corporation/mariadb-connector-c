@@ -25,6 +25,7 @@ typedef struct _client_cert_handle {
   HCRYPTPROV prov; /* provider */
   HCRYPTKEY  key;  /* private key */
   PCCERT_CONTEXT cert; /* client certificate */
+  DWORD flags; /* Flags used in CryptAcquireContext, e.g CRYPT_MACHINE_KEYSET*/
   wchar_t key_container_name[64]; /* key container name */
 } client_cert_handle;
 

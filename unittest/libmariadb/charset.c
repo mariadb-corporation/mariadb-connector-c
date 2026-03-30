@@ -547,6 +547,11 @@ static int test_bug30472(MYSQL *mysql)
     diag("Test requires MySQL Server version 5.1 or above");
     return SKIP;
   }
+  if (mariadb_connection(mysql) && mysql_get_server_version(mysql) >= 110400)
+  {
+    diag("C/C 3.3 doesn't support all collations from 11.4 and above");
+    return SKIP;
+  }
   /* Retrieve character set information. */
 
   mysql_set_character_set(mysql, "latin1");
@@ -794,12 +799,21 @@ static int test_conc223(MYSQL *mysql)
   MYSQL_ROW row;
   int found= 0;
   int mdev27266= 0;
-  int unsupported[]= {
-                      579, /* utf8mb3_general1400_as_ci added in 11.5 */
-                      611, /* utf8mb4_general1400_as_ci added in 11.5 */
-                      0};
+  int unsupported[]=
+    {
+      309, /* utf8mb4_0900_bin added in 11.4. Is an alias for utf8mb4_bin */
+      579, /* utf8mb3_general1400_as_ci added in 11.5 */
+      611, /* utf8mb4_general1400_as_ci added in 11.5 */
+      0
+    };
 
   SKIP_MYSQL(mysql);
+
+  if (mariadb_connection(mysql) && mysql_get_server_version(mysql) >= 110400)
+  {
+    diag("C/C 3.3 doesn't support all collations from 11.4 and above");
+    return SKIP;
+  }
 
   /*
     Test if we're running against an MDEV-27266 server.
@@ -843,20 +857,26 @@ static int test_conc223(MYSQL *mysql)
       id= atoi(row[0]);
       if (!mariadb_get_charset_by_nr(id))
       {
-        int j=0;
-        found++;
-        for (j=0; unsupported[j]; j++)
+        int ok= 0;
+        for (int j=0; unsupported[j]; j++)
+        {
           if (unsupported[j] == id)
-            found--;
+          {
+            ok= 1;
+            break;
+          }
+        }
+        if (!ok)
+        {
+          found++;
+          diag("character set %d not found", id);
+        }
       }
     }
   }
   mysql_free_result(res);
   if (found)
-  {
-    diag("%d character sets/collations not found", found);
     return FAIL;
-  }
   return OK;
 }
 

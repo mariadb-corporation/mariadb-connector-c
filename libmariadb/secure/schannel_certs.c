@@ -488,7 +488,7 @@ static SECURITY_STATUS VerifyServerCertificate(
   PCCERT_CONTEXT  pServerCert,
   HCERTSTORE      hStore,
   LPWSTR          pwszServerName,
-  DWORD           dwRevocationCheckFlags,
+  DWORD           dwCertChainFlags,
   DWORD           dwVerifyFlags,
   LPSTR           errmsg,
   size_t          errmsg_len)
@@ -534,7 +534,7 @@ static SECURITY_STATUS VerifyServerCertificate(
     NULL,
     pServerCert->hCertStore,
     &ChainPara,
-    dwRevocationCheckFlags,
+    dwCertChainFlags,
     NULL,
     &pChainContext))
   {
@@ -552,6 +552,7 @@ static SECURITY_STATUS VerifyServerCertificate(
   memset(&PolicyPara, 0, sizeof(PolicyPara));
   PolicyPara.cbSize = sizeof(PolicyPara);
   PolicyPara.pvExtraPolicyPara = &polExtra;
+  PolicyPara.dwFlags= CERT_CHAIN_POLICY_IGNORE_ALL_REV_UNKNOWN_FLAGS;
 
   memset(&PolicyStatus, 0, sizeof(PolicyStatus));
   PolicyStatus.cbSize = sizeof(PolicyStatus);
@@ -606,7 +607,10 @@ SECURITY_STATUS schannel_verify_server_certificate(
   SECURITY_STATUS status = SEC_E_OK;
   wchar_t* wserver_name = NULL;
   DWORD dwVerifyFlags;
-  DWORD dwRevocationFlags;
+  DWORD dwCertChainFlags;
+
+  if (!verify_flags)
+    return status;
 
   if (verify_flags & MARIADB_TLS_VERIFY_HOST)
   {
@@ -623,18 +627,18 @@ SECURITY_STATUS schannel_verify_server_certificate(
   }
 
   dwVerifyFlags = 0;
-  dwRevocationFlags = 0;
+  dwCertChainFlags = CERT_CHAIN_CACHE_ONLY_URL_RETRIEVAL|CERT_CHAIN_CACHE_END_CERT;
   if (verify_flags & MARIADB_TLS_VERIFY_REVOKED)
-    dwRevocationFlags |= CERT_CHAIN_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT | CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY;
+    dwCertChainFlags |= CERT_CHAIN_REVOCATION_CHECK_END_CERT|CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY;
   if (!(verify_flags & MARIADB_TLS_VERIFY_HOST))
     dwVerifyFlags |= SECURITY_FLAG_IGNORE_CERT_CN_INVALID;
-  /* Period was already checked before */
-  dwVerifyFlags |= SECURITY_FLAG_IGNORE_CERT_DATE_INVALID;
+  if (!(verify_flags & MARIADB_TLS_VERIFY_PERIOD))
+    dwVerifyFlags |= SECURITY_FLAG_IGNORE_CERT_DATE_INVALID;
   if (!(verify_flags & MARIADB_TLS_VERIFY_TRUST))
     dwVerifyFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA;
 
   status = VerifyServerCertificate(cert, store, wserver_name ? wserver_name : L"SERVER_NAME",
-    dwRevocationFlags, dwVerifyFlags, errmsg, errmsg_len);
+    dwCertChainFlags, dwVerifyFlags, errmsg, errmsg_len);
 
 cleanup:
   LocalFree(wserver_name);
@@ -654,6 +658,43 @@ static void generate_key_container_name(wchar_t* key_container_name, size_t key_
               L"MariaDB-Connector-C-%u-%u-%lld",GetCurrentProcessId(),GetCurrentThreadId(),now.QuadPart);
 }
 
+/**
+  Execute CryptAcquireContext().
+  The preference order is persistent user key container with unique name,
+  with fallback machine key container with uniquename.
+
+  @param cert_handle - structure to store provider handle, key handle, and
+  certificate
+  @return TRUE on success, FALSE on failure.
+
+  @note If the function returns TRUE, the key_container_name and flags fields
+  of cert_handle are set.
+*/
+static BOOL crypt_acquire_context(client_cert_handle *cert_handle)
+{
+  DWORD all_flags[]= {CRYPT_NEWKEYSET, CRYPT_NEWKEYSET | CRYPT_MACHINE_KEYSET};
+  size_t i;
+  generate_key_container_name(cert_handle->key_container_name,
+      sizeof(cert_handle->key_container_name) / sizeof(wchar_t));
+  for (i= 0; i < ARRAYSIZE(all_flags); i++)
+  {
+    DWORD fl= all_flags[i];
+    if (CryptAcquireContextW(&cert_handle->prov, cert_handle->key_container_name,
+                             MS_ENHANCED_PROV_W, PROV_RSA_FULL, fl))
+    {
+      cert_handle->flags= fl;
+      return TRUE;
+    }
+    if (GetLastError() != ERROR_ACCESS_DENIED)
+      break;
+    cert_handle->prov= 0;
+  }
+  cert_handle->key_container_name[0]= 0;
+  cert_handle->flags= 0;
+  return FALSE;
+}
+
+
 /* Attach private key (in PEM format) to client certificate */
 static SECURITY_STATUS load_private_key(client_cert_handle *cert_handle, char *private_key_str,
                                         size_t len, char *errmsg,
@@ -663,7 +704,6 @@ static SECURITY_STATUS load_private_key(client_cert_handle *cert_handle, char *p
   BYTE* derbuf = NULL;
   DWORD keyblob_len = 0;
   BYTE* keyblob = NULL;
-
   PCRYPT_PRIVATE_KEY_INFO  pki = NULL;
   DWORD pki_len = 0;
   SECURITY_STATUS status = SEC_E_OK;
@@ -712,11 +752,8 @@ static SECURITY_STATUS load_private_key(client_cert_handle *cert_handle, char *p
   {
     FAIL("Failed to parse private key");
   }
-  generate_key_container_name(cert_handle->key_container_name, sizeof(cert_handle->key_container_name) / sizeof(wchar_t));
 
-  if (!CryptAcquireContextW(&cert_handle->prov,
-                            cert_handle->key_container_name, MS_ENHANCED_PROV_W,
-                            PROV_RSA_FULL, CRYPT_NEWKEYSET))
+  if (!crypt_acquire_context(cert_handle))
   {
     FAIL("CryptAcquireContext failed");
   }
@@ -726,12 +763,14 @@ static SECURITY_STATUS load_private_key(client_cert_handle *cert_handle, char *p
   {
     FAIL("CryptImportKey failed");
   }
+  cert_handle->flags &= ~CRYPT_NEWKEYSET;
+
   // Link the private key to the certificate
   CRYPT_KEY_PROV_INFO keyProvInfo= {0};
   keyProvInfo.pwszContainerName= cert_handle->key_container_name;
   keyProvInfo.pwszProvName= NULL;
   keyProvInfo.dwProvType= PROV_RSA_FULL;
-  keyProvInfo.dwFlags= 0;
+  keyProvInfo.dwFlags= cert_handle->flags;
   keyProvInfo.cProvParam= 0;
   keyProvInfo.rgProvParam= NULL;
   keyProvInfo.dwKeySpec= AT_KEYEXCHANGE;
@@ -871,10 +910,11 @@ void schannel_free_cert_context(client_cert_handle* cert_handle)
   {
     if (!CryptAcquireContextW(&cert_handle->prov, cert_handle->key_container_name,
                               MS_ENHANCED_PROV_W, PROV_RSA_FULL,
-                              CRYPT_DELETEKEYSET))
+                              CRYPT_DELETEKEYSET|cert_handle->flags))
     {
       assert(GetLastError() == NTE_BAD_KEYSET);
     }
     cert_handle->key_container_name[0] = 0;
   }
+  cert_handle->flags= 0;
 }

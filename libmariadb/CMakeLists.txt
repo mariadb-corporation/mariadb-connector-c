@@ -168,12 +168,6 @@ SET(MYSQL_LIB_SYMBOLS
  mysql_use_result
  mysql_warning_count)
 
-# some gcc versions fail to compile asm parts of my_context.c,
-# if build type is "Release" (see CONC-133), so we need to add -g flag
-IF(CMAKE_COMPILER_IS_GNUCC AND CMAKE_BUILD_TYPE MATCHES "Release")
-  SET_SOURCE_FILES_PROPERTIES(my_context.c PROPERTIES COMPILE_FLAGS -g)
-ENDIF()
-
 IF(ZLIB_FOUND AND WITH_EXTERNAL_ZLIB)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 ELSE()
@@ -298,7 +292,7 @@ MESSAGE(STATUS "SYSTEM_LIBS: ${SYSTEM_LIBS}")
 INCLUDE_DIRECTORIES(${LIBMARIADB_PLUGIN_INCLUDES})
 ADD_DEFINITIONS(${LIBMARIADB_PLUGIN_DEFS})
 FOREACH(plugin ${PLUGINS_STATIC})
-  SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin ${plugin}_client_plugin;\n")
+  SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin_${PLUGIN_${plugin}_TYPE} ${plugin}_client_plugin;\n")
   SET(BUILTIN_PLUGINS "${BUILTIN_PLUGINS}   (struct st_mysql_client_plugin *)&${plugin}_client_plugin,\n")
 ENDFOREACH()
 CONFIGURE_FILE(${CC_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
@@ -324,7 +318,6 @@ ma_compress.c
 ma_init.c
 ma_password.c
 ma_ll2str.c
-ma_sha1.c
 mariadb_stmt.c
 ma_loaddata.c
 ma_stmt_codec.c
@@ -394,6 +387,9 @@ IF(WITH_DYNCOL)
 ENDIF()
 
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
+IF(WITH_BOOST_CONTEXT)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ma_boost_context.cc)
+ENDIF()
 SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)

@@ -457,7 +457,7 @@ int exit_status() {
    If you don't call the @c plan() function, the number of tests
    executed will be printed at the end.  This is intended to be used
    while developing the unit and you are constantly adding tests.  It
-   is not indented to be used after the unit has been released.
+   is not intended to be used after the unit has been released.
 
 
    @subsection TestRunning Execute the test

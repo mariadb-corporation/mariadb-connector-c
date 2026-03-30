@@ -138,7 +138,11 @@ static struct st_mysql_client_plugin *find_plugin(const char *name, int type)
     return 0;
 
   if (!name)
-    return plugin_list[plugin_nr]->plugin;
+  {
+    if (plugin_list[plugin_nr])
+      return plugin_list[plugin_nr]->plugin;
+    return NULL;
+  }
 
   for (p= plugin_list[plugin_nr]; p; p= p->next)
   {
@@ -244,6 +248,12 @@ static void load_env_plugins(MYSQL *mysql)
   free_env= strdup(s);
   plugs= s= free_env;
 
+  if (!free_env)
+  {
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+    return;
+  }
+
   do {
     if ((s= strchr(plugs, ';')))
       *s= '\0';
@@ -299,7 +309,7 @@ int mysql_client_plugin_init()
 /**
   Deinitializes the client plugin layer.
 
-  Unloades all client plugins and frees any associated resources.
+  Unloads all client plugins and frees any associated resources.
 */
 
 void mysql_client_plugin_deinit()

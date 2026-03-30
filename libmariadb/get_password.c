@@ -122,11 +122,11 @@ char* get_tty_password(char *prompt, char *buffer, int length)
   if (prompt)
     fprintf(stderr, "%s", prompt);
 
-  if (!(Hdl= CreateFile("CONIN$", 
-                        GENERIC_READ | GENERIC_WRITE,
-                        FILE_SHARE_READ,
-                        NULL,
-                        OPEN_EXISTING, 0, NULL)))
+  if ((Hdl= CreateFile("CONIN$",
+                       GENERIC_READ | GENERIC_WRITE,
+                       FILE_SHARE_READ,
+                       NULL,
+                       OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE)
   {
     /* todo: provide a graphical dialog */
     return buffer;

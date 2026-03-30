@@ -56,7 +56,11 @@ struct Passwd_in_memory
   uchar pub_key[ED25519_KEY_LENGTH];
 };
 
-static_assert(sizeof(struct Passwd_in_memory) == 2 + CHALLENGE_SALT_LENGTH
+#ifdef _MSC_VER
+# define _Static_assert static_assert
+#endif
+
+_Static_assert(sizeof(struct Passwd_in_memory) == 2 + CHALLENGE_SALT_LENGTH
                                                    + ED25519_KEY_LENGTH,
               "Passwd_in_memory should be packed.");
 
@@ -71,7 +75,7 @@ struct Client_signed_response
   };
 };
 
-static_assert(sizeof(struct Client_signed_response) == CLIENT_RESPONSE_LENGTH,
+_Static_assert(sizeof(struct Client_signed_response) == CLIENT_RESPONSE_LENGTH,
               "Client_signed_response should be packed.");
 
 int compute_derived_key(const char* password, size_t pass_len,
@@ -87,10 +91,20 @@ int compute_derived_key(const char* password, size_t pass_len,
   struct hmac_sha512_ctx ctx;
   hmac_sha512_set_key(&ctx, pass_len, (const uint8_t *)password);
 
+  /*
+    pbkdf2/nettle functions are third party, so ignore the bad function casts
+  */
+# if defined __clang_major__ && __clang_major__ >= 16
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wcast-function-type-strict"
+# endif
   pbkdf2(&ctx, (nettle_hash_update_func *)hmac_sha512_update,
          (nettle_hash_digest_func *)hmac_sha512_digest, SHA512_DIGEST_SIZE,
          1024 << params->iterations, CHALLENGE_SALT_LENGTH, params->salt,
          PBKDF2_HASH_LENGTH, derived_key);
+# if defined __clang_major__ && __clang_major__ >= 16
+#  pragma clang diagnostic pop
+# endif
 #elif defined(HAVE_SCHANNEL)
   BCRYPT_ALG_HANDLE algHdl;
   NTSTATUS status;
@@ -165,7 +179,7 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     };
     uchar start[1];
   } signed_msg;
-  static_assert(sizeof signed_msg == CHALLENGE_SCRAMBLE_LENGTH
+  _Static_assert(sizeof signed_msg == CHALLENGE_SCRAMBLE_LENGTH
                                      + sizeof(struct Client_signed_response),
                 "signed_msg should be packed.");
 
@@ -225,7 +239,8 @@ static int hash_password(MYSQL *mysql __attribute__((unused)),
 #ifndef PLUGIN_DYNAMIC
 struct st_mysql_client_plugin_AUTHENTICATION parsec_client_plugin=
 #else
-struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+MARIADB_CLIENT_PLUGIN_EXPORT struct st_mysql_client_plugin_AUTHENTICATION
+  _mysql_client_plugin_declaration_=
 #endif
 {
   .type   = MYSQL_CLIENT_AUTHENTICATION_PLUGIN,

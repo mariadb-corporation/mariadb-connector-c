@@ -827,6 +827,7 @@ const MARIADB_CHARSET_INFO mariadb_compiled_charsets[] =
   { 305, 1, UTF8_MB4, UTF8_MB4"_0900_as_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 306, 1, UTF8_MB4, UTF8_MB4"_ru_0900_as_ci", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 307, 1, UTF8_MB4, UTF8_MB4"_ru_0900_as_cs", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
+  { 309, 1, UTF8_MB4, UTF8_MB4"_0900_bin", "", 65001, "UTF-8", 1, 4, mysql_mbcharlen_utf8, check_mb_utf8_valid},
   { 576, 1, UTF8_MB3, UTF8_MB3"_croatian_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
   { 577, 1, UTF8_MB3, UTF8_MB3"_myanmar_ci", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
   { 578, 1, UTF8_MB3, UTF8_MB3"_thai_520_w2", "", 65001, "UTF-8", 1, 3, mysql_mbcharlen_utf8mb3, check_mb_utf8mb3_valid}, /*MDB*/
@@ -1214,7 +1215,7 @@ size_t mysql_cset_escape_slashes(const MARIADB_CHARSET_INFO * cset, char *newstr
         escape_overflow = TRUE;
         break;
       }
-      /* copy non escaped character */
+      /* copy non-escaped character */
       *newstr++ = *escapestr;
     }
   }
@@ -1396,7 +1397,7 @@ struct st_madb_os_charset MADB_OS_CHARSET[]=
   {"57011", "ISCII Punjabi", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"65000", "utf-7 Unicode (UTF-7)", NULL, NULL, MADB_CS_UNSUPPORTED},
   {"65001", "utf-8 Unicode (UTF-8)", "utf8", NULL, MADB_CS_EXACT},
-  /* non Windows */
+  /* non-Windows */
 #else
   /* iconv encodings */
   {"ASCII", "US-ASCII", "ascii", "ASCII", MADB_CS_APPROX},

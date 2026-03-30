@@ -26,16 +26,49 @@
   (This particular implementation uses Posix ucontext swapcontext().)
 */
 
+
+/*
+  When running with address sanitizer, the stack switching can cause confusion
+  unless the __sanitizer_{start,finish}_switch_fiber() functions are used
+  (CONC-618).
+
+  In this case prefer the use of boost::context or ucontext, which should have
+  this instrumentation, over our custom assembler variants.
+*/
+#ifdef __has_feature
+   /* Clang */
+#  if __has_feature(address_sanitizer)
+#    define ASAN_PREFER_NON_ASM 1
+#  endif
+#else
+   /* GCC */
+#  ifdef __SANITIZE_ADDRESS__
+#    define ASAN_PREFER_NON_ASM 1
+#  endif
+#endif
+
 #ifdef _WIN32
 #define MY_CONTEXT_USE_WIN32_FIBERS 1
+#elif defined(ASAN_PREFER_NON_ASM) && defined(HAVE_BOOST_CONTEXT_H)
+#define MY_CONTEXT_USE_BOOST_CONTEXT
+#elif defined(ASAN_PREFER_NON_ASM) && defined(HAVE_UCONTEXT_H)
+#define MY_CONTEXT_USE_UCONTEXT
 #elif defined(__GNUC__) && __GNUC__ >= 3 && defined(__x86_64__) && !defined(__ILP32__)
 #define MY_CONTEXT_USE_X86_64_GCC_ASM
 #elif defined(__GNUC__) && __GNUC__ >= 3 && defined(__i386__)
 #define MY_CONTEXT_USE_I386_GCC_ASM
+#elif defined(__GNUC__) && __GNUC__ >= 3 && defined(__aarch64__)
+#define MY_CONTEXT_USE_AARCH64_GCC_ASM
+#elif defined(HAVE_BOOST_CONTEXT_H)
+#define MY_CONTEXT_USE_BOOST_CONTEXT
 #elif defined(HAVE_UCONTEXT_H)
 #define MY_CONTEXT_USE_UCONTEXT
 #else
 #define MY_CONTEXT_DISABLE
+#endif
+
+#ifdef   __cplusplus
+extern "C" {
 #endif
 
 #ifdef MY_CONTEXT_USE_WIN32_FIBERS
@@ -105,6 +138,49 @@ struct my_context {
 #endif
 };
 #endif
+
+
+#ifdef MY_CONTEXT_USE_AARCH64_GCC_ASM
+#include <stdint.h>
+
+struct my_context {
+  uint64_t save[22];
+  void *stack_top;
+  void *stack_bot;
+#ifdef HAVE_VALGRIND
+  unsigned int valgrind_stack_id;
+#endif
+#ifndef DBUG_OFF
+  void *dbug_state;
+#endif
+};
+#endif
+
+
+#ifdef MY_CONTEXT_USE_BOOST_CONTEXT
+/*
+  boost::context is a C++-library that provides a portable co-routine fallback
+  for architectures that lack a native my_context implementation, and which is
+  available on some platforms where ucontext is not (ucontext has been
+  deprecated in Posix).
+
+  Since boost::context is in C++, the implementation details must be put into
+  a separate source file ma_boost_context.cc and hidden in an opaque void *.
+*/
+struct my_context {
+  /* Pointer to state that uses C++-types and cannot be compiled in C. */
+  void *internal_context;
+  void *stack;
+  size_t stack_size;
+#ifndef DBUG_OFF
+  void *dbug_state;
+#endif
+  int active;
+#ifdef HAVE_VALGRIND
+  unsigned int valgrind_stack_id;
+#endif
+};
+#endif /* MY_CONTEXT_USE_BOOST_CONTEXT */
 
 
 #ifdef MY_CONTEXT_DISABLE
@@ -225,7 +301,7 @@ struct mysql_async_context {
   void (*suspend_resume_hook)(my_bool suspend, void *user_data);
   void *suspend_resume_hook_user_data;
 
-  /* If non-NULL,  this is a poitner to the result of getaddrinfo() currently
+  /* If non-NULL, this is a pointer to the result of getaddrinfo() currently
    * under traversal in pvio_socket_connect(). It gets reset to NULL when a
    * connection has been established to a server. The main objective is to
    * free this memory resource in mysql_close() while an initiated connection
@@ -240,3 +316,7 @@ struct mysql_async_context {
   */
   struct my_context async_context;
 };
+
+#ifdef   __cplusplus
+}
+#endif

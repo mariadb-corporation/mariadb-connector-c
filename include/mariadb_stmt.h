@@ -69,7 +69,8 @@ enum enum_stmt_attr_type
   STMT_ATTR_STATE,
   STMT_ATTR_CB_USER_DATA,
   STMT_ATTR_CB_PARAM,
-  STMT_ATTR_CB_RESULT
+  STMT_ATTR_CB_RESULT,
+  STMT_ATTR_SQL_STATEMENT
 };
 
 enum enum_cursor_type
@@ -204,6 +205,7 @@ struct st_mysql_stmt
   ps_result_callback result_callback;
   ps_param_callback param_callback;
   size_t request_length;
+  MARIADB_CONST_STRING sql;
 };
 
 typedef void (*ps_field_fetch_func)(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned char **row);

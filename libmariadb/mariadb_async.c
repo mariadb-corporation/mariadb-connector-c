@@ -94,7 +94,10 @@ my_connect_async(MARIADB_PVIO *pvio,
 #else
     int err= errno;
     if (err != EINPROGRESS && err != EALREADY && err != EAGAIN)
-      return res;
+      {
+        close(sock);
+        return res;
+      }
 #endif
     b->events_to_wait_for|= MYSQL_WAIT_WRITE;
     if (vio_timeout >= 0)

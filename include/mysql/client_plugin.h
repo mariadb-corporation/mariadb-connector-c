@@ -68,6 +68,14 @@
           MYSQL_CLIENT_ ## X ## _PLUGIN_INTERFACE_VERSION,
 #define mysql_end_client_plugin             }
 
+#if defined _WIN32
+#  define MARIADB_CLIENT_PLUGIN_EXPORT __declspec(dllexport)
+#elif defined(__GNUC__) || defined(__clang__)
+#  define MARIADB_CLIENT_PLUGIN_EXPORT __attribute__((visibility("default")))
+#else
+#  define MARIADB_CLIENT_PLUGIN_EXPORT
+#endif
+
 /* generic plugin header structure */
 #ifndef MYSQL_CLIENT_PLUGIN_HEADER
 #define MYSQL_CLIENT_PLUGIN_HEADER                      \

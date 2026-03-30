@@ -38,7 +38,6 @@ char tls_library_version[] = "Schannel";
 #define PROT_TLS1_2 SP_PROT_TLS1_2_CLIENT
 #define PROT_TLS1_3 SP_PROT_TLS1_3_CLIENT
 
-static int ma_check_peer_cert_time(MARIADB_TLS *ctls);
 
 static struct
 {
@@ -274,7 +273,7 @@ static struct _tls_version {
   const char *tls_version;
   DWORD protocol;
 } tls_version[]= {
-    {"TLSv1.0", PROT_TLS1_0},
+    {"TLSv1.0", 0},
     {"TLSv1.1", PROT_TLS1_1},
     {"TLSv1.2", PROT_TLS1_2},
     {"TLSv1.3", PROT_TLS1_3},
@@ -415,7 +414,7 @@ typedef struct _MA_SCHANNEL_CREDENTIALS {
 
   Take care of specific TLS versions and cipher suites.
 
-  This function choses between the legacy and new credential structures
+  This function chooses between the legacy and new credential structures
   (SCHANNEL_CRED rsp SCH_CREDENTIALS) based on the OS version and the
   requested cipher suite.
 
@@ -463,7 +462,8 @@ static SECURITY_STATUS init_auth_data(MA_SCHANNEL_CREDENTIALS *ma_cred,
     ma_cred->use_old_cred_structure= TRUE;
   }
 
-  if (!os_version_greater_equal(10, 0, 22000))
+  /* CONC-778: Windows 11 starts with build 22000, Windows Server 2022 with 20348 */
+  if (!os_version_greater_equal(10, 0, 20348))
   {
     ma_cred->use_old_cred_structure= TRUE;
   }
@@ -710,24 +710,6 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
     return 1;
 
   mysql= ctls->pvio->mysql;
-
-  if (verify_flags & MARIADB_TLS_VERIFY_PERIOD)
-  {
-    if (ma_check_peer_cert_time(ctls))
-    {
-      mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
-      return 1;
-    }
-  }
-
-  if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
-  {
-    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
-    {
-      mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_FINGERPRINT;
-      return 1;
-    }
-  }
   return ma_schannel_verify_certs(ctls, verify_flags);
 }
 
@@ -775,33 +757,6 @@ char *ma_cert_blob_to_str(PCERT_NAME_BLOB cnblob)
   return str;
 }
 
-static int ma_check_peer_cert_time(MARIADB_TLS *ctls)
-{
-  PCCERT_CONTEXT pCertCtx= NULL;
-  SC_CTX *sctx;
-  PCERT_INFO pci= NULL;
-  FILETIME ft;
-  SYSTEMTIME st;
-
-  if (!ctls || !ctls->ssl || !ctls->pvio || !ctls->pvio->mysql)
-    return 1;
-  
-  sctx= (SC_CTX *)ctls->ssl;
-
-  if (QueryContextAttributes(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pCertCtx) != SEC_E_OK)
-    return 1;
-
-  pci= pCertCtx->pCertInfo;
-
-  GetSystemTime(&st);
-  SystemTimeToFileTime(&st, &ft);
-
-  if (CompareFileTime(&ft, &pci->NotBefore) == -1 ||
-      CompareFileTime(&pci->NotAfter, &ft) == -1)
-    return 1;
-
-  return 0;
-}
 
 static void ma_systime_to_tm(SYSTEMTIME sys_tm, struct tm *tm)
 {

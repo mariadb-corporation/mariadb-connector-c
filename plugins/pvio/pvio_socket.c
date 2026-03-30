@@ -140,7 +140,8 @@ struct st_ma_pvio_methods pvio_socket_methods= {
 #ifndef PLUGIN_DYNAMIC
 MARIADB_PVIO_PLUGIN pvio_socket_client_plugin=
 #else
-MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_=
+MARIADB_CLIENT_PLUGIN_EXPORT MARIADB_PVIO_PLUGIN
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MARIADB_CLIENT_PVIO_PLUGIN,
@@ -359,7 +360,7 @@ ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   r= recv(csock->socket,(void *)buffer, length, read_flags);
 #else
   /* Windows doesn't support MSG_DONTWAIT, so we need to set
-     socket to non blocking */
+     socket to non-blocking */
   pvio_socket_blocking(pvio, 0, 0);
   r= recv(csock->socket, (char *)buffer, (int)length, 0);
 #endif
@@ -435,7 +436,7 @@ ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t 
   r= ma_send(csock->socket, buffer, length, write_flags);
 #else
   /* Windows doesn't support MSG_DONTWAIT, so we need to set
-     socket to non blocking */
+     socket to non-blocking */
   pvio_socket_blocking(pvio, 0, 0);
   r= send(csock->socket, (const char *)buffer, (int)length, 0);
 #endif
@@ -638,7 +639,7 @@ static int pvio_socket_internal_connect(MARIADB_PVIO *pvio,
   csock= (struct st_pvio_socket *)pvio->data;
   timeout= pvio->timeout[PVIO_CONNECT_TIMEOUT];
 
-  /* set non blocking */
+  /* set non-blocking */
   pvio_socket_blocking(pvio, 0, 0);
 
 #ifndef _WIN32
@@ -1101,10 +1102,10 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
 
   res= poll(&poll_fd, 1, 0);
   if (res <= 0) /* timeout or error */
-    return FALSE;
+    return TRUE;
   if (!(poll_fd.revents & (POLLIN | POLLPRI)))
-    return FALSE;
-  return TRUE;
+    return TRUE;
+  return FALSE;
 #else
   /* We can't use the WSAPoll function, it's broken :-(
      (see Windows 8 Bugs 309411 - WSAPoll does not report failed connections)
@@ -1117,8 +1118,8 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
 
   res= select((int)csock->socket + 1, &sfds, NULL, NULL, &tv);
   if (res > 0 && FD_ISSET(csock->socket, &sfds))
-    return TRUE;
-  return FALSE;
+    return FALSE;
+  return TRUE;
 #endif
 }
 /* }}} */

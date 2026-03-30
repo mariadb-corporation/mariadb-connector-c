@@ -42,6 +42,7 @@ class TlsServer():
                       create_crl=False,
                       emailAddress="emailAddress",
                       commonName="commonName",
+                      SAN=None,
                       countryName="NT",
                       localityName="localityName",
                       stateOrProvinceName="stateOrProvinceName",
@@ -76,6 +77,13 @@ class TlsServer():
                 cert.gmtime_adj_notBefore(validityStartInSeconds)
                 cert.gmtime_adj_notAfter(validityEndInSeconds)
                 cert.set_issuer(cert.get_subject())
+                if SAN:
+                   print(SAN)
+                   san_list= [SAN,]
+                   cert.add_extensions([
+                      crypto.X509Extension(
+                      b"subjectAltName", False, "," . join(san_list).encode()
+                   )])
                 cert.set_pubkey(k)
                 cert.sign(k, 'sha512')
                 with open(CERT_FILE, "wt") as f:

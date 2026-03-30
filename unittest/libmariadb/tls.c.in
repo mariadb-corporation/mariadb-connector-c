@@ -37,6 +37,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 static const char *strong_pwd= "!1_5rd_D%A1$f48Hk1$";
 
+static void set_verify(MYSQL *mysql, my_bool onoff)
+{
+  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &onoff);
+  return;
+}
+
 #define CHECK_TLS_FLAGS(m, flag, text) \
 {\
   unsigned int status;\
@@ -103,7 +109,7 @@ static my_bool ignore_self_signed_cert_error(MYSQL *mysql)
   return FALSE;
 }
 
-static my_bool tls_abort_after_handshake(MARIADB_TLS *ctls, unsigned int flags)
+static int tls_abort_after_handshake(MARIADB_TLS *ctls, unsigned int flags)
 {
   MYSQL *mysql= ctls->pvio->mysql;
 
@@ -178,6 +184,8 @@ static int set_tls_dummy_options(const char *options)
   cinfo.port= tls_dummy_port;
   cinfo.mysql = mysql;
 
+  set_verify(mysql, 1);
+
   if (!(pvio= ma_pvio_init(&cinfo)))
   {
     diag("pvio_init failed");
@@ -202,6 +210,7 @@ static int set_tls_dummy_options(const char *options)
   }
 
   ma_pvio_close(pvio);
+  mysql_close(mysql);
   return OK;
 }
 
@@ -209,7 +218,6 @@ static int set_tls_dummy_options(const char *options)
 static int test_init(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
-  my_bool verify= 0;
   int rc;
   int ret= FAIL;
   MYSQL_RES *result;
@@ -221,7 +229,7 @@ static int test_init(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
   /* Don't verify peer certificate */
-  mysql_optionsv(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  set_verify(mysql, 0);
 
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0, 0), mysql_error(my));
@@ -249,13 +257,12 @@ static int test_init(MYSQL *my __attribute__((unused)))
 static int test_no_cert_check(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
-  my_bool verify= 0;
 
   /* Force use of TLS */
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
   /* Don't verify peer certificate */
-  mysql_optionsv(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  set_verify(mysql, 0);
 
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0, 0), mysql_error(my));
@@ -278,6 +285,7 @@ static int test_conc712(MYSQL *my __attribute__((unused)))
   }
   /* Force use of TLS with faked ca, which contains the server
      certificate */
+  set_verify(mysql, 1);
   mysql_ssl_set(mysql, NULL, NULL, "./selfsigned.pem", NULL, NULL);
   mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handshake);
 
@@ -298,7 +306,6 @@ static int test_fp(MYSQL *my __attribute__((unused)))
 {
   unsigned int hash_size[3] = {256, 384, 512};
   int i;
-  my_bool verify= 0;
   MYSQL *mysql= mysql_init(NULL);
 
 
@@ -306,7 +313,7 @@ static int test_fp(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
   /* Don't verify peer certificate */
-  mysql_optionsv(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  set_verify(mysql, 0);
 
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0, 1), mysql_error(my));
@@ -335,7 +342,6 @@ static int test_fp_colon(MYSQL *my __attribute__((unused)))
 {
   unsigned int hash_size[3] = {256, 384, 512};
   int i;
-  my_bool verify= 0;
   MYSQL *mysql= mysql_init(NULL);
   char fp[200];
 
@@ -344,7 +350,7 @@ static int test_fp_colon(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
   /* Don't verify peer certificate */
-  mysql_optionsv(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  set_verify(mysql, 0);
 
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0, 0), mysql_error(my));
@@ -388,7 +394,6 @@ static int test_fp_colon(MYSQL *my __attribute__((unused)))
 static int test_peer_cert_info_fp(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
-  my_bool verify= 0;
   MARIADB_X509_INFO *info;
   char old_fp[129] = {0};
   int i;
@@ -398,7 +403,7 @@ static int test_peer_cert_info_fp(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
   /* Don't verify peer certificate */
-  mysql_optionsv(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+  set_verify(mysql, 0);
 
   FAIL_IF(!my_test_connect(mysql, hostname, username, password, schema,
                          port, socketname, 0, 0), mysql_error(my));
@@ -453,10 +458,16 @@ static int test_pw_check(MYSQL *my)
   char query[1024];
   int ret= FAIL;
 
-  /* connect with password */
-  sprintf(query, "CREATE OR REPLACE USER '%s'@'%s' IDENTIFIED BY '%s'", "tlsuser", this_host, strong_pwd);
+  sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", "tlsuser", this_host);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
+
+  /* connect with password */
+  sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", "tlsuser", this_host, strong_pwd);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
+  set_verify(mysql, 1);
 
   diag("expected to pass with self signed");
   if (!my_test_connect(mysql, hostname, "tlsuser", strong_pwd, NULL, port, socketname, 0, 0))
@@ -473,9 +484,13 @@ static int test_pw_check(MYSQL *my)
   mysql= mysql_init(NULL);
 
   /* connect without pasword */
-  if (!local_safe_connection)
+  if (!IS_ENTERPRISE() && !local_safe_connection)
   {
-    sprintf(query, "CREATE OR REPLACE USER '%s'@'%s'", "tlsuser", this_host);
+    sprintf(query, "DROP USER '%s'@'%s'", "tlsuser", this_host);
+    rc= mysql_query(my, query);
+    check_mysql_rc(rc, my);
+
+    sprintf(query, "CREATE USER '%s'@'%s'", "tlsuser", this_host);
     rc= mysql_query(my, query);
     check_mysql_rc(rc, my);
 
@@ -492,8 +507,11 @@ static int test_pw_check(MYSQL *my)
     mysql_optionsv(mysql, MARIADB_OPT_RESTRICTED_AUTH, "mysql_native_password, mysql_old_password");
 
     diag("expected to fail with old_password plugin");
+    sprintf(query, "DROP USER '%s'@'%s'", "tlsuser", this_host);
+    rc= mysql_query(my, query);
+    check_mysql_rc(rc, my);
     /* Test with an authentication plugin, which doesn't support hashing */
-    sprintf(query, "CREATE OR REPLACE USER '%s'@'%s' IDENTIFIED VIA mysql_old_password USING '7c786c222596437b'", "tlsuser", this_host);
+    sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED VIA mysql_old_password USING '7c786c222596437b'", "tlsuser", this_host);
     rc= mysql_query(my, query);
     check_mysql_rc(rc, my);
     rc= mysql_query(my, "SET GLOBAL secure_auth=0");
@@ -528,6 +546,7 @@ static int test_cert_expired(MYSQL *my __attribute__((unused)))
   mysql= mysql_init(NULL);
 
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  set_verify(mysql, 1);
 
   if (my_test_connect(mysql, tls_dummy_host,  "tlsuser", "foo", NULL,  tls_dummy_port, NULL, 0, 0))
   {
@@ -544,6 +563,7 @@ static int test_cert_expired(MYSQL *my __attribute__((unused)))
   }
 
   mysql= mysql_init(NULL);
+  set_verify(mysql, 1);
 
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
@@ -564,6 +584,7 @@ static int test_wrong_ca(MYSQL *my __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
 
   mysql_ssl_set(mysql, NULL, NULL, "selfsigned.pem", NULL, NULL);
+  set_verify(mysql, 1);
   if (my_test_connect(mysql, hostname, "tlsuser", "foo", NULL, port, socketname, 0, 0))
   {
     diag("self signed error expected");
@@ -586,6 +607,7 @@ static int test_crl(MYSQL *my __attribute__((unused)))
   }
 
   mysql= mysql_init(NULL);
+  set_verify(mysql, 1);
 
   mysql_optionsv(mysql, MYSQL_OPT_SSL_CRL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.crl");
   mysql_ssl_set(mysql, NULL, NULL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/cacert.pem", NULL, NULL);
@@ -639,7 +661,7 @@ static int stop_tls_server(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
-static my_bool tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
+static int tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
 {
   MYSQL *mysql= ctls->pvio->mysql;
   
@@ -667,12 +689,15 @@ static int test_cert_wildcard(MYSQL *my __attribute((unused)))
     return FAIL;
   }
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  set_verify(mysql, 1);
   mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_wildcard_callback);
 
   if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
   {
     CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass");
+#ifndef HAVE_SCHANNEL
     CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_TRUST, "Self signed certificate expected");
+#endif
     mysql_close(mysql);
   } else {
     mysql_close(mysql);
@@ -686,6 +711,7 @@ static int test_cert_wildcard(MYSQL *my __attribute((unused)))
     return FAIL;
   }
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  set_verify(mysql, 1);
   mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_wildcard_callback);
 
   if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
@@ -699,12 +725,168 @@ static int test_cert_wildcard(MYSQL *my __attribute((unused)))
   return OK;
 }
 
+static int test_env_var(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc= FAIL;
+
+  if (mysql_get_server_version(my) < 110400)
+  {
+    diag("skipping for MySQL / mariadb before 11.4, because might not have ssl on");
+    rc = SKIP;
+    goto end;
+  }
+
+#ifdef _WIN32
+  _putenv_s("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "1");
+#else
+  setenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "1", 1);
+#endif
+  set_verify(mysql, 1);
+
+  if (!my_test_connect(mysql, hostname, username, password, schema,
+                       port, socketname, 0, 0))
+  {
+    diag("expected to pass, since environment variable was set");
+    goto end;
+  }
+
+  rc= OK;
+
+end:
+#ifdef _WIN32
+  _putenv_s("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "");
+#else
+  unsetenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION");
+#endif
+  mysql_close(mysql);
+  return rc;
+}
+
+static int test_fp_and_verify(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc= FAIL;
+#ifndef HAVE_SCHANNEL
+  unsigned int status;
+#endif
+
+  mysql_options(mysql, MARIADB_OPT_SSL_FP, fingerprint);
+  set_verify(mysql, 1);
+
+  if (!my_test_connect(mysql, hostname, username, password, schema,
+                       port, socketname, 0, 0))
+  {
+    diag("expected to pass, since fingerprint was specified");
+    diag("error: %s", mysql_error(mysql));
+    goto end;
+  }
+
+/* Schannel aborts on first error, if fingerprint was specified,
+   MARIADB_TLS_VERIFY_TRUST is unset */
+#ifndef HAVE_SCHANNEL
+  mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);
+
+  if (!status)
+  {
+    diag("expected status flag set (self signed)");
+    goto end;
+  }
+#endif
+  rc= OK;
+
+end:
+  mysql_close(mysql);
+  return rc;
+}
+
+static int test_cert_ip(MYSQL *my __attribute((unused)))
+{
+  char dummy_options[128];
+  MYSQL *mysql= mysql_init(NULL);
+
+  snprintf(dummy_options, 128, "CMD:create_new=True SAN='IP.1:%s'", tls_dummy_host);
+  if (set_tls_dummy_options(dummy_options))
+  {
+    diag("Error when setting TLS options");
+    return FAIL;
+  }
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  set_verify(mysql, 1);
+  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handshake);
+
+  if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
+  {
+    CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass");
+    mysql_close(mysql);
+  } else {
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  return OK;
+}
+
+static int test_conc795(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  MYSQL_RES *res= NULL;
+  int rc, ret= FAIL;
+  MYSQL_ROW row;
+
+  set_verify(mysql, 0);
+
+  if (!hostname || ma_is_ip_address(hostname))
+  {
+    diag("SNI test skipped (hostname = ip address or empty)");
+    ret = SKIP;
+    goto end;
+  }
+
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+
+  if (!my_test_connect(mysql, hostname, username, password, schema,
+                       port, socketname, 0, 0))
+  {
+    diag("error: %s", mysql_error(mysql));
+    goto end;
+  }
+
+  rc= mysql_query(mysql, "SHOW STATUS LIKE 'Tls_sni_server_name'");
+  check_mysql_rc(rc, mysql);
+
+  if (!(res = mysql_store_result(mysql)) || !(row = mysql_fetch_row(res)))
+  {
+    diag("Server doesn't support tls_sni_server_name");
+    ret= SKIP;
+    goto end;
+  }
+
+  if (strcmp(row[1], hostname))
+  {
+    diag("SNI mismatch: %s != %s", hostname, row[1]);
+    goto end;
+  }
+
+  diag("SNI match: %s == %s", hostname, row[1]);
+  ret= OK;
+end:
+  if (res)
+    mysql_free_result(res);
+  mysql_close(mysql);
+  return ret;
+}
+
 
 struct my_tests_st my_tests[] = {
   /* Don't add test above, test_init needs to be run first */
+  {"test_conc795", test_conc795, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_start_tls_server", test_start_tls_server, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_init", test_init, TEST_CONNECTION_NONE, 0, NULL, NULL},
   /* Here you can add more tests */
+  {"test_cert_ip", test_cert_ip, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_fp_and_verify", test_fp_and_verify, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_env_var", test_env_var, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_cert_wildcard", test_cert_wildcard, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_cert_expired", test_cert_expired, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_pw_check", test_pw_check, TEST_CONNECTION_NEW, 0, NULL, NULL},
@@ -725,6 +907,10 @@ struct my_tests_st my_tests[] = {
 int main(int argc, char **argv)
 {
   char *dummy_port;
+
+#ifdef HAVE_GNUTLS
+  diag("GnuTLS_config: %s", gnutls_get_system_config_file());
+#endif
 
   if (argc > 1)
     get_options(argc, argv);

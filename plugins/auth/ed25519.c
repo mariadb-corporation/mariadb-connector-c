@@ -70,7 +70,8 @@ static int auth_ed25519_hash(MYSQL *, unsigned char *out, size_t *outlen);
 #ifndef PLUGIN_DYNAMIC
 struct st_mysql_client_plugin_AUTHENTICATION client_ed25519_client_plugin=
 #else
-struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+MARIADB_CLIENT_PLUGIN_EXPORT struct st_mysql_client_plugin_AUTHENTICATION
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,

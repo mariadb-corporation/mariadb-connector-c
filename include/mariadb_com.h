@@ -52,6 +52,8 @@
 #define MYSQL_AUTODETECT_CHARSET_NAME "auto"
 #define BINCMP_FLAG       131072
 
+enum Item_result {STRING_RESULT,REAL_RESULT,INT_RESULT,ROW_RESULT,DECIMAL_RESULT};
+
 enum mysql_enum_shutdown_level
 {
   SHUTDOWN_DEFAULT = 0,
@@ -168,7 +170,7 @@ enum enum_server_command
 #define CLIENT_SSL_VERIFY_SERVER_CERT_OBSOLETE CLIENT_SSL_VERIFY_SERVER_CERT
 #define CLIENT_REMEMBER_OPTIONS  (1UL << 31)
 
-/* MariaDB specific capabilities */
+/* MariaDB-specific capabilities */
 #define MARIADB_CLIENT_FLAGS 0xFFFFFFFF00000000ULL
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
 #define MARIADB_CLIENT_RESERVED_1 (1ULL << 33) /* Former COM_MULTI, don't use */
@@ -417,6 +419,7 @@ void	ma_net_end(NET *net);
 void	ma_net_clear(NET *net);
 int	ma_net_flush(NET *net);
 int	ma_net_write(NET *net,const unsigned char *packet, size_t len);
+int ma_net_write_buff(NET *net, const char *packet, size_t len);
 int	ma_net_write_command(NET *net,unsigned char command,const char *packet,
 			  size_t len, my_bool disable_flush);
 int	ma_net_real_write(NET *net,const char *packet, size_t len);
@@ -428,8 +431,6 @@ struct rand_struct {
 };
 
   /* The following is for user defined functions */
-
-enum Item_result {STRING_RESULT,REAL_RESULT,INT_RESULT,ROW_RESULT,DECIMAL_RESULT};
 
 typedef struct st_udf_args
 {

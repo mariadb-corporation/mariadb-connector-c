@@ -77,7 +77,8 @@ my_bool ma_zlib_decompress(ma_compress_ctx *ctx, void *dst, size_t *dst_len,
 #ifndef PLUGIN_DYNAMIC
 MARIADB_COMPRESSION_PLUGIN zlib_client_plugin=
 #else
-MARIADB_COMPRESSION_PLUGIN _mysql_client_plugin_declaration_ =
+MARIADB_CLIENT_PLUGIN_EXPORT MARIADB_COMPRESSION_PLUGIN
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MARIADB_CLIENT_COMPRESSION_PLUGIN,

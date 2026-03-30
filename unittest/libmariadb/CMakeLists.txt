@@ -34,8 +34,12 @@ INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include
                     ${CC_SOURCE_DIR}/unittest/libmariadb)
 ADD_DEFINITIONS(-DLIBMARIADB)
 
+SET(API_TESTS "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2")
 
-SET(API_TESTS "conc336" "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2")
+IF($ENV{TRAVIS})
+  ADD_DEFINITIONS("-DHAVE_TRAVIS=1")
+ENDIF()
+
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()
@@ -45,7 +49,7 @@ IF(NOT WIN32)
 ENDIF()
 
 #exclude following tests from ctests, since we need to run them manually with different credentials
-SET(MANUAL_TESTS "t_conc173" "rpl_api")
+SET(MANUAL_TESTS "t_conc173" "rpl_api" "conc336") 
 # Get finger print from server certificate
 IF(WITH_SSL)
   IF(CERT_PATH AND NOT DEFINED ENV{TRAVIS})
@@ -60,6 +64,15 @@ ENDIF()
 ADD_LIBRARY(ma_getopt ma_getopt.c)
 
 IF(${Python3_FOUND})
+  execute_process(COMMAND ${Python3_EXECUTABLE} -m pip show pyopenssl
+                  RESULT_VARIABLE EXIT_CODE
+                  OUTPUT_QUIET)
+  if (${EXIT_CODE} EQUAL 0)
+    SET(RUN_TLS 1)
+  endif()
+ENDIF()
+
+IF(${RUN_TLS})
   CONFIGURE_FILE(${CC_SOURCE_DIR}/unittest/libmariadb/tls.c.in
                  ${CC_BINARY_DIR}/unittest/libmariadb/tls.c)
 

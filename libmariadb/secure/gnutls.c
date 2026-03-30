@@ -722,6 +722,26 @@ const struct st_cipher_map tls_ciphers[]=
     "TLS_DH_anon_WITH_AES_256_GCM_SHA384",
      NULL,
     "TLS_DH_ANON_AES_256_GCM_SHA384"},
+  { {0x13, 0x01},
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_AES_128_GCM_SHA256"},
+  { {0x13, 0x02},
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_AES_256_GCM_SHA384"},
+  { {0x13, 0x03},
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_CHACHA20_POLY1305_SHA256"},
+  { {0x13, 0x04},
+    "TLS_AES_128_CCM_SHA256",
+    "TLS_AES_128_CCM_SHA256",
+    "TLS_AES_128_CCM_SHA256"},
+  { {0x13, 0x05},
+    "TLS_AES_128_CCM_8_SHA256",
+    "TLS_AES_128_CCM_8_SHA256",
+    "TLS_AES_128_CCM_8_SHA256"},
   { {0xC0, 0x84},
     "TLS_DH_anon_WITH_CAMELLIA_128_GCM_SHA256",
      NULL,
@@ -792,6 +812,7 @@ const struct st_cipher_map tls_ciphers[]=
     NULL}
 };
 
+#if GNUTLS_VERSION_NUMBER < 0x030704
 /* map the gnutls cipher suite (defined by key exchange algorithm, cipher
    and mac algorithm) to the corresponding OpenSSL cipher name */
 static const char *openssl_cipher_name(gnutls_kx_algorithm_t kx,
@@ -828,6 +849,7 @@ static const char *openssl_cipher_name(gnutls_kx_algorithm_t kx,
   }
   return NULL;
 }
+#endif
 
 /* get priority string for a given openssl cipher name */
 static char *get_priority(const char *cipher_name, char *priority, size_t len)
@@ -856,10 +878,20 @@ static char *get_priority(const char *cipher_name, char *priority, size_t len)
       {
         if (!strcmp(name, tls_ciphers[i].gnutls_name))
         {
-          snprintf(priority, len - 1, ":+%s:+%s:+%s",
-                   gnutls_cipher_get_name(cipher),
-                   gnutls_mac_get_name(mac),
-                   gnutls_kx_get_name(kx));
+          const char *p;
+
+          if ((p= gnutls_cipher_get_name(cipher)))
+            snprintf(priority, len - 1, ":+%s",p);
+          if ((p= gnutls_mac_get_name(mac)))
+          {
+            strncat(priority, ":+", len - 1);
+            strncat(priority, p, len - 1);
+          }
+          if ((p= gnutls_kx_get_name(kx)))
+          {
+            strncat(priority, ":+", len - 1);
+            strncat(priority, p, len - 1);
+          }
           return priority;
         }
       }
@@ -1130,7 +1162,11 @@ void *ma_tls_init(MYSQL *mysql)
      a client certificate we will send it via callback function */
   if ((ssl_error= gnutls_credentials_set(ssl, GNUTLS_CRD_CERTIFICATE, ctx)) < 0)
     goto error;
-  
+
+  if (mysql->host && !ma_is_ip_address(mysql->host))
+    if ((ssl_error = gnutls_server_name_set(ssl, GNUTLS_NAME_DNS, mysql->host, strlen(mysql->host))) < 0)
+      goto error;
+
   pthread_mutex_unlock(&LOCK_gnutls_config);
   return (void *)ssl;
 error:
@@ -1445,15 +1481,6 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
 
   CLEAR_CLIENT_ERROR(mysql);
 
-  if (flags & MARIADB_TLS_VERIFY_FINGERPRINT)
-  {
-    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
-    {
-      mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_FINGERPRINT;
-      goto end;
-    }
-  }
-
   if (gnutls_certificate_verify_peers2(ssl, &status))
     return GNUTLS_E_CERTIFICATE_ERROR;
 
@@ -1468,7 +1495,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
       mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_PERIOD;
   }
 
-  if ((flags & MARIADB_TLS_VERIFY_HOST))
+  if (flags & MARIADB_TLS_VERIFY_HOST)
   {
     gnutls_x509_crt_t cert= ma_get_cert(ctls);
     int rc;
@@ -1487,18 +1514,20 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
 
     if (!rc)
     {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                   ER(CR_SSL_CONNECTION_ERROR), 
-                   "Certificate subject name doesn't match specified hostname");
+      if (!(mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_TRUST))
+        my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
+                     ER(CR_SSL_CONNECTION_ERROR),
+                     "Certificate subject name doesn't match specified hostname");
       mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
     }    
   }
 end:
-  return (mysql->net.tls_verify_status > 0);
+  return mysql->net.tls_verify_status & flags;
 }
 
 const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
 {
+#if GNUTLS_VERSION_NUMBER < 0x030704
   gnutls_kx_algorithm_t kx;
   gnutls_cipher_algorithm_t cipher;
   gnutls_mac_algorithm_t mac;
@@ -1510,6 +1539,24 @@ const char *ma_tls_get_cipher(MARIADB_TLS *ctls)
   cipher= gnutls_cipher_get((gnutls_session_t)ctls->ssl);
   kx= gnutls_kx_get((gnutls_session_t)ctls->ssl);
   return openssl_cipher_name(kx, cipher, mac);
+#else
+  const char *cs= gnutls_ciphersuite_get((gnutls_session_t)ctls->ssl);
+  int i=0;
+
+  while (tls_ciphers[i].iana_name)
+  {
+    if (!strcmp(tls_ciphers[i].gnutls_name, cs))
+    {
+      if (tls_ciphers[i].openssl_name)
+        return tls_ciphers[i].openssl_name;
+      if (tls_ciphers[i].gnutls_name)
+        return tls_ciphers[i].gnutls_name;
+      return tls_ciphers[i].iana_name;
+    }
+    i++;
+  }
+  return NULL;
+#endif
 }
 
 unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp, unsigned int len)

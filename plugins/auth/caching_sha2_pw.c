@@ -62,7 +62,7 @@
 #define CACHED_LOGIN_SUCCEEDED 3
 #define RSA_LOGIN_REQUIRED 4
 
-/* MySQL server allows requesting public key only for non secure connections.
+/* MySQL server allows requesting public key only for non-secure connections.
    secure connections are:
      - TLS/SSL connections
      - unix_socket connections
@@ -131,7 +131,8 @@ static int auth_caching_sha2_init(char *unused1,
 #ifndef PLUGIN_DYNAMIC
 struct st_mysql_client_plugin_AUTHENTICATION caching_sha2_password_client_plugin=
 #else
-struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+MARIADB_CLIENT_PLUGIN_EXPORT struct st_mysql_client_plugin_AUTHENTICATION
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
@@ -231,7 +232,7 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   char passwd[MAX_PW_LEN];
 #ifdef HAVE_OPENSSL
   unsigned char *rsa_enc_pw= NULL;
-  size_t rsa_size;
+  int rsa_size;
 #else
   unsigned char rsa_enc_pw[MAX_PW_LEN];
   ULONG rsa_size;
@@ -363,7 +364,10 @@ static int auth_caching_sha2_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 
 #endif
     if (!pubkey)
-      return CR_ERROR;
+    {
+      rc= CR_ERROR;
+      goto error;
+    }
 
     pwlen= (unsigned int)strlen(mysql->passwd) + 1;  /* include terminating zero */
     if (pwlen > MAX_PW_LEN)

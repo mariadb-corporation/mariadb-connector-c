@@ -447,6 +447,12 @@ void *ma_tls_init(MYSQL *mysql)
   if (!(ssl= SSL_new(ctx)))
     goto error;
 
+#if !defined(OPENSSL_NO_TLSEXT)
+  if (mysql->host && !ma_is_ip_address(mysql->host))
+    if (!SSL_set_tlsext_host_name(ssl, mysql->host))
+      goto error;
+#endif
+
   if (!SSL_set_app_data(ssl, mysql))
     goto error;
 
@@ -546,7 +552,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
 
-  /* Set socket to non blocking if not already set */
+  /* Set socket to non-blocking if not already set */
   if (!(blocking= pvio->methods->is_blocking(pvio)))
     pvio->methods->blocking(pvio, FALSE, 0);
 
@@ -560,8 +566,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 #else
   SSL_set_fd(ssl, (int)mysql_get_socket(mysql));
 #endif
-  if (!mysql->options.extension->tls_allow_invalid_server_cert)
-    SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
+
+  /* CONC-732: Always set verification callback to avoid OpenSSL output */
+  SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
 
   while (try_connect && (rc= SSL_connect(ssl)) == -1)
   {
@@ -786,19 +793,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
   if ((mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_FINGERPRINT) ||
       (mysql->net.tls_verify_status & verify_flags))
   {
-    return 1;
-  }
-
-  if (verify_flags & MARIADB_TLS_VERIFY_FINGERPRINT)
-  {
-    if (ma_pvio_tls_check_fp(ctls, mysql->options.extension->tls_fp, mysql->options.extension->tls_fp_list))
-    {
-      mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_FINGERPRINT;
-      return 1;
-    }
-
-    mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_OK;
-    return 0;
+    return MARIADB_TLS_VERIFY_ERROR;
   }
 
   if (verify_flags & MARIADB_TLS_VERIFY_HOST)

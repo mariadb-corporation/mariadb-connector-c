@@ -84,16 +84,20 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
   PUCHAR          IoBuffer;
   BOOL            fDoRead;
   MARIADB_TLS     *ctls= pvio->ctls;
+  MYSQL *mysql=   pvio->mysql;
   SC_CTX          *sctx= (SC_CTX *)ctls->ssl;
+  char            *sni_host= NULL;
 
 
   dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT |
                 ISC_REQ_REPLAY_DETECT |
                 ISC_REQ_CONFIDENTIALITY |
                 ISC_RET_EXTENDED_ERROR |
-                ISC_REQ_ALLOCATE_MEMORY | 
+                ISC_REQ_ALLOCATE_MEMORY |
                 ISC_REQ_STREAM;
 
+  if (mysql->host && !ma_is_ip_address(mysql->host))
+    sni_host= mysql->host;
 
   /* Allocate data buffer */
   if (!(IoBuffer = malloc(SC_IO_BUFFER_SIZE)))
@@ -166,7 +170,7 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
 
     rc = InitializeSecurityContextA(&sctx->CredHdl,
                                     &sctx->hCtxt,
-                                    NULL,
+                                    sni_host,
                                     dwSSPIFlags,
                                     0,
                                     SECURITY_NATIVE_DREP,
@@ -295,7 +299,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   pvio= ctls->pvio;
   sctx= (SC_CTX *)ctls->ssl;
 
-  /* Initialie securifty context */
+  /* Initialize security context */
   BuffersOut.BufferType= SECBUFFER_TOKEN;
   BuffersOut.cbBuffer= 0;
   BuffersOut.pvBuffer= NULL;
@@ -506,12 +510,15 @@ unsigned int ma_schannel_verify_certs(MARIADB_TLS *ctls, unsigned int verify_fla
   HCERTSTORE store= NULL;
   int ret= 0;
 
+  if (!crl_file && !crl_path) // backward compatible behavior
+    verify_flags &= ~MARIADB_TLS_VERIFY_REVOKED;
+
+  if (!verify_flags)
+    return 0;
+
   status = schannel_create_store(ca_file, ca_path, crl_file, crl_path, &store, errmsg, sizeof(errmsg));
   if(status)
     goto end;
-
-  if (!crl_file && !crl_path) // backward compatible behavior
-    verify_flags &= ~MARIADB_TLS_VERIFY_REVOKED;
 
   status = QueryContextAttributesA(&sctx->hCtxt, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&pServerCert);
   if (status)

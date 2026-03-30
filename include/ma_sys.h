@@ -219,11 +219,6 @@ struct my_rnd_struct {
 };
 
 #endif
-typedef struct st_typelib {	/* Different types saved here */
-  uint count;			/* How many types */
-  const char *name;			/* Name of typelib */
-  const char **type_names;
-} TYPELIB;
 
 enum cache_type {READ_CACHE,WRITE_CACHE,READ_FIFO,READ_NET,WRITE_NET};
 enum flush_type { FLUSH_KEEP, FLUSH_RELEASE, FLUSH_IGNORE_CHANGED,
@@ -501,9 +496,6 @@ extern void ma_freeze_size(DYNAMIC_ARRAY *array);
 #define dynamic_element(array,array_index,type) ((type)((array)->buffer) +(array_index))
 #define push_dynamic(A,B) ma_insert_dynamic(A,B)
 
-extern int ma_find_type(my_string x,TYPELIB *typelib,uint full_name);
-extern void ma_make_type(my_string to,uint nr,TYPELIB *typelib);
-extern const char *ma_get_type(TYPELIB *typelib,uint nr);
 extern my_bool ma_init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
 				   size_t init_alloc, size_t alloc_increment);
 extern my_bool ma_dynstr_append(DYNAMIC_STRING *str, const char *append);

@@ -557,6 +557,8 @@ int ma_pvio_register_callback(my_bool register_callback,
   if (register_callback)
   {
     list= (LIST *)malloc(sizeof(LIST));
+    if (!list)
+      return 1;
 
     list->data= (void *)callback_function;
     pvio_callback= list_add(pvio_callback, list);

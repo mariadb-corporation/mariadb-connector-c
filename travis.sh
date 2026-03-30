@@ -32,6 +32,22 @@ if [ -n "$server_branch" ] ; then
   # build latest server with latest C/C as libmariadb
   # skip to build some storage engines to speed up the build
 
+  if [ -n "$TRAVIS_PULL_REQUEST" ] && [ "$TRAVIS_PULL_REQUEST" != "false" ] ; then
+    git submodule update --init --remote libmariadb
+    cd libmariadb
+    git fetch origin ${TRAVIS_PULL_REQUEST}
+    git checkout -qf FETCH_HEAD
+  else
+    git submodule set-branch -b ${TRAVIS_BRANCH} libmariadb
+    git submodule sync
+    git submodule update --init --remote libmariadb
+    cd libmariadb
+    git checkout ${TRAVIS_COMMIT}
+  fi
+
+  cd $SERVER_DIR
+  git add libmariadb
+
   mkdir bld
   cd bld
   cmake .. -DPLUGIN_MROONGA=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_SPIDER=NO -DPLUGIN_TOKUDB=NO
@@ -43,15 +59,11 @@ if [ -n "$server_branch" ] ; then
     echo "checkout commit"
   fi
 
-  cp $CC_DIR/* $SERVER_DIR/libmariadb -r
-  cd $SERVER_DIR
-  git add libmariadb
-
   cd $SERVER_DIR/bld
   make -j9
 
   cd mysql-test/
-  ./mysql-test-run.pl --suite=main ${TEST_OPTION} --parallel=auto --skip-test=session_tracker_last_gtid
+  ./mysql-test-run.pl --suite=main,unit ${TEST_OPTION} --parallel=auto --skip-test=session_tracker_last_gtid
 
 else
 
@@ -64,17 +76,16 @@ else
   cd bld
   if [ "$TRAVIS_OS_NAME" = "windows" ] ; then
     export WIX="c:/Program Files (x86)/WiX Toolset v3.14"
-    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCERT_PATH=${SSLCERT} -DWITH_MSI=ON -DWITH_CURL=ON -DPython_ROOT_DIR=c:\python312
+    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_GENERATOR_PLATFORM=x64 -DCERT_PATH=${SSLCERT} -DWITH_MSI=ON -DWITH_CURL=ON -DPython_ROOT_DIR=c:\python312
 
     echo "build from windows"
     export MARIADB_CC_TEST=1
     export MYSQL_TEST_DB=testc
-    export MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
-    export MYSQL_TEST_USER=%TEST_DB_USER%
-    export MYSQL_TEST_HOST=%TEST_DB_HOST%
-    export MYSQL_TEST_PASSWD=%TEST_DB_PASSWORD%
-    export MYSQL_TEST_PORT=%TEST_DB_PORT%
-    export MYSQL_TEST_TLS=%TEST_REQUIRE_TLS%
+    export MYSQL_TEST_TLS=$TEST_REQUIRE_TLS
+    export MYSQL_TEST_USER=$TEST_DB_USER
+    export MYSQL_TEST_HOST=$TEST_DB_HOST
+    export MYSQL_TEST_PASSWD=$TEST_DB_PASSWORD
+    export MYSQL_TEST_PORT=$TEST_DB_PORT
     cmake --build . --config RelWithDebInfo
   else
     echo "build from linux"

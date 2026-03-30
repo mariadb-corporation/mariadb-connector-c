@@ -1,6 +1,6 @@
 # Replication
 REGISTER_PLUGIN(TARGET replication
-                TYPE MARIADB_CLIENT_PLUGIN_CONNECTION
+                TYPE CONNECTION
                 CONFIGURATIONS STATIC DYNAMIC OFF
                 DEFAULT OFF
                 SOURCES ${CC_SOURCE_DIR}/plugins/connection/replication.c)

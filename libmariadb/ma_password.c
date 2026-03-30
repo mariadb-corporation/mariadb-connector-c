@@ -39,7 +39,7 @@
 #include <ma_global.h>
 #include <ma_sys.h>
 #include <ma_string.h>
-#include <ma_sha1.h>
+#include <ma_crypt.h>
 #include "mysql.h"
 
 
@@ -100,29 +100,26 @@ void my_crypt(unsigned char *buffer, const unsigned char *s1, const unsigned cha
 
 void ma_scramble_41(const unsigned char *buffer, const char *scramble, const char *password)
 {
-	_MA_SHA1_CTX context;
-	unsigned char sha1[SHA1_MAX_LENGTH];
-	unsigned char sha2[SHA1_MAX_LENGTH];
+	MA_HASH_CTX *ctx;
+	unsigned char sha1[MA_SHA1_HASH_SIZE];
+	unsigned char sha2[MA_SHA1_HASH_SIZE];
 	
 
 	/* Phase 1: hash password */
-	ma_SHA1Init(&context);
-	ma_SHA1Update(&context, (unsigned char *)password, strlen((char *)password));
-	ma_SHA1Final(sha1, &context);
+  ma_hash(MA_HASH_SHA1, (unsigned char *)password, strlen(password), sha1);
 
 	/* Phase 2: hash sha1 */
-	ma_SHA1Init(&context);
-	ma_SHA1Update(&context, (unsigned char*)sha1, SHA1_MAX_LENGTH);
-	ma_SHA1Final(sha2, &context);
+  ma_hash(MA_HASH_SHA1, (unsigned char *)sha1, MA_SHA1_HASH_SIZE, sha2);
 
 	/* Phase 3: hash scramble + sha2 */
-	ma_SHA1Init(&context);
-	ma_SHA1Update(&context, (unsigned char *)scramble, SCRAMBLE_LENGTH);
-	ma_SHA1Update(&context, (unsigned char*)sha2, SHA1_MAX_LENGTH);
-	ma_SHA1Final((unsigned char *)buffer, &context);
+  ctx= ma_hash_new(MA_HASH_SHA1);
+  ma_hash_input(ctx, (unsigned char *)scramble, SCRAMBLE_LENGTH);
+  ma_hash_input(ctx, (unsigned char *)sha2, MA_SHA1_HASH_SIZE);
+  ma_hash_result(ctx, (unsigned char *)buffer);
+  ma_hash_free(ctx);
 
 	/* let's crypt buffer now */
-	my_crypt((uchar *)buffer, (const unsigned char *)buffer, (const unsigned  char *)sha1, SHA1_MAX_LENGTH);
+	my_crypt((uchar *)buffer, (const unsigned char *)buffer, (const unsigned  char *)sha1, MA_SHA1_HASH_SIZE);
 }
 /* }}} */
 

@@ -103,14 +103,15 @@ static int gssapi_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 #ifndef PLUGIN_DYNAMIC
 struct st_mysql_client_plugin_AUTHENTICATION auth_gssapi_client_client_plugin=
 #else
-struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+MARIADB_CLIENT_PLUGIN_EXPORT struct st_mysql_client_plugin_AUTHENTICATION
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
   MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   "auth_gssapi_client",
   "Shuang Qiu, Robbie Harwood, Vladislav Vaintroub, Georg Richter",
-  "GSSAPI/SSPI based authentication",
+  "GSSAPI/SSPI-based authentication",
   {0, 1, 0},
   "BSD",
   NULL,
