@@ -81,7 +81,7 @@ FUNCTION(REGISTER_PLUGIN)
       if (NOT "${CC_PLUGIN_INCLUDES}" STREQUAL "")
         target_include_directories(${CC_PLUGIN_TARGET} PRIVATE ${CC_PLUGIN_INCLUDES})
       endif()
-      if (${CC_TARGET_COMPILE_OPTIONS})
+      if (CC_TARGET_COMPILE_OPTIONS)
         target_compile_options(${CC_PLUGIN_TARGET} ${CC_TARGET_COMPILE_OPTIONS})
       endif()
 

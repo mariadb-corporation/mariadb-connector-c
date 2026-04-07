@@ -191,7 +191,7 @@ IF(WIN32)
     ELSE()
       SET(${v}_FILE_VERSION "0")
     ENDIF()
-    IF(NOT ${v}_FILE_VERSION MATCHES "^[0-9]+$")
+    IF(NOT "${${v}_FILE_VERSION}" MATCHES "^[0-9]+$")
       MESSAGE(FATAL_ERROR
         "${v}_FILE_VERSION is not numeric - '${${v}_FILE_VERSION}'")
     ENDIF()
