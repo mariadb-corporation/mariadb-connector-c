@@ -1,5 +1,3 @@
-SET(PLUGIN_EXTRA_FILES ${CC_SOURCE_DIR}/libmariadb/ma_errmsg.c)
-
 IF(WIN32 OR (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang"))
   # Plugin exports handled via declspec(dllexport) or visibility attribute
   SET(OLD_CMAKE_C_VISIBILITY_PRESET ${CMAKE_C_VISIBILITY_PRESET})
