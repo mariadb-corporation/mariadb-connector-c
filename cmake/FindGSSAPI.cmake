@@ -90,7 +90,6 @@ else()
         OUTPUT_VARIABLE gssapi_flavor_tmp
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    set(GSSAPI_FLAVOR_MIT)
     if(gssapi_flavor_tmp MATCHES ".*Massachusetts.*")
       set(GSSAPI_FLAVOR "MIT")
     else()
