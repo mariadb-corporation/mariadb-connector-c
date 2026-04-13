@@ -719,8 +719,35 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   int rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
   if (rc <= 0)
   {
-    MYSQL *mysql= SSL_get_app_data(ctls->ssl);
-    ma_tls_set_error(mysql);
+    int error= SSL_get_error((SSL *)ctls->ssl, rc);
+    /*
+      Peer closed the connection.  Return 0 so the caller reports
+      CR_SERVER_LOST instead of a misleading CR_SSL_CONNECTION_ERROR.
+
+      - SSL_ERROR_ZERO_RETURN: orderly TLS shutdown (close_notify
+        received).  Mirrors schannel.c SEC_I_CONTEXT_EXPIRED handling.
+      - SSL_ERROR_SYSCALL with empty error queue: unexpected EOF
+        without close_notify (OpenSSL 1.x).
+      - SSL_ERROR_SSL with SSL_R_UNEXPECTED_EOF_WHILE_READING:
+        same EOF, reported differently by OpenSSL 3.x.
+    */
+    if (error == SSL_ERROR_ZERO_RETURN)
+      return 0;
+    if (error == SSL_ERROR_SYSCALL && !ERR_peek_error())
+      return 0;
+#ifdef SSL_R_UNEXPECTED_EOF_WHILE_READING
+    if (error == SSL_ERROR_SSL &&
+        ERR_GET_REASON(ERR_peek_error()) ==
+          SSL_R_UNEXPECTED_EOF_WHILE_READING)
+    {
+      ERR_clear_error();
+      return 0;
+    }
+#endif
+    {
+      MYSQL *mysql= SSL_get_app_data(ctls->ssl);
+      ma_tls_set_error(mysql);
+    }
   }
   return rc;
 }

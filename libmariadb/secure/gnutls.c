@@ -1370,8 +1370,30 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
       break;
   }
   if (rc <= 0) {
-    MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ctls->ssl);
-    ma_tls_set_error(mysql, ctls->ssl, rc);
+    /*
+      Peer closed the connection.  Return 0 so the caller reports
+      CR_SERVER_LOST instead of a misleading CR_SSL_CONNECTION_ERROR.
+
+      - rc == 0: orderly TLS shutdown (close_notify received).
+        Mirrors schannel.c SEC_I_CONTEXT_EXPIRED handling.
+      - GNUTLS_E_PREMATURE_TERMINATION: peer closed without
+        close_notify (GnuTLS 3.7.4+).
+      - GNUTLS_E_UNEXPECTED_PACKET_LENGTH: same condition on
+        GnuTLS < 3.7.4 (min required version is 3.5).
+    */
+    if (rc == 0
+#ifdef GNUTLS_E_PREMATURE_TERMINATION
+        || rc == GNUTLS_E_PREMATURE_TERMINATION
+#endif
+#ifdef GNUTLS_E_UNEXPECTED_PACKET_LENGTH
+        || rc == GNUTLS_E_UNEXPECTED_PACKET_LENGTH
+#endif
+       )
+      return 0;
+    {
+      MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ctls->ssl);
+      ma_tls_set_error(mysql, ctls->ssl, rc);
+    }
   }
   return rc;
 }
