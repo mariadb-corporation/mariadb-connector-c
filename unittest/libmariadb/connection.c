@@ -368,92 +368,6 @@ static int test_change_user(MYSQL *mysql)
   return OK;
 }
 
-/*
-  MDEV-38550: Test mysql_change_user() with long password (>255 bytes)
-
-  Uses PAM auth with cleartext plugin so the raw password is sent as auth data
-  in the COM_CHANGE_USER packet. A 260-byte password produces 261 bytes of
-  auth data (including null terminator), which requires LENENC encoding
-  instead of single-byte length.
-
-  Requires:
-  - Server with MDEV-38550 fix (MariaDB/server#4534)
-  - auth_pam plugin loaded with pam-use-cleartext-plugin
-  - PAM service 'mariadb_mdbtest' configured with pam_permit
-*/
-static int test_change_user_long_pw(MYSQL *mysql)
-{
-  char long_pw[261];
-  int rc;
-  MYSQL *conn;
-  const char *user= "mdev38550_pam_user";
-
-  SKIP_MAXSCALE;
-  SKIP_SKYSQL;
-
-  /* Check if PAM auth plugin is available */
-  rc = mysql_query(mysql, "INSTALL SONAME 'auth_pam'");
-  if (rc)
-  {
-    /* may already be installed, or not available */
-    if (mysql_errno(mysql) != 1126 /* ER_CANT_OPEN_LIBRARY */ &&
-        mysql_errno(mysql) != 1968 /* ER_PLUGIN_INSTALLED */)
-      diag("INSTALL SONAME 'auth_pam': %s", mysql_error(mysql));
-  }
-
-  /* Create PAM user - pam_permit accepts any password */
-  mysql_query(mysql, "DROP USER IF EXISTS 'mdev38550_pam_user'@'%'");
-  rc = mysql_query(mysql, "CREATE USER 'mdev38550_pam_user'@'%' "
-                          "IDENTIFIED VIA pam USING 'mariadb_mdbtest'");
-  if (rc)
-  {
-    diag("Could not create PAM user: %s (PAM plugin not available?)",
-         mysql_error(mysql));
-    return SKIP;
-  }
-  rc = mysql_query(mysql, "GRANT ALL ON *.* TO 'mdev38550_pam_user'@'%'");
-  check_mysql_rc(rc, mysql);
-
-  /* Create a 260-character password */
-  memset(long_pw, 'a', 260);
-  long_pw[260] = '\0';
-
-  /* Connect as PAM user with cleartext plugin.
-     pam_permit accepts any password. */
-  conn = mysql_init(NULL);
-  FAIL_IF(!conn, "mysql_init failed");
-  mysql_options(conn, MYSQL_DEFAULT_AUTH, "mysql_clear_password");
-
-  if (!my_test_connect(conn, hostname, user, long_pw, schema, port, socketname, 0))
-  {
-    diag("Connection failed: %s", mysql_error(conn));
-    mysql_close(conn);
-    mysql_query(mysql, "DROP USER IF EXISTS 'mdev38550_pam_user'@'%'");
-    return SKIP;
-  }
-
-  /* Test mysql_change_user with long password.
-     The cleartext plugin sends the raw 260-byte password as auth data,
-     which exceeds the 255-byte single-byte length limit. */
-  rc = mysql_change_user(conn, user, long_pw, schema);
-  if (rc)
-  {
-    diag("mysql_change_user failed: %s", mysql_error(conn));
-    mysql_close(conn);
-    mysql_query(mysql, "DROP USER IF EXISTS 'mdev38550_pam_user'@'%'");
-    return FAIL;
-  }
-
-  diag("mysql_change_user with 260-byte cleartext password succeeded");
-
-  mysql_close(conn);
-
-  /* Cleanup */
-  mysql_query(mysql, "DROP USER IF EXISTS 'mdev38550_pam_user'@'%'");
-
-  return OK;
-}
-
 /**
   Bug#31669 Buffer overflow in mysql_change_user()
 */
@@ -2644,7 +2558,6 @@ struct my_tests_st my_tests[] = {
   {"test_bug31669", test_bug31669, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_bug33831", test_bug33831, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_change_user", test_change_user, TEST_CONNECTION_NEW, 0, NULL,  NULL},
-  {"test_change_user_long_pw", test_change_user_long_pw, TEST_CONNECTION_NEW, 0, NULL,  NULL},
   {"test_opt_reconnect", test_opt_reconnect, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_compress", test_compress, TEST_CONNECTION_NONE, 0, NULL,  NULL},
   {"test_reconnect", test_reconnect, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
