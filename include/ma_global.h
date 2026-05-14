@@ -687,7 +687,7 @@ typedef unsigned long	size_s; /* Size of strings (In string-funcs) */
 typedef int		myf;	/* Type of MyFlags in my_funcs */
 typedef char		my_bool; /* Small bool */
 typedef unsigned long long my_ulonglong;
-#if !defined(bool) && !defined(bool_defined) && (!defined(HAVE_BOOL) || !defined(__cplusplus))
+#if !defined(bool) && !defined(bool_defined) && !defined(HAVE_BOOL) && !defined(__cplusplus)
 typedef char		bool;	/* Ordinary boolean values 0 1 */
 #endif
 	/* Macros for converting *constants* to the right type */
