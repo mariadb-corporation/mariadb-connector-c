@@ -75,6 +75,12 @@ ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
 ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
 IF(NOT IS_SUBPROJECT)
+  ADD_OPTION(WITH_ASAN
+    "Enable AddressSanitizer instrumentation for Debug and RelWithDebInfo builds"
+    OFF)
+  ADD_OPTION(WITH_UBSAN
+    "Enable UndefinedBehaviorSanitizer instrumentation for Debug and RelWithDebInfo builds"
+    OFF)
   ADD_OPTION(WITH_MSAN "Enable MemorySanitizer instrumentation for Debug and RelWithDebInfo builds" OFF)
 ENDIF()
 
@@ -82,18 +88,41 @@ ENDIF()
 INCLUDE(${CC_SOURCE_DIR}/cmake/misc.cmake)
 INCLUDE(FindCURL)
 
-IF(WITH_MSAN AND NOT IS_SUBPROJECT)
-  SET(MARIADB_MSAN_COMPILE_FLAGS "-fsanitize=memory -fsanitize-memory-track-origins -U_FORTIFY_SOURCE")
-  SET(MARIADB_MSAN_LINK_FLAGS "-fsanitize=memory -fsanitize-memory-track-origins")
-
-  FOREACH(BUILD_TYPE DEBUG RELWITHDEBINFO)
-    SET(CMAKE_C_FLAGS_${BUILD_TYPE}
-        "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${MARIADB_MSAN_COMPILE_FLAGS}")
-    FOREACH(LINKER EXE SHARED MODULE)
-      SET(CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}
-          "${CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}} ${MARIADB_MSAN_LINK_FLAGS}")
+IF(NOT IS_SUBPROJECT)
+  MACRO(MARIADB_ADD_SANITIZER_FLAGS compile_flags link_flags)
+    FOREACH(BUILD_TYPE DEBUG RELWITHDEBINFO)
+      SET(CMAKE_C_FLAGS_${BUILD_TYPE}
+          "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${compile_flags}")
+      FOREACH(LINKER EXE SHARED MODULE)
+        SET(CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}
+            "${CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}} ${link_flags}")
+      ENDFOREACH()
     ENDFOREACH()
-  ENDFOREACH()
+  ENDMACRO()
+
+  IF(WITH_ASAN)
+    IF(MSVC)
+      MARIADB_ADD_SANITIZER_FLAGS("/fsanitize=address" "/INCREMENTAL:NO")
+    ELSE()
+      MARIADB_ADD_SANITIZER_FLAGS(
+        "-U_FORTIFY_SOURCE -fsanitize=address -fPIC"
+        "-fsanitize=address")
+    ENDIF()
+  ENDIF()
+
+  IF(NOT MSVC)
+    IF(WITH_UBSAN)
+      MARIADB_ADD_SANITIZER_FLAGS(
+        "-fsanitize=undefined -fno-sanitize=alignment -U_FORTIFY_SOURCE"
+        "-fsanitize=undefined")
+    ENDIF()
+
+    IF(WITH_MSAN)
+      MARIADB_ADD_SANITIZER_FLAGS(
+        "-fsanitize=memory -fsanitize-memory-track-origins -U_FORTIFY_SOURCE"
+        "-fsanitize=memory -fsanitize-memory-track-origins")
+    ENDIF()
+  ENDIF()
 ENDIF()
 
 IF(WITH_SIGNCODE)
@@ -583,6 +612,8 @@ MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
 -- Zlib support: ${zlib_status}
 -- ZStd support: ${ZSTD_FOUND}
+-- ASAN support: ${WITH_ASAN}
+-- UBSAN support: ${WITH_UBSAN}
 -- MSAN support: ${WITH_MSAN}
 -- Installation layout: ${INSTALL_LAYOUT}
 -- Include files will be installed in ${INSTALL_INCLUDEDIR}
