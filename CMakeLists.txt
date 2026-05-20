@@ -74,10 +74,27 @@ ADD_OPTION(WITH_DYNCOL "Enables support of dynamic columns" ON)
 ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
 ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
+IF(NOT IS_SUBPROJECT)
+  ADD_OPTION(WITH_MSAN "Enable MemorySanitizer instrumentation for Debug and RelWithDebInfo builds" OFF)
+ENDIF()
 
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/misc.cmake)
 INCLUDE(FindCURL)
+
+IF(WITH_MSAN AND NOT IS_SUBPROJECT)
+  SET(MARIADB_MSAN_COMPILE_FLAGS "-fsanitize=memory -fsanitize-memory-track-origins -U_FORTIFY_SOURCE")
+  SET(MARIADB_MSAN_LINK_FLAGS "-fsanitize=memory -fsanitize-memory-track-origins")
+
+  FOREACH(BUILD_TYPE DEBUG RELWITHDEBINFO)
+    SET(CMAKE_C_FLAGS_${BUILD_TYPE}
+        "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${MARIADB_MSAN_COMPILE_FLAGS}")
+    FOREACH(LINKER EXE SHARED MODULE)
+      SET(CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}
+          "${CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}} ${MARIADB_MSAN_LINK_FLAGS}")
+    ENDFOREACH()
+  ENDFOREACH()
+ENDIF()
 
 IF(WITH_SIGNCODE)
   IF(WIN32 AND NOT SIGN_OPTIONS)
@@ -566,6 +583,7 @@ MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
 -- Zlib support: ${zlib_status}
 -- ZStd support: ${ZSTD_FOUND}
+-- MSAN support: ${WITH_MSAN}
 -- Installation layout: ${INSTALL_LAYOUT}
 -- Include files will be installed in ${INSTALL_INCLUDEDIR}
 -- Libraries will be installed in ${INSTALL_LIBDIR}
