@@ -22,6 +22,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 #include "my_test.h"
+#include <math.h>
 
 #define MY_INT64_NUM_DECIMAL_DIGITS 21
 #define MAX_INDEXES 64
@@ -47,6 +48,12 @@ static int test_conc67(MYSQL *mysql)
   MYSQL_RES *res;
   ulong prefetch_rows= 1000;
   ulong cursor_type= CURSOR_TYPE_READ_ONLY;
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc67");
   check_mysql_rc(rc, mysql);
@@ -231,6 +238,12 @@ static int test_bug1180(MYSQL *mysql)
   ulong length[1];
   char szData[11];
   char query[MAX_TEST_QUERY_LENGTH];
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_select");
   check_mysql_rc(rc, mysql);
@@ -557,6 +570,8 @@ static int test_bug1500(MYSQL *mysql)
   const char *data;
   const char *query;
 
+  // XPAND doesn't support AGAINST
+  SKIP_XPAND
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_bg1500");
   check_mysql_rc(rc, mysql);
@@ -767,6 +782,9 @@ static int test_bug15613(MYSQL *mysql)
   MYSQL_FIELD *field;
   int rc;
 
+  //https://jira.mariadb.org/browse/XPT-273
+  SKIP_XPAND;
+
   /* I. Prepare the table */
   rc= mysql_query(mysql, "set names latin1");
   check_mysql_rc(rc, mysql);
@@ -838,11 +856,16 @@ static int test_bug1664(MYSQL *mysql)
     MYSQL_BIND my_bind[2];
     const char *query= "INSERT INTO test_long_data(col2, col1) VALUES(?, ?)";
 
+    // https://jira.mariadb.org/browse/XPT-266
+    if (IS_XPAND()) {
+      rc= mysql_query(mysql, "SET NAMES UTF8");
+      check_mysql_rc(rc, mysql);
+    }
 
     rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data");
     check_mysql_rc(rc, mysql);
 
-    rc= mysql_query(mysql, "CREATE TABLE test_long_data(col1 int, col2 long varchar)");
+    rc= mysql_query(mysql, "CREATE TABLE test_long_data(col1 int, col2 MEDIUMTEXT)");
     check_mysql_rc(rc, mysql);
 
     stmt= mysql_stmt_init(mysql);
@@ -1628,6 +1651,12 @@ static int test_ps_conj_select(MYSQL *mysql)
   unsigned long str_length;
   char query[MAX_TEST_QUERY_LENGTH];
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
 
@@ -2126,6 +2155,11 @@ static int test_bug3796(MYSQL *mysql)
   const char *stmt_text;
   int rc;
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   /* Create and fill test table */
   stmt_text= "DROP TABLE IF EXISTS t1";
@@ -2309,7 +2343,7 @@ static int test_bug4030(MYSQL *mysql)
   rc= mysql_stmt_fetch(stmt);
   FAIL_UNLESS(rc == 0, "rc != 0");
   FAIL_UNLESS(memcmp(&time_canonical, &time_out, sizeof(time_out)) == 0, "time_canonical != time_out");
-  FAIL_UNLESS(memcmp(&date_canonical, &date_out, sizeof(date_out)) == 0, "date_canoncical != date_out");
+  FAIL_UNLESS(memcmp(&date_canonical, &date_out, sizeof(date_out)) == 0, "date_canonical != date_out");
   FAIL_UNLESS(memcmp(&datetime_canonical, &datetime_out, sizeof(datetime_out)) == 0, "datetime_canonical != datetime_out");
   mysql_stmt_close(stmt);
   return OK;
@@ -2643,11 +2677,19 @@ static int test_bug5194(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   my_bind= (MYSQL_BIND*) malloc(MAX_PARAM_COUNT * sizeof(MYSQL_BIND));
+  FAIL_UNLESS(my_bind, "Not enough memory");
   query= (char*) malloc(strlen(query_template) +
                         MAX_PARAM_COUNT * CHARS_PER_PARAM + 1);
+  if(!query)
+    free(my_bind);
+  FAIL_UNLESS(query, "Not enough memory");
   param_str= (char*) malloc(COLUMN_COUNT * CHARS_PER_PARAM);
-
-  FAIL_IF(my_bind == 0 || query == 0 || param_str == 0, "Not enough memory");
+  if(!param_str)
+  {
+    free(my_bind);
+    free(query);
+  }
+  FAIL_UNLESS(param_str, "Not enough memory");
 
   stmt= mysql_stmt_init(mysql);
 
@@ -3129,6 +3171,9 @@ static int test_field_misc(MYSQL *mysql)
   mysql_free_result(result);
   mysql_stmt_close(stmt);
 
+  // XPAND doesn't support @@max_error_count
+  SKIP_XPAND
+
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL("SELECT @@max_error_count"));
@@ -3216,17 +3261,17 @@ error:
   return FAIL;
 }
 
-/* Test a memory ovverun bug */
+/* Test a memory overrun bug */
 
 static int test_mem_overun(MYSQL *mysql)
 {
-  char       buffer[10000], field[12];
+  char       buffer[10000], field[20];
   MYSQL_STMT *stmt;
   MYSQL_RES  *field_res, *res;
   int        rc, i, length;
 
   /*
-    Test a memory ovverun bug when a table had 1000 fields with
+    Test a memory overrun bug when a table had 1000 fields with
     a row of data
   */
   rc= mysql_query(mysql, "drop table if exists t_mem_overun");
@@ -3775,6 +3820,7 @@ static int test_bug53311(MYSQL *mysql)
   int i;
   const char *query= "INSERT INTO bug53311 VALUES (1)";
   SKIP_MAXSCALE;
+  SKIP_XPAND;
 
   rc= mysql_options(mysql, MYSQL_OPT_RECONNECT, "1");
   check_mysql_rc(rc, mysql);
@@ -3992,7 +4038,7 @@ static int test_conc154(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  /* 3rd: non empty result without free_result */
+  /* 3rd: non-empty result without free_result */
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES ('test_conc154')");
   check_mysql_rc(rc, mysql);
 
@@ -4014,7 +4060,7 @@ static int test_conc154(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  /* 4th non empty result set with free_result */
+  /* 4th non-empty result set with free_result */
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(stmtstr));
   check_stmt_rc(rc, stmt);
@@ -4096,6 +4142,9 @@ static int test_conc168(MYSQL *mysql)
   MYSQL_BIND bind;
   char buffer[100];
   int rc;
+
+  //https://jira.mariadb.org/browse/XPT-273
+  SKIP_XPAND;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS conc168");
   check_mysql_rc(rc, mysql);
@@ -4192,6 +4241,9 @@ static int test_conc177(MYSQL *mysql)
   MYSQL_BIND bind[2];
   const char *stmt_str= "SELECT a,b FROM t1";
   char buf1[128], buf2[128];
+
+  // https://jira.mariadb.org/browse/XPT-286
+  SKIP_XPAND
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
@@ -4799,7 +4851,7 @@ static int test_codbc138(MYSQL *mysql)
   {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR}
   },
 
-  {"SELECT '10:15:00'", 
+  {"SELECT '10:15:00'",
   {0,0,0, 10,15,0, 0,0, MYSQL_TIMESTAMP_TIME}
   },
   {"SELECT '10:15:01'",
@@ -4823,7 +4875,7 @@ static int test_codbc138(MYSQL *mysql)
   {"SELECT '-838:59:59'",
   {0,0,0, 838,59,59, 0, 1, MYSQL_TIMESTAMP_TIME},
   },
- 
+
   {"SELECT '00:60:00'",
   {0,0,0, 0,0,0, 0,0, MYSQL_TIMESTAMP_ERROR},
   },
@@ -4839,7 +4891,7 @@ static int test_codbc138(MYSQL *mysql)
   {"SELECT '1999-12-31 23:59:59.9999999'",
   {1999,12,31, 23,59,59, 999999, 0, MYSQL_TIMESTAMP_DATETIME},
   },
-  {"SELECT '00-08-11 8:46:40'", 
+  {"SELECT '00-08-11 8:46:40'",
   {2000,8,11, 8,46,40, 0,0, MYSQL_TIMESTAMP_DATETIME},
   },
   {"SELECT '1999-12-31 25:59:59.999999'",
@@ -4920,7 +4972,7 @@ static int test_conc344(MYSQL *mysql)
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
- 
+
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int, b int)");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO t1 VALUES (1,1), (2,2),(3,3),(4,4),(5,5)");
@@ -4957,7 +5009,7 @@ static int test_conc_fraction(MYSQL *mysql)
 
   for (i=0; i < 10; i++, frac=frac*10+i)
   {
-    unsigned long expected= 0;
+    unsigned int expected= frac;
     sprintf(query, "SELECT '2018-11-05 22:25:59.%ld'", frac);
 
     diag("%d: %s", i, query);
@@ -4983,11 +5035,15 @@ static int test_conc_fraction(MYSQL *mysql)
 
     diag("second_part: %ld", tm.second_part);
 
-    expected= i > 6 ? 123456 : frac * (unsigned int)powl(10, (6 - i));
+    while (expected && expected < 100000)
+      expected *= 10;
+    while (expected >= 1000000)
+      expected /= 10;
 
     if (tm.second_part != expected)
     {
-      diag("Error: tm.second_part=%ld expected=%ld", tm.second_part, expected);
+      diag("Error: tm.second_part=%ld expected=%d", tm.second_part, expected);
+      mysql_stmt_close(stmt);
       return FAIL;
     }
   }
@@ -5116,18 +5172,28 @@ static int test_maxparam(MYSQL *mysql)
   MYSQL_BIND* bind;
 
   bind = calloc(65535, sizeof *bind);
+  FAIL_UNLESS(bind, "Not enough memory");
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  if (rc)
+    free(bind);
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE t1 (a int)");
+  if (rc)
+    free(bind);
   check_mysql_rc(rc, mysql);
 
   buffer= calloc(1, mem);
+  if(!buffer)
+    free(bind);
+  FAIL_UNLESS(bind, "Not enough memory");
   strcpy(buffer, query);
   for (i=0; i < 65534.; i++)
     strcat(buffer, ",(?)");
   rc= mysql_stmt_prepare(stmt, SL(buffer));
+  if (rc)
+    free(bind);
   check_stmt_rc(rc, stmt);
 
   for (i=0; i < 65534; i++)
@@ -5137,9 +5203,13 @@ static int test_maxparam(MYSQL *mysql)
   }
 
   rc= mysql_stmt_bind_param(stmt, bind);
+  if (rc)
+    free(bind);
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
+  if (rc)
+    free(bind);
   check_stmt_rc(rc, stmt);
 
   FAIL_IF(mysql_stmt_affected_rows(stmt) != 65535, "Expected affected_rows=65535");
@@ -5186,7 +5256,7 @@ static int test_mdev_21920(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
-  return OK; 
+  return OK;
 }
 
 static int test_returning(MYSQL *mysql)
@@ -5302,12 +5372,79 @@ static int test_conc512(MYSQL *mysql)
   return OK;
 }
 
+static int test_conc525(MYSQL *mysql)
+{
+  FILE *fp;
+  MYSQL_STMT *stmt;
+  int rc;
+
+  rc= mysql_query(mysql, "create temporary table t1 (a blob)");
+  check_mysql_rc(rc, mysql);
+
+  /* create a dummy import file */
+  if (!(fp= fopen("./test.csv", "w")))
+  {
+    diag("couldn't create file './test.csv'");
+    return FAIL;
+  }
+  fprintf(fp, "1\n2\n");
+  fclose(fp);
+
+  /* Test: prepare and execute
+     should fail due to non-existing file */
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("LOAD DATA LOCAL INFILE './test.notexist' INTO table t1"));
+
+  if (rc && mysql_stmt_errno(stmt) == ER_UNSUPPORTED_PS)
+  {
+    diag("Server doesn't support LOAD LOCAL INFILE in binary protocol.");
+    mysql_stmt_close(stmt);
+    return SKIP;
+  }
+
+  rc= mysql_stmt_execute(stmt);
+  FAIL_IF(!rc, "Error expected (file does not exist)");
+
+  mysql_stmt_close(stmt);
+
+  /* Test: prepare and execute
+     2 rows should be inserted */
+  stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_stmt_prepare(stmt, SL("LOAD DATA LOCAL INFILE './test.csv' INTO table t1"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_affected_rows(stmt) != 2, "Expected 2 inserted rows");
+
+  mysql_stmt_close(stmt);
+  stmt= mysql_stmt_init(mysql);
+
+  /* Test: execute_direct
+     2 rows should be inserted */
+  rc= mariadb_stmt_execute_direct(stmt,  SL("LOAD DATA LOCAL INFILE './test.csv' INTO table t1"));
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_affected_rows(stmt) != 2, "Expected 2 inserted rows");
+
+  /* Cleanup */
+  mysql_stmt_close(stmt);
+  unlink("./test.csv");
+
+  return OK;
+}
+
 static int test_conc566(MYSQL *mysql)
 {
   int rc;
   MYSQL_STMT *stmt = mysql_stmt_init(mysql);
   unsigned long cursor = CURSOR_TYPE_READ_ONLY;
   const char* query= "call sp()";
+
+  SKIP_SKYSQL;
 
   rc= mysql_query(mysql,"drop procedure if exists sp");
   check_mysql_rc(rc, mysql);
@@ -5343,6 +5480,12 @@ static int test_mdev19838(MYSQL *mysql)
   MYSQL_STMT *stmt;
 
   SKIP_MAXSCALE;
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
 
   rc = mysql_query(mysql, "CREATE temporary TABLE mdev19838("
           "f1  char(36),"
@@ -5471,6 +5614,57 @@ static int test_mdev19838(MYSQL *mysql)
   return OK;
 }
 
+my_bool conc623_param_callback(void *data __attribute((unused)),
+                               MYSQL_BIND *bind __attribute((unused)),
+                               unsigned int row_nr __attribute((unused)))
+{
+  return 1;
+}
+
+static int test_conc623(MYSQL *mysql)
+{
+  int rc;
+  unsigned int paramcount= 1;
+  unsigned int array_size= 2;
+  MYSQL_BIND bind;
+
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a int)");
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CB_USER_DATA, mysql);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, &array_size);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &paramcount);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CB_PARAM, conc623_param_callback);
+  check_stmt_rc(rc, stmt);
+
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer_type= MYSQL_TYPE_LONG;
+  rc= mysql_stmt_bind_param(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_prepare(stmt, SL("INSERT INTO t1 VALUES (?)"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  if (!rc)
+  {
+    diag("Error expected from callback function");
+    mysql_stmt_close(stmt);
+    return FAIL;
+  }
+
+  diag("Error (expected) %s", mysql_stmt_error(stmt));
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 static int test_conc627(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
@@ -5497,12 +5691,14 @@ static int test_conc627(MYSQL *mysql)
 
 static int test_conc633(MYSQL *mysql)
 {
-  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_STMT *stmt;
   MYSQL *my= NULL;
   int ret= FAIL;
   int rc;
 
   SKIP_MYSQL(mysql);
+
+  stmt= mysql_stmt_init(mysql);
 
   if (!mariadb_stmt_execute_direct(stmt, SL("SÄLECT 1")))
   {
@@ -5521,7 +5717,7 @@ static int test_conc633(MYSQL *mysql)
   {
     diag("Error: expected stmt_id=-1");
     goto end;
-  }  
+  }
 
   if (!(my= test_connect(NULL)))
   {
@@ -5556,7 +5752,7 @@ static int test_conc633(MYSQL *mysql)
   {
     diag("Error: no stmt_id assigned");
     goto end;
-  }  
+  }
 
   rc= mysql_query(my, "UNLOCK TABLES");
   check_mysql_rc(rc, mysql);
@@ -5570,6 +5766,81 @@ end:
     mysql_close(my);
   mysql_stmt_close(stmt);
   return ret;
+}
+
+static int test_conc702(MYSQL *ma)
+{
+  MYSQL_STMT *stmt, *stmt2;
+  int rc;
+
+  diag("Server info %s\nClient info: %s",
+      mysql_get_server_info(ma), mysql_get_client_info());
+
+  rc= mysql_query(ma, "DROP PROCEDURE IF EXISTS p1");
+  check_mysql_rc(rc, ma);
+
+  rc= mysql_query(ma, "CREATE PROCEDURE p1() BEGIN"
+                  "  SELECT 1 FROM DUAL; "
+                  "END");
+  check_mysql_rc(rc, ma);
+
+  stmt= mysql_stmt_init(ma);
+
+  FAIL_IF(!stmt, "Could not allocate stmt");
+
+  rc= mysql_stmt_prepare(stmt, "CALL p1()", -1);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+
+  mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  // We've done everything w/ result and skip everything else
+
+  while (mysql_stmt_more_results(stmt)) {
+
+    mysql_stmt_next_result(stmt);
+    // state at this moment is MYSQL_STMT_WAITING_USE_OR_STORE. But there is no result,
+    // we can't store it. And there is no way to change it
+
+  }
+  // Now we are not closing it, for later use. For example it's been put to the cache
+  // Using connection freely - we haven't done anything wrong, "nothing is out of sync"
+
+  mysql_query(ma, "DROP PROCEDURE p1");
+  mysql_query(ma, "DROP PROCEDURE IF EXISTS p2");
+  mysql_query(ma, "CREATE PROCEDURE p2() "
+                  "BEGIN "
+                  "  SELECT 'Marten' FROM DUAL; "
+                  "  SELECT 'Zack' FROM DUAL; "
+                  "END");
+
+  stmt2= mysql_stmt_init(ma);
+
+  mysql_stmt_prepare(stmt2, "CALL p2()", -1);
+
+  mysql_stmt_execute(stmt2);
+
+  mysql_stmt_store_result(stmt2);
+
+  // I was initially wrong, this goes thru
+  check_stmt_rc(mysql_stmt_next_result(stmt2), stmt2);
+
+  // But we get error"Out of sync" set, if check
+  //  check_stmt_rc(mysql_stmt_next_result(stmt2), stmt2);
+
+  check_stmt_rc(mysql_stmt_store_result(stmt2), stmt2);
+
+  mysql_stmt_close(stmt2);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(ma, "DROP PROCEDURE p2");
+  check_mysql_rc(rc, ma);
+
+  return OK;
 }
 
 static int test_conc739(MYSQL *mysql)
@@ -5674,7 +5945,7 @@ static int test_conc762(MYSQL *mysql)
   my_bool is_null[2]= {1,1};
   unsigned long length[2]= {1,1};
 
-  rc= mysql_stmt_prepare(stmt, SL("SELECT NULL, 'foo'"));
+  rc= mysql_stmt_prepare(stmt, SL("SELECT NULL, 'foo' union select 'bar', NULL union select NULL, 'foobar'"));
   check_stmt_rc(rc, stmt);
 
   memset(&bind, 0, sizeof(MYSQL_BIND) * 2);
@@ -5692,15 +5963,39 @@ static int test_conc762(MYSQL *mysql)
 
   rc= mysql_stmt_bind_result(stmt, bind);
 
+
   mysql_stmt_fetch(stmt);
   FAIL_IF(is_null[0]==0, "Expected NULL value");
-  FAIL_IF(is_null[1]==1, "Expected non NULL value");
+  FAIL_IF(is_null[1]==1, "Expected non-NULL value");
   FAIL_IF(length[0]!=0, "Expected length=0");
   FAIL_IF(length[1]!=3, "Expected length=3");
 
-//  FAIL_IF(length[0] != 0, "Expected length=0");
-  
-//FAIL_IF(length[1] != 3, "Expected length=3)";
+  mysql_stmt_fetch(stmt);
+  FAIL_IF(is_null[1]==0, "Expected NULL value");
+  FAIL_IF(is_null[0]==1, "Expected non-NULL value");
+  FAIL_IF(length[1]!=0, "Expected length=0");
+  FAIL_IF(length[0]!=3, "Expected length=3");
+
+  mysql_stmt_fetch(stmt);
+  FAIL_IF(is_null[0]==0, "Expected NULL value");
+  FAIL_IF(is_null[1]==1, "Expected non-NULL value");
+  FAIL_IF(length[0]!=0, "Expected length=0");
+  FAIL_IF(length[1]!=6, "Expected length=3");
+
+  /* Also check with MYSQL_TYPE_NULL */
+  length[0]= 3;
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT NULL"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  mysql_stmt_fetch(stmt);
+  FAIL_IF(length[0]!=0, "Expected length=0");
 
   mysql_stmt_close(stmt);
   return OK;
@@ -5708,12 +6003,15 @@ static int test_conc762(MYSQL *mysql)
 
 
 struct my_tests_st my_tests[] = {
+  {"test_conc702", test_conc702, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc762", test_conc762, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc176", test_conc176, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc739", test_conc739, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc633", test_conc633, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc623", test_conc623, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc627", test_conc627, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_mdev19838", test_mdev19838, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc525", test_conc525, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc566", test_conc566, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc512", test_conc512, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc504", test_conc504, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

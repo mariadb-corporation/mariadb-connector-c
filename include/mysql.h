@@ -68,6 +68,12 @@ typedef struct st_ma_const_string
   size_t length;
 } MARIADB_CONST_STRING;
 
+typedef struct st_ma_const_data
+{
+  const unsigned char *data;
+  size_t length;
+} MARIADB_CONST_DATA;
+
 
 #ifndef ST_MA_USED_MEM_DEFINED
 #define ST_MA_USED_MEM_DEFINED
@@ -217,8 +223,9 @@ extern const char *SQLSTATE_UNKNOWN;
     MYSQL_OPT_MAX_ALLOWED_PACKET,
     MYSQL_OPT_NET_BUFFER_LENGTH,
     MYSQL_OPT_TLS_VERSION,
+    MYSQL_OPT_ZSTD_COMPRESSION_LEVEL,
 
-    /* MariaDB specific */
+    /* MariaDB-specific */
     MYSQL_PROGRESS_CALLBACK=5999,
     MYSQL_OPT_NONBLOCK,
     /* MariaDB Connector/C specific */
@@ -246,7 +253,12 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_OPT_MULTI_STATEMENTS,
     MARIADB_OPT_INTERACTIVE,
     MARIADB_OPT_PROXY_HEADER,
-    MARIADB_OPT_IO_WAIT
+    MARIADB_OPT_IO_WAIT,
+    MARIADB_OPT_SKIP_READ_RESPONSE,
+    MARIADB_OPT_RESTRICTED_AUTH,
+    MARIADB_OPT_RPL_REGISTER_REPLICA,
+    MARIADB_OPT_STATUS_CALLBACK,
+    MARIADB_OPT_SERVER_PLUGINS
   };
 
   enum mariadb_value {
@@ -283,7 +295,9 @@ extern const char *SQLSTATE_UNKNOWN;
     MARIADB_CONNECTION_SERVER_STATUS,
     MARIADB_CONNECTION_SERVER_CAPABILITIES,
     MARIADB_CONNECTION_EXTENDED_SERVER_CAPABILITIES,
-    MARIADB_CONNECTION_CLIENT_CAPABILITIES
+    MARIADB_CONNECTION_CLIENT_CAPABILITIES,
+    MARIADB_CONNECTION_BYTES_READ,
+    MARIADB_CONNECTION_BYTES_SENT
   };
 
   enum mysql_status { MYSQL_STATUS_READY,
@@ -854,7 +868,7 @@ struct st_mariadb_methods {
 					   const char *db, unsigned int port, const char *unix_socket, unsigned long clientflag);
   void (*db_close)(MYSQL *mysql);
   int (*db_command)(MYSQL *mysql,enum enum_server_command command, const char *arg,
-                    size_t length, my_bool skipp_check, void *opt_arg);
+                    size_t length, my_bool skip_check, void *opt_arg);
   void (*db_skip_result)(MYSQL *mysql);
   int (*db_read_query_result)(MYSQL *mysql);
   MYSQL_DATA *(*db_read_rows)(MYSQL *mysql,MYSQL_FIELD *fields, unsigned int field_count);
@@ -872,12 +886,15 @@ struct st_mariadb_methods {
   void (*set_error)(MYSQL *mysql, unsigned int error_nr, const char *sqlstate, const char *format, ...);
   void (*invalidate_stmts)(MYSQL *mysql, const char *function_name);
   struct st_mariadb_api *api;
+  int (*db_read_execute_response)(MYSQL_STMT *stmt);
+  unsigned char* (*db_execute_generate_request)(MYSQL_STMT *stmt, size_t *request_len, my_bool internal);
 };
 
 /* synonyms/aliases functions */
 #define mysql_reload(mysql) mysql_refresh((mysql),REFRESH_GRANT)
 #define mysql_library_init mysql_server_init
 #define mysql_library_end mysql_server_end
+#define mariadb_connect(hdl, conn_str) mysql_real_connect((hdl),(conn_str), NULL, NULL, NULL, 0, NULL, 0)
 
 /* new api functions */
 

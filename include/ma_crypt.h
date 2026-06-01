@@ -45,10 +45,11 @@
 #define MA_MAX_HASH_SIZE 64
 /** \typedef MRL hash context */
 
-#if defined(_WIN32)
+#if defined(HAVE_WINCRYPT)
 typedef void MA_HASH_CTX;
 #elif defined(HAVE_OPENSSL)
-typedef void MA_HASH_CTX;
+#include <openssl/evp.h>
+typedef EVP_MD_CTX MA_HASH_CTX;
 #elif defined(HAVE_GNUTLS)
 typedef struct {
   void *ctx;

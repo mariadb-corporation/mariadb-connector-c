@@ -65,7 +65,8 @@ static int client_use_result(MYSQL *mysql)
   result= mysql_use_result(mysql);
   FAIL_IF(!result, "Invalid result set");
 
-  /* since we use use result, we shouldn't be able execute other api calls */
+  /* since we use mysql_use_result (=unbuffered), we shouldn't be
+     able to execute other api calls */
   rc= mysql_ping(mysql);
   FAIL_IF(!rc, "Error expected");
 
@@ -656,6 +657,9 @@ static int test_field_flags(MYSQL *mysql)
   MYSQL_RES    *result;
   MYSQL_FIELD  *field;
 
+  // https://jira.mariadb.org/browse/XPT-287
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_field_flags");
   check_mysql_rc(rc, mysql);
 
@@ -1057,7 +1061,7 @@ static int test_conc160(MYSQL *mysql)
   result= mysql_store_result(mysql);
   field= mysql_fetch_field(result);
 
-  FAIL_UNLESS(field->flags & NUM_FLAG, "Numceric flag not set");
+  FAIL_UNLESS(field->flags & NUM_FLAG, "Numeric flag not set");
 
   mysql_free_result(result);
   return OK;

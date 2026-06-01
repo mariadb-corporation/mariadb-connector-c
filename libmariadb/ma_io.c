@@ -56,7 +56,7 @@ MA_FILE *ma_open(const char *location, const char *mode, MYSQL *mysql)
     }
   }
 #ifdef _WIN32
-  /* See CONC-44: we need to support non ascii filenames too, so we convert
+  /* See CONC-44: we need to support non-ascii filenames too, so we convert
      current character set to wchar_t and try to open the file via _wsopen */
   else
    {
@@ -165,11 +165,9 @@ int ma_feof(MA_FILE *file)
   switch (file->type) {
   case MA_FILE_LOCAL:
     return feof((FILE *)file->ptr);
-    break;
 #ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:
     return rio_plugin->methods->mfeof(file);
-    break;
 #endif
   default:
     return -1;
@@ -188,11 +186,9 @@ size_t ma_read(void *ptr, size_t size, size_t nmemb, MA_FILE *file)
   case MA_FILE_LOCAL:
     s= fread(ptr, size, nmemb, (FILE *)file->ptr);
     return s;
-    break;
 #ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:
     return rio_plugin->methods->mread(ptr, size, nmemb, file);
-    break;
 #endif
   default:
     return -1;
@@ -209,11 +205,9 @@ char *ma_gets(char *ptr, size_t size, MA_FILE *file)
   switch (file->type) {
   case MA_FILE_LOCAL:
     return fgets(ptr, (int)size, (FILE *)file->ptr);
-    break;
 #ifdef HAVE_REMOTEIO
   case MA_FILE_REMOTE:
     return rio_plugin->methods->mgets(ptr, size, file);
-    break;
 #endif
   default:
     return NULL;

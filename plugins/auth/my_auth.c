@@ -163,13 +163,19 @@ static int send_change_user_packet(MCPVIO_EXT *mpvio,
   {
     if (mysql->client_flag & CLIENT_SECURE_CONNECTION)
     {
-      DBUG_ASSERT(data_len <= 255);
-      if (data_len > 255)
+      if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)
       {
-        my_set_error(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
-        goto error;
+        end= (char *)mysql_net_store_length((uchar *)end, data_len);
       }
-      *end++= data_len;
+      else
+      {
+        if (data_len > 255)
+        {
+          my_set_error(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
+          goto error;
+        }
+        *end++= data_len;
+      }
     }
     else
     {
@@ -208,6 +214,11 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
   char *buff, *end;
   size_t conn_attr_len= (mysql->options.extension) ? 
                          mysql->options.extension->connect_attrs_len : 0;
+  size_t proxy_header_len= 0;
+  char *proxy_header=
+      (mysql->options.extension) ? mysql->options.extension->proxy_header : NULL;
+  if (proxy_header)
+    proxy_header_len= mysql->options.extension->proxy_header_len;
 
   /* see end= buff+32 below, fixed size of the packet is 32 bytes */
   buff= malloc(33 + USERNAME_LENGTH + data_len + NAME_LEN + NAME_LEN + conn_attr_len + 9);
@@ -263,12 +274,37 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   /* Remove options that server doesn't support */
   mysql->client_flag= mysql->client_flag &
-                       (~(CLIENT_COMPRESS | CLIENT_SSL | CLIENT_PROTOCOL_41) 
+                       (~(CLIENT_COMPRESS | CLIENT_ZSTD_COMPRESSION | CLIENT_SSL | CLIENT_PROTOCOL_41) 
                        | mysql->server_capabilities);
 
-#ifndef HAVE_COMPRESS
-  mysql->client_flag&= ~CLIENT_COMPRESS;
-#endif
+  /* save compress for reconnect */
+  if (mysql->client_flag & CLIENT_COMPRESS)
+    mysql->options.compress= 1;
+
+  if (mysql->options.compress && (mysql->server_capabilities & CLIENT_COMPRESS))
+  {
+    /* For MySQL 8.0 we will use zstd compression */
+    if (mysql->server_capabilities & CLIENT_ZSTD_COMPRESSION)
+    {
+      if ((compression_plugin(net) = (MARIADB_COMPRESSION_PLUGIN *)mysql_client_find_plugin(mysql, 
+                                    _mariadb_compression_algorithm_str(COMPRESSION_ZSTD),
+                                    MARIADB_CLIENT_COMPRESSION_PLUGIN)))
+      {
+        mysql->client_flag|= CLIENT_ZSTD_COMPRESSION;
+        mysql->client_flag&= ~CLIENT_COMPRESS;
+      }
+    }
+    /* load zlib compression as default */
+    if (!compression_plugin(net))
+    {
+      if ((compression_plugin(net) = (MARIADB_COMPRESSION_PLUGIN *)mysql_client_find_plugin(mysql, 
+                                    _mariadb_compression_algorithm_str(COMPRESSION_ZLIB),
+                                    MARIADB_CLIENT_COMPRESSION_PLUGIN)))
+      {
+        mysql->client_flag|= CLIENT_COMPRESS;
+      }
+    }
+  }
 
   if (mysql->client_flag & CLIENT_PROTOCOL_41)
   {
@@ -315,6 +351,14 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       Send mysql->client_flag, max_packet_size - unencrypted otherwise
       the server does not know we want to do SSL
     */
+    if (proxy_header_len)
+    {
+      ma_net_write_buff(net, proxy_header, proxy_header_len);
+      /* Reset proxy header */
+      proxy_header_len= 0;
+      proxy_header= NULL;
+    }
+
     if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
     {
       my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
@@ -376,6 +420,24 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   end= ma_send_connect_attr(mysql, (unsigned char *)end);
 
+  /* MySQL 8.0: 
+     If zstd compresson was specified, the server expects
+     1 byte for compression level
+  */
+  if (mysql->client_flag & CLIENT_ZSTD_COMPRESSION)
+  {
+    uchar compression_level= 3;
+    if (mysql->options.extension &&
+        mysql->options.extension->zstd_compression_level >= 1 &&
+        mysql->options.extension->zstd_compression_level <= 20)
+    {
+        compression_level= mysql->options.extension->zstd_compression_level;
+    }
+    *end++= compression_level;
+  }
+
+  if (proxy_header_len)
+    ma_net_write_buff(net, proxy_header, proxy_header_len);
   /* Write authentication package */
   if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
   {
@@ -580,6 +642,7 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   ulong		pkt_length;
   int           res;
 
+
   /* determine the default/initial plugin to use */
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
   {
@@ -621,6 +684,17 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
 
 retry:
   mpvio.plugin= auth_plugin;
+
+  if (auth_plugin_name &&
+     mysql->options.extension &&
+     mysql->options.extension->restricted_auth)
+  {
+    if (!strstr(mysql->options.extension->restricted_auth, auth_plugin_name))
+    {
+      my_set_error(mysql, CR_PLUGIN_NOT_ALLOWED, SQLSTATE_UNKNOWN, 0, data_plugin);
+      return 1;
+    }
+  }
 
   mysql->net.read_pos[0]= 0;
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);

@@ -100,6 +100,13 @@ SECURITY_STATUS ma_schannel_handshake_loop(MARIADB_PVIO *pvio, my_bool InitialRe
     return SEC_E_INSUFFICIENT_MEMORY;
 
   cbIoBuffer = 0;
+
+  if (!InitialRead && pExtraData->cbBuffer)
+  {
+    memcpy(IoBuffer, pExtraData->pvBuffer,pExtraData->cbBuffer);
+    cbIoBuffer= pExtraData->cbBuffer;
+  }
+
   fDoRead = InitialRead;
 
   /* handshake loop: We will leave if handshake is finished
@@ -288,7 +295,7 @@ SECURITY_STATUS ma_schannel_client_handshake(MARIADB_TLS *ctls)
   pvio= ctls->pvio;
   sctx= (SC_CTX *)ctls->ssl;
 
-  /* Initialie securifty context */
+  /* Initialize security context */
   BuffersOut.BufferType= SECBUFFER_TOKEN;
   BuffersOut.cbBuffer= 0;
   BuffersOut.pvBuffer= NULL;
@@ -445,7 +452,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
     } while (sRet == SEC_E_INCOMPLETE_MESSAGE); /* Continue reading until full message arrives */
 
 
-    if (sRet != SEC_E_OK)
+    if (sRet != SEC_E_OK && sRet != SEC_I_RENEGOTIATE)
     {
       ma_schannel_set_sec_error(pvio, sRet);
       return sRet;
@@ -462,7 +469,7 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
     }
 
 
-    if (sctx->dataBuf.cbBuffer)
+    if (sctx->dataBuf.cbBuffer || sRet == SEC_I_RENEGOTIATE)
     {
       assert(sctx->dataBuf.pvBuffer);
       /*
@@ -470,12 +477,13 @@ SECURITY_STATUS ma_schannel_read_decrypt(MARIADB_PVIO *pvio,
         Store the rest (if any) to be processed next time.
       */
       nbytes = MIN(sctx->dataBuf.cbBuffer, ReadBufferSize);
-      memcpy((char *)ReadBuffer, sctx->dataBuf.pvBuffer, nbytes);
+      if (nbytes)
+        memcpy((char *)ReadBuffer, sctx->dataBuf.pvBuffer, nbytes);
       sctx->dataBuf.cbBuffer -= (unsigned long)nbytes;
       sctx->dataBuf.pvBuffer = (char *)sctx->dataBuf.pvBuffer + nbytes;
 
       *DecryptLength = (DWORD)nbytes;
-      return SEC_E_OK;
+      return sRet;
     }
     // No data buffer, loop
   }
@@ -622,6 +630,8 @@ int ma_tls_get_protocol_version(MARIADB_TLS *ctls)
     return PROTOCOL_TLS_1_1;
   case SP_PROT_TLS1_2_CLIENT:
     return PROTOCOL_TLS_1_2;
+  case SP_PROT_TLS1_3_CLIENT:
+    return PROTOCOL_TLS_1_3;
   default:
     return -1;
   }

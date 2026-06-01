@@ -43,11 +43,14 @@ struct my_option_st opt_bug8378[] = {
 
 int bug_8378(MYSQL *mysql) {
   int rc, len;
-  char out[9], buf[256];
+  char out[128], buf[256];
   MYSQL_RES *res;
   MYSQL_ROW row;
 
-  len= mysql_real_escape_string(mysql, out, TEST_BUG8378_IN, 4);
+  /* MXS-4898: MaxScale sends utf8mb4 in handshake OK packet */
+  SKIP_MAXSCALE;
+
+  len= mysql_real_escape_string(mysql, out, TEST_BUG8378_IN, sizeof(TEST_BUG8378_IN)-1);
   FAIL_IF(memcmp(out, TEST_BUG8378_OUT, len), "wrong result");
 
   sprintf(buf, "SELECT '%s' FROM DUAL", TEST_BUG8378_OUT);
@@ -57,7 +60,46 @@ int bug_8378(MYSQL *mysql) {
 
   if ((res= mysql_store_result(mysql))) {
     row= mysql_fetch_row(res);
-    if (memcmp(row[0], TEST_BUG8378_IN, 4)) {
+    if (memcmp(row[0], TEST_BUG8378_IN, sizeof(TEST_BUG8378_IN)-1)) {
+      mysql_free_result(res);
+      return FAIL;
+    }
+    mysql_free_result(res);
+  } else
+    return FAIL;
+
+  return OK;
+}
+
+#define TEST_BUG8378a_IN  "\xa1' + 10 -- "
+#define TEST_BUG8378a_OUT "\\\xa1\\' + 10 -- "
+
+/* set connection options */
+struct my_option_st opt_bug8378a[] = {
+  {MYSQL_SET_CHARSET_NAME, (char *) "big5"},
+  {0, NULL}
+};
+
+int bug_8378a(MYSQL *mysql) {
+  int rc, len;
+  char out[128], buf[256];
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+
+  /* MXS-4898: MaxScale sends utf8mb4 in handshake OK packet */
+  SKIP_MAXSCALE;
+
+  len= mysql_real_escape_string(mysql, out, TEST_BUG8378a_IN, sizeof(TEST_BUG8378a_IN)-1);
+  FAIL_IF(memcmp(out, TEST_BUG8378a_OUT, len), "wrong result");
+
+  sprintf(buf, "SELECT '%s' FROM DUAL", out);
+
+  rc= mysql_query(mysql, buf);
+  check_mysql_rc(rc, mysql);
+
+  if ((res= mysql_store_result(mysql))) {
+    row= mysql_fetch_row(res);
+    if (memcmp(row[0], TEST_BUG8378a_IN, sizeof(TEST_BUG8378a_IN)-1)) {
       mysql_free_result(res);
       return FAIL;
     }
@@ -71,14 +113,16 @@ int bug_8378(MYSQL *mysql) {
 int test_client_character_set(MYSQL *mysql)
 {
   MY_CHARSET_INFO cs;
-  char *csname= (char*) "utf8";
+  char *csname= (char*) "latin2";
   char *csdefault= (char*)mysql_character_set_name(mysql);
+
 
   FAIL_IF(mysql_set_character_set(mysql, csname), mysql_error(mysql));
 
   mysql_get_character_set_info(mysql, &cs);
 
-  FAIL_IF(strcmp(cs.csname, "utf8") || strcmp(cs.name, "utf8_general_ci"), "Character set != UTF8");
+  FAIL_IF(strcmp(cs.csname, "latin2") || strcmp(cs.name, "latin2_general_ci"),
+          "Character set != latin2");
   FAIL_IF(mysql_set_character_set(mysql, csdefault), mysql_error(mysql));
 
   return OK;
@@ -558,7 +602,8 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Switch client character set. */
 
-  FAIL_IF(mysql_set_character_set(mysql, "utf8"), "Setting cs to utf8 failed");
+  FAIL_IF(mysql_set_character_set(mysql, "ascii"),
+          "Setting cs to ascii failed");
 
   /* Retrieve character set information. */
 
@@ -574,14 +619,11 @@ static int test_bug30472(MYSQL *mysql)
       2) new character set is different from the original one.
   */
 
-  FAIL_UNLESS(strncmp(character_set_name_2, "utf8", 4) == 0, "cs_name != utf8");
-  FAIL_UNLESS(strncmp(character_set_client_2, "utf8", 4) == 0, "cs_client != utf8");
-  FAIL_UNLESS(strncmp(character_set_results_2, "utf8", 4) == 0, "cs_result != ut8");
-  if (mariadb_connection(mysql) && mysql_get_server_version(mysql) < 100600) {
-    FAIL_UNLESS(strcmp(collation_connnection_2, "utf8_general_ci") == 0, "collation != utf8_general_ci");
-  } else {
-    FAIL_UNLESS(strcmp(collation_connnection_2, "utf8mb3_general_ci") == 0, "collation != utf8_general_ci");
-  }
+  FAIL_UNLESS(strcmp(character_set_name_2, "ascii") == 0, "cs_name != ascii");
+  FAIL_UNLESS(strcmp(character_set_client_2, "ascii") == 0, "cs_client != ascii");
+  FAIL_UNLESS(strcmp(character_set_results_2, "ascii") == 0, "cs_result != ascii");
+  FAIL_UNLESS(strcmp(collation_connnection_2, "ascii_general_ci") == 0,
+              "collation != ascii_general_ci");
 
   diag("%s %s", character_set_name_1, character_set_name_2);
   FAIL_UNLESS(strcmp(character_set_name_1, character_set_name_2) != 0, "cs_name1 = cs_name2");
@@ -612,7 +654,7 @@ static int test_bug30472(MYSQL *mysql)
 
   /* Change connection-default character set in the client. */
 
-  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "utf8");
+  mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "latin2");
 
   /*
     Call mysql_change_user() in order to check that new connection will
@@ -631,16 +673,12 @@ static int test_bug30472(MYSQL *mysql)
                                  collation_connnection_4);
 
   /* Check that we have UTF8 on the server and on the client. */
-  FAIL_UNLESS(strcmp(character_set_name_4, "utf8") == 0, "cs_name != utf8");
-  if (mariadb_connection(mysql) && mysql_get_server_version(mysql) < 100600) {
-    FAIL_UNLESS(strcmp(character_set_client_4, "utf8") == 0, "cs_client != utf8");
-    FAIL_UNLESS(strcmp(character_set_results_4, "utf8") == 0, "cs_result != utf8");
-    FAIL_UNLESS(strcmp(collation_connnection_4, "utf8_general_ci") == 0, "collation_connection != utf8_general_ci");
-  } else {
-    FAIL_UNLESS(strcmp(character_set_client_4, "utf8mb3") == 0, "cs_client != utf8");
-    FAIL_UNLESS(strcmp(character_set_results_4, "utf8mb3") == 0, "cs_result != utf8");
-    FAIL_UNLESS(strcmp(collation_connnection_4, "utf8mb3_general_ci") == 0, "collation_connection != utf8_general_ci");
-  }
+
+  FAIL_UNLESS(strcmp(character_set_name_4, "latin2") == 0, "cs_name != latin2");
+  FAIL_UNLESS(strcmp(character_set_client_4, "latin2") == 0, "cs_client != latin2");
+  FAIL_UNLESS(strcmp(character_set_results_4, "latin2") == 0, "cs_result != latin2");
+  FAIL_UNLESS(strcmp(collation_connnection_4, "latin2_general_ci") == 0,
+              "collation_connection != latin2_general_ci");
 
   /* That's it. Cleanup. */
 
@@ -769,8 +807,9 @@ static int charset_auto(MYSQL *my __attribute__((unused)))
   csname1= mysql_character_set_name(mysql);
   diag("Character set: %s os charset: %s", csname1, osname);
 
-  FAIL_IF(strcmp(osname, csname1), "character set is not os character set");
-
+  FAIL_IF(!strcasecmp(osname,"utf8") ? strncmp(osname, csname1, 4) :
+                                       strcmp(osname, csname1),
+          "character set is not os character set");
   if (strcmp(osname, "utf8"))
   {
     rc= mysql_set_character_set(mysql, "utf8");
@@ -778,7 +817,6 @@ static int charset_auto(MYSQL *my __attribute__((unused)))
 
     csname2= mysql_character_set_name(mysql);
     diag("Character set: %s", csname2);
-
     FAIL_IF(!strcmp(csname2, csname1), "Wrong charset: expected utf8");
 
     rc= mysql_set_character_set(mysql, "auto");
@@ -799,14 +837,53 @@ static int test_conc223(MYSQL *mysql)
   MYSQL_RES *res;
   MYSQL_ROW row;
   int found= 0;
+  int mdev27266= 0;
+  int unsupported[]=
+    {
+      309, /* utf8mb4_0900_bin added in 11.4. Is an alias for utf8mb4_bin */
+      579, /* utf8mb3_general1400_as_ci added in 11.5 */
+      611, /* utf8mb4_general1400_as_ci added in 11.5 */
+      0
+    };
 
   SKIP_MYSQL(mysql);
+
   if (mariadb_connection(mysql) && mysql_get_server_version(mysql) >= 110400)
   {
     diag("C/C 3.3 doesn't support all collations from 11.4 and above");
     return SKIP;
   }
-  rc= mysql_query(mysql, "SELECT ID, CHARACTER_SET_NAME, COLLATION_NAME FROM INFORMATION_SCHEMA.COLLATIONS");
+
+  /*
+    Test if we're running against an MDEV-27266 server.
+    It can be detected by the presense of the FULL_COLLATION_NAME
+    column in I_S.COLLATION_CHARACTER_SET_APPLICABILITY.
+  */
+  rc= mysql_query(mysql,
+        "SELECT COUNT(*) "
+        "FROM INFORMATION_SCHEMA.COLUMNS "
+        "WHERE COLUMN_NAME='FULL_COLLATION_NAME' "
+        "  AND TABLE_NAME='COLLATION_CHARACTER_SET_APPLICABILITY'");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  if ((row= mysql_fetch_row(res)))
+    mdev27266= atoi(row[0]);
+  mysql_free_result(res);
+  diag("MDEV-27266 aware server: %d", mdev27266);
+
+  /*
+    Now get the list of collations either from I_S.COLLATIONS
+    or I_S.COLLATION_CHARACTER_SET_APPLICABILITY,
+    depending on the MDEV-27266 server awareness.
+  */
+  if (mdev27266)
+    rc= mysql_query(mysql,
+          "SELECT ID, CHARACTER_SET_NAME, FULL_COLLATION_NAME "
+          "FROM INFORMATION_SCHEMA.COLLATION_CHARACTER_SET_APPLICABILITY");
+  else
+    rc= mysql_query(mysql,
+         "SELECT ID, CHARACTER_SET_NAME, COLLATION_NAME "
+         "FROM INFORMATION_SCHEMA.COLLATIONS");
   check_mysql_rc(rc, mysql);
 
   res= mysql_store_result(mysql);
@@ -819,17 +896,26 @@ static int test_conc223(MYSQL *mysql)
       id= atoi(row[0]);
       if (!mariadb_get_charset_by_nr(id))
       {
-        diag("%04d %s %s", id, row[1], row[2]);
-        found++;
+        int ok= 0;
+        for (int j=0; unsupported[j]; j++)
+        {
+          if (unsupported[j] == id)
+          {
+            ok= 1;
+            break;
+          }
+        }
+        if (!ok)
+        {
+          found++;
+          diag("character set %d not found", id);
+        }
       }
     }
   }
   mysql_free_result(res);
   if (found)
-  {
-    diag("%d character sets/collations not found", found);
     return FAIL;
-  }
   return OK;
 }
 
@@ -837,6 +923,7 @@ struct my_tests_st my_tests[] = {
   {"test_conc223", test_conc223, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"charset_auto", charset_auto, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"bug_8378: mysql_real_escape with gbk", bug_8378, TEST_CONNECTION_NEW, 0,  opt_bug8378,  NULL},
+  {"bug_8378a: mysql_real_escape with big5", bug_8378a, TEST_CONNECTION_NEW, 0,  opt_bug8378a,  NULL},
   {"test_client_character_set", test_client_character_set, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bug_10214: mysql_real_escape with NO_BACKSLASH_ESCAPES", bug_10214, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_escaping", test_escaping, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL}, 

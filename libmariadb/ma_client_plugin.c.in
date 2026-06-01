@@ -61,6 +61,7 @@ static uint valid_plugins[][2]= {
   {MARIADB_CLIENT_TRACE_PLUGIN, MARIADB_CLIENT_TRACE_PLUGIN_INTERFACE_VERSION},
   {MARIADB_CLIENT_REMOTEIO_PLUGIN, MARIADB_CLIENT_REMOTEIO_PLUGIN_INTERFACE_VERSION},
   {MARIADB_CLIENT_CONNECTION_PLUGIN, MARIADB_CLIENT_CONNECTION_PLUGIN_INTERFACE_VERSION},
+  {MARIADB_CLIENT_COMPRESSION_PLUGIN, MARIADB_CLIENT_COMPRESSION_PLUGIN_INTERFACE_VERSION},
   {0, 0}
 };
 
@@ -246,6 +247,12 @@ static void load_env_plugins(MYSQL *mysql)
   free_env= strdup(s);
   plugs= s= free_env;
 
+  if (!free_env)
+  {
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+    return;
+  }
+
   do {
     if ((s= strchr(plugs, ';')))
       *s= '\0';
@@ -301,7 +308,7 @@ int mysql_client_plugin_init()
 /**
   Deinitializes the client plugin layer.
 
-  Unloades all client plugins and frees any associated resources.
+  Unloads all client plugins and frees any associated resources.
 */
 
 void mysql_client_plugin_deinit()

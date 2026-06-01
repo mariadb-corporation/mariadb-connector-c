@@ -1,5 +1,5 @@
 /* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
-                 2016 MariaDB Corporation AB
+                 2016, 2022 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -16,27 +16,48 @@
    Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
    MA 02111-1301, USA */
 
-/* Written by Sinisa Milivojevic <sinisa@coresinc.com> */
+/* Initially Written by Sinisa Milivojevic <sinisa@coresinc.com> */
 
 #include <ma_global.h>
 #ifdef HAVE_COMPRESS
+#include <mysql.h>
+#include <ma_common.h>
 #include <ma_sys.h>
 #include <ma_string.h>
-#include <zlib.h>
 
+const char *compression_algorithms[] =
+{
+  "none",
+  "zlib",
+  "zstd",
+  "unknown"
+};
+
+const char *_mariadb_compression_algorithm_str(enum enum_ma_compression_algorithm algorithm)
+{
+  switch(algorithm) {
+    case COMPRESSION_NONE:
+    case COMPRESSION_ZLIB:
+    case COMPRESSION_ZSTD:
+      return compression_algorithms[algorithm] ;
+    default:
+      return compression_algorithms[COMPRESSION_UNKNOWN];
+  }
+}
 /*
 ** This replaces the packet with a compressed packet
 ** Returns 1 on error
 ** *complen is 0 if the packet wasn't compressed
 */
 
-my_bool _mariadb_compress(unsigned char *packet, size_t *len, size_t *complen)
+my_bool _mariadb_compress(NET *net, unsigned char *packet, size_t *len, size_t *complen)
 {
-  if (*len < MIN_COMPRESS_LENGTH)
+  if (*len < MIN_COMPRESS_LENGTH ||
+      !compression_plugin(net))
     *complen=0;
   else
   {
-    unsigned char *compbuf=_mariadb_compress_alloc(packet,len,complen);
+    unsigned char *compbuf=_mariadb_compress_alloc(net,packet,len,complen);
     if (!compbuf)
       return *complen ? 0 : 1;
     memcpy(packet,compbuf,*len);
@@ -45,37 +66,39 @@ my_bool _mariadb_compress(unsigned char *packet, size_t *len, size_t *complen)
   return 0;
 }
 
-
-unsigned char *_mariadb_compress_alloc(const unsigned char *packet, size_t *len, size_t *complen)
+unsigned char *_mariadb_compress_alloc(NET *net, const unsigned char *packet, size_t *len, size_t *complen)
 {
   unsigned char *compbuf;
   *complen =  *len * 120 / 100 + 12;
+
   if (!(compbuf = (unsigned char *) malloc(*complen)))
     return 0;					/* Not enough memory */
-  if (compress((Bytef*) compbuf,(ulong *) complen, (Bytef*) packet,
-	       (uLong) *len ) != Z_OK)
+
+  if (compression_plugin(net)->compress(compression_ctx(net), (void *)compbuf, complen, (void *)packet, *len))
   {
     free(compbuf);
     return 0;
   }
+
   if (*complen >= *len)
   {
     *complen=0;
     free(compbuf);
     return 0;
   }
+
   swap(size_t,*len,*complen);			/* *len is now packet length */
   return compbuf;
 }
 
-my_bool _mariadb_uncompress (unsigned char *packet, size_t *len, size_t *complen)
+my_bool _mariadb_uncompress (NET *net, unsigned char *packet, size_t *len, size_t *complen)
 {
   if (*complen)					/* If compressed */
   {
     unsigned char *compbuf = (unsigned char *) malloc (*complen);
     if (!compbuf)
       return 1;					/* Not enough memory */
-    if (uncompress((Bytef*) compbuf, (uLongf *)complen, (Bytef*) packet, (uLongf)*len) != Z_OK)
+    if (compression_plugin(net)->decompress(compression_ctx(net), compbuf, complen, packet, len))
     {						/* Probably wrong packet */
       free(compbuf);
       return 1;

@@ -73,7 +73,7 @@ ulong net_buffer_length= 8192;	/* Default length. Enlarged if necessary */
  ** can't normally do this the client should have a bigger max-buffer.
  */
 
-static int ma_net_write_buff(NET *net,const char *packet, size_t len);
+int ma_net_write_buff(NET *net,const char *packet, size_t len);
 
 
 /* Init with packet info */
@@ -246,7 +246,7 @@ int ma_net_write_command(NET *net, uchar command,
 }
 
 
-static int ma_net_write_buff(NET *net,const char *packet, size_t len)
+int ma_net_write_buff(NET *net,const char *packet, size_t len)
 {
   size_t left_length;
 
@@ -320,7 +320,7 @@ int ma_net_real_write(NET *net, const char *packet, size_t len)
     }
     memcpy(b+header_length,packet,len);
 
-    if (_mariadb_compress((unsigned char*) b+header_length,&len,&complen))
+    if (_mariadb_compress(net, (unsigned char*) b+header_length,&len,&complen))
     {
       complen=0;
     }
@@ -362,7 +362,7 @@ int ma_net_real_write(NET *net, const char *packet, size_t len)
 }
 
 /*****************************************************************************
- ** Read something from server/clinet
+ ** Read something from server/client
  *****************************************************************************/
 static ulong ma_real_read(NET *net, size_t *complen)
 {
@@ -381,7 +381,7 @@ static ulong ma_real_read(NET *net, size_t *complen)
   {
     while (remain > 0)
     {
-      /* First read is done with non blocking mode */
+      /* First read is done with non-blocking mode */
       if ((length=ma_pvio_cache_read(net->pvio, pos,remain)) <= 0L)
       {
         len= packet_error;
@@ -559,7 +559,7 @@ ulong ma_net_read(NET *net)
 
       if ((packet_length = ma_real_read(net,(size_t *)&complen)) == packet_error)
         return packet_error;
-      if (_mariadb_uncompress((unsigned char*) net->buff + net->where_b, &packet_length, &complen))
+      if (_mariadb_uncompress(net, (unsigned char*) net->buff + net->where_b, &packet_length, &complen))
       {
         net->error=2;			/* caller will close socket */
         net->pvio->set_error(net->pvio->mysql, CR_ERR_NET_UNCOMPRESS, SQLSTATE_UNKNOWN, 0);

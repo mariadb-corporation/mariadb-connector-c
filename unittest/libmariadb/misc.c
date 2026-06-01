@@ -40,6 +40,7 @@ static int test_bug28075(MYSQL *mysql)
 
   SKIP_SKYSQL;
   SKIP_MAXSCALE;
+  SKIP_XPAND;
 
   rc= mysql_dump_debug_info(mysql);
   check_mysql_rc(rc, mysql);
@@ -242,6 +243,9 @@ static int test_frm_bug(MYSQL *mysql)
   char       test_frm[1024];
   int        rc;
 
+  SKIP_MYSQL(mysql);
+  SKIP_XPAND;
+
   mysql_autocommit(mysql, TRUE);
 
   rc= mysql_query(mysql, "drop table if exists test_frm_bug");
@@ -283,6 +287,8 @@ static int test_frm_bug(MYSQL *mysql)
   }
 
   rc= mysql_query(mysql, "SHOW TABLE STATUS like 'test_frm_bug'");
+
+  fclose(test_file);
   check_mysql_rc(rc, mysql);
 
   result= mysql_store_result(mysql);
@@ -303,7 +309,6 @@ static int test_frm_bug(MYSQL *mysql)
   mysql_free_result(result);
   mysql_stmt_close(stmt);
 
-  fclose(test_file);
   mysql_query(mysql, "drop table if exists test_frm_bug");
   unlink(test_frm);
   return OK;
@@ -619,6 +624,8 @@ static int test_wl4166_4(MYSQL *mysql)
   char buf1[16], buf2[16];
   ulong buf1_len, buf2_len;
 
+  SKIP_XPAND;
+
   if (mysql_get_server_version(mysql) < 50100) {
     diag("Test requires MySQL Server version 5.1 or above");
     return SKIP;
@@ -786,6 +793,9 @@ static int test_bug49694(MYSQL *mysql)
   SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
 
+  /* XPT-600: local_infile variable not supported */
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "select @@LOCAL_INFILE");
   check_mysql_rc(rc, mysql);
   res= mysql_store_result(mysql);
@@ -839,6 +849,7 @@ static int test_conc49(MYSQL *mysql)
 
   SKIP_LOAD_INFILE_DISABLE;
   SKIP_SKYSQL;
+  SKIP_XPAND;
 
   rc= mysql_query(mysql, "select @@LOCAL_INFILE");
   check_mysql_rc(rc, mysql);
@@ -846,11 +857,12 @@ static int test_conc49(MYSQL *mysql)
   row= mysql_fetch_row(res);
 
   i= !atol(row[0]);
-  mysql_free_result(res);
   if (i) {
       diag("Load local infile disable");
+      mysql_free_result(res);
       return SKIP;
   }
+  mysql_free_result(res);
 
   fp= fopen("./sample.csv", "w");
   for (i=1; i < 4; i++)
@@ -1073,6 +1085,7 @@ static int test_remote1(MYSQL *mysql)
   MYSQL_RES *res;
   MYSQL_ROW row;
   SKIP_SKYSQL;
+  SKIP_XPAND;
 
   remote_plugin= (void *)mysql_client_find_plugin(mysql, "remote_io", MARIADB_CLIENT_REMOTEIO_PLUGIN);
   if (!remote_plugin)
@@ -1165,7 +1178,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1449,7 +1462,7 @@ static int test_conc395(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1489,7 +1502,7 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "");
   my_test_connect(mysql, hostname, username, password,
-                  schema, 0, socketname, 0);
+                  schema, port, socketname, 0);
 
   remove(cnf_file1);
 
@@ -1532,7 +1545,10 @@ static int test_conc163(MYSQL *mysql)
 
   FAIL_IF(mysql_info(mysql) != NULL, "mysql_info: expected NULL");
 
-  rc= mysql_query(mysql, "CREATE OR REPLACE TABLE t1 AS SELECT 1");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "CREATE TABLE t1 AS SELECT 1");
   check_mysql_rc(rc, mysql);
 
   FAIL_IF(mysql_info(mysql) == NULL, "mysql_info: expected != NULL");
@@ -1545,7 +1561,9 @@ static int test_conc163(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
   FAIL_IF(mysql_info(mysql) != NULL, "mysql_info: expected NULL");
 
-  rc= mariadb_stmt_execute_direct(stmt, SL("CREATE OR REPLACE TABLE t1 AS SELECT 1"));
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  check_mysql_rc(rc, mysql);
+  rc= mariadb_stmt_execute_direct(stmt, SL("CREATE TABLE t1 AS SELECT 1"));
   check_stmt_rc(rc, stmt);
   FAIL_IF(mysql_info(mysql) == NULL, "mysql_info: expected != NULL");
 
@@ -1558,7 +1576,123 @@ static int test_conc163(MYSQL *mysql)
 }
 
 
+static int test_conc533(MYSQL *mysql)
+{
+  my_bool skip= 1;
+  int rc;
+  MYSQL_RES *result;
+  MYSQL_ROW row;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[1];
+  char buffer[10];
+
+  rc= mysql_options(mysql, MARIADB_OPT_SKIP_READ_RESPONSE, &skip);
+
+  rc= mysql_real_query(mysql, SL("SELECT 1"));
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql->methods->db_read_query_result(mysql);
+  check_mysql_rc(rc, mysql);
+
+  result= mysql_store_result(mysql);
+  row= mysql_fetch_row(result);
+
+  FAIL_IF(strcmp(row[0], "1"), "Expected value \"1\"");
+  mysql_free_result(result);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT 1"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql->methods->db_read_prepare_response(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(mysql_stmt_field_count(stmt) != 1, "Expected field_count= 1");
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql->methods->db_read_execute_response(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND));
+  bind[0].buffer= buffer;
+  bind[0].buffer_type= MYSQL_TYPE_STRING;
+  bind[0].buffer_length= 10;
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(strcmp(buffer, "1"), "Expected value \"1\"");
+
+  mysql_stmt_close(stmt);
+
+  return OK;
+}
+
+int display_extended_field_attribute(MYSQL *mysql)
+{
+  MYSQL_RES *result;
+  MYSQL_FIELD *fields;
+
+  if (mysql_query(mysql, "CREATE TEMPORARY TABLE t1 (a POINT)"))
+    return 1;
+
+  if (mysql_query(mysql, "SELECT a FROM t1"))
+    return 1;
+
+  if (!(result= mysql_store_result(mysql)))
+    return 1;
+
+  if ((fields= mysql_fetch_fields(result)))
+  {
+    MARIADB_CONST_STRING field_attr;
+
+    if (!mariadb_field_attr(&field_attr, &fields[0],
+                            MARIADB_FIELD_ATTR_DATA_TYPE_NAME))
+    {
+      printf("Extended field attribute: %s\n", field_attr.str);
+    }
+  }
+  mysql_free_result(result);
+  return 0;
+}
+
+
+static int test_ext_field_attr(MYSQL *mysql)
+{
+  if (!is_mariadb)
+  {
+    diag("feature not supported by MySQL server");
+    return SKIP;
+  }
+  display_extended_field_attribute(mysql);
+
+  return OK;
+}
+
+static int test_comp_level(MYSQL *my __attribute__((unused)))
+{
+  unsigned char clevel= 5;
+  unsigned char clevel1= 0;
+  MYSQL *mysql= mysql_init(NULL);
+
+  mysql_optionsv(mysql, MYSQL_OPT_ZSTD_COMPRESSION_LEVEL, &clevel);
+  mysql_get_optionv(mysql, MYSQL_OPT_ZSTD_COMPRESSION_LEVEL, &clevel1);
+
+  FAIL_IF(clevel != clevel1, "Different compression levels");
+  mysql_close(mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_comp_level", test_comp_level, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_ext_field_attr", test_ext_field_attr, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc163", test_conc163, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc458", test_conc458, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #if !__has_feature(memory_sanitizer)

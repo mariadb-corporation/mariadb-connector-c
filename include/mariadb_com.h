@@ -31,7 +31,7 @@
 
 #define NAME_CHAR_LEN   64
 #define NAME_LEN	256		/* Field/table name length */
-#define HOSTNAME_LENGTH 60
+#define HOSTNAME_LENGTH 255
 #define SYSTEM_MB_MAX_CHAR_LENGTH 4
 #define USERNAME_CHAR_LENGTH 128
 #define USERNAME_LENGTH (USERNAME_CHAR_LENGTH * SYSTEM_MB_MAX_CHAR_LENGTH)
@@ -52,14 +52,14 @@
 #define MYSQL_AUTODETECT_CHARSET_NAME "auto"
 #define BINCMP_FLAG       131072
 
+enum Item_result {STRING_RESULT,REAL_RESULT,INT_RESULT,ROW_RESULT,DECIMAL_RESULT};
+
 enum mysql_enum_shutdown_level
 {
   SHUTDOWN_DEFAULT = 0,
   KILL_QUERY= 254,
   KILL_CONNECTION= 255
 };
-
-enum Item_result {STRING_RESULT,REAL_RESULT,INT_RESULT,ROW_RESULT,DECIMAL_RESULT};
 
 enum enum_server_command
 {
@@ -163,26 +163,30 @@ enum enum_server_command
 #define CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA (1UL << 21)
 #define CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS (1UL << 22)
 #define CLIENT_SESSION_TRACKING  (1UL << 23)
+#define CLIENT_ZSTD_COMPRESSION  (1UL << 26)
 #define CLIENT_PROGRESS          (1UL << 29) /* client supports progress indicator */
 #define CLIENT_PROGRESS_OBSOLETE  CLIENT_PROGRESS 
 #define CLIENT_SSL_VERIFY_SERVER_CERT (1UL << 30)
 #define CLIENT_SSL_VERIFY_SERVER_CERT_OBSOLETE CLIENT_SSL_VERIFY_SERVER_CERT
 #define CLIENT_REMEMBER_OPTIONS  (1UL << 31)
 
-/* MariaDB specific capabilities */
+/* MariaDB-specific capabilities */
 #define MARIADB_CLIENT_FLAGS 0xFFFFFFFF00000000ULL
 #define MARIADB_CLIENT_PROGRESS (1ULL << 32)
 #define MARIADB_CLIENT_RESERVED_1 (1ULL << 33) /* Former COM_MULTI, don't use */
 #define MARIADB_CLIENT_STMT_BULK_OPERATIONS (1ULL << 34)
 /* support of extended data type/format information, since 10.5.0 */
 #define MARIADB_CLIENT_EXTENDED_METADATA (1ULL << 35)
+/* Do not resend metadata for prepared statements, since 10.6*/
+#define MARIADB_CLIENT_CACHE_METADATA (1ULL << 36)
 
 #define IS_MARIADB_EXTENDED_SERVER(mysql)\
         (!(mysql->server_capabilities & CLIENT_MYSQL))
 
 #define MARIADB_CLIENT_SUPPORTED_FLAGS (MARIADB_CLIENT_PROGRESS |\
                                        MARIADB_CLIENT_STMT_BULK_OPERATIONS|\
-                                       MARIADB_CLIENT_EXTENDED_METADATA)
+                                       MARIADB_CLIENT_EXTENDED_METADATA|\
+                                       MARIADB_CLIENT_CACHE_METADATA)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_MYSQL |\
                                  CLIENT_FOUND_ROWS |\
@@ -203,11 +207,17 @@ enum enum_server_command
                                  CLIENT_MULTI_STATEMENTS |\
                                  CLIENT_MULTI_RESULTS |\
                                  CLIENT_PROGRESS |\
-		                 CLIENT_SSL_VERIFY_SERVER_CERT |\
+                                 CLIENT_SSL_VERIFY_SERVER_CERT |\
                                  CLIENT_REMEMBER_OPTIONS |\
                                  CLIENT_PLUGIN_AUTH |\
                                  CLIENT_SESSION_TRACKING |\
                                  CLIENT_CONNECT_ATTRS)
+#define CLIENT_ALLOWED_FLAGS     (CLIENT_SUPPORTED_FLAGS |\
+                                 CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |\
+                                 CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS |\
+                                 CLIENT_ZSTD_COMPRESSION |\
+                                 CLIENT_PS_MULTI_RESULTS |\
+                                 CLIENT_REMEMBER_OPTIONS)
 #define CLIENT_CAPABILITIES	    (CLIENT_MYSQL | \
                                  CLIENT_LONG_FLAG |\
                                  CLIENT_TRANSACTIONS |\
@@ -305,6 +315,13 @@ enum enum_mysql_set_option
   MYSQL_OPTION_MULTI_STATEMENTS_OFF
 };
 
+/* for status callback function */
+enum enum_mariadb_status_info
+{
+  STATUS_TYPE= 0,
+  SESSION_TRACK_TYPE
+};
+
 enum enum_session_state_type
 {
   SESSION_TRACK_SYSTEM_VARIABLES= 0,
@@ -396,6 +413,7 @@ void	ma_net_end(NET *net);
 void	ma_net_clear(NET *net);
 int	ma_net_flush(NET *net);
 int	ma_net_write(NET *net,const unsigned char *packet, size_t len);
+int ma_net_write_buff(NET *net, const char *packet, size_t len);
 int	ma_net_write_command(NET *net,unsigned char command,const char *packet,
 			  size_t len, my_bool disable_flush);
 int	ma_net_real_write(NET *net,const char *packet, size_t len);

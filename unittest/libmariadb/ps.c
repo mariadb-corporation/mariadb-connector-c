@@ -57,6 +57,7 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
   const char *query= "SELECT 1,2,3 FROM DUAL";
 
   SKIP_MAXSCALE;
+  SKIP_XPAND;
 
   stmt= mysql_stmt_init(mysql);
 
@@ -79,7 +80,7 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
   rc= mysql_kill(mysql, mysql_thread_id(mysql));
 
   rc= mysql_stmt_execute(stmt);
-  FAIL_IF(!rc, "Error expected"); 
+  FAIL_IF(!rc, "Error expected");
 
   mysql_stmt_close(stmt);
   mysql_close(mysql);
@@ -512,6 +513,12 @@ static int test_prepare(MYSQL *mysql)
                          "col4 smallint, col5 bigint, "
                          "col6 float, col7 double )");
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   /* insert by prepare */
   strcpy(query, "INSERT INTO my_prepare VALUES(?, ?, ?, ?, ?, ?, ?)");
@@ -952,7 +959,7 @@ static int test_open_direct(MYSQL *mysql)
   mysql_stmt_close(stmt);
 
   /* run a direct query in the middle of a fetch */
- 
+
   strcpy(query, "SELECT * FROM test_open_direct");
   stmt= mysql_stmt_init(mysql);
   FAIL_IF(!stmt, mysql_error(mysql));
@@ -1101,6 +1108,12 @@ static int test_simple_update(MYSQL *mysql)
   int        rowcount= 0;
   char query[MAX_TEST_QUERY_LENGTH];
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
 
@@ -1189,11 +1202,17 @@ static int test_long_data(MYSQL *mysql)
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data");
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE test_long_data(col1 int, "
-                         "      col2 long varchar, col3 long varbinary)");
+                         "      col2 MEDIUMTEXT, col3 MEDIUMTEXT)");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "INSERT INTO test_long_data(col1, col2) VALUES(?)");
@@ -1294,7 +1313,7 @@ static int test_long_data_str(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data_str");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(id int, longstr long varchar)");
+  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(id int, longstr MEDIUMTEXT)");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "INSERT INTO test_long_data_str VALUES(?, ?)");
@@ -1368,7 +1387,7 @@ static int test_long_data_str(MYSQL *mysql)
 error:
   rc= mysql_query(mysql, "DROP TABLE test_long_data_str");
   check_mysql_rc(rc, mysql);
-  return FAIL; 
+  return FAIL;
 }
 
 
@@ -1393,7 +1412,7 @@ static int test_long_data_str1(MYSQL *mysql)
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data_str");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(longstr long varchar, blb long varbinary)");
+  rc= mysql_query(mysql, "CREATE TABLE test_long_data_str(longstr MEDIUMTEXT, blb MEDIUMBLOB)");
   check_mysql_rc(rc, mysql);
 
   strcpy(query, "INSERT INTO test_long_data_str VALUES(?, ?)");
@@ -1614,7 +1633,7 @@ static int test_long_data_bin(MYSQL *mysql)
 
   FAIL_IF(rowcount != 1, "rowcount != 1");
   mysql_free_result(result);
- 
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_long_data_bin");
   check_mysql_rc(rc, mysql);
   return OK;
@@ -1636,6 +1655,12 @@ static int test_simple_delete(MYSQL *mysql)
 
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_simple_delete");
   check_mysql_rc(rc, mysql);
@@ -1721,6 +1746,12 @@ static int test_update(MYSQL *mysql)
 
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_update");
   check_mysql_rc(rc, mysql);
@@ -2387,6 +2418,12 @@ static int test_union_param(MYSQL *mysql)
   my_bool         my_null= FALSE;
 
   strcpy(my_val, "abc");
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   query= (char*)"select ? as my_col union distinct select ?";
   stmt= mysql_stmt_init(mysql);
@@ -3391,6 +3428,9 @@ static int test_do_set(MYSQL *mysql)
   char *query;
   int rc, i;
 
+  // XPAND doesn't support DO command
+  SKIP_XPAND;
+
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
   check_mysql_rc(rc, mysql);
 
@@ -3433,6 +3473,11 @@ static int test_double_compare(MYSQL *mysql)
   ulong      length[3];
   char query[MAX_TEST_QUERY_LENGTH];
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   rc= mysql_autocommit(mysql, TRUE);
   check_mysql_rc(rc, mysql);
@@ -3985,7 +4030,7 @@ static int test_rename(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
-  FAIL_IF(!rc, "Errr expected");
+  FAIL_IF(!rc, "Error expected");
 
   rc= mysql_query(mysql, "rename table t2 to t1, t4 to t3");
   check_mysql_rc(rc, mysql);
@@ -4047,7 +4092,7 @@ static int test_rewind(MYSQL *mysql)
   /* now we should be able to fetch the results again */
   /* but mysql_stmt_fetch returns MYSQL_NO_DATA */
   while(!(rc= mysql_stmt_fetch(stmt)));
-  
+
   FAIL_UNLESS(rc == MYSQL_NO_DATA, "rc != MYSQL_NO_DATA");
 
   stmt_text= "DROP TABLE t1";
@@ -4090,6 +4135,12 @@ static int test_select(MYSQL *mysql)
 
   rc= mysql_commit(mysql);
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   strcpy(query, "SELECT * FROM test_select WHERE id= ? "
                 "AND CONVERT(name USING utf8) =?");
@@ -4331,7 +4382,7 @@ static int test_set_option(MYSQL *mysql)
   rc= 0;
   while (mysql_fetch_row(result))
     rc++;
-  FAIL_UNLESS(rc == 2, "rowcunt != 2");
+  FAIL_UNLESS(rc == 2, "rowcount != 2");
   mysql_free_result(result);
 
   stmt= mysql_stmt_init(mysql);
@@ -4496,7 +4547,7 @@ static int test_sqlmode(MYSQL *mysql)
   FAIL_IF(!stmt, mysql_error(mysql));
   rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
-  
+
   memset(my_bind, '\0', sizeof(my_bind));
 
   my_bind[0].buffer_type= MYSQL_TYPE_STRING;
@@ -4550,7 +4601,7 @@ static int test_sqlmode(MYSQL *mysql)
   if (verify_col_data(mysql, "test_piping", "name", "MySQL"))
     return FAIL;
 
-  /* ANSI mode spaces ... 
+  /* ANSI mode spaces ...
     skip, if ignore_space was set
   */
   query_int_variable(mysql, "@@sql_mode LIKE '%IGNORE_SPACE%'", &ignore_space);
@@ -4768,7 +4819,7 @@ static int test_long_data1(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   rc= mysql_query(mysql, "CREATE TABLE tld (col1 int, "
-                         "col2 long varbinary)");
+                         "col2 MEDIUMTEXT)");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "INSERT INTO tld VALUES (1,'test')");
   check_mysql_rc(rc, mysql);
@@ -4805,6 +4856,12 @@ int test_blob_9000(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "CREATE TABLE tb9000 (a blob)");
   check_mysql_rc(rc, mysql);
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
 
   stmt= mysql_stmt_init(mysql);
   rc= mysql_stmt_prepare(stmt, SL(query));
@@ -4891,7 +4948,7 @@ int test_fracseconds(MYSQL *mysql)
 
   rc= mysql_query(mysql, "DROP TABLE t1");
 
-  return OK;  
+  return OK;
 }
 
 int test_notrunc(MYSQL *mysql)
@@ -4913,7 +4970,7 @@ int test_notrunc(MYSQL *mysql)
   rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
 
-  rc= mysql_stmt_execute(stmt); 
+  rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
   strcpy(buffer, "bar");
@@ -5157,7 +5214,7 @@ static int test_conc565(MYSQL *mysql)
              fields_binary[i].length, fields_binary[i].max_length,
              fields_text[i].length, fields_text[i].max_length);
        error= 1;
-       goto end; 
+       goto end;
      }
   }
 end:
@@ -5167,7 +5224,86 @@ end:
   return error ? FAIL : OK;
 }
 
+static int test_conc812(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt= mysql_stmt_init(mysql);
+  MYSQL_BIND bind[9];
+  unsigned long length[9];
+  uint8_t int8_val;
+  uint16_t int16_val;
+  uint32_t int32_val;
+  uint64_t int64_val;
+  float float_val;
+  double dbl_val;
+  char decimal_val[20];
+  char str_val[20];
+  int rc;
+
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE jj_test ( id BIGINT NOT NULL PRIMARY KEY , f_tinyint TINYINT , f_short   SMALLINT , f_int	    INT , f_long    BIGINT , f_float   FLOAT , f_double  DOUBLE , f_decimal DECIMAL(9,3) , f_varchar VARCHAR(20))");
+  check_mysql_rc(rc, mysql);
+
+  rc= mysql_query(mysql, "INSERT INTO jj_test VALUES ( 1, 1, 1, 1, 1, 1.1, 1.11, 1.111, '1.1111'), ( 2, 2, 2, 2, 2, 2.2, 2.22, 2.222, '2.2222'), ( 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), ( 4, 4, 4, 4, 4, 4.4, 4.44, 4.444, '4.444'), ( 5, 5, 5, 5, 5, 5.5, 5.55, 5.555, '5.555')");
+  check_mysql_rc(rc, mysql);
+
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT * FROM jj_test"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(bind, 0, sizeof(MYSQL_BIND) * 9);
+
+  bind[0].buffer_type= MYSQL_TYPE_LONGLONG;
+  bind[0].buffer= &int64_val;
+  bind[0].length = &length[0];
+  bind[1].buffer_type= MYSQL_TYPE_TINY;
+  bind[1].buffer= &int8_val;
+  bind[1].length = &length[1];
+  bind[2].buffer_type= MYSQL_TYPE_SHORT;
+  bind[2].buffer= &int16_val;
+  bind[2].length = &length[2];
+  bind[3].buffer_type= MYSQL_TYPE_LONG;
+  bind[3].buffer= &int32_val;
+  bind[3].length = &length[3];
+  bind[4].buffer_type= MYSQL_TYPE_LONGLONG;
+  bind[4].buffer= &int64_val;
+  bind[4].length = &length[4];
+  bind[5].buffer_type= MYSQL_TYPE_FLOAT;
+  bind[5].buffer= &float_val;
+  bind[5].length = &length[5];
+  bind[6].buffer_type= MYSQL_TYPE_DOUBLE;
+  bind[6].buffer= &dbl_val;
+  bind[6].length = &length[6];
+  bind[7].buffer_type= MYSQL_TYPE_NEWDECIMAL;
+  bind[7].buffer= decimal_val;
+  bind[7].buffer_length= 20;
+  bind[7].length = &length[7];
+  bind[8].buffer_type= MYSQL_TYPE_STRING;
+  bind[8].buffer= str_val;
+  bind[8].buffer_length= 20;
+  bind[8].length = &length[8];
+
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+
+  while (!mysql_stmt_fetch(stmt)) {
+    diag("checking");
+    FAIL_IF(length[0] != sizeof(uint64_t), "Wrong length for int64");
+    FAIL_IF(length[1] != sizeof(uint8_t), "Wrong length for int8");
+    FAIL_IF(length[2] != sizeof(uint16_t), "Wrong length for int16");
+    FAIL_IF(length[3] != sizeof(uint32_t), "Wrong length for int32");
+    FAIL_IF(length[4] != sizeof(uint64_t), "Wrong length for int64");
+    FAIL_IF(length[5] != sizeof(float), "Wrong length for float");
+    FAIL_IF(length[6] != sizeof(double), "Wrong length for double");
+  }
+
+  mysql_stmt_close(stmt);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_conc812", test_conc812, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc565", test_conc565, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc349", test_conc349, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_prepare_error", test_prepare_error, TEST_CONNECTION_NEW, 0, NULL, NULL},
@@ -5213,7 +5349,7 @@ struct my_tests_st my_tests[] = {
   {"test_insert_select", test_insert_select, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_insert", test_insert, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_join", test_join, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
-  {"test_left_join_view", test_left_join_view, TEST_CONNECTION_DEFAULT, 0, NULL , NULL}, 
+  {"test_left_join_view", test_left_join_view, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_manual_sample", test_manual_sample, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_create_drop", test_create_drop, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},
   {"test_date", test_date, TEST_CONNECTION_DEFAULT, 0, NULL , NULL},

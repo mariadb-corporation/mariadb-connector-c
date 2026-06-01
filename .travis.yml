@@ -1,10 +1,5 @@
-os: linux
-dist: focal
 language: c
-services: docker
-addons:
-  hosts:
-    - mariadb.example.com
+version: ~> 1.0
 
 cache:
   apt: true
@@ -12,47 +7,22 @@ cache:
   directories:
     - $HOME/docker
 
-before_install:
-  - git clone https://github.com/mariadb-corporation/connector-test-machine.git
-  # Load cached docker images
-  - if [[ -d $HOME/docker ]]; then ls $HOME/docker/*.tar.gz | xargs -I {file} sh -c "zcat {file} | docker load"; fi
+env:
+  global: local=0 DB=testc CLEAR_TEXT=0
 
-install:
-  - |-
-    if [ -z "$server_branch" ] ; then
-      case $TRAVIS_OS_NAME in
-        windows)
-          connector-test-machine/launch.bat -t "$srv" -v "$v" -d testc
-          ;;
-        linux)
-          source connector-test-machine/launch.sh -t "$srv" -v "$v" -d testc -l "$local" -n "$native"
-          ;;
-      esac
-    fi
-
-
-env: local=0
+import: mariadb-corporation/connector-test-machine:common-build.yml@master
 
 jobs:
-  fast_finish: true
-  allow_failures:
-    - env: srv=mysql v=5.7 native=1
-    - env: srv=mysql v=8.0 native=1
   include:
-    - env: srv=mariadb v=10.11
-      os: windows
-      language: shell
-    - env: srv=mariadb v=10.4 local=1
-    - env: srv=mariadb v=10.5 local=1
-    - env: srv=mariadb v=10.6 local=1
-    - env: srv=mariadb v=10.11 local=1
-    - if: type = push AND fork = false
-      env: srv=mariadb-es v=10.5
-    - if: type = push AND fork = false
-      env: srv=maxscale
-    - env: srv=mysql v=5.7 native=1
-    - env: srv=mysql v=8.0 native=1
-    - env: server_branch=10.5
-    - env: server_branch=10.5 TEST_OPTION=--ps-protocol
+    - stage: Community
+      env: srv=mariadb v=10.11 local=1 TEST_OPTION=--ps-protocol
+      name: "CS 10.11 with ps-protocol"
+    - stage: Other
+      env: server_branch=10.6
+      name: "CS 10.6 Server unit testing"
+    - env: server_branch=10.11
+      name: "CS 10.11 Server unit testing"
+    - env: server_branch=11.3 TEST_OPTION=--ps-protocol
+      name: "11.3 Server unit testing with ps-protocol"
 
 script: ./travis.sh

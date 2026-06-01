@@ -51,7 +51,8 @@ static struct st_mariadb_api *libmariadb_api= NULL;
 #ifndef PLUGIN_DYNAMIC
 MARIADB_CONNECTION_PLUGIN replication_client_plugin =
 #else
-MARIADB_CONNECTION_PLUGIN _mysql_client_plugin_declaration_ =
+MARIADB_CLIENT_PLUGIN_EXPORT MARIADB_CONNECTION_PLUGIN
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MARIADB_CLIENT_CONNECTION_PLUGIN,

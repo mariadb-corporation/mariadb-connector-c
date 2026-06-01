@@ -1,19 +1,19 @@
 /****************************************************************************
    Copyright (C) 2012 Monty Program AB
-   
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
    License as published by the Free Software Foundation; either
    version 2 of the License, or (at your option) any later version.
-   
+
    This library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Library General Public License for more details.
-   
+
    You should have received a copy of the GNU Library General Public
    License along with this library; if not see <http://www.gnu.org/licenses>
-   or write to the Free Software Foundation, Inc., 
+   or write to the Free Software Foundation, Inc.,
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
    Part of this code includes code from the PHP project which
@@ -21,7 +21,7 @@
 *****************************************************************************/
 
 /* The implementation for prepared statements was ported from PHP's mysqlnd
-   extension, written by Andrey Hristov, Georg Richter and Ulf Wendel 
+   extension, written by Andrey Hristov, Georg Richter and Ulf Wendel
 
    Original file header:
   +----------------------------------------------------------------------+
@@ -409,7 +409,7 @@ end:
 }
 
 /*
-  Parse (not null terminated) string representing 
+  Parse (not null terminated) string representing
   TIME, DATE, or DATETIME into MYSQL_TIME structure
 
   The supported formats by this functions are
@@ -473,7 +473,7 @@ int str_to_TIME(const char *str, size_t length, MYSQL_TIME *tm)
   {
     if (parse_time(p, end - p, &p, tm))
       goto error;
-    
+
     tm->year = tm->month = tm->day = 0;
     tm->time_type = MYSQL_TIMESTAMP_TIME;
     return 0;
@@ -571,7 +571,6 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
       str_to_TIME(buffer, len, tm);
       break;
     }
-    break;
     case MYSQL_TYPE_TINY_BLOB:
     case MYSQL_TYPE_MEDIUM_BLOB:
     case MYSQL_TYPE_LONG_BLOB:
@@ -635,7 +634,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       doublestore(r_param->buffer, dbl);
 
       *r_param->error = (dbl != ceil(dbl)) ||
-                         (is_unsigned ? (ulonglong )dbl != (ulonglong)val : 
+                         (is_unsigned ? (ulonglong )dbl != (ulonglong)val :
                                         (longlong)dbl != (longlong)val);
 
       r_param->buffer_length= 8;
@@ -647,7 +646,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       fval= is_unsigned ? (float)(ulonglong)(val) : (float)val;
       floatstore((uchar *)r_param->buffer, fval);
       *r_param->error= (fval != ceilf(fval)) ||
-                        (is_unsigned ? (ulonglong)fval != (ulonglong)val : 
+                        (is_unsigned ? (ulonglong)fval != (ulonglong)val :
                                        (longlong)fval != val);
       r_param->buffer_length= 4;
     }
@@ -696,7 +695,7 @@ void ps_fetch_null(MYSQL_BIND *r_param __attribute__((unused)),
 /* }}} */
 
 #define GET_LVALUE_FROM_ROW(is_unsigned, data, ucast, scast)\
-  (is_unsigned) ? (longlong)(ucast) *(longlong *)(data) : (longlong)(scast) *(longlong *)(data) 
+  (is_unsigned) ? (longlong)(ucast) *(longlong *)(data) : (longlong)(scast) *(longlong *)(data)
 /* {{{ ps_fetch_int8 */
 static
 void ps_fetch_int8(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
@@ -758,7 +757,7 @@ void ps_fetch_int32(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONG:
       ps_fetch_from_1_to_8_bytes(r_param, field, row, 4);
-    break; 
+    break;
     default:
     {
       int32 sval= sint4korr(*row);
@@ -825,14 +824,14 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
         ushort sval= (ushort)val;
         shortstore(buf, sval);
         *r_param->error= check_trunc_val != (double)sval;
-      } else { 
+      } else {
         short sval= (short)val;
         shortstore(buf, sval);
         *r_param->error= check_trunc_val != (double)sval;
-      } 
+      }
       r_param->buffer_length= 2;
     }
-    break; 
+    break;
     case MYSQL_TYPE_LONG:
     {
       if (r_param->is_unsigned)
@@ -847,7 +846,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
       }
       r_param->buffer_length= 4;
     }
-    break; 
+    break;
     case MYSQL_TYPE_LONGLONG:
     {
       if (r_param->is_unsigned)
@@ -862,7 +861,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
       }
       r_param->buffer_length= 8;
     }
-    break; 
+    break;
     case MYSQL_TYPE_DOUBLE:
     {
       double dval= (double)val;
@@ -899,9 +898,9 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
       }
 
       convert_froma_string(r_param, buff, length);
-    }  
+    }
     break;
-  } 
+  }
 }
 
 static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, double val, int size __attribute__((unused)))
@@ -924,14 +923,14 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
         ushort sval= (ushort)val;
         shortstore(buf, sval);
         *r_param->error= check_trunc_val != (double)sval;
-      } else { 
+      } else {
         short sval= (short)val;
         shortstore(buf, sval);
         *r_param->error= check_trunc_val != (double)sval;
-      } 
+      }
       r_param->buffer_length= 2;
     }
-    break; 
+    break;
     case MYSQL_TYPE_LONG:
     {
       if (r_param->is_unsigned)
@@ -946,7 +945,7 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
       }
       r_param->buffer_length= 4;
     }
-    break; 
+    break;
     case MYSQL_TYPE_LONGLONG:
     {
       if (r_param->is_unsigned)
@@ -961,7 +960,7 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
       }
       r_param->buffer_length= 8;
     }
-    break; 
+    break;
     case MYSQL_TYPE_FLOAT:
     {
       float fval= (float)val;
@@ -993,14 +992,14 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
        if (field->length < length || field->length > MAX_DOUBLE_STRING_REP_LENGTH - 1)
          break;
        ma_bmove_upp(buff + field->length, buff + length, length);
-       /* coverity [bad_memset] */
+       /* coverity[bad_memset] */
        memset((void*) buff, (int) '0', field->length - length);
        length= field->length;
      }
      convert_froma_string(r_param, buff, length);
-    } 
+    }
     break;
-  } 
+  }
 }
 
 
@@ -1070,7 +1069,7 @@ static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, en
     unsigned char *to= *row;
     int has_date= 0;
     uint offset= 7;
-    
+
     if (type == MYSQL_TYPE_TIME)
     {
       t->neg= to[0];
@@ -1135,7 +1134,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       shortstore(r_param->buffer, tm.year);
       break;
     }
-    default: 
+    default:
     {
       char dtbuffer[60];
       MYSQL_TIME tm;
@@ -1187,7 +1186,7 @@ void ps_fetch_string(MYSQL_BIND *r_param,
                      unsigned char **row)
 {
   /* C-API differs from PHP. While PHP just converts string to string,
-     C-API needs to convert the string to the defined type with in 
+     C-API needs to convert the string to the defined type with in
      the result bind buffer.
    */
   ulong field_length= net_field_length(row);
@@ -1199,7 +1198,7 @@ void ps_fetch_string(MYSQL_BIND *r_param,
 
 /* {{{ ps_fetch_bin */
 static
-void ps_fetch_bin(MYSQL_BIND *r_param, 
+void ps_fetch_bin(MYSQL_BIND *r_param,
              const MYSQL_FIELD *field,
              unsigned char **row)
 {
@@ -1267,7 +1266,7 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_DOUBLE].func    = ps_fetch_double;
   mysql_ps_fetch_functions[MYSQL_TYPE_DOUBLE].pack_len  = 8;
   mysql_ps_fetch_functions[MYSQL_TYPE_DOUBLE].max_len  = MAX_DOUBLE_STRING_REP_LENGTH;
-  
+
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].func  = ps_fetch_datetime;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].pack_len  = MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIME].max_len  = 17;
@@ -1279,7 +1278,7 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].func    = ps_fetch_string;
   mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].pack_len  = MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_NEWDATE].max_len  = -1;
-  
+
   mysql_ps_fetch_functions[MYSQL_TYPE_DATETIME].func  = ps_fetch_datetime;
   mysql_ps_fetch_functions[MYSQL_TYPE_DATETIME].pack_len= MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_DATETIME].max_len  = 30;
@@ -1287,7 +1286,7 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_TIMESTAMP].func  = ps_fetch_datetime;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIMESTAMP].pack_len= MYSQL_PS_SKIP_RESULT_W_LEN;
   mysql_ps_fetch_functions[MYSQL_TYPE_TIMESTAMP].max_len  = 30;
-  
+
   mysql_ps_fetch_functions[MYSQL_TYPE_TINY_BLOB].func  = ps_fetch_bin;
   mysql_ps_fetch_functions[MYSQL_TYPE_TINY_BLOB].pack_len= MYSQL_PS_SKIP_RESULT_STR;
   mysql_ps_fetch_functions[MYSQL_TYPE_TINY_BLOB].max_len  = -1;
@@ -1295,7 +1294,7 @@ void mysql_init_ps_subsystem(void)
   mysql_ps_fetch_functions[MYSQL_TYPE_BLOB].func    = ps_fetch_bin;
   mysql_ps_fetch_functions[MYSQL_TYPE_BLOB].pack_len  = MYSQL_PS_SKIP_RESULT_STR;
   mysql_ps_fetch_functions[MYSQL_TYPE_BLOB].max_len  = -1;
-  
+
   mysql_ps_fetch_functions[MYSQL_TYPE_MEDIUM_BLOB].func  = ps_fetch_bin;
   mysql_ps_fetch_functions[MYSQL_TYPE_MEDIUM_BLOB].pack_len= MYSQL_PS_SKIP_RESULT_STR;
   mysql_ps_fetch_functions[MYSQL_TYPE_MEDIUM_BLOB].max_len  = -1;

@@ -1,0 +1,3 @@
+[submodule "docs"]
+	path = docs
+	url = https://github.com/mariadb-corporation/mariadb-connector-c.wiki.git

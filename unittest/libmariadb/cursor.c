@@ -448,6 +448,12 @@ static int test_bug10794(MYSQL *mysql)
   int i= 0;
   ulong type;
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_query(mysql, "drop table if exists t1");
   check_mysql_rc(rc, mysql);
   rc= mysql_query(mysql, "create table t1 (id integer not null primary key,"
@@ -475,6 +481,7 @@ static int test_bug10794(MYSQL *mysql)
     rc= mysql_stmt_execute(stmt);
     check_stmt_rc(rc, stmt);
   }
+
   stmt_text= "select name from t1";
   rc= mysql_stmt_prepare(stmt, SL(stmt_text));
   type= (ulong) CURSOR_TYPE_READ_ONLY;
@@ -723,6 +730,13 @@ static int test_bug11656(MYSQL *mysql)
     my_bind[i].buffer= (uchar* *)&buf[i];
     my_bind[i].buffer_length= (unsigned long)strlen(buf[i]);
   }
+
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   rc= mysql_stmt_bind_param(stmt, my_bind);
   check_stmt_rc(rc, stmt);
 
@@ -739,7 +753,7 @@ static int test_bug11656(MYSQL *mysql)
   return OK;
 }
 
-/* Cursors: opening a cursor to a compilicated query with ORDER BY */
+/* Cursors: opening a cursor to a complicated query with ORDER BY */
 
 static int test_bug11901(MYSQL *mysql)
 {
@@ -1376,6 +1390,9 @@ static int test_bug24179(MYSQL *mysql)
   int rc;
   MYSQL_STMT *stmt;
 
+  // works with xpand
+  SKIP_XPAND;
+
   stmt= open_cursor(mysql, "select 1 into @a");
   rc= mysql_stmt_execute(stmt);
   FAIL_UNLESS(rc, "Error expected");
@@ -1681,7 +1698,7 @@ static int test_bug9478(MYSQL *mysql)
   return OK;
 }
 
-/* Crash when opening a cursor to a query with DISTICNT and no key */
+/* Crash when opening a cursor to a query with DISTINCT and no key */
 
 static int test_bug9520(MYSQL *mysql)
 {

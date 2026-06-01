@@ -68,7 +68,8 @@ struct st_ma_pvio_methods pvio_npipe_methods= {
 #ifndef PLUGIN_DYNAMIC
 MARIADB_PVIO_PLUGIN pvio_npipe_client_plugin =
 #else
-MARIADB_PVIO_PLUGIN _mysql_client_plugin_declaration_ =
+MARIADB_CLIENT_PLUGIN_EXPORT MARIADB_PVIO_PLUGIN
+    _mysql_client_plugin_declaration_=
 #endif
 {
   MARIADB_CLIENT_PVIO_PLUGIN,
@@ -150,19 +151,38 @@ static BOOL complete_io(HANDLE file, OVERLAPPED *ov, BOOL ret, DWORD timeout, DW
   return GetOverlappedResult(file, ov, size, FALSE);
 }
 
+/*
+  Disable posting IO completion event to the port.
+  Handle can be bound to IOCP outside of the connector for other purposes
+  (e.g polling functionality)
+*/
+
+static inline void disable_iocp_notification(HANDLE *h)
+{
+  *h= (HANDLE) ((ULONG_PTR) *h | 1);
+}
+
+static inline void enable_iocp_notification(HANDLE *h)
+{
+  *h= (HANDLE) ((ULONG_PTR) *h & ~1);
+}
+
 ssize_t pvio_npipe_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   BOOL ret;
   ssize_t r= -1;
   struct st_pvio_npipe *cpipe= NULL;
   DWORD size;
+  HANDLE *h;
 
   if (!pvio || !pvio->data)
     return -1;
 
   cpipe= (struct st_pvio_npipe *)pvio->data;
-
+  h= &cpipe->overlapped.hEvent;
+  disable_iocp_notification(h);
   ret= ReadFile(cpipe->pipe, buffer, (DWORD)length, NULL, &cpipe->overlapped);
+  enable_iocp_notification(h);
   ret= complete_io(cpipe->pipe, &cpipe->overlapped, ret, pvio->timeout[PVIO_READ_TIMEOUT], &size);
   r= ret? (ssize_t) size:-1;
 
@@ -175,13 +195,15 @@ ssize_t pvio_npipe_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   struct st_pvio_npipe *cpipe= NULL;
   BOOL ret;
   DWORD size;
-
+  HANDLE *h;
   if (!pvio || !pvio->data)
     return -1;
 
   cpipe= (struct st_pvio_npipe *)pvio->data;
-
+  h= &cpipe->overlapped.hEvent;
+  disable_iocp_notification(h);
   ret= WriteFile(cpipe->pipe, buffer, (DWORD)length, NULL , &cpipe->overlapped);
+  enable_iocp_notification(h);
   ret= complete_io(cpipe->pipe, &cpipe->overlapped, ret, pvio->timeout[PVIO_WRITE_TIMEOUT], &size);
   r= ret ? (ssize_t)size : -1;
   return r;

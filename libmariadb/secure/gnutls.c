@@ -1069,7 +1069,7 @@ static int ma_gnutls_set_ciphers(gnutls_session_t ssl,
     char priority[1024];
     char *p= get_priority(token, priority, 1024);
     if (p)
-      strncat(prio, p, PRIO_SIZE - strlen(prio) - 1);
+      strncat(prio, p, PRIO_SIZE - strlen(prio));
     token = strtok(NULL, ":");
   }
   return gnutls_priority_set_direct(ssl, prio , &err);
@@ -1095,6 +1095,14 @@ static int ma_tls_set_certs(MYSQL *mysql,
     ssl_error=  gnutls_certificate_set_x509_trust_dir(ctx,
                                                       mysql->options.ssl_capath,
                                                       GNUTLS_X509_FMT_PEM);
+    if (ssl_error < 0)
+      goto error;
+  }
+
+  if (mysql->options.extension && mysql->options.extension->ssl_crl)
+  {
+    ssl_error= gnutls_certificate_set_x509_crl_file(ctx,
+                   mysql->options.extension->ssl_crl, GNUTLS_X509_FMT_PEM);
     if (ssl_error < 0)
       goto error;
   }

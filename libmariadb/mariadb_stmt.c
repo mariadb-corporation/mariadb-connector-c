@@ -1,5 +1,6 @@
 /****************************************************************************
   Copyright (C) 2012 Monty Program AB
+                2013, 2022 MariaDB Corporation AB
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -56,6 +57,7 @@
 #include <mysql/client_plugin.h>
 #include <ma_common.h>
 #include "ma_priv.h"
+#include <assert.h>
 
 
 #define UPDATE_STMT_ERROR(stmt)\
@@ -150,10 +152,8 @@ my_bool mthd_supported_buffer_type(enum enum_field_types type)
   case MYSQL_TYPE_VAR_STRING:
   case MYSQL_TYPE_YEAR:
     return 1;
-    break;
   default:
     return 0;
-    break;
   }
 }
 
@@ -300,12 +300,14 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
       result->rows++;
     } else  /* end of stream */
     {
+      unsigned int last_status= stmt->mysql->server_status;
       *pprevious= 0;
       /* sace status info */
       p++;
       stmt->upsert_status.warning_count= stmt->mysql->warning_count= uint2korr(p);
       p+=2;
       stmt->upsert_status.server_status= stmt->mysql->server_status= uint2korr(p);
+      ma_status_callback(stmt->mysql, last_status);
       stmt->result_cursor= result->data;
       return(0);
     }
@@ -348,10 +350,13 @@ static int stmt_cursor_fetch(MYSQL_STMT *stmt, uchar **row)
     result->data= 0;
     result->rows= 0;
 
-    if (stmt->mysql->methods->db_stmt_read_all_rows(stmt))
-      return(1);
+    if (!stmt->mysql->options.extension->skip_read_response)
+    {
+      if (stmt->mysql->methods->db_stmt_read_all_rows(stmt))
+        return(1);
 
-    return(stmt_buffered_fetch(stmt, row));
+      return(stmt_buffered_fetch(stmt, row));
+    }
   }
   /* no more cursor data available */
   *row= NULL;
@@ -366,13 +371,16 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
                     stmt->state < MYSQL_STMT_FETCH_DONE;
   while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
   {
+    unsigned int last_status= stmt->mysql->server_status;
     uchar *pos= stmt->mysql->net.read_pos;
+
     if (!in_resultset && *pos == 0) /* OK */
     {
       pos++;
       net_field_length(&pos);
       net_field_length(&pos);
       stmt->mysql->server_status= uint2korr(pos);
+      ma_status_callback(stmt->mysql, last_status);
       goto end;
     }
     if (packet_len < 8 && *pos == 254) /* EOF */
@@ -380,6 +388,7 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
       if (mariadb_connection(stmt->mysql))
       {
         stmt->mysql->server_status= uint2korr(pos + 3);
+        ma_status_callback(stmt->mysql, last_status);
         if (in_resultset)
           goto end;
         in_resultset= 1;
@@ -416,7 +425,8 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row)
         stmt->bind[i].u.row_ptr= NULL;
         if (!stmt->bind[i].length)
           stmt->bind[i].length= &stmt->bind[i].length_value;
-        *stmt->bind[i].length= stmt->bind[i].length_value= 0;
+        if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len < 0)
+          *stmt->bind[i].length= stmt->bind[i].length_value= 0;
       }
     } else
     {
@@ -595,7 +605,7 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
        1          1       negative
        2-5        4       day
        6          1       hour
-       7          1       ninute
+       7          1       minute
        8          1       second;
        9-13       4       second_part
        */
@@ -702,8 +712,8 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
   return 0;
 }
 
-/* {{{ mysqlnd_stmt_execute_generate_simple_request */
-unsigned char* mysql_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t *request_len)
+/* {{{ ma_stmt_execute_generate_simple_request */
+unsigned char* ma_stmt_execute_generate_simple_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
      Offset   Length      Description
@@ -892,13 +902,13 @@ my_bool mysql_stmt_skip_paramset(MYSQL_STMT *stmt, uint row)
     if (ma_get_indicator(stmt, i, row) == STMT_INDICATOR_IGNORE_ROW)
       return '\1';
   }
-  
+
   return '\0';
 }
 /* }}} */
 
-/* {{{ mysql_stmt_execute_generate_bulk_request */
-unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
+/* {{{ ma_stmt_execute_generate_bulk_request */
+unsigned char* ma_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t *request_len)
 {
   /* execute packet has the following format:
      Offset   Length      Description
@@ -949,7 +959,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
 
   /* preallocate length bytes */
   if (!(start= p= (uchar *)malloc(length)))
+  {
     goto mem_error;
+  }
 
   int4store(p, stmt->stmt_id);
   p += STMT_ID_LENGTH;
@@ -961,7 +973,7 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
   p+=2;
 
   /* When using mariadb_stmt_execute_direct stmt->paran_count is
-     not knowm, so we need to assign prebind_params, which was previously
+     not known, so we need to assign prebind_params, which was previously
      set by mysql_stmt_attr_set
   */
   if (!stmt->param_count && stmt->prebind_params)
@@ -981,7 +993,9 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
         size_t offset= p - start;
         length= offset + stmt->param_count * 2 + 20;
         if (!(tmp_start= (uchar *)realloc(start, length)))
+        {
           goto mem_error;
+        }
         start= tmp_start;
         p= start + offset;
       }
@@ -1000,7 +1014,13 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
       /* If callback for parameters was specified, we need to
          update bind information for new row */
       if (stmt->param_callback)
-        stmt->param_callback(stmt->user_data, stmt->params, j);
+      {
+        if (stmt->param_callback(stmt->user_data, stmt->params, j))
+        {
+          stmt_set_error(stmt, CR_ERR_STMT_PARAM_CALLBACK, SQLSTATE_UNKNOWN, 0);
+          goto error;
+        }
+      }
 
       if (mysql_stmt_skip_paramset(stmt, j))
         continue;
@@ -1068,7 +1088,10 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
           size_t offset= p - start;
           length= MAX(2 * length, offset + size + 20);
           if (!(tmp_start= (uchar *)realloc(start, length)))
-            goto mem_error;
+          {
+            stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+            goto error;
+          }
           start= tmp_start;
           p= start + offset;
         }
@@ -1087,11 +1110,46 @@ unsigned char* mysql_stmt_execute_generate_bulk_request(MYSQL_STMT *stmt, size_t
   return start;
 mem_error:
   stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+error:
   free(start);
   *request_len= 0;
   return NULL;
 }
 /* }}} */
+
+
+unsigned char* ma_stmt_execute_generate_request(MYSQL_STMT *stmt, size_t *request_len, my_bool internal)
+{
+  unsigned char *buf;
+
+
+  if (stmt->request_buffer)
+  {
+    *request_len= stmt->request_length;
+    buf= stmt->request_buffer;
+    /* store actual stmt id */
+    int4store(buf, stmt->stmt_id);
+    /* clear buffer, memory will be freed in execute */
+    stmt->request_buffer= NULL;
+    stmt->request_length= 0;
+    return buf;
+  }
+  if (stmt->array_size > 0)
+    buf= ma_stmt_execute_generate_bulk_request(stmt, request_len);
+  else
+    buf= ma_stmt_execute_generate_simple_request(stmt, request_len);
+
+  if (internal)
+  {
+    if (stmt->request_buffer)
+      free(stmt->request_buffer);
+    stmt->request_buffer= buf;
+    stmt->request_length= *request_len;
+  }
+  return buf;
+}
+
+
 /*!
  *******************************************************************************
 
@@ -1168,7 +1226,7 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
       stmt->state= MYSQL_STMT_INITTED;
       stmt->params= 0;
     }
-    stmt->prebind_params= *(unsigned int *)value;
+    stmt->prebind_params= stmt->param_count= *(unsigned int *)value;
     break;
   case STMT_ATTR_ARRAY_SIZE:
     stmt->array_size= *(unsigned int *)value;
@@ -1290,7 +1348,6 @@ my_bool STDCALL mysql_stmt_bind_param(MYSQL_STMT *stmt, MYSQL_BIND *bind)
       default:
         stmt_set_error(stmt, CR_UNSUPPORTED_PARAM_TYPE, SQLSTATE_UNKNOWN, 0);
         return(1);
-        break;
       }
     }
   }
@@ -1352,7 +1409,15 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
     if (!stmt->bind[i].error)
       stmt->bind[i].error= &stmt->bind[i].error_value;
 
+    if (mysql_ps_fetch_functions[stmt->bind[i].buffer_type].pack_len >= 0)
+    {
+      *stmt->bind[i].length= stmt->bind[i].length_value= mysql_ps_fetch_functions[stmt->bind[i].buffer_type].pack_len;
+    } else {
+      *stmt->bind[i].length= stmt->bind[i].length_value= 0;
+    }
+
     /* set length values for numeric types */
+/*
     switch(bind[i].buffer_type) {
     case MYSQL_TYPE_NULL:
       *stmt->bind[i].length= stmt->bind[i].length_value= 0;
@@ -1382,6 +1447,7 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
     default:
       break;
     }
+*/
   }
   stmt->bind_result_done= 1;
   CLEAR_CLIENT_STMT_ERROR(stmt);
@@ -1624,6 +1690,53 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
   p++;
   /* for backward compatibility we also update mysql->warning_count */
   stmt->mysql->warning_count= stmt->upsert_status.warning_count= uint2korr(p);
+
+/* metadata not supported yet */
+
+  if (stmt->param_count &&
+      stmt->mysql->methods->db_stmt_get_param_metadata(stmt))
+  {
+    return 1;
+  }
+
+  /* allocated bind buffer for parameters */
+  if (stmt->field_count &&
+      stmt->mysql->methods->db_stmt_get_result_metadata(stmt))
+  {
+    return 1;
+  }
+  if (stmt->param_count)
+  {
+    if (stmt->prebind_params)
+    {
+      if (stmt->prebind_params != stmt->param_count)
+      {
+        stmt_set_error(stmt, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        stmt->param_count= stmt->prebind_params;
+        return 1;
+      }
+    } else {
+      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
+      {
+        stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+        return 1;
+      }
+      memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
+    }
+  }
+  /* allocated bind buffer for result */
+  if (stmt->field_count)
+  {
+    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
+    {
+      stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      return 1;
+    }
+    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
+  }
+  stmt->state = MYSQL_STMT_PREPARED;
+
   return(0);
 }
 
@@ -1698,7 +1811,8 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
 
     stmt->param_count= 0;
     stmt->field_count= 0;
-    stmt->params= 0;
+    stmt->fields= NULL;
+    stmt->params= NULL;
 
     int4store(stmt_id, stmt->stmt_id);
     if (mysql->methods->db_command(mysql, COM_STMT_CLOSE, stmt_id,
@@ -1711,58 +1825,15 @@ int STDCALL mysql_stmt_prepare(MYSQL_STMT *stmt, const char *query, unsigned lon
   if (!is_multi && mysql->net.extension->multi_status == COM_MULTI_ENABLED)
     if (ma_multi_command(mysql, COM_MULTI_END))
       goto fail;
-  
-  if (mysql->net.extension->multi_status > COM_MULTI_OFF)
+
+  if (mysql->net.extension->multi_status > COM_MULTI_OFF ||
+      mysql->options.extension->skip_read_response)
     return 0;
 
   if (mysql->methods->db_read_prepare_response &&
       mysql->methods->db_read_prepare_response(stmt))
     goto fail;
 
-  /* metadata not supported yet */
-
-  if (stmt->param_count &&
-      stmt->mysql->methods->db_stmt_get_param_metadata(stmt))
-  {
-    goto fail;
-  }
-
-  /* allocated bind buffer for parameters */
-  if (stmt->field_count &&
-      stmt->mysql->methods->db_stmt_get_result_metadata(stmt))
-  {
-    goto fail;
-  }
-  if (stmt->param_count)
-  {
-    if (stmt->prebind_params)
-    {
-      if (stmt->prebind_params != stmt->param_count)
-      {
-        stmt_set_error(stmt, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
-        goto fail;
-      }
-    } else {
-      if (!(stmt->params= (MYSQL_BIND *)ma_alloc_root(&stmt->mem_root, stmt->param_count * sizeof(MYSQL_BIND))))
-      {
-        stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-        goto fail;
-      }
-      memset(stmt->params, '\0', stmt->param_count * sizeof(MYSQL_BIND));
-    }
-  }
-  /* allocated bind buffer for result */
-  if (stmt->field_count)
-  {
-    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
-    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
-    {
-      stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      goto fail;
-    }
-    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
-  }
-  stmt->state = MYSQL_STMT_PREPARED;
   return(0);
 
 fail:
@@ -1854,71 +1925,74 @@ int STDCALL mysql_stmt_store_result(MYSQL_STMT *stmt)
 
 static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
 {
-  uint i;
   MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
+  MYSQL *mysql= stmt->mysql;
+  if (!mysql->field_count)
+    return 0;
 
-  if (stmt->mysql->field_count)
+  stmt->field_count= mysql->field_count;
+  if (mysql->fields)
   {
+    /* Column info was sent by server */
     ma_free_root(fields_ma_alloc_root, MYF(0));
-    if (!(stmt->fields= (MYSQL_FIELD *)ma_alloc_root(fields_ma_alloc_root,
-            sizeof(MYSQL_FIELD) * stmt->mysql->field_count)))
+    if (!(stmt->fields= ma_duplicate_resultset_metadata(
+              mysql->fields, mysql->field_count,
+              fields_ma_alloc_root)))
     {
       stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return(1);
     }
-    stmt->field_count= stmt->mysql->field_count;
-
-    for (i=0; i < stmt->field_count; i++)
-    {
-      if (stmt->mysql->fields[i].db)
-        stmt->fields[i].db= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].db);
-      if (stmt->mysql->fields[i].table)
-        stmt->fields[i].table= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].table);
-      if (stmt->mysql->fields[i].org_table)
-        stmt->fields[i].org_table= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].org_table);
-      if (stmt->mysql->fields[i].name)
-        stmt->fields[i].name= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].name);
-      if (stmt->mysql->fields[i].org_name)
-        stmt->fields[i].org_name= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].org_name);
-      if (stmt->mysql->fields[i].catalog)
-        stmt->fields[i].catalog= ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].catalog);
-      stmt->fields[i].def= stmt->mysql->fields[i].def ? ma_strdup_root(fields_ma_alloc_root, stmt->mysql->fields[i].def) : NULL;
-      stmt->fields[i].type= stmt->mysql->fields[i].type;
-      stmt->fields[i].length= stmt->mysql->fields[i].length;
-      stmt->fields[i].flags= stmt->mysql->fields[i].flags;
-      stmt->fields[i].decimals= stmt->mysql->fields[i].decimals;
-      stmt->fields[i].charsetnr= stmt->mysql->fields[i].charsetnr;
-      stmt->fields[i].max_length= stmt->mysql->fields[i].max_length;
-      stmt->fields[i].extension=
-                stmt->mysql->fields[i].extension ?
-                ma_field_extension_deep_dup(fields_ma_alloc_root,
-                                            stmt->mysql->fields[i].extension) :
-                NULL;
-    }
-    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
+    if (!(stmt->bind= (MYSQL_BIND *) ma_alloc_root(
+        fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
     {
       stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      return(1);
+      return (1);
     }
-    memset(stmt->bind, 0, stmt->field_count * sizeof(MYSQL_BIND));
-    stmt->bind_result_done= 0;
   }
+  memset(stmt->bind, 0, stmt->field_count * sizeof(MYSQL_BIND));
+  stmt->bind_result_done= 0;
   return(0);
 }
 
-int stmt_read_execute_response(MYSQL_STMT *stmt)
+int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
 {
   MYSQL *mysql= stmt->mysql;
   int ret;
+  unsigned int last_status= mysql->server_status;
 
   if (!mysql)
     return(1);
 
-  ret= test((mysql->methods->db_read_stmt_result &&
-                 mysql->methods->db_read_stmt_result(mysql)));
   /* if a reconnect occurred, our connection handle is invalid */
   if (!stmt->mysql)
-    return(1);
+    return (1);
+
+  ret= test((mysql->methods->db_read_stmt_result &&
+                 mysql->methods->db_read_stmt_result(mysql)));
+
+  if (!ret && mysql->field_count && !mysql->fields)
+  {
+      /*
+        Column info was not sent by server, copy
+        from stmt->fields
+      */
+      assert(stmt->fields);
+      /*
+         Too bad, C/C resets stmt->field_count to 0
+         before reading SP output variables result sets.
+      */
+      if(!stmt->field_count)
+        stmt->field_count = mysql->field_count;
+      else
+        assert(mysql->field_count == stmt->field_count);
+      mysql->fields= ma_duplicate_resultset_metadata(
+          stmt->fields, stmt->field_count, &mysql->field_alloc);
+      if (!mysql->fields)
+      {
+        stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+        return (1);
+      }
+  }
 
   /* update affected rows, also if an error occurred */
   stmt->upsert_status.affected_rows= stmt->mysql->affected_rows;
@@ -1931,12 +2005,15 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
        of parameters to the specified prebinded value to prevent possible
        memory overrun */
     if (stmt->prebind_params)
+    {
       stmt->param_count= stmt->prebind_params;
+    }
     stmt->state= MYSQL_STMT_PREPARED;
     return(1);
   }
   stmt->upsert_status.last_insert_id= mysql->insert_id;
   stmt->upsert_status.server_status= mysql->server_status;
+  ma_status_callback(stmt->mysql, last_status);
   stmt->upsert_status.warning_count= mysql->warning_count;
 
   CLEAR_CLIENT_ERROR(mysql);
@@ -1998,7 +2075,7 @@ int stmt_read_execute_response(MYSQL_STMT *stmt)
     }
 
     if ((stmt->upsert_status.server_status & SERVER_STATUS_CURSOR_EXISTS)  &&
-        (stmt->flags & CURSOR_TYPE_READ_ONLY)) 
+        (stmt->flags & CURSOR_TYPE_READ_ONLY))
     {
       stmt->cursor_exists = TRUE;
       mysql->status = MYSQL_STATUS_READY;
@@ -2103,15 +2180,12 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
   }
   /* CONC-344: set row count to zero */
   stmt->result.rows= 0;
-  if (stmt->array_size > 0)
-    request= (char *)mysql_stmt_execute_generate_bulk_request(stmt, &request_len);
-  else
-    request= (char *)mysql_stmt_execute_generate_simple_request(stmt, &request_len);
 
+  request= (char *)ma_stmt_execute_generate_request(stmt, &request_len, 0);
   if (!request)
     return 1;
 
-  ret= stmt->mysql->methods->db_command(mysql, 
+  ret= stmt->mysql->methods->db_command(mysql,
                                         stmt->array_size > 0 ? COM_STMT_BULK_EXECUTE : COM_STMT_EXECUTE,
                                         request, request_len, 1, stmt);
   if (request)
@@ -2123,10 +2197,11 @@ int STDCALL mysql_stmt_execute(MYSQL_STMT *stmt)
     return(1);
   }
 
-  if (mysql->net.extension->multi_status > COM_MULTI_OFF)
+  if (mysql->net.extension->multi_status > COM_MULTI_OFF ||
+      mysql->options.extension->skip_read_response)
     return(0);
 
-  return(stmt_read_execute_response(stmt));
+  return(mthd_stmt_read_execute_response(stmt));
 }
 
 static my_bool madb_reset_stmt(MYSQL_STMT *stmt, unsigned int flags)
@@ -2216,6 +2291,7 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
   MYSQL *mysql= stmt->mysql;
   my_bool ret= 1;
   unsigned int flags= MADB_RESET_LONGDATA | MADB_RESET_BUFFER | MADB_RESET_ERROR;
+  unsigned int last_status;
 
   if (!mysql)
   {
@@ -2224,6 +2300,8 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
     stmt_set_error(stmt, CR_SERVER_LOST, SQLSTATE_UNKNOWN, 0);
     return(1);
   }
+
+  last_status= mysql->server_status;
 
   if (stmt->state >= MYSQL_STMT_USER_FETCHING &&
       stmt->fetch_row_func == stmt_unbuffered_fetch)
@@ -2260,6 +2338,7 @@ static my_bool mysql_stmt_internal_reset(MYSQL_STMT *stmt, my_bool is_close)
   stmt->upsert_status.affected_rows= mysql->affected_rows;
   stmt->upsert_status.last_insert_id= mysql->insert_id;
   stmt->upsert_status.server_status= mysql->server_status;
+  ma_status_callback(stmt->mysql, last_status);
   stmt->upsert_status.warning_count= mysql->warning_count;
   mysql->status= MYSQL_STATUS_READY;
 
@@ -2273,7 +2352,7 @@ MYSQL_RES * STDCALL mysql_stmt_result_metadata(MYSQL_STMT *stmt)
   if (!stmt->field_count)
     return(NULL);
 
-  /* aloocate result set structutr and copy stmt information */
+  /* allocate result set structure and copy stmt information */
   if (!(res= (MYSQL_RES *)calloc(1, sizeof(MYSQL_RES))))
   {
     stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -2421,16 +2500,20 @@ int STDCALL mysql_stmt_next_result(MYSQL_STMT *stmt)
   }
 
   if (stmt->mysql->status == MYSQL_STATUS_GET_RESULT)
-    stmt->mysql->status= MYSQL_STATUS_STMT_RESULT; 
+    stmt->mysql->status= MYSQL_STATUS_STMT_RESULT;
 
   if (stmt->mysql->field_count)
     rc= madb_alloc_stmt_fields(stmt);
   else
   {
+    unsigned int last_status= stmt->mysql->server_status;
     stmt->upsert_status.affected_rows= stmt->mysql->affected_rows;
     stmt->upsert_status.last_insert_id= stmt->mysql->insert_id;
     stmt->upsert_status.server_status= stmt->mysql->server_status;
+    ma_status_callback(stmt->mysql, last_status);
     stmt->upsert_status.warning_count= stmt->mysql->warning_count;
+    if (!mysql_stmt_more_results(stmt))
+      stmt->state= MYSQL_STMT_FETCH_DONE;
   }
 
   stmt->field_count= stmt->mysql->field_count;
@@ -2461,7 +2544,7 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
       (stmt->mysql->extension->mariadb_server_capabilities &
       (MARIADB_CLIENT_STMT_BULK_OPERATIONS >> 32))) || mysql->net.compress;
 
-  /* Server versions < 10.2 don't support execute_direct, so we need to 
+  /* Server versions < 10.2 don't support execute_direct, so we need to
      emulate it */
   if (emulate_cmd)
   {
@@ -2528,43 +2611,18 @@ int STDCALL mariadb_stmt_execute_direct(MYSQL_STMT *stmt,
   if (ma_multi_command(mysql, COM_MULTI_END))
     goto fail;
 
-  /* read prepare response */
-  if (mysql->methods->db_read_prepare_response &&
-    mysql->methods->db_read_prepare_response(stmt))
-  goto fail;
-
-  clear_result= 0;
-
-  /* metadata not supported yet */
-
-  if (stmt->param_count &&
-      stmt->mysql->methods->db_stmt_get_param_metadata(stmt))
+  if (!mysql->options.extension->skip_read_response)
   {
+    /* read prepare response */
+    if (mysql->methods->db_read_prepare_response &&
+      mysql->methods->db_read_prepare_response(stmt))
     goto fail;
-  }
 
-  /* allocated bind buffer for parameters */
-  if (stmt->field_count &&
-      stmt->mysql->methods->db_stmt_get_result_metadata(stmt))
-  {
-    goto fail;
-  }
+    clear_result= 0;
 
-  /* allocated bind buffer for result */
-  if (stmt->field_count)
-  {
-    MA_MEM_ROOT *fields_ma_alloc_root= &((MADB_STMT_EXTENSION *)stmt->extension)->fields_ma_alloc_root;
-    if (!(stmt->bind= (MYSQL_BIND *)ma_alloc_root(fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
-    {
-      stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      goto fail;
-    }
-    memset(stmt->bind, 0, sizeof(MYSQL_BIND) * stmt->field_count);
+    /* read execute response packet */
+    return mthd_stmt_read_execute_response(stmt);
   }
-  stmt->state = MYSQL_STMT_PREPARED;
-
-  /* read execute response packet */
-  return stmt_read_execute_response(stmt);
 fail:
   /* check if we need to set error message */
   if (!mysql_stmt_errno(stmt))
@@ -2581,7 +2639,7 @@ fail:
     my_set_error(mysql, mysql_stmt_errno(stmt), mysql_stmt_sqlstate(stmt),
                  mysql_stmt_error(stmt));
     stmt->state= MYSQL_STMT_INITTED;
-  } 
+  }
   return 1;
 }
 

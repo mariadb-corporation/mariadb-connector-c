@@ -15,7 +15,7 @@
    Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
    MA 02111-1301, USA */
 
-/* Error messages for MySQL clients */
+/* Error messages for clients */
 /* error messages for the demon is in share/language/errmsg.sys */
 
 #include <ma_global.h>
@@ -25,77 +25,22 @@
 
 const char *SQLSTATE_UNKNOWN= "HY000";
 
-#ifdef GERMAN
 const char *client_errors[]=
 {
-  "Unbekannter MySQL Fehler",
-  "Kann UNIX-Socket nicht anlegen (%d)",
-  "Keine Verbindung zu lokalem MySQL Server, socket: '%-.64s' (%d)",
-  "Keine Verbindung zu MySQL Server auf %-.64s (%d)",
-  "Kann TCP/IP-Socket nicht anlegen (%d)",
-  "Unbekannter MySQL Server Host (%-.64s) (%d)",
-  "MySQL Server nicht vorhanden",
-  "Protokolle ungleich. Server Version = % d Client Version = %d",
-  "MySQL client got out of memory",
-  "Wrong host info",
-  "Localhost via UNIX socket",
-  "%-.64s via TCP/IP",
-  "Error in server handshake",
-  "Lost connection to MySQL server during query",
-  "Commands out of sync; you can't run this command now",
-  "Verbindung ueber Named Pipe; Host: %-.64s",
-  "Kann nicht auf Named Pipe warten. Host: %-.64s  pipe: %-.32s (%lu)",
-  "Kann Named Pipe nicht oeffnen. Host: %-.64s  pipe: %-.32s (%lu)",
-  "Kann den Status der Named Pipe nicht setzen.  Host: %-.64s  pipe: %-.32s (%lu)",
-  "Can't initialize character set %-.64s (path: %-.64s)",
-  "Got packet bigger than 'max_allowed_packet'"
-};
-
-/* Start of code added by Roberto M. Serqueira - martinsc@uol.com.br - 05.24.2001 */
-
-#elif defined PORTUGUESE
-const char *client_errors[]=
-{
-  "Erro desconhecido do MySQL",
-  "N�o pode criar 'UNIX socket' (%d)",
-  "N�o pode se conectar ao servidor MySQL local atrav�s do 'socket' '%-.64s' (%d)", 
-  "N�o pode se conectar ao servidor MySQL em '%-.64s' (%d)",
-  "N�o pode criar 'socket TCP/IP' (%d)",
-  "'Host' servidor MySQL '%-.64s' (%d) desconhecido", 
-  "Servidor MySQL desapareceu",
-  "Incompatibilidade de protocolos. Vers�o do Servidor: %d - Vers�o do Cliente: %d",
-  "Cliente do MySQL com falta de mem�ria",
-  "Informa��o inv�lida de 'host'",
-  "Localhost via 'UNIX socket'",
-  "%-.64s via 'TCP/IP'",
-  "Erro na negocia��o de acesso ao servidor",
-  "Conex�o perdida com servidor MySQL durante 'query'",
-  "Comandos fora de sincronismo. Voc� n�o pode executar este comando agora",
-  "%-.64s via 'named pipe'",
-  "N�o pode esperar pelo 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
-  "N�o pode abrir 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
-  "N�o pode estabelecer o estado do 'named pipe' para o 'host' %-.64s - 'pipe' %-.32s (%lu)",
-  "N�o pode inicializar conjunto de caracteres %-.64s (caminho %-.64s)",
-  "Obteve pacote maior do que 'max_allowed_packet'"
-};
-
-#else /* ENGLISH */
-const char *client_errors[]=
-{
-/* 2000 */  "Unknown MySQL error",
+/* 2000 */  "Unknown error",
 /* 2001 */  "Can't create UNIX socket (%d)",
-/* 2002 */  "Can't connect to local MySQL server through socket '%-.64s' (%d)",
-/* 2003 */  "Can't connect to MySQL server on '%-.64s' (%d)",
+/* 2002 */  "Can't connect to local server through socket '%-.64s' (%d)",
+/* 2003 */  "Can't connect to server on '%-.64s' (%d)",
 /* 2004 */  "Can't create TCP/IP socket (%d)",
-/* 2005 */  "Unknown MySQL server host '%-.100s' (%d)",
-/* 2006 */  "MySQL server has gone away",
+/* 2005 */  "Unknown server host '%-.100s' (%d)",
+/* 2006 */  "Server has gone away",
 /* 2007 */  "Protocol mismatch. Server Version = %d Client Version = %d",
-/* 2008 */  "MySQL client run out of memory",
+/* 2008 */  "Client run out of memory",
 /* 2009 */  "Wrong host info",
 /* 2010 */  "Localhost via UNIX socket",
 /* 2011 */  "%-.64s via TCP/IP",
 /* 2012 */  "Error in server handshake",
-/* 2013 */  "Lost connection to MySQL server during query",
+/* 2013 */  "Lost connection to server during query",
 /* 2014 */  "Commands out of sync; you can't run this command now",
 /* 2015 */  "%-.64s via named pipe",
 /* 2016 */  "Can't wait for named pipe to host: %-.64s  pipe: %-.32s (%lu)",
@@ -108,8 +53,8 @@ const char *client_errors[]=
 /* 2023 */  "",
 /* 2024 */  "",
 /* 2025 */  "",
-/* 2026 */  "TLS/SSL error: %-.100s",
-/* 2027 */  "received malformed packet",
+/* 2026 */  "TLS/SSL error: %s",
+/* 2027 */  "Received malformed packet",
 /* 2028 */  "",
 /* 2029 */  "",
 /* 2030 */  "Statement is not prepared",
@@ -137,7 +82,7 @@ const char *client_errors[]=
 /* 2052 */  "Prepared statement contains no metadata",
 /* 2053 */  "",
 /* 2054 */  "This feature is not implemented or disabled",
-/* 2055 */  "Lost connection to MySQL server at '%s', system error: %d",
+/* 2055 */  "Lost connection to server at '%s', system error: %d",
 /* 2056 */  "Server closed statement due to a prior %s function call",
 /* 2057 */  "The number of parameters in bound buffers differs from number of columns in resultset",
 /* 2058 */  "Can't connect twice. Already connected",
@@ -146,7 +91,6 @@ const char *client_errors[]=
 /* 2061 */  "Plugin doesn't support this function",
             ""
 };
-#endif
 
 const char *mariadb_client_errors[] =
 {
@@ -159,13 +103,24 @@ const char *mariadb_client_errors[] =
   /* 5006 */ "Bulk operation without parameters is not supported",
   /* 5007 */ "Invalid statement handle",
   /* 5008 */ "Unsupported version %d. Supported versions are in the range %d - %d",
-  /* 5009 */ "",
-  /* 5010 */ "",
-  /* 5011 */ "",
-  /* 5012 */ "",
+  /* 5009 */ "Invalid or missing parameter '%s'.",
+  /* 5010 */ "Authentication plugin '%s' couldn't be found in restricted_auth plugin list.",
+  /* 5011 */ "Parse error in connection string (offset %d)",
+  /* 5012 */ "Error while loading plugin '%s'",
   /* 5013 */ "Read error: %s (%d)",
   /* 5014 */ "Write error: %s (%d)",
   /* 5015 */ "Error while uncompressing packet",
+  /* 5016 */ "Error while retrieving parameter from callback function",
+  /* 5017 */ "Error while uncompressing packet (File: %.*s start_pos=%ld).",
+  /* 5018 */ "Checksum verification failed (File: %.*s start_pos=%ld). Reported checksum is %x, while calculated checksum is %x.",
+  /* 5019 */ "Binary log protocol error (File: %.*s start_pos=%ld): Log format %d not supported.",
+  /* 5020 */ "Binary log error (File: %.*s start_pos=%ld): Unknown event type (%d) with flag 'not_ignorable'.",
+  /* 5021 */ "Binary log error (File: %.*s start_pos=%ld): %s.",
+  /* 5022 */ "File '%s' is not a binary log file",
+  /* 5023 */ "Semi sync request error: %s",
+  /* 5024 */ "Invalid client flags (%lu) specified. Supported flags: %lu",
+  /* 5025 */ "",
+  /* 5026 */ "Server returned an error packet without further information",
   ""
 };
 

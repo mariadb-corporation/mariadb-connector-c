@@ -112,7 +112,7 @@ do {\
 	/* Some constants */
 #define MY_WAIT_FOR_USER_TO_FIX_PANIC	60	/* in seconds */
 #define MY_WAIT_GIVE_USER_A_MESSAGE	10	/* Every 10 times of prev */
-#define MIN_COMPRESS_LENGTH		50	/* Don't compress small bl. */
+#define MIN_COMPRESS_LENGTH		150	/* Don't compress small bl. */
 #define KEYCACHE_BLOCK_SIZE		1024
 
 	/* root_alloc flags */
@@ -209,7 +209,7 @@ extern char *defaults_extra_file;
 typedef struct wild_file_pack	/* Struct to hold info when selecting files */
 {
   uint		wilds;		/* How many wildcards */
-  uint		not_pos;	/* Start of not-theese-files */
+  uint		not_pos;	/* Start of not-these-files */
   my_string	*wild;		/* Pointer to wildcards */
 } WF_PACK;
 
@@ -219,11 +219,6 @@ struct my_rnd_struct {
 };
 
 #endif
-typedef struct st_typelib {	/* Different types saved here */
-  uint count;			/* How many types */
-  const char *name;			/* Name of typelib */
-  const char **type_names;
-} TYPELIB;
 
 enum cache_type {READ_CACHE,WRITE_CACHE,READ_FIFO,READ_NET,WRITE_NET};
 enum flush_type { FLUSH_KEEP, FLUSH_RELEASE, FLUSH_IGNORE_CHANGED,
@@ -501,9 +496,6 @@ extern void ma_freeze_size(DYNAMIC_ARRAY *array);
 #define dynamic_element(array,array_index,type) ((type)((array)->buffer) +(array_index))
 #define push_dynamic(A,B) ma_insert_dynamic(A,B)
 
-extern int ma_find_type(my_string x,TYPELIB *typelib,uint full_name);
-extern void ma_make_type(my_string to,uint nr,TYPELIB *typelib);
-extern const char *ma_get_type(TYPELIB *typelib,uint nr);
 extern my_bool ma_init_dynamic_string(DYNAMIC_STRING *str, const char *init_str,
 				   size_t init_alloc, size_t alloc_increment);
 extern my_bool ma_dynstr_append(DYNAMIC_STRING *str, const char *append);
@@ -527,9 +519,6 @@ char *ma_strdup_root(MA_MEM_ROOT *root,const char *str);
 char *ma_memdup_root(MA_MEM_ROOT *root,const char *str, size_t len);
 void ma_free_defaults(char **argv);
 void ma_print_defaults(const char *conf_file, const char **groups);
-my_bool _mariadb_compress(unsigned char *, size_t *, size_t *);
-my_bool _mariadb_uncompress(unsigned char *, size_t *, size_t *);
-unsigned char *_mariadb_compress_alloc(const unsigned char *packet, size_t *len, size_t *complen);
 ulong checksum(const unsigned char *mem, uint count);
 
 #if defined(_MSC_VER) && !defined(_WIN32)

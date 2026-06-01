@@ -91,6 +91,12 @@ static int test_logs(MYSQL *mysql)
   my_bind[1].buffer_length= 255;
   my_bind[1].length= (unsigned long *)&length;
 
+  // https://jira.mariadb.org/browse/XPT-266
+  if (IS_XPAND()) {
+    rc= mysql_query(mysql, "SET NAMES UTF8");
+    check_mysql_rc(rc, mysql);
+  }
+
   id= 9876;
   strcpy((char *)data, "MySQL - Open Source Database");
   length= strlen(data);

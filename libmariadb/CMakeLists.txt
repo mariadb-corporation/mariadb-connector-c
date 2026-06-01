@@ -37,6 +37,11 @@ SET(MARIADB_LIB_SYMBOLS
  mariadb_free_rpl_event
  mariadb_field_attr
 )
+
+SET(MARIADB_LIB_3_3_5_SYMBOLS
+ mariadb_rpl_extract_rows
+ mariadb_rpl_error
+ mariadb_rpl_errno)
 IF(WITH_SSL)
   SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} mariadb_deinitialize_ssl)
 ENDIF()
@@ -163,11 +168,29 @@ SET(MYSQL_LIB_SYMBOLS
  mysql_use_result
  mysql_warning_count)
 
-# some gcc versions fail to compile asm parts of my_context.c,
-# if build type is "Release" (see CONC-133), so we need to add -g flag
-IF(CMAKE_COMPILER_IS_GNUCC AND CMAKE_BUILD_TYPE MATCHES "Release")
-  SET_SOURCE_FILES_PROPERTIES(my_context.c PROPERTIES COMPILE_FLAGS -g)
+IF(ZLIB_FOUND AND WITH_EXTERNAL_ZLIB)
+  INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
+ELSE()
+  SET(ZLIB_SOURCES
+    ${CC_SOURCE_DIR}/external/zlib/adler32.c
+    ${CC_SOURCE_DIR}/external/zlib/compress.c
+    ${CC_SOURCE_DIR}/external/zlib/crc32.c
+    ${CC_SOURCE_DIR}/external/zlib/deflate.c
+    ${CC_SOURCE_DIR}/external/zlib/gzclose.c
+    ${CC_SOURCE_DIR}/external/zlib/gzlib.c
+    ${CC_SOURCE_DIR}/external/zlib/gzread.c
+    ${CC_SOURCE_DIR}/external/zlib/gzwrite.c
+    ${CC_SOURCE_DIR}/external/zlib/infback.c
+    ${CC_SOURCE_DIR}/external/zlib/inffast.c
+    ${CC_SOURCE_DIR}/external/zlib/inflate.c
+    ${CC_SOURCE_DIR}/external/zlib/inftrees.c
+    ${CC_SOURCE_DIR}/external/zlib/trees.c
+    ${CC_SOURCE_DIR}/external/zlib/uncompr.c
+    ${CC_SOURCE_DIR}/external/zlib/zutil.c
+  )
+  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/external/zlib ${CC_BINARY_DIR}/external/zlib)
 ENDIF()
+
 
 SET(MARIADB_DYNCOL_SYMBOLS
  mariadb_dyncol_check
@@ -263,12 +286,13 @@ SET(MARIADB_NONBLOCK_SYMBOLS
 )
 
 # handle static plugins
-SET(LIBMARIADB_SOURCES ${LIBMARIADB_PLUGIN_SOURCES})
+SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${LIBMARIADB_PLUGIN_SOURCES})
+SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBMARIADB_PLUGIN_LIBS} ${ZSTD_LIBRARY} ${ZLIB_LIBRARY})
+MESSAGE(STATUS "SYSTEM_LIBS: ${SYSTEM_LIBS}")
 INCLUDE_DIRECTORIES(${LIBMARIADB_PLUGIN_INCLUDES})
-SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${LIBMARIADB_PLUGIN_LIBS} ${INTERNAL_ZLIB_LIBRARY})
 ADD_DEFINITIONS(${LIBMARIADB_PLUGIN_DEFS})
 FOREACH(plugin ${PLUGINS_STATIC})
-  SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin ${plugin}_client_plugin;\n")
+  SET(EXTERNAL_PLUGINS "${EXTERNAL_PLUGINS} extern struct st_mysql_client_plugin_${PLUGIN_${plugin}_TYPE} ${plugin}_client_plugin;\n")
   SET(BUILTIN_PLUGINS "${BUILTIN_PLUGINS}   (struct st_mysql_client_plugin *)&${plugin}_client_plugin,\n")
 ENDFOREACH()
 CONFIGURE_FILE(${CC_SOURCE_DIR}/libmariadb/ma_client_plugin.c.in
@@ -278,6 +302,7 @@ SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES}
 ${CC_SOURCE_DIR}/plugins/auth/my_auth.c
 ma_array.c
 ma_charset.c
+ma_decimal.c
 ma_hashtbl.c
 ma_net.c
 mariadb_charset.c
@@ -329,27 +354,27 @@ IF(ZLIB_FOUND AND WITH_EXTERNAL_ZLIB)
   INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 ELSE()
   SET(ZLIB_SOURCES
-    ../zlib/adler32.c 
-    ../zlib/compress.c
-    ../zlib/crc32.c
-    ../zlib/deflate.c
-    ../zlib/gzclose.c
-    ../zlib/gzlib.c
-    ../zlib/gzread.c
-    ../zlib/gzwrite.c
-    ../zlib/infback.c
-    ../zlib/inffast.c
-    ../zlib/inflate.c
-    ../zlib/inftrees.c
-    ../zlib/trees.c
-    ../zlib/uncompr.c
-    ../zlib/zutil.c
+    ${CC_SOURCE_DIR}/external/zlib/adler32.c
+    ${CC_SOURCE_DIR}/external/zlib/compress.c
+    ${CC_SOURCE_DIR}/external/zlib/crc32.c
+    ${CC_SOURCE_DIR}/external/zlib/deflate.c
+    ${CC_SOURCE_DIR}/external/zlib/gzclose.c
+    ${CC_SOURCE_DIR}/external/zlib/gzlib.c
+    ${CC_SOURCE_DIR}/external/zlib/gzread.c
+    ${CC_SOURCE_DIR}/external/zlib/gzwrite.c
+    ${CC_SOURCE_DIR}/external/zlib/infback.c
+    ${CC_SOURCE_DIR}/external/zlib/inffast.c
+    ${CC_SOURCE_DIR}/external/zlib/inflate.c
+    ${CC_SOURCE_DIR}/external/zlib/inftrees.c
+    ${CC_SOURCE_DIR}/external/zlib/trees.c
+    ${CC_SOURCE_DIR}/external/zlib/uncompr.c
+    ${CC_SOURCE_DIR}/external/zlib/zutil.c
   )
   IF(MSVC)
     SET_SOURCE_FILES_PROPERTIES(${ZLIB_SOURCES} PROPERTIES COMPILE_FLAGS -W0)
   ENDIF()
   SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ${ZLIB_SOURCES})
-  INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/zlib)
+  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/external/zlib)
 ENDIF()
 
 IF(WITH_DYNCOL)
@@ -359,6 +384,9 @@ IF(WITH_DYNCOL)
 ENDIF()
 
 SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} mariadb_async.c ma_context.c)
+IF(WITH_BOOST_CONTEXT)
+  SET(LIBMARIADB_SOURCES ${LIBMARIADB_SOURCES} ma_boost_context.cc)
+ENDIF()
 SET(MARIADB_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS} ${MARIADB_NONBLOCK_SYMBOLS})
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/export.cmake)
@@ -371,10 +399,14 @@ IF(NOT WIN32)
                    "libmariadb_3"
                    "${MARIADB_LIB_SYMBOLS}"
                    "")
+  CREATE_EXPORT_FILE(APPEND mariadbclient.def
+                   "libmariadb_3_3_5"
+                   "${MARIADB_LIB_3_3_5_SYMBOLS}"
+                   "")
 ELSE()
   CREATE_EXPORT_FILE(WRITE mariadbclient.def
                    "libmariadb_3"
-                   "${MARIADB_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS}"
+                   "${MARIADB_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS};${MARIADB_LIB_3_3_5_SYMBOLS}"
                    "")
 ENDIF()
 
@@ -397,6 +429,9 @@ IF(CMAKE_GENERATOR MATCHES Xcode)
   SET(EMPTY_FILE ${CC_BINARY_DIR}/libmariadb/empty.c)
 ENDIF()
 
+#* create file with list of functions */
+FILE(WRITE ${CC_BINARY_DIR}/manpages.list "${MARIADB_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS}")
+
 IF(WIN32)
   SET_VERSION_INFO("TARGET:libmariadb"
                    "FILE_TYPE:VFT_DLL"
@@ -405,9 +440,8 @@ IF(WIN32)
                    "FILE_DESCRIPTION:Dynamic lib for client/server communication")
 ENDIF()
 
-
 ADD_LIBRARY(mariadbclient STATIC  ${MARIADB_OBJECTS} ${EMPTY_FILE})
-TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS})
+TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS} ${CRYPTO_LIBS})
 
 IF(UNIX)
   ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE})
@@ -417,13 +451,9 @@ ELSE()
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINKER_LANGUAGE C)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${SYSTEM_LIBS})
+TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${SYSTEM_LIBS} ${CRYPTO_LIBS})
 
 SIGN_TARGET(libmariadb)
-
-IF(CMAKE_SIZEOF_VOID_P EQUAL 8 AND MSVC)
-  SET_TARGET_PROPERTIES(mariadbclient PROPERTIES STATIC_LIBRARY_FLAGS "/machine:x64")
-ENDIF()
 
 IF(CMAKE_SYSTEM_NAME MATCHES "Linux" OR
    CMAKE_SYSTEM_NAME MATCHES "kFreeBSD" OR

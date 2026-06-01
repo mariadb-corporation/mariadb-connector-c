@@ -172,6 +172,8 @@ void *ma_multi_malloc(myf myFlags, ...)
   size_t tot_length,length;
 
   va_start(args,myFlags);
+  /* keep gcc15 happy */
+  (void)myFlags;
   tot_length=0;
   while ((ptr=va_arg(args, char **)))
   {

@@ -30,6 +30,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <string.h>
 #include <errmsg.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <ma_server_error.h>
 #include <mysql/client_plugin.h>
 #include <errmsg.h>
@@ -38,6 +39,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <pthread.h>
 #else
 #include <io.h>
+#define unlink _unlink
 #endif
 
 #ifndef OK
@@ -56,7 +58,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 # define TRUE 1
 #endif
 
-#define IS_SKYSQL(a) ((a) && strstr((a), "db.skysql.net"))
+#define IS_SKYSQL(a) ((a) && strstr((a), "skysql.mariadb.com"))
 #define SKIP_SKYSQL \
 if (IS_SKYSQL(hostname)) \
 { \
@@ -83,10 +85,11 @@ if (force_tls)\
 
 MYSQL *mysql_default = NULL;  /* default connection */
 
-#define IS_MAXSCALE()\
-   ((mysql_default && strstr(mysql_get_server_info(mysql_default), "maxScale")) ||\
-    (getenv("srv")!=NULL && (strcmp(getenv("srv"), "maxscale") == 0 ||\
-     strcmp(getenv("srv"), "skysql-ha") == 0)))
+#define IS_MAXSCALE() \
+   ((mysql_default && strstr(mysql_get_server_info(mysql_default), "maxScale")) || \
+    (getenv("srv") != NULL && strcmp(getenv("srv"), "maxscale") == 0) || \
+    (getenv("MAXSCALE_TAG") != NULL && strlen(getenv("MAXSCALE_TAG")) > 0))
+
 #define SKIP_MAXSCALE \
 if (IS_MAXSCALE()) \
 { \
@@ -94,9 +97,25 @@ if (IS_MAXSCALE()) \
   return SKIP; \
 }
 
+#define IS_ENTERPRISE()\
+   ((mysql_default && strstr(mysql_get_server_info(mysql_default), "enterprise")) ||\
+     (getenv("srv")!=NULL && (strcmp(getenv("srv"), "enterprise"))))
+
+#define IS_XPAND()\
+   ((mysql_default && strstr(mysql_get_server_info(mysql_default), "Xpand")) ||\
+    (getenv("srv")!=NULL && strcmp(getenv("srv"), "xpand") == 0))
+
+#define SKIP_XPAND \
+if (IS_XPAND()) \
+{ \
+  diag("test disabled with Xpand"); \
+  return SKIP; \
+}
+
 #define SKIP_LOAD_INFILE_DISABLE \
 if (!((mysql->server_capabilities & CLIENT_LOCAL_FILES) &&  \
-         (mysql->options.client_flag & CLIENT_LOCAL_FILES))) { \
+         (mysql->options.client_flag & CLIENT_LOCAL_FILES)) || \
+    IS_XPAND()) { \
   diag("Load local infile not supported"); \
   return SKIP; \
 }
@@ -114,9 +133,9 @@ if (!((mysql->server_capabilities & CLIENT_LOCAL_FILES) &&  \
 
 #define SKIP_TRAVIS()\
 do {\
-  if (getenv("TRAVIS"))\
+  if (getenv("TRAVIS") || getenv("GITHUB_ACTIONS"))\
   {\
-    diag("Skip test on Travis CI");\
+    diag("Skip test on Travis CI or GitHub Actions");\
     return SKIP;\
   }\
 }while(0)
@@ -125,7 +144,7 @@ do {\
 do {\
   if (!mariadb_connection(mysql))\
   {\
-    diag("Skip test for non MariaDB server");\
+    diag("Skip test for non-MariaDB server");\
     return OK;\
   }\
 } while(0)
@@ -259,7 +278,7 @@ int do_verify_prepare_field(MYSQL_RES *result,
                             enum enum_field_types type __attribute__((unused)),
                             const char *table,
                             const char *org_table, const char *db,
-                            unsigned long length __attribute__((unused)), 
+                            unsigned long length __attribute__((unused)),
                             const char *def __attribute__((unused)),
                             const char *file __attribute__((unused)),
                             int line __attribute__((unused)))
@@ -347,7 +366,7 @@ get_one_option(int optid, const struct my_option *opt __attribute__((unused)),
 {
   switch (optid) {
   case '?':
-  case 'I':                           
+  case 'I':
     my_print_help(test_options);
     exit(0);
     break;
@@ -405,7 +424,7 @@ my_bool query_int_variable(MYSQL *con, const char *var_name, int *var_value)
           (const char *) var_name);
 
   FAIL_IF(mysql_query(con, query_buffer), "Query failed");
-  FAIL_UNLESS(rs= mysql_store_result(con), "Invaliid result set");
+  FAIL_UNLESS(rs= mysql_store_result(con), "Invalid result set");
   FAIL_UNLESS(row= mysql_fetch_row(rs), "Nothing to fetch");
 
   is_null= row[0] == NULL;
@@ -492,7 +511,7 @@ int check_variable(MYSQL *mysql, const char *variable, const char *value)
   return FAIL;
 }
 
-/* 
+/*
  * function *test_connect
  *
  * returns a new connection. This function will be called, if the test doesn't
@@ -529,7 +548,7 @@ MYSQL *test_connect(struct my_tests_st *test)
   if (!(my_test_connect(mysql, hostname, username, password,
                            schema, port, socketname, (test) ? test->connect_flags:0)))
   {
-    diag("Couldn't establish connection to server %s. Error (%d): %s", 
+    diag("Couldn't establish connection to server %s. Error (%d): %s",
                    hostname, mysql_errno(mysql), mysql_error(mysql));
     mysql_close(mysql);
     return(NULL);
@@ -561,6 +580,15 @@ static int reset_connection(MYSQL *mysql) {
   return OK;
 }
 
+static char *check_envvar(const char *envvar)
+{
+  char *p = getenv(envvar);
+
+  if (p && p[0])
+    return p;
+  return NULL;
+}
+
 /*
  * function get_envvars((
  *
@@ -572,59 +600,58 @@ void get_envvars() {
   if (!getenv("MYSQLTEST_VARDIR") &&
       !getenv("MARIADB_CC_TEST"))
   {
-    skip_all("Tests skipped.\nFor running unittest suite outside of MariaDB server tests,\nplease specify MARIADB_CC_TEST environment variable.");
+    skip_all("Tests skipped.\nFor running unittest suite outside of MariaDB server tests,\nplease specify MARIADB_CC_TEST environment variable.\n");
     exit(0);
   }
 
   if (getenv("TRAVIS_JOB_ID"))
     travis_test= 1;
 
-  if (!hostname && (envvar= getenv("MYSQL_TEST_HOST")))
-    hostname= envvar;
+  if (!hostname)
+    hostname= check_envvar("MYSQL_TEST_HOST");
 
+  if (!username && !(username= check_envvar("MYSQL_TEST_USER")))
+    username= (char *)"root";
 
-  if (!username)
-  {
-    if ((envvar= getenv("MYSQL_TEST_USER")))
-      username= envvar;
-    else
-      username= (char *)"root";
-  }
-  if (!password && (envvar= getenv("MYSQL_TEST_PASSWD")))
-    password= envvar;
-  if (!schema && (envvar= getenv("MYSQL_TEST_DB")))
-    schema= envvar;
-  if (!schema)
+  if (!password)
+    password= check_envvar("MYSQL_TEST_PASSWD");
+
+  if (!schema && !(schema= check_envvar("MYSQL_TEST_DB")))
     schema= "test";
+
   if (!port)
   {
-    if ((envvar= getenv("MYSQL_TEST_PORT")))
+    if ((envvar= check_envvar("MYSQL_TEST_PORT")) ||
+        (envvar= check_envvar("MASTER_MYPORT")))
       port= atoi(envvar);
-    else if ((envvar= getenv("MASTER_MYPORT")))
-      port= atoi(envvar);
-    diag("port: %d", port);
   }
   if (!ssl_port)
   {
-    if ((envvar= getenv("MYSQL_TEST_SSL_PORT")))
+    if ((envvar= check_envvar("MYSQL_TEST_SSL_PORT")))
       ssl_port= atoi(envvar);
     else
       ssl_port = port;
-    diag("ssl_port: %d", ssl_port);
   }
 
-  if (!force_tls && (envvar= getenv("MYSQL_TEST_TLS")))
+  if (!force_tls && (envvar= check_envvar("MYSQL_TEST_TLS")))
     force_tls= atoi(envvar);
+
   if (!socketname)
   {
-    if ((envvar= getenv("MYSQL_TEST_SOCKET")))
+    if ((envvar= check_envvar("MYSQL_TEST_SOCKET")) ||
+        (envvar= check_envvar("MASTER_MYSOCK")))
       socketname= envvar;
-    else if ((envvar= getenv("MASTER_MYSOCK")))
-      socketname= envvar;
-    diag("socketname: %s", socketname);
   }
-  if ((envvar= getenv("MYSQL_TEST_PLUGINDIR")))
+  if ((envvar= check_envvar("MYSQL_TEST_PLUGINDIR")))
     plugindir= envvar;
+
+  diag("Connection parameters");
+  diag("Schema: %s", schema);
+  diag("Host: %s", hostname);
+  diag("Port: %d", port);
+  diag("TLS Port: %d", ssl_port);
+  diag("Socket: %s", socketname);
+  diag("Plugindir: %s", plugindir);
 }
 
 MYSQL *my_test_connect(MYSQL *mysql,
@@ -637,7 +664,7 @@ MYSQL *my_test_connect(MYSQL *mysql,
                        unsigned long clientflag)
 {
   if (force_tls)
-    mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls); 
+    mysql_options(mysql, MYSQL_OPT_SSL_ENFORCE, &force_tls);
   if (!mysql_real_connect(mysql, host, user, passwd, db, port, unix_socket, clientflag))
   {
     diag("error: %s", mysql_error(mysql));
@@ -663,7 +690,7 @@ void run_tests(struct my_tests_st *test) {
     total++;
   plan(total);
 
-  /* display TLS stats */
+/* display TLS stats */
   mysql= mysql_init(NULL);
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
@@ -749,4 +776,3 @@ void run_tests(struct my_tests_st *test) {
     mysql_close(mysql_default);
   }
 }
-

@@ -26,14 +26,10 @@
 #include <windows.h>
 #include <stdlib.h>
 #define strcasecmp _stricmp
+#define strtok_r strtok_s
+#define strdup _strdup
 #define sleep(x) Sleep(1000*(x))
-#ifdef _MSC_VER
-#define inline __inline
-#if _MSC_VER < 1900
-#define snprintf _snprintf
-#endif
 #define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
-#endif
 #define STDCALL __stdcall 
 #endif
 
@@ -226,7 +222,7 @@
 #endif
 
 /* #define USE_some_charset 1 was deprecated by changes to configure */
-/* my_ctype my_to_upper, my_to_lower, my_sort_order gain theit right value */
+/* my_ctype my_to_upper, my_to_lower, my_sort_order gain their right value */
 /* automagically during configuration */
 
 /* Does the system remember a signal handler after a signal ? */
@@ -294,8 +290,8 @@ typedef unsigned short ushort;
 /* From old s-system.h */
 
 /*
-  Support macros for non ansi & other old compilers. Since such
-  things are no longer supported we do nothing. We keep then since
+  Support macros for non-ansi & other old compilers. Since such
+  things are no longer supported we do nothing. We keep them since
   some of our code may still be needed to upgrade old customers.
 */
 #define _VARARGS(X) X
@@ -398,7 +394,7 @@ typedef SOCKET_SIZE_TYPE size_socket;
 #define FN_EXTCHAR	'.'
 #define FN_HOMELIB	'~'	/* ~/ is used as abbrev for home dir */
 #define FN_CURLIB	'.'	/* ./ is used as abbrev for current dir */
-#define FN_PARENTDIR	".."	/* Parentdirectory; Must be a string */
+#define FN_PARENTDIR	".."	/* Parent directory; Must be a string */
 #define FN_DEVCHAR	':'
 
 #ifndef FN_LIBCHAR
@@ -489,9 +485,11 @@ extern double		my_atof(const char*);
 #if defined(_lint) || defined(FORCE_INIT_OF_VARS) || \
     defined(__cplusplus) || !defined(__GNUC__)
 #define UNINIT_VAR(x) x= 0
-#else
+#elif defined(__GNUC__) && !defined(__clang__)
 /* GCC specific self-initialization which inhibits the warning. */
 #define UNINIT_VAR(x) x= x
+#else
+#define UNINIT_VAR(x) x
 #endif
 
 
@@ -578,7 +576,7 @@ typedef long my_ptrdiff_t;
 #define STDCALL
 #endif
 
-/* Typdefs for easyier portability */
+/* Typedefs for easier portability */
 
 #if defined(VOIDTYPE)
 typedef void	*gptr;		/* Generic pointer */
@@ -687,7 +685,11 @@ typedef unsigned long	size_s; /* Size of strings (In string-funcs) */
 typedef int		myf;	/* Type of MyFlags in my_funcs */
 typedef char		my_bool; /* Small bool */
 typedef unsigned long long my_ulonglong;
+<<<<<<< cpp_bool
 #if !defined(bool) && !defined(bool_defined) && !defined(HAVE_BOOL) && !defined(__cplusplus)
+=======
+#if !defined(bool) && !defined(bool_defined) && (!defined(HAVE_BOOL) || !defined(__cplusplus)) && (__STDC_VERSION__ < 202300L)
+>>>>>>> 3.3
 typedef char		bool;	/* Ordinary boolean values 0 1 */
 #endif
 	/* Macros for converting *constants* to the right type */
@@ -741,13 +743,14 @@ typedef char		bool;	/* Ordinary boolean values 0 1 */
 #endif /* L64 */
 #endif /* _WIN32 */
 /*
-** Define-funktions for reading and storing in machine independent format
+** Define functions for reading and storing in machine independent format
 **  (low byte first)
 */
 
 /* Optimized store functions for Intel x86 */
 #define int1store(T,A) *((int8*) (T)) = (A)
 #define uint1korr(A)   (*(((uint8*)(A))))
+#define sint1korr(A)   (*(((int8*)(A))))
 #if defined(__i386__) || defined(_WIN32)
 #define sint2korr(A)	(*((int16 *) (A)))
 #define sint3korr(A)	((int32) ((((uchar) (A)[2]) & 128) ? \
@@ -974,7 +977,7 @@ do { doubleget_union _tmp; \
 				  (((uint32) ((uchar) (A)[1])) << 16) |\
 				  (((uint32) ((uchar) (A)[0])) << 24))
 /*
-  Define-funktions for reading and storing in machine format from/to
+  Define functions for reading and storing in machine format from/to
   short/long to/from some place in memory V should be a (not
   register) variable, M is a pointer to byte
 */

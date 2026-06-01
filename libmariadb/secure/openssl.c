@@ -132,6 +132,10 @@ static void ma_tls_set_error(MYSQL *mysql)
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
                    0, ssl_error_reason);
     return;
+  } else if (!save_errno) {
+    pvio->set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                    ER(CR_SERVER_LOST));
+    return;
   }
 
   strerror_r(save_errno, ssl_error, MAX_SSL_ERR_LEN);
@@ -414,9 +418,10 @@ void *ma_tls_init(MYSQL *mysql)
 {
   SSL *ssl= NULL;
   SSL_CTX *ctx= NULL;
-  long options= SSL_OP_ALL |
-                SSL_OP_NO_SSLv2 |
-                SSL_OP_NO_SSLv3;
+  long default_options= SSL_OP_ALL |
+                        SSL_OP_NO_SSLv2 |
+                        SSL_OP_NO_SSLv3;
+  long options= 0;
   pthread_mutex_lock(&LOCK_openssl_config);
 
   #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -425,10 +430,9 @@ void *ma_tls_init(MYSQL *mysql)
   if (!(ctx= SSL_CTX_new(SSLv23_client_method())))
 #endif
     goto error;
-  if (mysql->options.extension)
-    options|= ma_tls_version_options(mysql->options.extension->tls_version);
-  SSL_CTX_set_options(ctx, options);
-
+  if (mysql->options.extension) 
+    options= ma_tls_version_options(mysql->options.extension->tls_version);
+  SSL_CTX_set_options(ctx, options ? options : default_options);
 
   if (ma_tls_set_certs(mysql, ctx))
   {
@@ -467,7 +471,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
 
-  /* Set socket to non blocking if not already set */
+  /* Set socket to non-blocking if not already set */
   if (!(blocking= pvio->methods->is_blocking(pvio)))
     pvio->methods->blocking(pvio, FALSE, 0);
 
