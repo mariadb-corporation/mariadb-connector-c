@@ -674,7 +674,7 @@ static void convert_from_long(MYSQL_BIND *r_param, const MYSQL_FIELD *field, lon
       uint len;
       my_bool zf_truncated= 0;
 
-      buffer= alloca(MAX(field->length, 22));
+      buffer= alloca(MAX(MIN(field->length, 255), 22));
       endptr= ma_ll2str(val, buffer, is_unsigned ? 10 : -10);
       len= (uint)(endptr - buffer);
 
