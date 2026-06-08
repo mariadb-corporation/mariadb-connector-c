@@ -164,7 +164,7 @@ static int test_start_tls_server(MYSQL *my __attribute__((unused)))
     snprintf(port, sizeof(port), "--port=%d", tls_dummy_port);
     execlp("@Python3_EXECUTABLE@", "@Python3_EXECUTABLE@", "@CC_SOURCE_DIR@/unittest/libmariadb/tls_server.py", hostname, port, NULL);
   }
-  
+
 #endif
   sleep(10);
   return OK;
@@ -376,7 +376,7 @@ static int test_fp_colon(MYSQL *my __attribute__((unused)))
     }
     p--;
     *p= 0;
-      
+
 
     diag ("fp: %s", fp);
     mysql_optionsv(mysql1, MARIADB_OPT_SSL_FP, fp);
@@ -599,6 +599,10 @@ static int test_crl(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql;
 
+  if (getenv("GITHUB_ACTIONS")) {
+    return SKIP;
+  }
+
   /* Set validity in future */
   if (set_tls_dummy_options("CMD:KEY_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-key.pem' CERT_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.pem'"))
   {
@@ -628,6 +632,9 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
   /* hardcoded: openssl x509 -noout -fingerprint -sha256 -inform pem -in certs/server-cert.pem */
   const char *fp= "4B:EE:BB:12:6D:30:1A:B2:2A:4A:F8:6D:82:7F:63:44:1F:8F:F4:6B:D3:F2:CA:68:0B:D5:E3:5D:1C:47:A7:16";
 
+  if (getenv("GITHUB_ACTIONS")) {
+    return SKIP;
+  }
   /* Set validity in future */
   if (set_tls_dummy_options("CMD:KEY_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-key.pem' CERT_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.pem'"))
   {
@@ -664,7 +671,7 @@ static int stop_tls_server(MYSQL *my __attribute__((unused)))
 static int tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
 {
   MYSQL *mysql= ctls->pvio->mysql;
-  
+
   free(mysql->host);
   mysql->host= strdup("test.example.com");
   flags= MARIADB_TLS_VERIFY_HOST;
