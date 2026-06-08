@@ -761,7 +761,7 @@ static int test_cert_wildcard(MYSQL *my __attribute((unused)))
 
 static int test_env_var(MYSQL *my __attribute__((unused)))
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
   int rc= FAIL;
 
   if (mysql_get_server_version(my) < 110400)
@@ -776,12 +776,19 @@ static int test_env_var(MYSQL *my __attribute__((unused)))
 #else
   setenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "1", 1);
 #endif
+
+
+  if (!getenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION"))
+    return SKIP;
+
+  mysql= mysql_init(NULL);
   set_verify(mysql, 1);
 
   if (!my_test_connect(mysql, hostname, username, password, schema,
                        port, socketname, 0, 0))
   {
     diag("expected to pass, since environment variable was set");
+    diag("Error: %s", mysql_error(mysql));
     goto end;
   }
 
