@@ -787,17 +787,18 @@ static int test_env_var(MYSQL *my __attribute__((unused)))
 #endif
 
 
-  if (!getenv("MARIADB_TLS_DISABLE_PEER_VERIFICATION"))
-    return SKIP;
-
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
   if (!my_test_connect(mysql, hostname, username, password, schema,
                        port, socketname, 0, 0))
   {
+    int status;
+    mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);
+
     diag("expected to pass, since environment variable was set");
     diag("Error: %s", mysql_error(mysql));
+    diag("Status: %d", status);
     goto end;
   }
 
