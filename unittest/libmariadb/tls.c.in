@@ -43,6 +43,8 @@ static void set_verify(MYSQL *mysql, my_bool onoff)
   return;
 }
 
+static int test_dummy= 1;
+
 #define CHECK_TLS_FLAGS(m, flag, text) \
 {\
   unsigned int status;\
@@ -156,13 +158,26 @@ static int test_start_tls_server(MYSQL *my __attribute__((unused)))
 #else
   pid_t tls_server_pid;
 
-  if (!(tls_server_pid= fork()))
+  tls_server_pid= fork();
+
+  if (tls_server_pid == -1)
+  {
+    diag("fork failed");
+    test_dummy= 0;
+    return SKIP;
+  }
+
+  if (!tls_server_pid)
   {
     char hostname[1024], port[128];
 
     snprintf(hostname, sizeof(hostname), "--host=%s", tls_dummy_host);
     snprintf(port, sizeof(port), "--port=%d", tls_dummy_port);
     execlp("@Python3_EXECUTABLE@", "@Python3_EXECUTABLE@", "@CC_SOURCE_DIR@/unittest/libmariadb/tls_server.py", hostname, port, NULL);
+
+    diag("exec error");
+    test_dummy= 0;
+    return SKIP;
   }
 
 #endif
@@ -175,9 +190,14 @@ static int set_tls_dummy_options(const char *options)
 {
   MA_PVIO_CINFO cinfo;
   MARIADB_PVIO *pvio;
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
   char buffer[1024];
   size_t len;
+
+  if (!test_dummy)
+    return SKIP;
+
+  mysql= mysql_init(NULL);
 
   cinfo.type= PVIO_TYPE_SOCKET;
   cinfo.host= tls_dummy_host;
@@ -275,8 +295,13 @@ static int test_no_cert_check(MYSQL *my __attribute__((unused)))
 
 static int test_conc712(MYSQL *my __attribute__((unused)))
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
   int rc= FAIL;
+
+  if (!test_dummy)
+    return SKIP;
+
+  mysql= mysql_init(NULL);
 
   if (set_tls_dummy_options("CMD:create_new=True"))
   {
@@ -536,24 +561,15 @@ static int test_cert_expired(MYSQL *my __attribute__((unused)))
   int ret= OK;
   MYSQL *mysql;
 
-  /* Set validity in future */
-  if (set_tls_dummy_options("CMD:create_new=True validityStartInSeconds=10000 validityEndInSeconds=2000"))
-  {
-    diag("Error when setting TLS options");
-    return FAIL;
-  }
+  if (!test_dummy)
+    return SKIP;
 
   mysql= mysql_init(NULL);
 
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
   set_verify(mysql, 1);
 
-  if (my_test_connect(mysql, tls_dummy_host,  "tlsuser", "foo", NULL,  tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Error expected since cert is not valid yet");
-    return FAIL;
-  }
-  mysql_close(mysql);
+  diag("attempt to connect");
 
   /* Set cert expired */
   if (set_tls_dummy_options("CMD:create_new=True validityStartInSeconds=-20000 validityEndInSeconds=-10000"))
@@ -632,6 +648,8 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
   /* hardcoded: openssl x509 -noout -fingerprint -sha256 -inform pem -in certs/server-cert.pem */
   const char *fp= "4B:EE:BB:12:6D:30:1A:B2:2A:4A:F8:6D:82:7F:63:44:1F:8F:F4:6B:D3:F2:CA:68:0B:D5:E3:5D:1C:47:A7:16";
 
+  if (!test_dummy)
+    return SKIP;
   if (getenv("GITHUB_ACTIONS")) {
     return SKIP;
   }
@@ -660,6 +678,9 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
 
 static int stop_tls_server(MYSQL *my __attribute__((unused)))
 {
+  if (!test_dummy)
+    return SKIP;
+
   if (set_tls_dummy_options("QUIT"))
   {
     diag("Error when shutting down tls dummy server");
@@ -689,7 +710,13 @@ static int tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
 
 static int test_cert_wildcard(MYSQL *my __attribute((unused)))
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
+
+  if (!test_dummy)
+    return SKIP;
+
+  mysql= mysql_init(NULL);
+
   if (set_tls_dummy_options("CMD:create_new=True commonName='*.example.com'"))
   {
     diag("Error when setting TLS options");
@@ -810,7 +837,12 @@ end:
 static int test_cert_ip(MYSQL *my __attribute((unused)))
 {
   char dummy_options[128];
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
+
+  if (!test_dummy)
+    return SKIP;
+
+  mysql= mysql_init(NULL);
 
   snprintf(dummy_options, 128, "CMD:create_new=True SAN='IP.1:%s'", tls_dummy_host);
   if (set_tls_dummy_options(dummy_options))

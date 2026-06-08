@@ -841,8 +841,15 @@ static int test_bind_address(MYSQL *my)
     return SKIP;
   }
 
-  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  if (!bind_addr)
+  {
+    diag("No bind address specified");
+    return SKIP;
+  }
+
+  sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", username, bind_addr);
   rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
 
   sprintf(query, "CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", username, bind_addr, password);
   rc= mysql_query(my, query);
@@ -851,12 +858,6 @@ static int test_bind_address(MYSQL *my)
   sprintf(query, "GRANT ALL ON %s.* TO '%s'@'%s'", schema, username, bind_addr);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
-
-  if (!bind_addr)
-  {
-    diag("No bind address specified");
-    return SKIP;
-  }
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_BIND, bind_addr);
