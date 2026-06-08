@@ -771,7 +771,6 @@ static int test_env_var(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= NULL;
   int rc= FAIL;
-  my_bool verify= 1;
 
   if (mysql_get_server_version(my) < 110400)
   {
@@ -788,7 +787,6 @@ static int test_env_var(MYSQL *my __attribute__((unused)))
 
 
   mysql= mysql_init(NULL);
-  mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
 
   if (!my_test_connect(mysql, hostname, username, password, schema,
                        port, socketname, 0, 0))
