@@ -230,18 +230,10 @@ ssize_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
                     (ssize_t)ma_pvio_read_async(pvio, buffer, length);
     goto end;
   }
-  else
-  {
-    if (IS_PVIO_ASYNC(pvio))
-    {
-      /*
-        If switching from non-blocking to blocking API usage, set the socket
-        back to blocking mode.
-      */
-      my_bool old_mode;
-      ma_pvio_blocking(pvio, TRUE, &old_mode);
-    }
-  }
+
+  /* The socket is always non-blocking; blocking behaviour for the
+     synchronous API is provided by poll()/select() inside the pvio
+     read/write methods, so there is no need to switch socket modes. */
 
   /* secure connection */
 #ifdef HAVE_TLS
@@ -358,18 +350,11 @@ ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
                       ma_pvio_write_async(pvio, buffer, length);
     goto end;
   }
-  else
-  {
-    if (IS_PVIO_ASYNC(pvio))
-    {
-      /*
-        If switching from non-blocking to blocking API usage, set the socket
-        back to blocking mode.
-      */
-      my_bool old_mode;
-      ma_pvio_blocking(pvio, TRUE, &old_mode);
-    }
-  }
+
+  /* The socket is always non-blocking; blocking behaviour for the
+     synchronous API is provided by poll()/select() inside the pvio
+     read/write methods, so there is no need to switch socket modes. */
+
   /* secure connection */
 #ifdef HAVE_TLS
   if (pvio->ctls)

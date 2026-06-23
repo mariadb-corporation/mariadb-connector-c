@@ -35,6 +35,12 @@
 #include <ma_context.h>
 #include <ma_crypt.h>
 
+/* Route all TLS traffic through the pvio read/write methods (and therefore
+   through the always non-blocking socket and its poll()/select() based
+   timeout handling) instead of letting GnuTLS operate on the file
+   descriptor directly. */
+#define GNUTLS_EXTERNAL_TRANSPORT 1
+
 pthread_mutex_t LOCK_gnutls_config;
 
 extern my_bool ma_tls_initialized;
@@ -1179,31 +1185,78 @@ error:
 }
 
 #ifdef GNUTLS_EXTERNAL_TRANSPORT
+/* The transport pointer is the GnuTLS session; the pvio is recovered from
+   the MYSQL handle stored on the session. */
+static MARIADB_PVIO *ma_pvio_from_session(gnutls_session_t ssl)
+{
+  MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
+  return mysql ? mysql->net.pvio : NULL;
+}
+
+static my_bool is_wouldblock(int err)
+{
+  return (err == SOCKET_EWOULDBLOCK
+#if SOCKET_EAGAIN != SOCKET_EWOULDBLOCK
+          || err == SOCKET_EAGAIN
+#endif
+  );
+}
+
 ssize_t ma_tls_push(gnutls_transport_ptr_t ptr, const void* data, size_t len)
 {
-  MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
-  ssize_t rc= pvio->methods->write(pvio, data, len);
+  gnutls_session_t ssl= (gnutls_session_t)ptr;
+  MARIADB_PVIO *pvio= ma_pvio_from_session(ssl);
+  ssize_t rc;
+
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
+  {
+    /* single non-blocking write; tell GnuTLS to retry on would-block */
+    rc= pvio->methods->async_write(pvio, data, len);
+    if (rc < 0)
+    {
+      int err= socket_errno;
+      gnutls_transport_set_errno(ssl,
+        is_wouldblock(err) ? EAGAIN : err);
+    }
+  }
+  else
+    rc= pvio->methods->write(pvio, data, len);
   return rc;
 }
 
 ssize_t ma_tls_pull(gnutls_transport_ptr_t ptr, void* data, size_t len)
 {
-  MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
-  ssize_t rc= pvio->methods->read(pvio, data, len);
+  gnutls_session_t ssl= (gnutls_session_t)ptr;
+  MARIADB_PVIO *pvio= ma_pvio_from_session(ssl);
+  ssize_t rc;
+
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
+  {
+    /* single non-blocking read; tell GnuTLS to retry on would-block */
+    rc= pvio->methods->async_read(pvio, data, len);
+    if (rc < 0)
+    {
+      int err= socket_errno;
+      gnutls_transport_set_errno(ssl,
+        is_wouldblock(err) ? EAGAIN : err);
+    }
+  }
+  else
+    rc= pvio->methods->read(pvio, data, len);
   return rc;
 }
 
 static int ma_tls_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
 {
-  MARIADB_PVIO *pvio= (MARIADB_PVIO *)ptr;
-  return pvio->methods->wait_io_or_timeout(pvio, 0, ms);
+  gnutls_session_t ssl= (gnutls_session_t)ptr;
+  MARIADB_PVIO *pvio= ma_pvio_from_session(ssl);
+  return pvio->methods->wait_io_or_timeout(pvio, TRUE, (int)ms);
 }
 #endif
 
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   gnutls_session_t ssl = (gnutls_session_t)ctls->ssl;
-  my_bool blocking;
   MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
   MARIADB_PVIO *pvio;
   int ret;
@@ -1213,14 +1266,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   pvio= mysql->net.pvio;
 
-  /* Set socket to blocking if not already set */
-  if (!(blocking= pvio->methods->is_blocking(pvio)))
-    pvio->methods->blocking(pvio, TRUE, 0);
-
-
 #ifdef GNUTLS_EXTERNAL_TRANSPORT
-  /* we don't use GnuTLS read/write functions */
-  gnutls_transport_set_ptr(ssl, pvio);
+  /* Route I/O through the pvio read/write methods. The transport pointer is
+     the session itself so the callbacks can recover both the pvio and the
+     session (the latter is needed to report EAGAIN back to GnuTLS). */
+  gnutls_transport_set_ptr(ssl, ssl);
   gnutls_transport_set_push_function(ssl, ma_tls_push);
   gnutls_transport_set_pull_function(ssl, ma_tls_pull);
   gnutls_transport_set_pull_timeout_function(ssl, ma_tls_pull_timeout);
@@ -1229,8 +1279,19 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   gnutls_transport_set_int(ssl, mysql_get_socket(mysql));
 #endif
 
+  /* The socket is always non-blocking. In synchronous mode the pull
+     callback blocks (via poll()), so the handshake completes without
+     returning GNUTLS_E_AGAIN. In asynchronous mode the callback returns
+     EAGAIN and we wait here for the requested direction. */
   do {
     ret = gnutls_handshake(ssl);
+    if (ret == GNUTLS_E_AGAIN || ret == GNUTLS_E_INTERRUPTED)
+    {
+      int dir= gnutls_record_get_direction(ssl); /* 0 read, 1 write */
+      if (pvio->methods->wait_io_or_timeout(pvio, dir == 0,
+            pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1)
+        break;
+    }
   } while (ret < 0 && gnutls_error_is_fatal(ret) == 0);
 
   if (ret < 0)
@@ -1241,10 +1302,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
       ma_tls_set_error(mysql, ssl, ret);
 
     ma_tls_close(ctls);
-
-    /* restore blocking mode */
-    if (!blocking)
-      pvio->methods->blocking(pvio, FALSE, 0);
     return 1;
   }
   ctls->ssl= (void *)ssl;
@@ -1401,7 +1458,8 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   {
     if (rc != GNUTLS_E_AGAIN && rc != GNUTLS_E_INTERRUPTED)
       break;
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.read_timeout) < 1)
+    if (pvio->methods->wait_io_or_timeout(pvio, TRUE,
+          pvio->timeout[PVIO_READ_TIMEOUT]) < 1)
       break;
   }
   if (rc <= 0) {
@@ -1420,7 +1478,8 @@ ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   {
     if (rc != GNUTLS_E_AGAIN && rc != GNUTLS_E_INTERRUPTED)
       break;
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, pvio->mysql->options.write_timeout) < 1)
+    if (pvio->methods->wait_io_or_timeout(pvio, FALSE,
+          pvio->timeout[PVIO_WRITE_TIMEOUT]) < 1)
       break;
   }
   if (rc <= 0) {

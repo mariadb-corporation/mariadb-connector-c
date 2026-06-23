@@ -48,6 +48,15 @@
 #define HAVE_OPENSSL_1_1_API
 #endif
 
+/* OpenSSL 1.1.0 and LibreSSL 2.7.0 made BIO_METHOD opaque and introduced
+   the BIO_meth_new()/BIO_{get,set}_data()/BIO_set_init() accessor API. We
+   use it to build a custom BIO that routes TLS traffic through the pvio
+   read/write methods. */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L || \
+    (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x2070000fL)
+#define HAVE_BIO_METH_NEW 1
+#endif
+
 #if OPENSSL_VERSION_NUMBER < 0x10000000L
 #define SSL_OP_NO_TLSv1_1 0L
 #define SSL_OP_NO_TLSv1_2 0L
@@ -55,9 +64,6 @@
 #define CRYPTO_THREADID_get_callback CRYPTO_get_id_callback
 #endif
 
-#if defined(OPENSSL_USE_BIOMETHOD)
-#undef OPENSSL_USE_BIOMETHOD
-#endif
 #ifndef HAVE_OPENSSL_DEFAULT
 #include <memory.h>
 #define ma_malloc(A,B) malloc((A))
@@ -82,13 +88,161 @@ static pthread_mutex_t LOCK_openssl_config;
 #ifndef HAVE_OPENSSL_1_1_API
 static pthread_mutex_t *LOCK_crypto= NULL;
 #endif
-#if defined(OPENSSL_USE_BIOMETHOD)
-static int ma_bio_read(BIO *h, char *buf, int size);
-static int ma_bio_write(BIO *h, const char *buf, int size);
+/* Custom BIO that funnels all TLS traffic through the pvio read/write
+   methods (and therefore through the always non-blocking socket and its
+   poll()/select() based timeout handling). */
+#ifndef HAVE_BIO_METH_NEW
+/* Pre-1.1 OpenSSL: BIO_METHOD is a public struct and lacks the accessors. */
+#define BIO_get_data(b)      ((b)->ptr)
+#define BIO_set_data(b, v)   ((b)->ptr= (v))
+#define BIO_set_init(b, v)   ((b)->init= (v))
+#endif
+
+static int ma_bio_read(BIO *bio, char *buf, int size);
+static int ma_bio_write(BIO *bio, const char *buf, int size);
+static long ma_bio_ctrl(BIO *bio, int cmd, long larg, void *parg);
+static int ma_bio_create(BIO *bio);
+static int ma_bio_destroy(BIO *bio);
+
+#ifdef HAVE_BIO_METH_NEW
+static BIO_METHOD *ma_BIO_method= NULL;
+#define MA_BIO_METHOD ma_BIO_method
+#else
 static BIO_METHOD ma_BIO_method;
+#define MA_BIO_METHOD (&ma_BIO_method)
 #endif
 
 static int ma_verification_callback(int preverify_ok, X509_STORE_CTX *ctx);
+
+static my_bool is_ewouldblock(int err)
+{
+  return (err == SOCKET_EWOULDBLOCK
+#if SOCKET_EAGAIN != SOCKET_EWOULDBLOCK
+          || err == SOCKET_EAGAIN
+#endif
+  );
+}
+
+/* {{{ custom BIO routing TLS traffic through the pvio read/write methods */
+/*
+   In synchronous mode pvio_socket_read/write block internally (using
+   poll()/select() with the configured timeout) until data is available or
+   the timeout expires, so OpenSSL sees an ordinary blocking transport.
+
+   In asynchronous mode we issue a single non-blocking read/write and, on
+   EWOULDBLOCK, set the BIO retry flag.  This makes SSL_read()/SSL_write()
+   return SSL_ERROR_WANT_READ/WRITE so the async event loop can yield.
+*/
+static int ma_bio_read(BIO *bio, char *buf, int size)
+{
+  MARIADB_PVIO *pvio= (MARIADB_PVIO *)BIO_get_data(bio);
+  ssize_t res;
+
+  BIO_clear_retry_flags(bio);
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
+  {
+    res= pvio->methods->async_read(pvio, (uchar *)buf, (size_t)size);
+    if (res <= 0)
+    {
+      int err= socket_errno;
+      if (is_ewouldblock(err))
+        BIO_set_retry_read(bio);
+    }
+  }
+  else
+    res= pvio->methods->read(pvio, (uchar *)buf, (size_t)size);
+  return (int)res;
+}
+
+static int ma_bio_write(BIO *bio, const char *buf, int size)
+{
+  MARIADB_PVIO *pvio= (MARIADB_PVIO *)BIO_get_data(bio);
+  ssize_t res;
+
+  BIO_clear_retry_flags(bio);
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
+  {
+    res= pvio->methods->async_write(pvio, (const uchar *)buf, (size_t)size);
+    if (res <= 0)
+    {
+      int err= socket_errno;
+      if (is_ewouldblock(err))
+        BIO_set_retry_write(bio);
+    }
+  }
+  else
+    res= pvio->methods->write(pvio, (const uchar *)buf, (size_t)size);
+  return (int)res;
+}
+
+static long ma_bio_ctrl(BIO *bio __attribute__((unused)),
+                        int cmd,
+                        long larg __attribute__((unused)),
+                        void *parg __attribute__((unused)))
+{
+  switch (cmd)
+  {
+  case BIO_CTRL_FLUSH:
+  case BIO_CTRL_DUP:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+static int ma_bio_create(BIO *bio)
+{
+  BIO_set_init(bio, 1);
+  BIO_set_data(bio, NULL);
+  return 1;
+}
+
+static int ma_bio_destroy(BIO *bio)
+{
+  if (bio)
+    BIO_set_data(bio, NULL);
+  return 1;
+}
+
+/* Build the custom BIO_METHOD once at library initialization. */
+static int ma_bio_method_init(void)
+{
+#ifdef HAVE_BIO_METH_NEW
+  if (ma_BIO_method)
+    return 0;
+  ma_BIO_method= BIO_meth_new(BIO_get_new_index() | BIO_TYPE_SOURCE_SINK,
+                              "mariadb pvio");
+  if (!ma_BIO_method)
+    return 1;
+  BIO_meth_set_write(ma_BIO_method, ma_bio_write);
+  BIO_meth_set_read(ma_BIO_method, ma_bio_read);
+  BIO_meth_set_ctrl(ma_BIO_method, ma_bio_ctrl);
+  BIO_meth_set_create(ma_BIO_method, ma_bio_create);
+  BIO_meth_set_destroy(ma_BIO_method, ma_bio_destroy);
+#else
+  memset(&ma_BIO_method, 0, sizeof(ma_BIO_method));
+  ma_BIO_method.type= BIO_TYPE_SOURCE_SINK;
+  ma_BIO_method.name= "mariadb pvio";
+  ma_BIO_method.bwrite= ma_bio_write;
+  ma_BIO_method.bread= ma_bio_read;
+  ma_BIO_method.ctrl= ma_bio_ctrl;
+  ma_BIO_method.create= ma_bio_create;
+  ma_BIO_method.destroy= ma_bio_destroy;
+#endif
+  return 0;
+}
+
+static void ma_bio_method_deinit(void)
+{
+#ifdef HAVE_BIO_METH_NEW
+  if (ma_BIO_method)
+  {
+    BIO_meth_free(ma_BIO_method);
+    ma_BIO_method= NULL;
+  }
+#endif
+}
+/* }}} */
 
 static long ma_tls_version_options(const char *version)
 {
@@ -242,11 +396,8 @@ int ma_tls_start(char *errmsg __attribute__((unused)), size_t errmsg_len __attri
   OpenSSL_add_all_algorithms();
 #endif
   disable_sigpipe();
-#ifdef OPENSSL_USE_BIOMETHOD
-  memcpy(&ma_BIO_method, BIO_s_socket(), sizeof(BIO_METHOD));
-  ma_BIO_method.bread= ma_bio_read;
-  ma_BIO_method.bwrite= ma_bio_write;
-#endif
+  if (ma_bio_method_init())
+    goto end;
   snprintf(tls_library_version, TLS_VERSION_LENGTH - 1, "%s",
 #if defined(LIBRESSL_VERSION_NUMBER) || !defined(HAVE_OPENSSL_1_1_API)
            SSLeay_version(SSLEAY_VERSION));
@@ -304,6 +455,7 @@ void ma_tls_end()
       CONF_modules_unload(1);
 #endif
     }
+    ma_bio_method_deinit();
     ma_tls_initialized= FALSE;
     pthread_mutex_unlock(&LOCK_openssl_config);
     pthread_mutex_destroy(&LOCK_openssl_config);
@@ -540,47 +692,45 @@ unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, uint hash_size)
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   SSL *ssl = (SSL *)ctls->ssl;
-  my_bool blocking, try_connect= 1;
+  my_bool try_connect= 1;
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
   int rc;
-#ifdef OPENSSL_USE_BIOMETHOD
-  BIO_METHOD *bio_method= NULL;
   BIO *bio;
-#endif
 
   mysql= (MYSQL *)SSL_get_app_data(ssl);
   pvio= mysql->net.pvio;
 
-  /* Set socket to non-blocking if not already set */
-  if (!(blocking= pvio->methods->is_blocking(pvio)))
-    pvio->methods->blocking(pvio, FALSE, 0);
-
   SSL_clear(ssl);
 
-#ifdef OPENSSL_USE_BIOMETHOD
-  bio= BIO_new(&ma_BIO_method);
-  bio->ptr= pvio;
+  /* Route all TLS I/O through the pvio read/write methods (and thus through
+     the always non-blocking socket with poll()/select() based timeouts)
+     rather than letting OpenSSL operate on the file descriptor directly. */
+  if (!(bio= BIO_new(MA_BIO_METHOD)))
+  {
+    ma_tls_set_error(mysql);
+    return 1;
+  }
+  BIO_set_data(bio, pvio);
   SSL_set_bio(ssl, bio, bio);
-  BIO_set_fd(bio, mysql_get_socket(mysql), BIO_NOCLOSE);
-#else
-  SSL_set_fd(ssl, (int)mysql_get_socket(mysql));
-#endif
 
   /* CONC-732: Always set verification callback to avoid OpenSSL output */
   SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
 
+  /* In synchronous mode the BIO blocks (via poll()) so SSL_connect()
+     completes in one shot; the loop below only iterates in asynchronous
+     mode, where the BIO reports WANT_READ/WANT_WRITE. */
   while (try_connect && (rc= SSL_connect(ssl)) == -1)
   {
     switch((SSL_get_error(ssl, rc))) {
     case SSL_ERROR_WANT_READ:
-      /* use low timeout, see ma_tls_read */
-      if (pvio->methods->wait_io_or_timeout(pvio, TRUE, 5) < 1)
+      if (pvio->methods->wait_io_or_timeout(pvio, TRUE,
+            pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1)
         try_connect= 0;
       break;
     case SSL_ERROR_WANT_WRITE:
-      /* use low timeout, see ma_tls_read */
-      if (pvio->methods->wait_io_or_timeout(pvio, TRUE, 5) < 1)
+      if (pvio->methods->wait_io_or_timeout(pvio, FALSE,
+            pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1)
         try_connect= 0;
       break;
     default:
@@ -656,20 +806,10 @@ ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  int rc;
-  MARIADB_PVIO *pvio= ctls->pvio;
-
-  while ((rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length)) <= 0)
-  {
-    int error= SSL_get_error((SSL *)ctls->ssl, rc);
-    if (error != SSL_ERROR_WANT_READ)
-      break;
-    /* To get a more precise error message than "resource temporary
-       unavailable" (=errno 11) after read timeout occured, we check
-       the socket status using a very small timeout (=5 ms) */
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, 5) < 1)
-      break;
-  }
+  /* The custom BIO blocks (via poll()) in synchronous mode and performs
+     timeout handling and renegotiation transparently, so a single SSL_read
+     is sufficient. */
+  int rc= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
   if (rc <= 0)
   {
     MYSQL *mysql= SSL_get_app_data(ctls->ssl);
@@ -680,18 +820,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
-  int rc;
-  MARIADB_PVIO *pvio= ctls->pvio;
-
-  while ((rc= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length)) <= 0)
-  {
-    int error= SSL_get_error((SSL *)ctls->ssl, rc);
-    if (error != SSL_ERROR_WANT_WRITE)
-      break;
-    /* use low timeout, see ma_tls_read */
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE, 5) < 1)
-      break;
-  }
+  int rc= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
   if (rc <= 0)
   {
     MYSQL *mysql= SSL_get_app_data(ctls->ssl);

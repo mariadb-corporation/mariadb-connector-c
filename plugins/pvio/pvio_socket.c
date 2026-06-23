@@ -182,39 +182,6 @@ static int pvio_socket_end(void)
   return 0;
 }
 
-my_bool pvio_socket_change_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout)
-{
-  struct timeval tm= {0};
-  int rc= 0;
-  struct st_pvio_socket *csock= NULL;
-  if (!pvio)
-    return 1;
-  if (!(csock= (struct st_pvio_socket *)pvio->data))
-    return 1;
-  tm.tv_sec= timeout / 1000;
-  tm.tv_usec= (timeout % 1000) * 1000;
-  switch(type)
-  {
-    case PVIO_WRITE_TIMEOUT:
-#ifndef _WIN32
-      rc= setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&tm, sizeof(tm));
-#else
-      rc= setsockopt(csock->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(int));
-#endif
-    break;
-    case PVIO_READ_TIMEOUT:
-#ifndef _WIN32
-      rc= setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tm, sizeof(tm));
-#else
-      rc= setsockopt(csock->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(int));
-#endif
-    break;
-    default:
-    break;
-  }
-  return rc;
-}
-
 /* {{{ pvio_socket_set_timeout */
 /*
    set timeout value
@@ -227,8 +194,12 @@ my_bool pvio_socket_change_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout ty
 
    DESCRIPTION
      Sets timeout values for connection-, read or write time out.
-     PVIO internally stores all timeout values in milliseconds, but 
+     PVIO internally stores all timeout values in milliseconds, but
      accepts and returns all time values in seconds (like api does).
+
+     Timeouts are not applied to the socket itself (e.g. via SO_RCVTIMEO/
+     SO_SNDTIMEO): the socket is always non-blocking and the stored value
+     is used by pvio_socket_wait_io_or_timeout() to drive poll()/select().
 
    RETURNS
      0              Success
@@ -236,13 +207,9 @@ my_bool pvio_socket_change_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout ty
 */
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout)
 {
-  struct st_pvio_socket *csock= NULL;
   if (!pvio)
     return 1;
-  csock= (struct st_pvio_socket *)pvio->data;
   pvio->timeout[type]= (timeout > 0) ? timeout * 1000 : -1;
-  if (csock)
-    return pvio_socket_change_timeout(pvio, type, timeout * 1000);
   return 0;
 }
 /* }}} */
@@ -861,12 +828,8 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
     }
     if (pvio_socket_connect_sync_or_async(pvio, (struct sockaddr *) &UNIXaddr, port_length))
     {
-      PVIO_SET_ERROR(cinfo->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 
+      PVIO_SET_ERROR(cinfo->mysql, CR_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                     ER(CR_CONNECTION_ERROR), cinfo->unix_socket, socket_errno);
-      goto error;
-    }
-    if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
-    {
       goto error;
     }
 #else
@@ -1025,25 +988,9 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 #endif
       goto error;
     }
-    if (pvio_socket_blocking(pvio, 1, 0) == SOCKET_ERROR)
-      goto error;
   }
-  /* apply timeouts */
-  if (pvio->timeout[PVIO_CONNECT_TIMEOUT] > 0)
-  {
-    if (pvio_socket_change_timeout(pvio, PVIO_READ_TIMEOUT, pvio->timeout[PVIO_CONNECT_TIMEOUT]) ||
-        pvio_socket_change_timeout(pvio, PVIO_WRITE_TIMEOUT, pvio->timeout[PVIO_CONNECT_TIMEOUT]))
-      goto error;
-  }
-  else
-  {
-    if (pvio->timeout[PVIO_WRITE_TIMEOUT] > 0)
-      if (pvio_socket_change_timeout(pvio, PVIO_WRITE_TIMEOUT, pvio->timeout[PVIO_WRITE_TIMEOUT]))
-        goto error;
-    if (pvio->timeout[PVIO_READ_TIMEOUT] > 0)
-      if (pvio_socket_change_timeout(pvio, PVIO_READ_TIMEOUT, pvio->timeout[PVIO_READ_TIMEOUT]))
-        goto error;
-  }
+  /* The socket stays non-blocking: read/write timeouts are enforced via
+     poll()/select() in pvio_socket_wait_io_or_timeout(), not setsockopt. */
   return 0;
 error:
   /* close socket: MDEV-10891 */
