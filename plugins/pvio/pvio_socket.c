@@ -83,8 +83,6 @@
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
 ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
 my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
@@ -108,9 +106,7 @@ struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_set_timeout,
   pvio_socket_get_timeout,
   pvio_socket_read,
-  pvio_socket_async_read,
   pvio_socket_write,
-  pvio_socket_async_write,
   pvio_socket_wait_io_or_timeout,
   pvio_socket_connect,
   pvio_socket_close,
@@ -286,51 +282,18 @@ ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
   csock= (struct st_pvio_socket *)pvio->data;
   timeout= pvio->timeout[PVIO_READ_TIMEOUT];
 
-  /* The socket is non-blocking; block the calling thread via poll()/select()
-     until data arrives or the timeout expires. */
+  /* The socket is non-blocking. In synchronous mode ma_pvio_wait_io_or_timeout()
+     blocks the calling thread via poll()/select(); in asynchronous mode it
+     suspends the fiber (my_context_yield()). Either way the same loop serves
+     both, so there is no separate async read path. */
   while ((r= ma_recv(csock->socket, buffer, length, 0)) == -1)
   {
     if (!ma_socket_wouldblock(socket_errno) || timeout == 0)
       return r;
-    if (pvio_socket_wait_io_or_timeout(pvio, TRUE, timeout) < 1)
+    if (ma_pvio_wait_io_or_timeout(pvio, TRUE, timeout) < 1)
       return -1;
   }
   return r;
-}
-/* }}} */
-
-/* {{{ pvio_socket_async_read */
-/*
-   read from socket
-
-   SYNOPSIS
-   pvio_socket_async_read()
-     pvio             PVIO
-     buffer          read buffer
-     length          buffer length
-
-   DESCRIPTION
-     reads up to length bytes into specified buffer. In the event of an
-     error erno is set to indicate it.
-
-   RETURNS
-      1..n           number of bytes read
-      0              peer has performed shutdown
-     -1              on error
-                     
-*/   
-ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
-{
-  struct st_pvio_socket *csock;
-
-  if (!pvio || !pvio->data)
-    return -1;
-
-  csock= (struct st_pvio_socket *)pvio->data;
-
-  /* One non-blocking attempt. The fiber yield on would-block is done by the
-     caller (ma_pvio_read_async()), not here. */
-  return ma_recv(csock->socket, buffer, length, 0);
 }
 /* }}} */
 
@@ -370,41 +333,6 @@ static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags
   return r;
 }
 
-/* {{{ pvio_socket_async_write */
-/*
-   write to socket
-
-   SYNOPSIS
-   pvio_socket_async_write()
-     pvio             PVIO
-     buffer          read buffer
-     length          buffer length
-
-   DESCRIPTION
-     writes up to length bytes to socket. In the event of an
-     error erno is set to indicate it.
-
-   RETURNS
-      1..n           number of bytes read
-      0              peer has performed shutdown
-     -1              on error
-                     
-*/   
-ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
-{
-  struct st_pvio_socket *csock;
-
-  if (!pvio || !pvio->data)
-    return -1;
-
-  csock= (struct st_pvio_socket *)pvio->data;
-
-  /* One non-blocking attempt; the fiber yield on would-block is done by the
-     caller (ma_pvio_write_async()), not here. */
-  return ma_send(csock->socket, buffer, length, MA_SEND_FLAGS);
-}
-/* }}} */
-
 /* {{{ pvio_socket_write */
 /*
    write to socket
@@ -437,13 +365,13 @@ ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length
   csock= (struct st_pvio_socket *)pvio->data;
   timeout= pvio->timeout[PVIO_WRITE_TIMEOUT];
 
-  /* The socket is non-blocking; block the calling thread via poll()/select()
-     until the socket is writable or the timeout expires. */
+  /* See pvio_socket_read(): ma_pvio_wait_io_or_timeout() either blocks the
+     thread (sync) or suspends the fiber (async). */
   while ((r= ma_send(csock->socket, buffer, length, MA_SEND_FLAGS)) == -1)
   {
     if (!ma_socket_wouldblock(socket_errno) || timeout == 0)
       return r;
-    if (pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout) < 1)
+    if (ma_pvio_wait_io_or_timeout(pvio, FALSE, timeout) < 1)
       return -1;
   }
   return r;

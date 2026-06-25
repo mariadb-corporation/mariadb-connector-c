@@ -1806,6 +1806,18 @@ restart:
     cinfo.type= PVIO_TYPE_SOCKET;
     sprintf(host_info=buff,ER(CR_TCP_CONNECTION), cinfo.host);
   }
+  /* The non-blocking (async) API needs a pollable socket to suspend/resume on.
+     Named pipe and shared memory transports cannot do that, so reject them
+     here instead of silently running synchronously and blocking the caller's
+     event loop. Only the actual non-blocking call path (active) is affected;
+     the ordinary blocking API keeps working over these transports. */
+  if (IS_MYSQL_ASYNC_ACTIVE(mysql) &&
+      (cinfo.type == PVIO_TYPE_NAMEDPIPE || cinfo.type == PVIO_TYPE_SHAREDMEM))
+  {
+    my_set_error(mysql, CR_ASYNC_NOT_SUPPORTED, SQLSTATE_UNKNOWN, 0);
+    goto error;
+  }
+
   /* Initialize and load pvio plugin */
   if (!(pvio= ma_pvio_init(&cinfo)))
     goto error;

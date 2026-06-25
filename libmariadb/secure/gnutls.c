@@ -1191,55 +1191,25 @@ static MARIADB_PVIO *ma_pvio_from_session(gnutls_session_t ssl)
 }
 
 
+/* The pvio read/write methods block (poll() in sync, fiber yield in async),
+   so GnuTLS sees an ordinary blocking transport - no GNUTLS_E_AGAIN handling
+   and no separate async path are needed. */
 ssize_t ma_tls_push(gnutls_transport_ptr_t ptr, const void* data, size_t len)
 {
-  gnutls_session_t ssl= (gnutls_session_t)ptr;
-  MARIADB_PVIO *pvio= ma_pvio_from_session(ssl);
-  ssize_t rc;
-
-  if (IS_PVIO_ASYNC_ACTIVE(pvio))
-  {
-    /* single non-blocking write; tell GnuTLS to retry on would-block */
-    rc= pvio->methods->async_write(pvio, data, len);
-    if (rc < 0)
-    {
-      int err= socket_errno;
-      gnutls_transport_set_errno(ssl,
-        ma_socket_wouldblock(err) ? EAGAIN : err);
-    }
-  }
-  else
-    rc= pvio->methods->write(pvio, data, len);
-  return rc;
+  MARIADB_PVIO *pvio= ma_pvio_from_session((gnutls_session_t)ptr);
+  return pvio->methods->write(pvio, data, len);
 }
 
 ssize_t ma_tls_pull(gnutls_transport_ptr_t ptr, void* data, size_t len)
 {
-  gnutls_session_t ssl= (gnutls_session_t)ptr;
-  MARIADB_PVIO *pvio= ma_pvio_from_session(ssl);
-  ssize_t rc;
-
-  if (IS_PVIO_ASYNC_ACTIVE(pvio))
-  {
-    /* single non-blocking read; tell GnuTLS to retry on would-block */
-    rc= pvio->methods->async_read(pvio, data, len);
-    if (rc < 0)
-    {
-      int err= socket_errno;
-      gnutls_transport_set_errno(ssl,
-        ma_socket_wouldblock(err) ? EAGAIN : err);
-    }
-  }
-  else
-    rc= pvio->methods->read(pvio, data, len);
-  return rc;
+  MARIADB_PVIO *pvio= ma_pvio_from_session((gnutls_session_t)ptr);
+  return pvio->methods->read(pvio, data, len);
 }
 
 static int ma_tls_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
 {
-  gnutls_session_t ssl= (gnutls_session_t)ptr;
-  MARIADB_PVIO *pvio= ma_pvio_from_session(ssl);
-  return pvio->methods->wait_io_or_timeout(pvio, TRUE, (int)ms);
+  MARIADB_PVIO *pvio= ma_pvio_from_session((gnutls_session_t)ptr);
+  return ma_pvio_wait_io_or_timeout(pvio, TRUE, (int)ms);
 }
 
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
@@ -1263,16 +1233,15 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   gnutls_transport_set_pull_timeout_function(ssl, ma_tls_pull_timeout);
   gnutls_handshake_set_timeout(ssl, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
 
-  /* The socket is always non-blocking. In synchronous mode the pull
-     callback blocks (via poll()), so the handshake completes without
-     returning GNUTLS_E_AGAIN. In asynchronous mode the callback returns
-     EAGAIN and we wait here for the requested direction. */
+  /* The pull/push callbacks block (poll() in sync, fiber yield in async), so
+     gnutls_handshake() normally completes without GNUTLS_E_AGAIN. The loop is
+     kept defensive: ma_pvio_wait_io_or_timeout() yields in async mode. */
   do {
     ret = gnutls_handshake(ssl);
     if (ret == GNUTLS_E_AGAIN || ret == GNUTLS_E_INTERRUPTED)
     {
       int dir= gnutls_record_get_direction(ssl); /* 0 read, 1 write */
-      if (pvio->methods->wait_io_or_timeout(pvio, dir == 0,
+      if (ma_pvio_wait_io_or_timeout(pvio, dir == 0,
             pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1)
         break;
     }
@@ -1291,30 +1260,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   ctls->ssl= (void *)ssl;
 
   return 0;
-}
-
-ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
-{
-  ssize_t res;
-  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
-  MARIADB_TLS *ctls= pvio->ctls;
-
-  for (;;)
-  {
-    b->events_to_wait_for= 0;
-    res= gnutls_record_send((gnutls_session_t)ctls->ssl, (void *)buffer, length);
-    if (res > 0)
-      return res;
-    if (res == GNUTLS_E_AGAIN)
-      b->events_to_wait_for|= MYSQL_WAIT_WRITE;
-    else
-      return res;
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-    my_context_yield(&b->async_context);
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-  }
 }
 
 static gnutls_x509_crt_t ma_get_cert(MARIADB_TLS *ctls)
@@ -1409,40 +1354,18 @@ unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, uint hash_size)
 }
 
 
-ssize_t ma_tls_read_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
-{
-  ssize_t res;
-  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
-  MARIADB_TLS *ctls= pvio->ctls;
-
-  for (;;)
-  {
-    b->events_to_wait_for= 0;
-    res= gnutls_record_recv((gnutls_session_t)ctls->ssl, (void *)buffer, length);
-    if (res > 0)
-      return res;
-    if (res == GNUTLS_E_AGAIN)
-      b->events_to_wait_for|= MYSQL_WAIT_READ;
-    else
-      return res;
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-    my_context_yield(&b->async_context);
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-  }
-}
-
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {
   ssize_t rc;
   MARIADB_PVIO *pvio= ctls->pvio;
 
+  /* The pull callback blocks (poll() in sync, fiber yield in async), so this
+     normally runs once; the loop is kept defensive for GNUTLS_E_AGAIN. */
   while ((rc= gnutls_record_recv((gnutls_session_t)ctls->ssl, (void *)buffer, length)) <= 0)
   {
     if (rc != GNUTLS_E_AGAIN && rc != GNUTLS_E_INTERRUPTED)
       break;
-    if (pvio->methods->wait_io_or_timeout(pvio, TRUE,
+    if (ma_pvio_wait_io_or_timeout(pvio, TRUE,
           pvio->timeout[PVIO_READ_TIMEOUT]) < 1)
       break;
   }
@@ -1454,7 +1377,7 @@ ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
-{ 
+{
   ssize_t rc;
   MARIADB_PVIO *pvio= ctls->pvio;
 
@@ -1462,7 +1385,7 @@ ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
   {
     if (rc != GNUTLS_E_AGAIN && rc != GNUTLS_E_INTERRUPTED)
       break;
-    if (pvio->methods->wait_io_or_timeout(pvio, FALSE,
+    if (ma_pvio_wait_io_or_timeout(pvio, FALSE,
           pvio->timeout[PVIO_WRITE_TIMEOUT]) < 1)
       break;
   }

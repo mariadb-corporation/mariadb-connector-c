@@ -102,9 +102,7 @@ struct st_ma_pvio_methods
   my_bool (*set_timeout)(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
   int (*get_timeout)(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
   ssize_t (*read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
-  ssize_t (*async_read)(MARIADB_PVIO *pvio, uchar *buffer, size_t length);
   ssize_t (*write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
-  ssize_t (*async_write)(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
   int (*wait_io_or_timeout)(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
   my_bool (*connect)(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
   my_bool (*close)(MARIADB_PVIO *pvio);

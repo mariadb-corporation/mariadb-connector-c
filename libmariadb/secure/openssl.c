@@ -116,54 +116,24 @@ static int ma_verification_callback(int preverify_ok, X509_STORE_CTX *ctx);
 
 /* {{{ custom BIO routing TLS traffic through the pvio read/write methods */
 /*
-   In synchronous mode pvio_socket_read/write block internally (using
-   poll()/select() with the configured timeout) until data is available or
-   the timeout expires, so OpenSSL sees an ordinary blocking transport.
-
-   In asynchronous mode we issue a single non-blocking read/write and, on
-   EWOULDBLOCK, set the BIO retry flag.  This makes SSL_read()/SSL_write()
-   return SSL_ERROR_WANT_READ/WRITE so the async event loop can yield.
+   pvio_socket_read/write block internally on the always non-blocking socket:
+   in synchronous mode via poll()/select(), in asynchronous mode by suspending
+   the fiber (my_context_yield()) inside ma_pvio_wait_io_or_timeout().  Either
+   way OpenSSL sees an ordinary blocking transport, so a single SSL_read()/
+   SSL_write() is enough and there is no async-specific BIO path.
 */
 static int ma_bio_read(BIO *bio, char *buf, int size)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)BIO_get_data(bio);
-  ssize_t res;
-
   BIO_clear_retry_flags(bio);
-  if (IS_PVIO_ASYNC_ACTIVE(pvio))
-  {
-    res= pvio->methods->async_read(pvio, (uchar *)buf, (size_t)size);
-    if (res <= 0)
-    {
-      int err= socket_errno;
-      if (ma_socket_wouldblock(err))
-        BIO_set_retry_read(bio);
-    }
-  }
-  else
-    res= pvio->methods->read(pvio, (uchar *)buf, (size_t)size);
-  return (int)res;
+  return (int)pvio->methods->read(pvio, (uchar *)buf, (size_t)size);
 }
 
 static int ma_bio_write(BIO *bio, const char *buf, int size)
 {
   MARIADB_PVIO *pvio= (MARIADB_PVIO *)BIO_get_data(bio);
-  ssize_t res;
-
   BIO_clear_retry_flags(bio);
-  if (IS_PVIO_ASYNC_ACTIVE(pvio))
-  {
-    res= pvio->methods->async_write(pvio, (const uchar *)buf, (size_t)size);
-    if (res <= 0)
-    {
-      int err= socket_errno;
-      if (ma_socket_wouldblock(err))
-        BIO_set_retry_write(bio);
-    }
-  }
-  else
-    res= pvio->methods->write(pvio, (const uchar *)buf, (size_t)size);
-  return (int)res;
+  return (int)pvio->methods->write(pvio, (const uchar *)buf, (size_t)size);
 }
 
 static long ma_bio_ctrl(BIO *bio __attribute__((unused)),
@@ -708,19 +678,20 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   /* CONC-732: Always set verification callback to avoid OpenSSL output */
   SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
 
-  /* In synchronous mode the BIO blocks (via poll()) so SSL_connect()
-     completes in one shot; the loop below only iterates in asynchronous
-     mode, where the BIO reports WANT_READ/WANT_WRITE. */
+  /* The BIO blocks (poll() in sync, fiber yield in async), so SSL_connect()
+     normally completes in one shot. The loop is kept defensive: should the
+     BIO ever report WANT_READ/WANT_WRITE, wait the requested direction
+     (ma_pvio_wait_io_or_timeout() yields in async mode). */
   while (try_connect && (rc= SSL_connect(ssl)) == -1)
   {
     switch((SSL_get_error(ssl, rc))) {
     case SSL_ERROR_WANT_READ:
-      if (pvio->methods->wait_io_or_timeout(pvio, TRUE,
+      if (ma_pvio_wait_io_or_timeout(pvio, TRUE,
             pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1)
         try_connect= 0;
       break;
     case SSL_ERROR_WANT_WRITE:
-      if (pvio->methods->wait_io_or_timeout(pvio, FALSE,
+      if (ma_pvio_wait_io_or_timeout(pvio, FALSE,
             pvio->timeout[PVIO_CONNECT_TIMEOUT]) < 1)
         try_connect= 0;
       break;
@@ -739,61 +710,6 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   return 0;
 }
-
-static my_bool
-ma_tls_async_check_result(int res, struct mysql_async_context *b, SSL *ssl)
-{
-  int ssl_err;
-  b->events_to_wait_for= 0;
-  if (res > 0)
-    return 1;
-  ssl_err= SSL_get_error(ssl, res);
-  if (ssl_err == SSL_ERROR_WANT_READ)
-    b->events_to_wait_for|= MYSQL_WAIT_READ;
-  else if (ssl_err == SSL_ERROR_WANT_WRITE)
-    b->events_to_wait_for|= MYSQL_WAIT_WRITE;
-  else
-    return 1;
-  if (b->suspend_resume_hook)
-    (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-  my_context_yield(&b->async_context);
-  if (b->suspend_resume_hook)
-    (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-  return 0;
-}
-
-ssize_t ma_tls_read_async(MARIADB_PVIO *pvio,
-                          const unsigned char *buffer,
-                          size_t length)
-{
-  int res;
-  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
-  MARIADB_TLS *ctls= pvio->ctls;
-
-  for (;;)
-  {
-    res= SSL_read((SSL *)ctls->ssl, (void *)buffer, (int)length);
-    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
-      return res;
-  }
-}
-
-ssize_t ma_tls_write_async(MARIADB_PVIO *pvio,
-                           const unsigned char *buffer,
-                           size_t length)
-{
-  int res;
-  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
-  MARIADB_TLS *ctls= pvio->ctls;
-
-  for (;;)
-  {
-    res= SSL_write((SSL *)ctls->ssl, (void *)buffer, (int)length);
-    if (ma_tls_async_check_result(res, b, (SSL *)ctls->ssl))
-      return res;
-  }
-}
-
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 {

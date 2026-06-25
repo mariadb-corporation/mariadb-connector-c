@@ -57,10 +57,6 @@
 /* callback functions for read/write */
 LIST *pvio_callback= NULL;
 
-#define IS_BLOCKING_ERROR()                   \
-  IF_WIN(WSAGetLastError() != WSAEWOULDBLOCK, \
-         (errno != EAGAIN && errno != EINTR))
-
 /* {{{ MARIADB_PVIO *ma_pvio_init */
 MARIADB_PVIO *ma_pvio_init(MA_PVIO_CINFO *cinfo)
 {
@@ -179,57 +175,16 @@ my_bool ma_pvio_set_timeout(MARIADB_PVIO *pvio,
 }
 /* }}} */
 
-/* {{{ size_t ma_pvio_read_async */
-static size_t ma_pvio_read_async(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
-{
-  ssize_t res= 0;
-  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
-  int timeout= pvio->timeout[PVIO_READ_TIMEOUT];
-
-  if (!pvio->methods->async_read)
-  {
-    PVIO_SET_ERROR(pvio->mysql, CR_ASYNC_NOT_SUPPORTED, unknown_sqlstate, 0);
-    return -1;
-  }
-
-  for (;;)
-  {
-    if (pvio->methods->async_read)
-      res= pvio->methods->async_read(pvio, buffer, length);
-    if (res >= 0 || IS_BLOCKING_ERROR())
-      return res;
-    b->events_to_wait_for= MYSQL_WAIT_READ;
-    if (timeout >= 0)
-    {
-      b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
-      b->timeout_value= timeout;
-    }
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-    my_context_yield(&b->async_context);
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-    if (b->events_occurred & MYSQL_WAIT_TIMEOUT)
-      return -1;
-  }
-}
-/* }}} */
-
 /* {{{ size_t ma_pvio_read */
 ssize_t ma_pvio_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t r= -1;
   if (!pvio)
     return -1;
-  if (IS_PVIO_ASYNC_ACTIVE(pvio))
-  {
-    r=
-#if defined(HAVE_TLS) && !defined(HAVE_SCHANNEL)
-      (pvio->ctls) ? ma_tls_read_async(pvio, buffer, length) :
-#endif
-                    (ssize_t)ma_pvio_read_async(pvio, buffer, length);
-    goto end;
-  }
+
+  /* Synchronous and asynchronous I/O share this path: in async mode the
+     read blocks via my_context_yield() deep inside
+     ma_pvio_wait_io_or_timeout(), so there is no separate async read. */
 
   /* secure connection */
 #ifdef HAVE_TLS
@@ -300,35 +255,6 @@ ssize_t ma_pvio_cache_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 }
 /* }}} */
 
-/* {{{ size_t ma_pvio_write_async */
-static ssize_t ma_pvio_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
-{
-  ssize_t res;
-  struct mysql_async_context *b= pvio->mysql->options.extension->async_context;
-  int timeout= pvio->timeout[PVIO_WRITE_TIMEOUT];
-
-  for (;;)
-  {
-    res= pvio->methods->async_write(pvio, buffer, length);
-    if (res >= 0 || IS_BLOCKING_ERROR())
-      return res;
-    b->events_to_wait_for= MYSQL_WAIT_WRITE;
-    if (timeout >= 0)
-    {
-      b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
-      b->timeout_value= timeout;
-    }
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
-    my_context_yield(&b->async_context);
-    if (b->suspend_resume_hook)
-      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
-    if (b->events_occurred & MYSQL_WAIT_TIMEOUT)
-      return -1;
-  }
-}
-/* }}} */
-
 /* {{{ size_t ma_pvio_write */
 ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
@@ -337,15 +263,7 @@ ssize_t ma_pvio_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
   if (!pvio)
    return -1;
 
-  if (IS_PVIO_ASYNC_ACTIVE(pvio))
-  {
-    r=
-#if defined(HAVE_TLS) && !defined(HAVE_SCHANNEL)
-       (pvio->ctls) ? ma_tls_write_async(pvio, buffer, length) :
-#endif
-                      ma_pvio_write_async(pvio, buffer, length);
-    goto end;
-  }
+  /* Synchronous and asynchronous I/O share this path (see ma_pvio_read). */
 
   /* secure connection */
 #ifdef HAVE_TLS
