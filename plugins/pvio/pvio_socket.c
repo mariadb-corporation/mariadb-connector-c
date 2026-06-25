@@ -56,7 +56,6 @@
 #else
 #include <ws2tcpip.h>
 #define O_NONBLOCK 1
-#define MSG_DONTWAIT 0
 #define IS_SOCKET_EINTR(err) 0
 #endif
 
@@ -80,16 +79,6 @@
 #endif
 #endif
 
-#if SOCKET_EAGAIN != SOCKET_EWOULDBLOCK
-#define HAVE_SOCKET_EWOULDBLOCK 1
-#endif
-
-#ifdef _AIX
-#ifndef MSG_DONTWAIT
-#define MSG_DONTWAIT 0
-#endif
-#endif
-
 /* Function prototypes */
 my_bool pvio_socket_set_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type, int timeout);
 int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type);
@@ -98,13 +87,11 @@ ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length);
 int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int timeout);
-int pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool value, my_bool *old_value);
 my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo);
 my_bool pvio_socket_close(MARIADB_PVIO *pvio);
 int pvio_socket_fast_send(MARIADB_PVIO *pvio);
 int pvio_socket_keepalive(MARIADB_PVIO *pvio);
 my_bool pvio_socket_get_handle(MARIADB_PVIO *pvio, void *handle);
-my_bool pvio_socket_is_blocking(MARIADB_PVIO *pvio);
 my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio);
 my_bool pvio_socket_has_data(MARIADB_PVIO *pvio, ssize_t *data_len);
 int pvio_socket_shutdown(MARIADB_PVIO *pvio);
@@ -125,13 +112,11 @@ struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_write,
   pvio_socket_async_write,
   pvio_socket_wait_io_or_timeout,
-  pvio_socket_blocking,
   pvio_socket_connect,
   pvio_socket_close,
   pvio_socket_fast_send,
   pvio_socket_keepalive,
   pvio_socket_get_handle,
-  pvio_socket_is_blocking,
   pvio_socket_is_alive,
   pvio_socket_has_data,
   pvio_socket_shutdown
@@ -160,9 +145,38 @@ MARIADB_CLIENT_PLUGIN_EXPORT MARIADB_PVIO_PLUGIN
 
 struct st_pvio_socket {
   my_socket socket;
-  int fcntl_mode;
   MYSQL *mysql;
 };
+
+/*
+  Create a socket that is non-blocking from the start.  The socket is used in
+  non-blocking mode throughout its whole lifetime; timeouts for the synchronous
+  API are layered on top via poll()/select() in
+  pvio_socket_wait_io_or_timeout().  Returns INVALID_SOCKET on failure.
+*/
+static my_socket new_nonblocking_socket(int domain, int type, int protocol)
+{
+  my_socket fd= socket(domain, type, protocol);
+  if (fd == INVALID_SOCKET)
+    return INVALID_SOCKET;
+#ifdef _WIN32
+  {
+    ulong arg= 1;
+    if (ioctlsocket(fd, FIONBIO, &arg))
+      goto error;
+  }
+#else
+  {
+    int flags= fcntl(fd, F_GETFL, 0);
+    if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+      goto error;
+  }
+#endif
+  return fd;
+error:
+  closesocket(fd);
+  return INVALID_SOCKET;
+}
 
 static my_bool pvio_socket_initialized= FALSE;
 
@@ -263,26 +277,21 @@ int pvio_socket_get_timeout(MARIADB_PVIO *pvio, enum enum_pvio_timeout type)
 ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
   ssize_t r;
-  int read_flags= MSG_DONTWAIT;
-  struct st_pvio_socket *csock;
   int timeout;
+  struct st_pvio_socket *csock;
 
   if (!pvio || !pvio->data)
     return -1;
 
   csock= (struct st_pvio_socket *)pvio->data;
-  timeout = pvio->timeout[PVIO_READ_TIMEOUT];
+  timeout= pvio->timeout[PVIO_READ_TIMEOUT];
 
-  while ((r = ma_recv(csock->socket, (void *)buffer, length, read_flags)) == -1)
+  /* The socket is non-blocking; block the calling thread via poll()/select()
+     until data arrives or the timeout expires. */
+  while ((r= ma_recv(csock->socket, buffer, length, 0)) == -1)
   {
-    int err = socket_errno;
-    if ((err != SOCKET_EAGAIN
-#ifdef HAVE_SOCKET_EWOULDBLOCK
-      && err != SOCKET_EWOULDBLOCK
-#endif
-      ) || timeout == 0)
+    if (!ma_socket_wouldblock(socket_errno) || timeout == 0)
       return r;
-
     if (pvio_socket_wait_io_or_timeout(pvio, TRUE, timeout) < 1)
       return -1;
   }
@@ -312,28 +321,26 @@ ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 */   
 ssize_t pvio_socket_async_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
 {
-  ssize_t r;
-#ifndef _WIN32
-  int read_flags= MSG_DONTWAIT;
-#endif
-  struct st_pvio_socket *csock= NULL;
+  struct st_pvio_socket *csock;
 
   if (!pvio || !pvio->data)
     return -1;
 
   csock= (struct st_pvio_socket *)pvio->data;
 
-#ifndef _WIN32
-  r= recv(csock->socket,(void *)buffer, length, read_flags);
-#else
-  /* Windows doesn't support MSG_DONTWAIT, so we need to set
-     socket to non-blocking */
-  pvio_socket_blocking(pvio, 0, 0);
-  r= recv(csock->socket, (char *)buffer, (int)length, 0);
-#endif
-  return r;
+  /* One non-blocking attempt. The fiber yield on would-block is done by the
+     caller (ma_pvio_read_async()), not here. */
+  return ma_recv(csock->socket, buffer, length, 0);
 }
 /* }}} */
+
+/* send() flags: ask the kernel to suppress SIGPIPE where the flag exists.
+   On platforms without it ma_send() falls back to blocking the signal. */
+#ifdef MSG_NOSIGNAL
+#define MA_SEND_FLAGS MSG_NOSIGNAL
+#else
+#define MA_SEND_FLAGS 0
+#endif
 
 static ssize_t ma_send(my_socket socket, const uchar *buffer, size_t length, int flags)
 {
@@ -385,30 +392,16 @@ static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags
 */   
 ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
-  ssize_t r;
-  struct st_pvio_socket *csock= NULL;
-#ifndef _WIN32
-  int write_flags= MSG_DONTWAIT;
-#ifdef MSG_NOSIGNAL
-  write_flags|= MSG_NOSIGNAL;
-#endif
-#endif
+  struct st_pvio_socket *csock;
 
   if (!pvio || !pvio->data)
     return -1;
 
   csock= (struct st_pvio_socket *)pvio->data;
 
-#ifndef WIN32
-  r= ma_send(csock->socket, buffer, length, write_flags);
-#else
-  /* Windows doesn't support MSG_DONTWAIT, so we need to set
-     socket to non-blocking */
-  pvio_socket_blocking(pvio, 0, 0);
-  r= send(csock->socket, (const char *)buffer, (int)length, 0);
-#endif
-
-  return r;
+  /* One non-blocking attempt; the fiber yield on would-block is done by the
+     caller (ma_pvio_write_async()), not here. */
+  return ma_send(csock->socket, buffer, length, MA_SEND_FLAGS);
 }
 /* }}} */
 
@@ -435,26 +428,20 @@ ssize_t pvio_socket_async_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t 
 ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
 {
   ssize_t r;
-  struct st_pvio_socket *csock;
   int timeout;
-  int send_flags= MSG_DONTWAIT;
-#ifdef MSG_NOSIGNAL
-  send_flags|= MSG_NOSIGNAL;
-#endif
+  struct st_pvio_socket *csock;
+
   if (!pvio || !pvio->data)
     return -1;
 
   csock= (struct st_pvio_socket *)pvio->data;
-  timeout = pvio->timeout[PVIO_WRITE_TIMEOUT];
+  timeout= pvio->timeout[PVIO_WRITE_TIMEOUT];
 
-  while ((r = ma_send(csock->socket, (void *)buffer, length,send_flags)) == -1)
+  /* The socket is non-blocking; block the calling thread via poll()/select()
+     until the socket is writable or the timeout expires. */
+  while ((r= ma_send(csock->socket, buffer, length, MA_SEND_FLAGS)) == -1)
   {
-    int err = socket_errno;
-    if ((err != SOCKET_EAGAIN
-#ifdef HAVE_SOCKET_EWOULDBLOCK
-      && err != SOCKET_EWOULDBLOCK
-#endif
-       )|| timeout == 0)
+    if (!ma_socket_wouldblock(socket_errno) || timeout == 0)
       return r;
     if (pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout) < 1)
       return -1;
@@ -579,47 +566,6 @@ int pvio_socket_wait_io_or_timeout(MARIADB_PVIO *pvio, my_bool is_read, int time
   return rc;
 }
 
-int pvio_socket_blocking(MARIADB_PVIO *pvio, my_bool block, my_bool *previous_mode)
-{
-  my_bool is_blocking;
-  struct st_pvio_socket *csock;
-  int new_fcntl_mode;
-
-  if (!pvio || !pvio->data)
-    return 1;
-
-  csock = (struct st_pvio_socket *)pvio->data;
-
-  is_blocking = !(csock->fcntl_mode & O_NONBLOCK);
-  if (previous_mode)
-    *previous_mode = is_blocking;
-
-  if (is_blocking == block)
-    return 0;
-
-  if (block)
-     new_fcntl_mode = csock->fcntl_mode & ~O_NONBLOCK;
-  else
-     new_fcntl_mode = csock->fcntl_mode | O_NONBLOCK;
-
-#ifdef _WIN32
-  {
-    ulong arg = block ? 0 : 1;
-    if (ioctlsocket(csock->socket, FIONBIO, (void *)&arg))
-    {
-      return(WSAGetLastError());
-    }
-  }
-#else
-  if (fcntl(csock->socket, F_SETFL, new_fcntl_mode) == -1)
-  {
-    return errno;
-  }
-#endif
-  csock->fcntl_mode = new_fcntl_mode;
-  return 0;
-}
-
 static int pvio_socket_internal_connect(MARIADB_PVIO *pvio,
                                        const struct sockaddr *name, 
                                        size_t namelen)
@@ -637,9 +583,6 @@ static int pvio_socket_internal_connect(MARIADB_PVIO *pvio,
 
   csock= (struct st_pvio_socket *)pvio->data;
   timeout= pvio->timeout[PVIO_CONNECT_TIMEOUT];
-
-  /* set non-blocking */
-  pvio_socket_blocking(pvio, 0, 0);
 
 #ifndef _WIN32
   do {
@@ -755,7 +698,6 @@ pvio_socket_connect_async(MARIADB_PVIO *pvio,
 {
   MYSQL *mysql= pvio->mysql;
   mysql->options.extension->async_context->pvio= pvio;
-  pvio_socket_blocking(pvio, 0, 0);
   return my_connect_async(pvio, name, namelen, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
 }
 
@@ -799,7 +741,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
 #ifdef HAVE_SYS_UN_H
     size_t port_length;
     struct sockaddr_un UNIXaddr;
-    if ((csock->socket = socket(AF_UNIX,SOCK_STREAM,0)) == INVALID_SOCKET ||
+    if ((csock->socket = new_nonblocking_socket(AF_UNIX,SOCK_STREAM,0)) == INVALID_SOCKET ||
         (port_length=strlen(cinfo->unix_socket)) >= (sizeof(UNIXaddr.sun_path)))
     {
       PVIO_SET_ERROR(cinfo->mysql, CR_SOCKET_CREATE_ERROR, unknown_sqlstate, 0, errno);
@@ -916,8 +858,8 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       /* CONC-364: Avoid leak of open sockets */
       if (csock->socket != INVALID_SOCKET)
         closesocket(csock->socket);
-      csock->socket= socket(save_res->ai_family, save_res->ai_socktype, 
-                            save_res->ai_protocol);
+      csock->socket= new_nonblocking_socket(save_res->ai_family, save_res->ai_socktype,
+                                        save_res->ai_protocol);
       if (csock->socket == INVALID_SOCKET)
         /* Errors will be handled after loop finished */
         continue;
@@ -950,19 +892,7 @@ my_bool pvio_socket_connect(MARIADB_PVIO *pvio, MA_PVIO_CINFO *cinfo)
       }
 
       if (!rc)
-      {
-        MYSQL *mysql= pvio->mysql;
-        if (mysql->options.extension && mysql->options.extension->async_context &&
-             mysql->options.extension->async_context->active)
-          break;
-        if (pvio_socket_blocking(pvio, 0, 0) == SOCKET_ERROR)
-        {
-          closesocket(csock->socket);
-          csock->socket= INVALID_SOCKET;
-          continue;
-        }
-        break; /* success! */
-      }
+        break; /* success! (socket was set non-blocking before connect) */
     }
  
     freeaddrinfo(res);
@@ -1043,21 +973,6 @@ my_bool pvio_socket_get_handle(MARIADB_PVIO *pvio, void *handle)
 }
 /* }}} */
 
-/* {{{ my_bool pvio_socket_is_blocking(MARIADB_PVIO *pvio) */
-my_bool pvio_socket_is_blocking(MARIADB_PVIO *pvio)
-{
-  struct st_pvio_socket *csock= NULL;
-  my_bool r;
-
-  if (!pvio || !pvio->data)
-    return 0;
-
-  csock= (struct st_pvio_socket *)pvio->data;
-  r = !(csock->fcntl_mode & O_NONBLOCK);
-  return r;
-}
-/* }}} */
-
 /* {{{ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio) */
 my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio)
 {
@@ -1109,18 +1024,16 @@ my_bool pvio_socket_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
   struct st_pvio_socket *csock= NULL;
   char tmp_buf;
   ssize_t len;
-  my_bool mode;
- 
+
   if (!pvio || !pvio->data)
     return 0;
 
   csock= (struct st_pvio_socket *)pvio->data;
   /* MSG_PEEK: Peeks at the incoming data. The data is copied into the buffer,
-      but is not removed from the input queue. 
+      but is not removed from the input queue. The socket is always
+      non-blocking, so the peek never blocks.
   */
-  pvio_socket_blocking(pvio, 0, &mode);
   len= recv(csock->socket, &tmp_buf, sizeof(tmp_buf), MSG_PEEK);
-  pvio_socket_blocking(pvio, mode, 0);
   if (len < 0)
     return 1;
   *data_len= len;

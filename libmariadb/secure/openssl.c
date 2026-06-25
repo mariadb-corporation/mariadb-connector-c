@@ -114,15 +114,6 @@ static BIO_METHOD ma_BIO_method;
 
 static int ma_verification_callback(int preverify_ok, X509_STORE_CTX *ctx);
 
-static my_bool is_ewouldblock(int err)
-{
-  return (err == SOCKET_EWOULDBLOCK
-#if SOCKET_EAGAIN != SOCKET_EWOULDBLOCK
-          || err == SOCKET_EAGAIN
-#endif
-  );
-}
-
 /* {{{ custom BIO routing TLS traffic through the pvio read/write methods */
 /*
    In synchronous mode pvio_socket_read/write block internally (using
@@ -145,7 +136,7 @@ static int ma_bio_read(BIO *bio, char *buf, int size)
     if (res <= 0)
     {
       int err= socket_errno;
-      if (is_ewouldblock(err))
+      if (ma_socket_wouldblock(err))
         BIO_set_retry_read(bio);
     }
   }
@@ -166,7 +157,7 @@ static int ma_bio_write(BIO *bio, const char *buf, int size)
     if (res <= 0)
     {
       int err= socket_errno;
-      if (is_ewouldblock(err))
+      if (ma_socket_wouldblock(err))
         BIO_set_retry_write(bio);
     }
   }

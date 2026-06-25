@@ -35,19 +35,6 @@
 #include <string.h>
 
 
-#ifdef _WIN32
-/*
-  Windows does not support MSG_DONTWAIT for send()/recv(). So we need to ensure
-  that the socket is non-blocking at the start of every operation.
-*/
-#define WIN_SET_NONBLOCKING(mysql) do { \
-    my_bool old_mode; \
-    if ((mysql)->net.pvio) ma_pvio_blocking((mysql)->net.pvio, FALSE, &old_mode); \
-  } while(0);
-#else
-#define WIN_SET_NONBLOCKING(mysql)
-#endif
-
 extern void mysql_close_slow_part(MYSQL *mysql);
 
 
@@ -72,9 +59,6 @@ my_connect_async(MARIADB_PVIO *pvio,
   my_socket sock= -1;
 
   ma_pvio_get_handle(pvio, &sock);
-
-  /* Make the socket non-blocking. */
-  ma_pvio_blocking(pvio, 0, 0);
 
   b->events_to_wait_for= 0;
   /*
@@ -130,12 +114,6 @@ my_connect_async(MARIADB_PVIO *pvio,
 #define IS_BLOCKING_ERROR()                   \
   IF_WIN(WSAGetLastError() != WSAEWOULDBLOCK, \
          (errno != EAGAIN && errno != EINTR))
-
-#ifdef _AIX
-#ifndef MSG_DONTWAIT
-#define MSG_DONTWAIT 0
-#endif
-#endif
 
 #ifdef HAVE_TLS_FIXME
 static my_bool
@@ -397,7 +375,6 @@ mysql_real_query_start(int *ret, MYSQL *mysql, const char *stmt_str, unsigned lo
 
   b= mysql->options.extension->async_context;
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.stmt_str= stmt_str;
     parms.length= length;
@@ -452,7 +429,6 @@ MK_ASYNC_START_BODY(
   mysql_fetch_row,
   result->handle,
   {
-    WIN_SET_NONBLOCKING(result->handle)
     parms.result= result;
   },
   NULL,
@@ -500,7 +476,6 @@ MK_ASYNC_START_BODY(
   mysql_set_character_set,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.csname= csname;
   },
@@ -539,7 +514,6 @@ MK_ASYNC_START_BODY(
   mysql_select_db,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.db= db;
   },
@@ -579,7 +553,6 @@ MK_ASYNC_START_BODY(
   mysql_send_query,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.q= q;
     parms.length= length;
@@ -618,7 +591,6 @@ MK_ASYNC_START_BODY(
   mysql_store_result,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   NULL,
@@ -653,7 +625,6 @@ MK_ASYNC_START_BODY_VOID_RETURN(
   mysql_free_result,
   result->handle,
   {
-    WIN_SET_NONBLOCKING(result->handle)
     parms.result= result;
   },
   /*
@@ -702,7 +673,6 @@ MK_ASYNC_START_BODY_VOID_RETURN(
   mysql_close_slow_part,
   sock,
   {
-    WIN_SET_NONBLOCKING(sock)
     parms.sock= sock;
   },
   /* Nothing */)
@@ -769,7 +739,6 @@ MK_ASYNC_START_BODY(
   mysql_change_user,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.user= user;
     parms.passwd= passwd;
@@ -810,7 +779,6 @@ MK_ASYNC_START_BODY(
   mysql_query,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.q= q;
   },
@@ -849,7 +817,6 @@ MK_ASYNC_START_BODY(
   mysql_shutdown,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.shutdown_level= shutdown_level;
   },
@@ -887,7 +854,6 @@ MK_ASYNC_START_BODY(
   mysql_dump_debug_info,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   1,
@@ -925,7 +891,6 @@ MK_ASYNC_START_BODY(
   mysql_refresh,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.refresh_options= refresh_options;
   },
@@ -964,7 +929,6 @@ MK_ASYNC_START_BODY(
   mysql_kill,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.pid= pid;
   },
@@ -1004,7 +968,6 @@ MK_ASYNC_START_BODY(
   mysql_set_server_option,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.option= option;
   },
@@ -1042,7 +1005,6 @@ MK_ASYNC_START_BODY(
   mysql_ping,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   1,
@@ -1079,7 +1041,6 @@ MK_ASYNC_START_BODY(
   mysql_reset_connection,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   1,
@@ -1116,7 +1077,6 @@ MK_ASYNC_START_BODY(
   mysql_stat,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   NULL,
@@ -1154,7 +1114,6 @@ MK_ASYNC_START_BODY(
   mysql_list_dbs,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.wild= wild;
   },
@@ -1193,7 +1152,6 @@ MK_ASYNC_START_BODY(
   mysql_list_tables,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.wild= wild;
   },
@@ -1231,7 +1189,6 @@ MK_ASYNC_START_BODY(
   mysql_list_processes,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   NULL,
@@ -1271,7 +1228,6 @@ MK_ASYNC_START_BODY(
   mysql_list_fields,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.table= table;
     parms.wild= wild;
@@ -1310,7 +1266,6 @@ MK_ASYNC_START_BODY(
   mysql_read_query_result,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   TRUE,
@@ -1350,7 +1305,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_prepare,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
     parms.query= query;
     parms.length= length;
@@ -1394,7 +1348,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_execute,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
   },
   1,
@@ -1439,7 +1392,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_fetch,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
   },
   1,
@@ -1481,7 +1433,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_store_result,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
   },
   1,
@@ -1523,7 +1474,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_close,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
   },
   TRUE,
@@ -1565,7 +1515,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_reset,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
   },
   TRUE,
@@ -1607,7 +1556,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_free_result,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
   },
   TRUE,
@@ -1654,7 +1602,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_send_long_data,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
     parms.param_number= param_number;
     parms.data= data;
@@ -1699,7 +1646,6 @@ MK_ASYNC_START_BODY(
   mysql_commit,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   TRUE,
@@ -1736,7 +1682,6 @@ MK_ASYNC_START_BODY(
   mysql_rollback,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   TRUE,
@@ -1774,7 +1719,6 @@ MK_ASYNC_START_BODY(
   mysql_autocommit,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
     parms.auto_mode= auto_mode;
   },
@@ -1812,7 +1756,6 @@ MK_ASYNC_START_BODY(
   mysql_next_result,
   mysql,
   {
-    WIN_SET_NONBLOCKING(mysql)
     parms.mysql= mysql;
   },
   1,
@@ -1849,7 +1792,6 @@ MK_ASYNC_START_BODY(
   mysql_stmt_next_result,
   stmt->mysql,
   {
-    WIN_SET_NONBLOCKING(stmt->mysql)
     parms.stmt= stmt;
   },
   1,

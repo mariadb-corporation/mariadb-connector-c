@@ -687,6 +687,16 @@ typedef unsigned long	size_s; /* Size of strings (In string-funcs) */
 typedef int		myf;	/* Type of MyFlags in my_funcs */
 typedef char		my_bool; /* Small bool */
 typedef unsigned long long my_ulonglong;
+
+/* TRUE if a failed non-blocking socket operation would have blocked. */
+static inline my_bool ma_socket_wouldblock(int err)
+{
+  return (err == SOCKET_EAGAIN
+#if SOCKET_EAGAIN != SOCKET_EWOULDBLOCK
+          || err == SOCKET_EWOULDBLOCK
+#endif
+  );
+}
 #if !defined(bool) && !defined(bool_defined) && !defined(HAVE_BOOL) && !defined(__cplusplus) && (__STDC_VERSION__ < 202300L)
 typedef char		bool;	/* Ordinary boolean values 0 1 */
 #endif

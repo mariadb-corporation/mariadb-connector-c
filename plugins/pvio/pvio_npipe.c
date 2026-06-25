@@ -41,7 +41,6 @@ my_bool pvio_npipe_close(MARIADB_PVIO *pvio);
 int pvio_npipe_fast_send(MARIADB_PVIO *pvio);
 int pvio_npipe_keepalive(MARIADB_PVIO *pvio);
 my_bool pvio_npipe_get_handle(MARIADB_PVIO *pvio, void *handle);
-my_bool pvio_npipe_is_blocking(MARIADB_PVIO *pvio);
 int pvio_npipe_shutdown(MARIADB_PVIO *pvio);
 my_bool pvio_npipe_is_alive(MARIADB_PVIO *pvio);
 
@@ -53,13 +52,11 @@ struct st_ma_pvio_methods pvio_npipe_methods= {
   pvio_npipe_write,
   NULL,
   NULL,
-  NULL,
   pvio_npipe_connect,
   pvio_npipe_close,
   pvio_npipe_fast_send,
   pvio_npipe_keepalive,
   pvio_npipe_get_handle,
-  pvio_npipe_is_blocking,
   pvio_npipe_is_alive,
   NULL,
   pvio_npipe_shutdown
@@ -350,11 +347,6 @@ my_bool pvio_npipe_get_handle(MARIADB_PVIO *pvio, void *handle)
   }
   return 1;
 } 
-
-my_bool pvio_npipe_is_blocking(MARIADB_PVIO *pvio)
-{
-  return 1;
-}
 
 int pvio_npipe_shutdown(MARIADB_PVIO *pvio)
 {
