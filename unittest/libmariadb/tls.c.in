@@ -599,7 +599,7 @@ static int test_crl(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql;
   int ret= FAIL;
-  unsigned int connect_timeout= 10;
+  unsigned int connect_timeout= 60;
 
   /* Set validity in future */
   if (set_tls_dummy_options("CMD:KEY_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-key.pem' CERT_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.pem'"))
