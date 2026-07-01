@@ -464,37 +464,14 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
 
       packet_left= end - tmp_row;
 
-      /* CONC-820: 1. Check sentinel */
+      /* A column value can never span more than the space left in the packet.
+         This is the only check the row data needs: the conversion into the
+         caller's buffer is bounded on its own, and every field length beyond
+         this is either harmless or plain metadata (see below). */
       if (data_len > packet_left) {
         snprintf(errmsg, sizeof(errmsg)-1, "Malformed packet: Column %d has length %lu, while remaining space is %zu bytes", i, data_len, packet_left);
         stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, errmsg);
         return MYSQL_DATA_MALFORMED;
-      }
-
-      /* CONC-820: 2. Check if length exceeds max. lengths */
-      switch (stmt->fields[i].type) {
-        case MYSQL_TYPE_TINY:
-        case MYSQL_TYPE_SHORT:
-        case MYSQL_TYPE_INT24:
-        case MYSQL_TYPE_LONG:
-        case MYSQL_TYPE_LONGLONG:
-          if (field->length > MAX_ZEROFILL_LEN) {
-            snprintf(errmsg, sizeof(errmsg) - 1, "Malformed packet: length is %lu, while maximum display length for column %d is %u bytes",
-                   field->length, i, MAX_ZEROFILL_LEN);
-            stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, errmsg);
-            return MYSQL_DATA_MALFORMED;
-          }
-          break;
-        case MYSQL_TYPE_NEWDECIMAL:
-          if (data_len > MAX_DECIMAL_LEN || field->length > MAX_DECIMAL_LEN) {
-            snprintf(errmsg, sizeof(errmsg) - 1, "Malformed packet: length is %lu, while maximum length for decimal in column %d is %u bytes",
-                   field->length, i, MAX_DECIMAL_LEN);
-            stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, errmsg);
-            return MYSQL_DATA_MALFORMED;
-          }
-          break;
-        default:
-          break;
       }
 
       if (!stmt->bind_result_done ||

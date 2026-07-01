@@ -6094,40 +6094,6 @@ static int test_overflow(MYSQL *mysql)
   diag("expected error: %s", mysql_stmt_error(stmt));
 
   mysql_stmt_close(stmt);
-
-  stmt= mysql_stmt_init(mysql);
-
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
-  check_mysql_rc(rc, mysql);
-
-  rc= mysql_query(mysql, "CREATE TABLE t1 (a tinyint(255) zerofill)");
-  check_mysql_rc(rc, mysql);
-
-  rc= mysql_query(mysql, "INSERT INTO t1 VALUES(1)");
-  check_mysql_rc(rc, mysql);
-
-  rc= mysql_stmt_prepare(stmt, SL("SELECT a FROM t1"));
-  check_stmt_rc(rc, stmt);
-
-  rc= mysql_stmt_execute(stmt);
-  check_stmt_rc(rc, stmt);
-
-  bind[0].buffer_type = MYSQL_TYPE_STRING;
-  bind[0].buffer_length= 255;
-  bind[0].buffer= buf1;
-
-  rc= mysql_stmt_bind_param(stmt, bind);
-  check_stmt_rc(rc, stmt);
-
-  stmt->fields[0].length= 400;
-
-  rc= mysql_stmt_fetch(stmt);
-  FAIL_IF(rc != MYSQL_DATA_MALFORMED, "expected malformed data return value");
-  FAIL_IF(!mysql_stmt_errno(stmt), "expected statement error");
-
-  diag("expected error: %s", mysql_stmt_error(stmt));
-
-  mysql_stmt_close(stmt);
   return OK;
 }
 

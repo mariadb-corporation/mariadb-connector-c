@@ -388,8 +388,6 @@ typedef SOCKET_SIZE_TYPE size_socket;
 	/* General constants */
 #define MAX_PACKET_LENGTH 0xFFFFFF
 #define SC_MAXWIDTH	256	/* Max width of screen (for error messages) */
-#define MAX_ZEROFILL_LEN 255
-#define MAX_DECIMAL_LEN 67
 #define FN_LEN		256	/* Max file name len */
 #define FN_HEADLEN	253	/* Max length of filepart of file name */
 #define FN_EXTLEN	20	/* Max length of extension (part of FN_LEN) */
