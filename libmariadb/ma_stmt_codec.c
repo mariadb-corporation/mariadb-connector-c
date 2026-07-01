@@ -1131,6 +1131,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
   MYSQL_TIME *t= (MYSQL_TIME *)r_param->buffer;
   unsigned int len= net_field_length(row);
 
+  *r_param->length= sizeof(MYSQL_TIME);
   switch (r_param->buffer_type) {
     case MYSQL_TYPE_DATETIME:
     case MYSQL_TYPE_TIMESTAMP:

@@ -445,7 +445,11 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
         stmt->bind[i].u.row_ptr= NULL;
         if (!stmt->bind[i].length)
           stmt->bind[i].length= &stmt->bind[i].length_value;
-        if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len < 0)
+	/*
+	  include pack_len 0 (MYSQL_TYPE_NULL as this may have
+	  previously been a MYSQL_TYPE_STRING at the bind phase.
+	*/
+        if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len <= 0)
           *stmt->bind[i].length= stmt->bind[i].length_value= 0;
       }
     } else
@@ -1472,48 +1476,12 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
       stmt->bind[i].is_null= &stmt->bind[i].is_null_value;
     if (!stmt->bind[i].length)
       stmt->bind[i].length= &stmt->bind[i].length_value;
+
     if (!stmt->bind[i].error)
       stmt->bind[i].error= &stmt->bind[i].error_value;
 
     if (mysql_ps_fetch_functions[stmt->bind[i].buffer_type].pack_len >= 0)
-    {
       *stmt->bind[i].length= stmt->bind[i].length_value= mysql_ps_fetch_functions[stmt->bind[i].buffer_type].pack_len;
-    } else {
-      *stmt->bind[i].length= stmt->bind[i].length_value= 0;
-    }
-
-    /* set length values for numeric types */
-/*
-    switch(bind[i].buffer_type) {
-    case MYSQL_TYPE_NULL:
-      *stmt->bind[i].length= stmt->bind[i].length_value= 0;
-      break;
-    case MYSQL_TYPE_TINY:
-      *stmt->bind[i].length= stmt->bind[i].length_value= 1;
-      break;
-    case MYSQL_TYPE_SHORT:
-    case MYSQL_TYPE_YEAR:
-      *stmt->bind[i].length= stmt->bind[i].length_value= 2;
-      break;
-    case MYSQL_TYPE_INT24:
-    case MYSQL_TYPE_LONG:
-    case MYSQL_TYPE_FLOAT:
-      *stmt->bind[i].length= stmt->bind[i].length_value= 4;
-      break;
-    case MYSQL_TYPE_LONGLONG:
-    case MYSQL_TYPE_DOUBLE:
-      *stmt->bind[i].length= stmt->bind[i].length_value= 8;
-      break;
-    case MYSQL_TYPE_TIME:
-    case MYSQL_TYPE_DATE:
-    case MYSQL_TYPE_DATETIME:
-    case MYSQL_TYPE_TIMESTAMP:
-      *stmt->bind[i].length= stmt->bind[i].length_value= sizeof(MYSQL_TIME);
-      break;
-    default:
-      break;
-    }
-*/
   }
   stmt->bind_result_done= 1;
   CLEAR_CLIENT_STMT_ERROR(stmt);

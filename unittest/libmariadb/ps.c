@@ -5236,8 +5236,8 @@ end:
 static int test_conc812(MYSQL *mysql)
 {
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
-  MYSQL_BIND bind[9];
-  unsigned long length[9];
+  MYSQL_BIND bind[14];
+  unsigned long length[14];
   uint8_t int8_val;
   uint16_t int16_val;
   uint32_t int32_val;
@@ -5246,12 +5246,24 @@ static int test_conc812(MYSQL *mysql)
   double dbl_val;
   char decimal_val[20];
   char str_val[20];
+  char text_val[20];
   int rc;
+  unsigned long cnt;
+  MYSQL_TIME tm[4];
 
-  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE jj_test ( id BIGINT NOT NULL PRIMARY KEY , f_tinyint TINYINT , f_short   SMALLINT , f_int	    INT , f_long    BIGINT , f_float   FLOAT , f_double  DOUBLE , f_decimal DECIMAL(9,3) , f_varchar VARCHAR(20))");
+  rc= mysql_query(mysql, "CREATE TEMPORARY TABLE jj_test ( id BIGINT NOT NULL PRIMARY KEY"
+                         ", f_tinyint TINYINT , f_short   SMALLINT , f_int INT"
+                         " , f_long    BIGINT , f_float   FLOAT , f_double  DOUBLE"
+			 ", f_decimal DECIMAL(9,3) , f_varchar VARCHAR(20), f_blob TEXT"
+			 ", f_time TIME, f_date DATE, f_datetime DATETIME, f_timestamp TIMESTAMP)");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "INSERT INTO jj_test VALUES ( 1, 1, 1, 1, 1, 1.1, 1.11, 1.111, '1.1111'), ( 2, 2, 2, 2, 2, 2.2, 2.22, 2.222, '2.2222'), ( 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), ( 4, 4, 4, 4, 4, 4.4, 4.44, 4.444, '4.444'), ( 5, 5, 5, 5, 5, 5.5, 5.55, 5.555, '5.555')");
+  rc= mysql_query(mysql, "INSERT INTO jj_test VALUES "
+		         "  ( 1, 1, 1, 1, 1, 1.1, 1.11, 1.111, '1', '1', '11:11', '2026-07-01', '2026-07-01 01:11', '2026-07-01 01:12')"
+                         ", ( 2, 2, 2, 2, 2, 2.2, 2.22, 2.222, '22', '22', '12:12', '2026-07-01', '2026-07-02 02:22', '2026-07-02 02:23')"
+                         ", ( 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
+                         ", ( 4, 4, 4, 4, 4, 4.4, 4.44, 4.444, '4444', '4444', '14:44', '2026-07-01', '2026-07-04 04:44', '2026-07-04 04:45')"
+			 ", ( 5, 5, 5, 5, 5, 5.5, 5.55, 5.555, '55555', '55555', '15:55', '2026-07-01', '2026-07-01 05:55', '2026-07-05 05:56')");
   check_mysql_rc(rc, mysql);
 
 
@@ -5261,7 +5273,7 @@ static int test_conc812(MYSQL *mysql)
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
-  memset(bind, 0, sizeof(MYSQL_BIND) * 9);
+  memset(bind, 0, sizeof(MYSQL_BIND) * 14);
 
   bind[0].buffer_type= MYSQL_TYPE_LONGLONG;
   bind[0].buffer= &int64_val;
@@ -5292,11 +5304,33 @@ static int test_conc812(MYSQL *mysql)
   bind[8].buffer= str_val;
   bind[8].buffer_length= 20;
   bind[8].length = &length[8];
+  bind[9].buffer_type= MYSQL_TYPE_STRING;
+  bind[9].buffer= text_val;
+  bind[9].buffer_length= 20;
+  bind[9].length = &length[9];
+  bind[10].buffer_type= MYSQL_TYPE_TIME;
+  bind[10].buffer= &tm[0];
+  bind[10].buffer_length= sizeof(tm[0]);
+  bind[10].length = &length[10];
+  bind[11].buffer_type= MYSQL_TYPE_DATETIME;
+  bind[11].buffer= &tm[1];
+  bind[11].buffer_length= sizeof(tm[1]);
+  bind[11].length = &length[11];
+  bind[12].buffer_type= MYSQL_TYPE_DATETIME;
+  bind[12].buffer= &tm[2];
+  bind[12].buffer_length= sizeof(tm[2]);
+  bind[12].length = &length[12];
+  bind[13].buffer_type= MYSQL_TYPE_TIMESTAMP;
+  bind[13].buffer= &tm[3];
+  bind[13].buffer_length= sizeof(tm[3]);
+  bind[13].length = &length[13];
 
   rc= mysql_stmt_bind_result(stmt, bind);
   check_stmt_rc(rc, stmt);
 
+  cnt= 0;
   while (!mysql_stmt_fetch(stmt)) {
+    cnt++;
     diag("checking");
     FAIL_IF(length[0] != sizeof(uint64_t), "Wrong length for int64");
     FAIL_IF(length[1] != sizeof(uint8_t), "Wrong length for int8");
@@ -5305,6 +5339,14 @@ static int test_conc812(MYSQL *mysql)
     FAIL_IF(length[4] != sizeof(uint64_t), "Wrong length for int64");
     FAIL_IF(length[5] != sizeof(float), "Wrong length for float");
     FAIL_IF(length[6] != sizeof(double), "Wrong length for double");
+    /* row 3 is null and these are dynamic types */
+    FAIL_IF(length[7] != ((cnt == 3) ? 0 : 5), "Wrong length for newdecimal");
+    FAIL_IF(length[8] != ((cnt == 3) ? 0 : cnt), "Wrong length for string");
+    FAIL_IF(length[9] != ((cnt == 3) ? 0 : cnt), "Wrong length for text");
+    FAIL_IF(length[10] != ((cnt == 3) ? 0 : sizeof(tm[0])), "Wrong length for time");
+    FAIL_IF(length[11] != ((cnt == 3) ? 0 : sizeof(tm[0])), "Wrong length for date");
+    FAIL_IF(length[12] != ((cnt == 3) ? 0 : sizeof(tm[0])), "Wrong length for datetime");
+    FAIL_IF(length[13] != ((cnt == 3) ? 0 : sizeof(tm[0])), "Wrong length for timestamp");
   }
 
   mysql_stmt_close(stmt);
