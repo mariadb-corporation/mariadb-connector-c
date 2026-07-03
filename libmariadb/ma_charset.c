@@ -1538,7 +1538,7 @@ static void map_charset_name(const char *cs_name, my_bool target_cs, char *buffe
 
   if (target_cs)
   {
-    strncat(buffer, "//TRANSLIT", buff_len - strlen(buffer));
+    strncat(buffer, "//TRANSLIT", buff_len - strlen(buffer) - 1);
   }
 }
 /* }}} */
