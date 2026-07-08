@@ -2665,19 +2665,36 @@ static int test_conc760(MYSQL *my)
 
   SKIP_MAXSCALE;
 
+  /*
+    @@named_pipe and @@socket are Windows-only server variables. On a non-
+    Windows server (e.g. a Linux docker container) the SELECT fails with
+    ER_UNKNOWN_SYSTEM_VARIABLE; that isn't a test failure, the prerequisite
+    for the rest of the scenario simply isn't there, so skip.
+  */
   rc= mysql_query(my, "select @@named_pipe, @@socket");
-  check_mysql_rc(rc, mysql);
+  if (rc)
+  {
+    diag("Server doesn't expose @@named_pipe (%s)", mysql_error(my));
+    return SKIP;
+  }
 
   if ((result= mysql_store_result(my)))
   {
-    if((row= mysql_fetch_row(result)))
+    if ((row= mysql_fetch_row(result)))
+    {
       have_named_pipe= atoi(row[0]);
-    strncpy(named_pipe_name, row[1], sizeof(named_pipe_name)-1);
-    named_pipe_name[sizeof(named_pipe_name)-1]= '\0';
+      if (row[1])
+      {
+        strncpy(named_pipe_name, row[1], sizeof(named_pipe_name)-1);
+        named_pipe_name[sizeof(named_pipe_name)-1]= '\0';
+      }
+      else
+        named_pipe_name[0]= '\0';
+    }
     mysql_free_result(result);
   }
 
-  if (!have_named_pipe)
+  if (!have_named_pipe || !named_pipe_name[0])
   {
     diag("Server doesn't support named pipes");
     return SKIP;

@@ -44,9 +44,7 @@ IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()
 
-IF(NOT WIN32)
-  SET(API_TESTS ${API_TESTS} "async")
-ENDIF()
+SET(API_TESTS ${API_TESTS} "async")
 
 #exclude following tests from ctests, since we need to run them manually with different credentials
 SET(MANUAL_TESTS "t_conc173" "conc336")

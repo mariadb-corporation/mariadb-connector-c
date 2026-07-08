@@ -109,13 +109,61 @@ my_bool pvio_socket_is_alive(MARIADB_PVIO *pvio);
 my_bool pvio_socket_has_data(MARIADB_PVIO *pvio, ssize_t *data_len);
 int pvio_socket_shutdown(MARIADB_PVIO *pvio);
 
-static int pvio_socket_init(char *unused1, 
-                           size_t unused2, 
-                           int unused3, 
+static int pvio_socket_init(char *unused1,
+                           size_t unused2,
+                           int unused3,
                            va_list);
 static int pvio_socket_end(void);
 static ssize_t ma_send(my_socket socket, const uchar *buffer, size_t length, int flags);
 static ssize_t ma_recv(my_socket socket, uchar *buffer, size_t length, int flags);
+
+/*
+  pvio_socket_wait_or_yield
+
+  Wait for the socket to become ready for read (is_read=TRUE) or write
+  (is_read=FALSE).
+
+  If the connection is currently executing inside an async
+  (mysql_*_start / mysql_*_cont) fiber we MUST NOT block the OS thread in
+  select/poll: that would starve the application's event loop and, on Windows
+  fibers, prevent the app fiber from ever running again. Instead record the
+  events the caller needs to wait for in the async context and cooperatively
+  yield back to the app fiber. The application will drive its own
+  select/poll/epoll/iocp and eventually call mysql_*_cont, which resumes us
+  here so the caller can retry the recv()/send() that returned EWOULDBLOCK.
+
+  This is the piece that makes TLS (Schannel) transparently cooperate with the
+  non-blocking client API on Windows: the Schannel handshake and
+  decrypt/encrypt loops call pvio->methods->read/write directly, so teaching
+  those routines to yield is enough to make the whole TLS stack async-safe
+  without per-layer async wrappers.
+
+  Returns > 0 on success (caller should retry the syscall), <= 0 on failure
+  (caller should treat as socket error).
+*/
+static int pvio_socket_wait_or_yield(MARIADB_PVIO *pvio, my_bool is_read, int timeout)
+{
+  if (IS_PVIO_ASYNC_ACTIVE(pvio))
+  {
+    struct mysql_async_context *b=
+      pvio->mysql->options.extension->async_context;
+    b->events_to_wait_for= is_read ? MYSQL_WAIT_READ : MYSQL_WAIT_WRITE;
+    if (timeout >= 0)
+    {
+      b->events_to_wait_for|= MYSQL_WAIT_TIMEOUT;
+      b->timeout_value= timeout;
+    }
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(TRUE, b->suspend_resume_hook_user_data);
+    my_context_yield(&b->async_context);
+    if (b->suspend_resume_hook)
+      (*b->suspend_resume_hook)(FALSE, b->suspend_resume_hook_user_data);
+    if (b->events_occurred & MYSQL_WAIT_TIMEOUT)
+      return -1;
+    return 1;
+  }
+  return pvio_socket_wait_io_or_timeout(pvio, is_read, timeout);
+}
 
 struct st_ma_pvio_methods pvio_socket_methods= {
   pvio_socket_set_timeout,
@@ -316,7 +364,7 @@ ssize_t pvio_socket_read(MARIADB_PVIO *pvio, uchar *buffer, size_t length)
       ) || timeout == 0)
       return r;
 
-    if (pvio_socket_wait_io_or_timeout(pvio, TRUE, timeout) < 1)
+    if (pvio_socket_wait_or_yield(pvio, TRUE, timeout) < 1)
       return -1;
   }
   return r;
@@ -489,7 +537,7 @@ ssize_t pvio_socket_write(MARIADB_PVIO *pvio, const uchar *buffer, size_t length
 #endif
        )|| timeout == 0)
       return r;
-    if (pvio_socket_wait_io_or_timeout(pvio, FALSE, timeout) < 1)
+    if (pvio_socket_wait_or_yield(pvio, FALSE, timeout) < 1)
       return -1;
   }
   return r;

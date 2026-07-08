@@ -666,7 +666,7 @@ retry:
 }
 
 ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
-{ 
+{
   MARIADB_PVIO *pvio= ctls->pvio;
   ssize_t rc, wlength= 0;
   ssize_t remain= length;
@@ -679,6 +679,32 @@ ssize_t ma_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
     remain-= rc;
   }
   return length;
+}
+
+/*
+  Schannel async read/write.
+
+  ma_schannel_read_decrypt and ma_schannel_write_encrypt reach the socket via
+  pvio->methods->read / ->write. When the connection is executing inside an
+  async fiber, the socket plugin (pvio_socket_wait_or_yield) cooperatively
+  yields back to the app fiber on EWOULDBLOCK instead of blocking the OS
+  thread in select(). That makes the ordinary sync TLS read/write paths
+  async-safe with no per-record state machine here: we simply delegate to the
+  existing ma_tls_read / ma_tls_write, and any would-block during a handshake
+  record, decrypt, or encrypt round-trip is handled one layer deeper.
+*/
+ssize_t ma_tls_read_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  if (!pvio || !pvio->ctls)
+    return -1;
+  return ma_tls_read(pvio->ctls, buffer, length);
+}
+
+ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buffer, size_t length)
+{
+  if (!pvio || !pvio->ctls)
+    return -1;
+  return ma_tls_write(pvio->ctls, buffer, length);
 }
 
 /* {{{ my_bool ma_tls_close(MARIADB_PVIO *pvio) */
