@@ -986,6 +986,7 @@ static int test_connect_attrs(MYSQL *my)
   mysql_free_result(result);
 
   mysql= mysql_init(NULL);
+  check(mysql);
 
   mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo0", "bar0");
   mysql_options4(mysql, MYSQL_OPT_CONNECT_ATTR_ADD, "foo1", "bar1");
@@ -1041,6 +1042,8 @@ static int test_conc117(MYSQL *unused __attribute__((unused)))
   my_bool reconnect= 1;
   MYSQL *my= mysql_init(NULL);
   SKIP_MAXSCALE;
+
+  check(my);
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0, 1), mysql_error(my));
   
@@ -1059,6 +1062,8 @@ static int test_read_timeout(MYSQL *unused __attribute__((unused)))
   int timeout= 5, rc;
   MYSQL *my= mysql_init(NULL);
   SKIP_MAXSCALE;
+
+  check(my);
   mysql_options(my, MYSQL_OPT_READ_TIMEOUT, &timeout);
   FAIL_IF(!my_test_connect(my, hostname, username, password, schema,
                          port, socketname, 0, 1), mysql_error(my));
@@ -1133,6 +1138,7 @@ static int test_remote2(MYSQL *my)
     return SKIP;
   }
   mysql= mysql_init(NULL);
+  check(mysql);
 
   mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "http://localhost/test.cnf");
   mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "test");
@@ -1170,6 +1176,7 @@ static int test_mdev12965(MYSQL *unused __attribute__((unused)))
   FAIL_IF(!access(cnf_file1, R_OK), "access");
 
   mysql= mysql_init(NULL);
+  check(mysql);
   fp= fopen(cnf_file1, "w");
   FAIL_IF(!fp, "fopen");
 
@@ -1415,6 +1422,8 @@ static int test_conc384(MYSQL *my __attribute__((unused)))
   char value[1000];
   int len;
   MYSQL *mysql= mysql_init(NULL);
+
+  check(mysql);
 
   memset(&value, 'A', 999);
   value[999]= 0;
@@ -1682,6 +1691,8 @@ static int test_disable_tls1_0(MYSQL *my __attribute__((unused)))
   MYSQL_ROW row;
   int rc;
 
+  SKIP_MAXSCALE;
+
 #ifdef HAVE_SCHANNEL
   diag("Test doesn't work with new Schannel TLSv1.3 implementation");
   return SKIP;
@@ -1721,6 +1732,7 @@ static int test_comp_level(MYSQL *my __attribute__((unused)))
   unsigned char clevel= 5;
   unsigned char clevel1= 0;
   MYSQL *mysql= mysql_init(NULL);
+  check(mysql);
 
   mysql_optionsv(mysql, MYSQL_OPT_ZSTD_COMPRESSION_LEVEL, &clevel);
   mysql_get_optionv(mysql, MYSQL_OPT_ZSTD_COMPRESSION_LEVEL, &clevel1);

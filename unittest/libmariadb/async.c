@@ -161,7 +161,8 @@ static int async1(MYSQL *unused __attribute__((unused)))
       mysql_ssl_set(&mysql, NULL, NULL, NULL, NULL,NULL);
 
     /* Returns 0 when done, else flag for what to wait for when need to block. */
-    status= mysql_real_connect_start(&ret, &mysql, hostname, username, password, schema, port, socketname, 0);
+    status= mysql_real_connect_start(&ret, &mysql, hostname, username, password, schema,
+                                     IS_MAXSCALE_ENV() ? ssl_port : port, socketname, 0);
     while (status)
     {
       status= wait_for_mysql(&mysql, status);

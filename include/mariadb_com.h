@@ -410,6 +410,7 @@ enum enum_field_types { MYSQL_TYPE_DECIMAL, MYSQL_TYPE_TINY,
 #define FIELD_TYPE_BIT MYSQL_TYPE_BIT
 
 extern unsigned long max_allowed_packet;
+extern unsigned long max_allowed_auth_packet;
 extern unsigned long net_buffer_length;
 
 #define net_new_transaction(net) ((net)->pkt_nr=0)

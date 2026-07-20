@@ -33,6 +33,10 @@ ADD_OPTION(WITH_BOOST_CONTEXT
   "Use Boost::Context for the non-blocking API on platforms without native implementation"
   OFF)
 
+ADD_OPTION(WITH_TOOLS
+           "Build tools"
+           OFF)
+
 IF(WITH_BOOST_CONTEXT)
   PROJECT(mariadb-connector-c LANGUAGES C CXX)
 ELSE()
@@ -44,7 +48,7 @@ SET(CC_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 SET(CPACK_PACKAGE_VERSION_MAJOR 3)
 SET(CPACK_PACKAGE_VERSION_MINOR 4)
-SET(CPACK_PACKAGE_VERSION_PATCH 9)
+SET(CPACK_PACKAGE_VERSION_PATCH 10)
 
 SET(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 MATH(EXPR MARIADB_PACKAGE_VERSION_ID "${CPACK_PACKAGE_VERSION_MAJOR} * 10000 +
@@ -68,10 +72,77 @@ ADD_OPTION(WITH_EXTERNAL_ZLIB "Enables use of external zlib" OFF)
 ADD_OPTION(WITH_CURL "Enables use of curl" ON)
 ADD_OPTION(WITH_SSL "Enables use of TLS/SSL library" ON)
 ADD_OPTION(DEFAULT_SSL_VERIFY_SERVER_CERT "Default value for MYSQL_OPT_SSL_VERIFY_SERVER_CERT" ON)
+IF(NOT IS_SUBPROJECT)
+  ADD_OPTION(WITH_ASAN
+    "Enable AddressSanitizer instrumentation for Debug and RelWithDebInfo builds"
+    OFF)
+  ADD_OPTION(WITH_ASAN_SCOPE
+    "Enable -fsanitize-address-use-after-scope for Clang ASAN builds"
+    OFF)
+  ADD_OPTION(WITH_UBSAN
+    "Enable UndefinedBehaviorSanitizer instrumentation for Debug and RelWithDebInfo builds"
+    OFF)
+  ADD_OPTION(WITH_MSAN "Enable MemorySanitizer instrumentation for Debug and RelWithDebInfo builds" OFF)
+ENDIF()
 
 
 INCLUDE(${CC_SOURCE_DIR}/cmake/misc.cmake)
 FIND_PACKAGE(CURL)
+
+IF(NOT IS_SUBPROJECT)
+  MACRO(MARIADB_ADD_SANITIZER_FLAGS compile_flags link_flags)
+    FOREACH(BUILD_TYPE DEBUG RELWITHDEBINFO)
+      SET(CMAKE_C_FLAGS_${BUILD_TYPE}
+          "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${compile_flags}")
+      FOREACH(LINKER EXE SHARED MODULE)
+        SET(CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}
+            "${CMAKE_${LINKER}_LINKER_FLAGS_${BUILD_TYPE}} ${link_flags}")
+      ENDFOREACH()
+    ENDFOREACH()
+  ENDMACRO()
+
+  IF(WITH_MSAN AND (WITH_ASAN OR WITH_UBSAN))
+    MESSAGE(FATAL_ERROR "WITH_MSAN is incompatible with WITH_ASAN or WITH_UBSAN")
+  ENDIF()
+
+  IF(WITH_ASAN_SCOPE)
+    IF(NOT WITH_ASAN)
+      MESSAGE(FATAL_ERROR "WITH_ASAN_SCOPE requires WITH_ASAN")
+    ENDIF()
+    IF(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+      MESSAGE(FATAL_ERROR "WITH_ASAN_SCOPE is supported only with Clang")
+    ENDIF()
+    ADD_COMPILE_OPTIONS(
+      "$<$<CONFIG:Debug>:-fsanitize-address-use-after-scope>"
+      "$<$<CONFIG:RelWithDebInfo>:-fsanitize-address-use-after-scope>")
+  ENDIF()
+
+  IF(WITH_ASAN)
+    IF(MSVC)
+      MARIADB_ADD_SANITIZER_FLAGS(
+        "/fsanitize=address /fsanitize-address-use-after-return"
+        "/INCREMENTAL:NO")
+    ELSE()
+      MARIADB_ADD_SANITIZER_FLAGS(
+        "-U_FORTIFY_SOURCE -fsanitize=address"
+        "-fsanitize=address")
+    ENDIF()
+  ENDIF()
+
+  IF(NOT MSVC)
+    IF(WITH_UBSAN)
+      MARIADB_ADD_SANITIZER_FLAGS(
+        "-fsanitize=undefined -U_FORTIFY_SOURCE"
+        "-fsanitize=undefined")
+    ENDIF()
+
+    IF(WITH_MSAN)
+      MARIADB_ADD_SANITIZER_FLAGS(
+        "-fsanitize=memory -fsanitize-memory-track-origins -U_FORTIFY_SOURCE"
+        "-fsanitize=memory -fsanitize-memory-track-origins")
+    ENDIF()
+  ENDIF()
+ENDIF()
 
 IF(WITH_SIGNCODE)
   IF(WIN32 AND NOT SIGN_OPTIONS)
@@ -227,7 +298,17 @@ INCLUDE(${CC_SOURCE_DIR}/cmake/SearchLibrary.cmake)
 INCLUDE(${CC_SOURCE_DIR}/cmake/FindZStd.cmake)
 
 IF(WITH_EXTERNAL_ZLIB)
-  IF(NOT ZLIB_FOUND)
+  IF(TARGET MariaDB::zlib)
+    # Built as a submodule of the MariaDB server tree: use exactly the same
+    # zlib the server uses (bundled or system) instead of searching ourselves.
+    SET(ZLIB_FOUND TRUE)
+    SET(ZLIB_LIBRARY MariaDB::zlib)
+    SET(ZLIB_LIBRARIES MariaDB::zlib)
+    GET_TARGET_PROPERTY(MARIADB_ZLIB_INC MariaDB::zlib INTERFACE_INCLUDE_DIRECTORIES)
+    IF(MARIADB_ZLIB_INC)
+      SET(ZLIB_INCLUDE_DIR ${MARIADB_ZLIB_INC})
+    ENDIF()
+  ELSEIF(NOT ZLIB_FOUND)
     FIND_PACKAGE(ZLIB REQUIRED)
   ENDIF()
   SET(SYSTEM_LIBS ${SYSTEM_LIBS} ${ZLIB_LIBRARIES})
@@ -445,6 +526,10 @@ IF((NOT WIN32) OR CYGWIN)
   ADD_SUBDIRECTORY(mariadb_config)
 ENDIF()
 
+IF(WITH_TOOLS)
+  ADD_SUBDIRECTORY(tools)
+ENDIF()
+
 IF(IS_DIRECTORY ${CC_SOURCE_DIR}/unittest)
   IF(WITH_UNIT_TESTS)
     ADD_SUBDIRECTORY(unittest/mytap)
@@ -484,17 +569,15 @@ ELSE()
 ENDIF()
 # Build source packages
 IF(GIT_BUILD_SRCPKG)
-  # get branch name
-  EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} show-branch OUTPUT_VARIABLE git_branch)
-  STRING(REGEX MATCH "\\[([^]]+)\\]" git_branch ${git_branch})
-  STRING(REGEX REPLACE "\\[|\\]" "" GIT_BRANCH ${git_branch})
-  MESSAGE1(GIT_BRANCH "${GIT_BRANCH}")
-  IF(WIN32)
-    EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} archive ${GIT_BRANCH} --format=zip --prefix=${CPACK_SOURCE_PACKAGE_FILE_NAME}/ --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.zip)
-  ELSE()
-    EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} archive ${GIT_BRANCH} --format=zip --prefix=${CPACK_SOURCE_PACKAGE_FILE_NAME}/ --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.zip)
-    EXECUTE_PROCESS(COMMAND ${GIT_EXECUTABLE} archive ${GIT_BRANCH} --format=tar --prefix=${CPACK_SOURCE_PACKAGE_FILE_NAME}/ --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar)
-    EXECUTE_PROCESS(COMMAND gzip -9 -f ${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar)
+  EXECUTE_PROCESS(
+    COMMAND ${GIT_EXECUTABLE} archive HEAD --format=zip
+            --prefix=${CPACK_SOURCE_PACKAGE_FILE_NAME}/
+            --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.zip)
+  IF(NOT WIN32)
+    EXECUTE_PROCESS(
+      COMMAND ${GIT_EXECUTABLE} archive HEAD --format=tar.gz
+              --prefix=${CPACK_SOURCE_PACKAGE_FILE_NAME}/
+              --output=${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar.gz)
   ENDIF()
 ENDIF()
 
@@ -554,6 +637,10 @@ MESSAGE1(STATUS "MariaDB Connector/c configuration:
 -- SSL support: ${WITH_SSL} Libs: ${SSL_LIBRARIES}
 -- Zlib support: ${zlib_status}
 -- ZStd support: ${ZSTD_FOUND}
+-- ASAN support: ${WITH_ASAN}
+-- ASAN scope support: ${WITH_ASAN_SCOPE}
+-- UBSAN support: ${WITH_UBSAN}
+-- MSAN support: ${WITH_MSAN}
 -- Installation layout: ${INSTALL_LAYOUT}
 -- Include files will be installed in ${INSTALL_INCLUDEDIR}
 -- Libraries will be installed in ${INSTALL_LIBDIR}

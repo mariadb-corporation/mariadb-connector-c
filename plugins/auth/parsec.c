@@ -47,6 +47,7 @@
 #define ED25519_KEY_LENGTH        32
 #define PBKDF2_HASH_LENGTH        ED25519_KEY_LENGTH
 #define CLIENT_RESPONSE_LENGTH    (CHALLENGE_SCRAMBLE_LENGTH + ED25519_SIG_LENGTH)
+#define PARSEC_ITER_FACTOR_MAX    20
 
 struct Passwd_in_memory
 {
@@ -205,7 +206,7 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_SERVER_HANDSHAKE_ERR;
   if (params->algorithm != 'P')
     return CR_AUTH_PLUGIN_ERR;
-  if (params->iterations > 3)
+  if (params->iterations > PARSEC_ITER_FACTOR_MAX)
     return CR_AUTH_PLUGIN_ERR;
 
   random_bytes(signed_msg.response.client_scramble, CHALLENGE_SCRAMBLE_LENGTH);

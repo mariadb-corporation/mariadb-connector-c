@@ -43,14 +43,14 @@ struct my_option_st opt_bug8378[] = {
 
 int bug_8378(MYSQL *mysql) {
   int rc, len;
-  char out[9], buf[256];
+  char out[128], buf[256];
   MYSQL_RES *res;
   MYSQL_ROW row;
 
   /* MXS-4898: MaxScale sends utf8mb4 in handshake OK packet */
   SKIP_MAXSCALE;
 
-  len= mysql_real_escape_string(mysql, out, TEST_BUG8378_IN, 4);
+  len= mysql_real_escape_string(mysql, out, TEST_BUG8378_IN, sizeof(TEST_BUG8378_IN)-1);
   FAIL_IF(memcmp(out, TEST_BUG8378_OUT, len), "wrong result");
 
   sprintf(buf, "SELECT '%s' FROM DUAL", TEST_BUG8378_OUT);
@@ -60,7 +60,46 @@ int bug_8378(MYSQL *mysql) {
 
   if ((res= mysql_store_result(mysql))) {
     row= mysql_fetch_row(res);
-    if (memcmp(row[0], TEST_BUG8378_IN, 4)) {
+    if (memcmp(row[0], TEST_BUG8378_IN, sizeof(TEST_BUG8378_IN)-1)) {
+      mysql_free_result(res);
+      return FAIL;
+    }
+    mysql_free_result(res);
+  } else
+    return FAIL;
+
+  return OK;
+}
+
+#define TEST_BUG8378a_IN  "\xa1' + 10 -- "
+#define TEST_BUG8378a_OUT "\\\xa1\\' + 10 -- "
+
+/* set connection options */
+struct my_option_st opt_bug8378a[] = {
+  {MYSQL_SET_CHARSET_NAME, (char *) "big5"},
+  {0, NULL}
+};
+
+int bug_8378a(MYSQL *mysql) {
+  int rc, len;
+  char out[128], buf[256];
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+
+  /* MXS-4898: MaxScale sends utf8mb4 in handshake OK packet */
+  SKIP_MAXSCALE;
+
+  len= mysql_real_escape_string(mysql, out, TEST_BUG8378a_IN, sizeof(TEST_BUG8378a_IN)-1);
+  FAIL_IF(memcmp(out, TEST_BUG8378a_OUT, len), "wrong result");
+
+  sprintf(buf, "SELECT '%s' FROM DUAL", out);
+
+  rc= mysql_query(mysql, buf);
+  check_mysql_rc(rc, mysql);
+
+  if ((res= mysql_store_result(mysql))) {
+    row= mysql_fetch_row(res);
+    if (memcmp(row[0], TEST_BUG8378a_IN, sizeof(TEST_BUG8378a_IN)-1)) {
       mysql_free_result(res);
       return FAIL;
     }
@@ -884,6 +923,7 @@ struct my_tests_st my_tests[] = {
   {"test_conc223", test_conc223, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"charset_auto", charset_auto, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"bug_8378: mysql_real_escape with gbk", bug_8378, TEST_CONNECTION_NEW, 0,  opt_bug8378,  NULL},
+  {"bug_8378a: mysql_real_escape with big5", bug_8378a, TEST_CONNECTION_NEW, 0,  opt_bug8378a,  NULL},
   {"test_client_character_set", test_client_character_set, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
   {"bug_10214: mysql_real_escape with NO_BACKSLASH_ESCAPES", bug_10214, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL},
   {"test_escaping", test_escaping, TEST_CONNECTION_DEFAULT, 0,  NULL, NULL}, 

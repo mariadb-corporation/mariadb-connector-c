@@ -94,7 +94,7 @@ size_t ma_fcvt(double x, int precision, char *to, my_bool *error)
   char *res, *src, *end, *dst= to;
   char buf[DTOA_BUFF_SIZE];
   DBUG_ASSERT(precision >= 0 && precision < NOT_FIXED_DEC && to != NULL);
-  
+
   res= dtoa(x, 5, precision, &decpt, &sign, &end, buf, sizeof(buf));
 
   if (decpt == DTOA_OVERFLOW)
@@ -643,11 +643,15 @@ static Bigint *Balloc(int k, Stack_alloc *alloc)
     else
       rv= (Bigint*) malloc(len);
 
-    rv->k= k;
-    rv->maxwds= x;
+    if (rv) {
+      rv->k= k;
+      rv->maxwds= x;
+    }
   }
-  rv->sign= rv->wds= 0;
-  rv->p.x= (ULong*) (rv + 1);
+  if (rv) {
+    rv->sign= rv->wds= 0;
+    rv->p.x= (ULong*) (rv + 1);
+  }
   return rv;
 }
 

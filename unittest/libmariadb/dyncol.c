@@ -43,6 +43,7 @@ static int create_dyncol_named(MYSQL *mysql)
   uint my_count;
 
   vals= (DYNAMIC_COLUMN_VALUE *)malloc(column_count * sizeof(DYNAMIC_COLUMN_VALUE));
+  check(vals);
 
   for (i=0; i < column_count; i++)
   {

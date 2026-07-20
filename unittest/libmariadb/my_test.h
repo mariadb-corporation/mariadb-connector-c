@@ -85,9 +85,9 @@ if (force_tls || fingerprint[0])\
 
 MYSQL *mysql_default = NULL;  /* default connection */
 
-#define IS_MAXSCALE_ENV()\
-    (getenv("srv")!=NULL && (strcmp(getenv("srv"), "maxscale") == 0 ||\
-     strcmp(getenv("srv"), "skysql-ha") == 0))
+#define IS_MAXSCALE_ENV() \
+    ((getenv("srv") != NULL && strcmp(getenv("srv"), "maxscale") == 0) || \
+    (getenv("MAXSCALE_TAG") != NULL && strlen(getenv("MAXSCALE_TAG")) > 0))
 
 #define IS_MAXSCALE()\
    ((mysql_default && strstr(mysql_get_server_info(mysql_default), "maxScale")) ||\
@@ -136,9 +136,9 @@ if (!((mysql->server_capabilities & CLIENT_LOCAL_FILES) &&  \
 
 #define SKIP_TRAVIS()\
 do {\
-  if (getenv("TRAVIS"))\
+  if (getenv("TRAVIS") || getenv("GITHUB_ACTIONS"))\
   {\
-    diag("Skip test on Travis CI");\
+    diag("Skip test on Travis CI or GitHub Actions");\
     return SKIP;\
   }\
 }while(0)
@@ -162,12 +162,31 @@ do {\
   }\
 } while(0)
 
+#define check_mysql_err(rc, mysql) \
+do {\
+  if (rc)\
+  {\
+    diag("Error (%d): %s (%d) in %s line %d", rc, mysql_error(mysql), \
+         mysql_errno(mysql), __FILE__, __LINE__);\
+    goto error;\
+  }\
+} while(0)
+
 #define check_stmt_rc(rc, stmt) \
 do {\
   if (rc)\
   {\
     diag("Error: %s (%s: %d)", mysql_stmt_error(stmt), __FILE__, __LINE__);\
     return(FAIL);\
+  }\
+} while(0)
+
+#define check_stmt_err(rc, stmt) \
+do {\
+  if (rc)\
+  {\
+    diag("Error: %s (%s: %d)", mysql_stmt_error(stmt), __FILE__, __LINE__);\
+    goto error;\
   }\
 } while(0)
 
@@ -195,6 +214,14 @@ do {\
   {\
     diag("Test skipped (connection handler)");\
     return SKIP;\
+  }\
+} while(0)
+
+#define check(expr)\
+do {\
+  if (!(expr)) {\
+    diag("Out of memory (%s:%d)", __FILE__, __LINE__);\
+    return FAIL;\
   }\
 } while(0)
 
@@ -679,10 +706,10 @@ MYSQL *my_test_connect(MYSQL *mysql,
     mysql_options(mysql, MARIADB_OPT_SSL_FP, fingerprint);
   }
 
-  if (IS_MAXSCALE_ENV())
+  if (IS_MAXSCALE_ENV() && host && hostname && strcmp(host, hostname) == 0)
   {
     mysql_get_optionv(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
-    if (force_tls || verify)
+    if (force_tls || verify || mysql->options.use_ssl)
       port= ssl_port;
   }
 
@@ -718,7 +745,8 @@ void run_tests(struct my_tests_st *test) {
   mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
-  if (!mysql_real_connect(mysql, hostname, username, password, schema, port, socketname, 0))
+  if (!mysql_real_connect(mysql, hostname, username, password, schema,
+                          IS_MAXSCALE_ENV() ? ssl_port : port, socketname, 0))
   {
     diag("Error: %s", mysql_error(mysql));
     BAIL_OUT("Can't establish TLS connection to server.");

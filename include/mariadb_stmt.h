@@ -1,19 +1,19 @@
 /************************************************************************
-  
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
    License as published by the Free Software Foundation; either
    version 2 of the License, or (at your option) any later version.
-   
+
    This library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Library General Public License for more details.
-   
+
    You should have received a copy of the GNU Library General Public
    License along with this library; if not, write to the Free
    Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-   MA 02111-1301, USA 
+   MA 02111-1301, USA
 
    Part of this code includes code from PHP's mysqlnd extension
    (written by Andrey Hristov, Georg Richter and Ulf Wendel), freely
@@ -23,6 +23,8 @@
 
 #define MYSQL_NO_DATA 100
 #define MYSQL_DATA_TRUNCATED 101
+#define MYSQL_DATA_MALFORMED 102
+
 #define MYSQL_DEFAULT_PREFETCH_ROWS (unsigned long) 1
 
 /* Bind flags */
@@ -159,7 +161,7 @@ typedef struct st_mysql_error_info
   char sqlstate[SQLSTATE_LENGTH + 1];
 } mysql_error_info;
 
-typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row);
+typedef int  (*mysql_stmt_fetch_row_func)(MYSQL_STMT *stmt, unsigned char **row, unsigned long *length);
 typedef void (*ps_result_callback)(void *data, unsigned int column, unsigned char **row);
 typedef my_bool (*ps_param_callback)(void *data, MYSQL_BIND *bind, unsigned int row_nr);
 

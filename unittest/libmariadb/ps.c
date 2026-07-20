@@ -34,6 +34,7 @@ static int test_conc97(MYSQL *mysql)
   return SKIP;
   stmt= mysql_stmt_init(mysql);
 
+  check(stmt);
   mysql_close(mysql);
 
   rc= mysql_stmt_reset(stmt);
@@ -60,6 +61,7 @@ static int test_conc83(MYSQL *unused __attribute__((unused)))
   SKIP_XPAND;
 
   stmt= mysql_stmt_init(mysql);
+  check(stmt);
 
   mysql_options(mysql, MYSQL_OPT_RECONNECT, &reconnect);
   FAIL_IF(!(my_test_connect(mysql, hostname, username, password,
@@ -96,6 +98,7 @@ static int test_conc60(MYSQL *mysql)
   my_bool x= 1;
 
   stmt= mysql_stmt_init(mysql);
+  check(stmt);
 
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_UPDATE_MAX_LENGTH, (void *)&x);
 
@@ -883,6 +886,8 @@ static int test_prepare_resultset(MYSQL *mysql)
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
+  check(stmt);
+
   strcpy(query, "SELECT * FROM test_prepare_resultset");
   rc= mysql_stmt_prepare(stmt, SL(query));
   check_stmt_rc(rc, stmt);
@@ -5128,6 +5133,8 @@ static int test_prepare_error(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
 
+  check(stmt);
+
   rc= mysql_stmt_prepare(stmt, SL("SELECT 1 FROM tbl_not_exists"));
   FAIL_IF(!rc, "Expected error");
 
@@ -5152,6 +5159,8 @@ static int test_conc349(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
   enum mysql_stmt_state state;
+
+  check(stmt);
 
   rc= mysql_stmt_attr_get(stmt, STMT_ATTR_STATE, &state);
   FAIL_IF(state != MYSQL_STMT_INITTED, "expected status MYSQL_STMT_INITTED");
@@ -5230,6 +5239,8 @@ static int test_conc691(MYSQL *mysql)
   MARIADB_CONST_STRING sql;
   const char *sql_stmt[]= {"SELECT 'test' FROM DUAL", "This will return an error", "SELECT 1 FROM DUAL"};
   int rc, i;
+
+  check(stmt);
 
   rc= mysql_stmt_attr_get(stmt, STMT_ATTR_SQL_STATEMENT, &sql);
   check_stmt_rc(rc, stmt);

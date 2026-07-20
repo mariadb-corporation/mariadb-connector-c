@@ -121,10 +121,14 @@ remote:
   /* check if plugin for remote io is available and try
    * to open location */
   {
-    MYSQL mysql;
+    MYSQL *mysql= mysql_init(NULL);
     if (rio_plugin ||(rio_plugin= (struct st_mysql_client_plugin_REMOTEIO *)
-                      mysql_client_find_plugin(&mysql, NULL, MARIADB_CLIENT_REMOTEIO_PLUGIN)))
+                      mysql_client_find_plugin(mysql, NULL, MARIADB_CLIENT_REMOTEIO_PLUGIN)))
+    {
+      mysql_close(mysql);
       return rio_plugin->methods->mopen(location, mode);
+    }
+    mysql_close(mysql);
     return NULL;
   }
 #endif

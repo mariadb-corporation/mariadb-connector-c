@@ -201,6 +201,17 @@ enum mariadb_rpl_status_code {
 #undef DEFAULT_CHARSET
 #endif
 
+typedef enum {
+  RPL_SERVER_MYSQL = 0,
+  RPL_SERVER_MARIADB = 1,
+  RPL_SERVER_COUNT
+} RPL_SERVER_TYPE;
+
+typedef struct {
+  uint8_t event;
+  uint32_t length[RPL_SERVER_COUNT];
+} RPL_SUPPORTED_POST_HEADER_LEN;
+
 enum opt_metadata_field_type
 {
   SIGNEDNESS = 1,
@@ -346,6 +357,8 @@ typedef struct st_mariadb_rpl {
   char nonce[12];
   uint8_t encrypted;
   uint8_t is_semi_sync;
+  RPL_SERVER_TYPE server_type;
+  uint16_t num_post_header_lengths;
 }MARIADB_RPL;
 
 typedef struct st_mariadb_rpl_value {

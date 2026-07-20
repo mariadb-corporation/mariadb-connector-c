@@ -35,7 +35,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 static int test_conc66(MYSQL *my)
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
   int rc;
   FILE *fp;
   char query[1024];
@@ -60,16 +60,18 @@ static int test_conc66(MYSQL *my)
 
   fclose(fp);
 
-  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
-  check_mysql_rc(rc, mysql);
-  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my-conc66-test.cnf");
-  check_mysql_rc(rc, mysql);
-
   sprintf(query, "GRANT ALL ON %s.* TO 'conc66'@'%s' IDENTIFIED BY 'test@A1\";#test'", schema, this_host ? this_host : "localhost");
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
   rc= mysql_query(my, "FLUSH PRIVILEGES");
   check_mysql_rc(rc, my);
+  mysql= mysql_init(NULL);
+
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "conc-66");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_options(mysql, MYSQL_READ_DEFAULT_FILE, "./my-conc66-test.cnf");
+  check_mysql_rc(rc, mysql);
+
   if (!my_test_connect(mysql, hostname, NULL,
                              NULL, schema, port, socketname, 0, 1))
   {
@@ -77,7 +79,7 @@ static int test_conc66(MYSQL *my)
     diag("Error: %s", mysql_error(mysql));
     return FAIL;
   }
-    diag("user: %s", mysql->options.user);
+  diag("user: %s", mysql->options.user);
 
   sprintf(query, "DROP user 'conc66'@'%s'", this_host ? this_host : "localhost");
   rc= mysql_query(my, query);
@@ -483,8 +485,6 @@ static int test_opt_reconnect(MYSQL *mysql)
   int rc;
   my_bool reconnect;
 
-  printf("true: %d\n", TRUE);
-
   mysql= mysql_init(NULL);
   FAIL_IF(!mysql, "not enough memory");
 
@@ -650,7 +650,11 @@ int test_conc21(MYSQL *mysql)
 
 int test_conc26(MYSQL *unused __attribute__((unused)))
 {
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
+
+  SKIP_MAXSCALE;
+
+  mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_SET_CHARSET_NAME, "ascii");
 
   FAIL_IF(my_test_connect(mysql, hostname, "notexistinguser", "password", schema, port, socketname, CLIENT_REMEMBER_OPTIONS, 1),
@@ -678,6 +682,7 @@ int test_connection_timeout(MYSQL *unused __attribute__((unused)))
   if (my_test_connect(mysql, "192.168.1.101", "notexistinguser", "password", schema, port, socketname, CLIENT_REMEMBER_OPTIONS, 1))
   {
     diag("Error expected - maybe you have to change hostname");
+    mysql_close(mysql);
     return FAIL;
   }
   elapsed= time(NULL) - start;
@@ -708,6 +713,7 @@ int test_connection_timeout2(MYSQL *unused __attribute__((unused)))
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
     diag("timeout error expected");
+    mysql_close(mysql);
     return FAIL;
   }
   elapsed= time(NULL) - start;
@@ -734,6 +740,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
     diag("timeout error expected");
     elapsed= time(NULL) - start;
     diag("elapsed: %lu", (unsigned long)elapsed);
+    mysql_close(mysql);
     return FAIL;
   }
   elapsed= time(NULL) - start;
@@ -749,6 +756,7 @@ int test_connection_timeout3(MYSQL *unused __attribute__((unused)))
   if (!my_test_connect(mysql, hostname, username, password, schema, port, socketname, CLIENT_REMEMBER_OPTIONS, 1))
   {
     diag("Error: %s", mysql_error(mysql));
+    mysql_close(mysql);
     return FAIL;
   }
 
@@ -833,6 +841,12 @@ static int test_bind_address(MYSQL *my)
     return SKIP;
   }
 
+  if (!bind_addr)
+  {
+    diag("No bind address specified");
+    return SKIP;
+  }
+
   sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
   rc= mysql_query(my, query);
 
@@ -843,12 +857,6 @@ static int test_bind_address(MYSQL *my)
   sprintf(query, "GRANT ALL ON %s.* TO '%s'@'%s'", schema, username, bind_addr);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
-
-  if (!bind_addr)
-  {
-    diag("No bind address specified");
-    return SKIP;
-  }
 
   mysql= mysql_init(NULL);
   mysql_options(mysql, MYSQL_OPT_BIND, bind_addr);
@@ -862,6 +870,11 @@ static int test_bind_address(MYSQL *my)
   }
   diag("%s", mysql_get_host_info(mysql));
   mysql_close(mysql);
+
+  sprintf(query, "DROP USER '%s'@'%s'", username, bind_addr);
+  rc= mysql_query(my, query);
+  check_mysql_rc(rc, my);
+
   return OK;
 }
 
@@ -2064,7 +2077,7 @@ static int test_conc490(MYSQL *my __attribute__((unused)))
 static int test_conc544(MYSQL *mysql)
 {
   int rc;
-  MYSQL *my= mysql_init(NULL);
+  MYSQL *my;
   char query[1024];
 
   SKIP_SKYSQL;
@@ -2082,6 +2095,8 @@ static int test_conc544(MYSQL *mysql)
     diag("feature not supported, ed25519 plugin not available");
     return SKIP;
   }
+
+  my= mysql_init(NULL);
 
   rc= mysql_optionsv(my, MARIADB_OPT_RESTRICTED_AUTH, "client_ed25519");
   check_mysql_rc(rc, mysql);
@@ -2137,7 +2152,7 @@ static int test_conn_str(MYSQL *my __attribute__((unused)))
   snprintf(conn_str, sizeof(conn_str)-1, "host=%s;user=%s;password={%s};port=%d;socket=%s;tls_fp=%s",
                 hostname ? hostname : "localhost", username ? username : "",
                 password ? password : "",
-                port, socketname ? socketname : "",
+                IS_MAXSCALE_ENV() ? ssl_port : port, socketname ? socketname : "",
                 fingerprint[0] ? fingerprint : "");
 
   /* SkySQL requires secure connection */
@@ -2166,6 +2181,9 @@ static int test_conn_str_1(MYSQL *my __attribute__((unused)))
   FILE *fp;
   int rc;
   char conn_str[1024];
+
+  SKIP_MAXSCALE;
+
   mysql= mysql_init(NULL);
 
   if (!(fp= fopen("./conc274.cnf", "w")))
@@ -2208,6 +2226,8 @@ static int test_conc365(MYSQL *my __attribute__((unused)))
   int rc= OK;
   MYSQL *mysql= mysql_init(NULL);
   char tmp[1024];
+
+  SKIP_MAXSCALE;
 
   snprintf(tmp, sizeof(tmp) - 1,
    "host=127.0.0.1:3300,%s;user=%s;password={%s};port=%d;socket=%s;tls_fp=%s",
@@ -2356,6 +2376,8 @@ static int test_status_callback(MYSQL *my __attribute__((unused)))
   int rc;
   struct st_callback data= {0,"", ""};
 
+  check(mysql);
+
   rc= mysql_optionsv(mysql, MARIADB_OPT_STATUS_CALLBACK, my_status_callback, &data);
 
   if (!my_test_connect(mysql, hostname, username,
@@ -2469,6 +2491,8 @@ static int test_parsec(MYSQL *my)
   MYSQL *mysql;
   char query[1024];
 
+  SKIP_MAXSCALE;
+
   if (!is_mariadb)
   {
     diag("feature not supported by MySQL server");
@@ -2516,7 +2540,7 @@ static int test_parsec(MYSQL *my)
 int test_tls_timeout(MYSQL *unused __attribute__((unused)))
 {
   unsigned int connect_timeout= 5;
-  unsigned int read_write_timeout= 10;
+  unsigned int read_write_timeout= 1;
   int rc;
   time_t start, elapsed;
 
@@ -2532,10 +2556,10 @@ int test_tls_timeout(MYSQL *unused __attribute__((unused)))
   }
 
   start= time(NULL);
-  rc= mysql_query(mysql, "SET @a:=SLEEP(12)");
+  rc= mysql_query(mysql, "SET @a:=SLEEP(100)");
   elapsed= time(NULL) - start;
   diag("elapsed: %lu", (unsigned long)elapsed);
-  FAIL_IF((unsigned int)elapsed > read_write_timeout + 1, "timeout ignored");
+  FAIL_IF((unsigned int)elapsed > read_write_timeout + 5, "timeout ignored");
 
   FAIL_IF(!rc, "expected timeout error");
   diag("Error: %s", mysql_error(mysql));
@@ -2700,10 +2724,65 @@ static int test_conc760(MYSQL *my)
 }
 #endif
 
+static int test_conc626(MYSQL *mysql)
+{
+  int rc;
+  int verify= 1;
+  MYSQL *my= NULL;
+  int ret= FAIL;
+  char query[1024];
+
+  SKIP_MYSQL(mysql);
+  if (mysql_get_server_version(mysql) < 110400)
+  {
+    diag("Test requires MariaDB Server version 11.4 or above");
+    return SKIP;
+  }
+  snprintf(query, sizeof(query) - 1, "DROP USER IF EXISTS foo1@'%s', foo2@'%s'", this_host, this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_err(rc, mysql);
+
+  snprintf(query, sizeof(query) - 1, "CREATE USER foo1@'%s' IDENTIFIED BY 'heyPassw!20rd1'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_err(rc, mysql);
+
+  snprintf(query, sizeof(query) - 1, "CREATE USER foo2@'%s' IDENTIFIED BY 'heyPassw!20rd2'", this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_err(rc, mysql);
+
+  my= mysql_init(NULL);
+
+  mysql_options(my, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify);
+
+  if (!my_test_connect(my, hostname, "foo1", "heyPassw!20rd1", NULL, port, socketname, 0, 0))
+  {
+    diag("Error: %s", mysql_error(my));
+    goto error;
+  }
+
+  rc= mysql_change_user(my, "foo2", "heyPassw!20rd2", NULL);
+  check_mysql_err(rc, my);
+
+  diag("Cipher in use: %s", mysql_get_ssl_cipher(my));
+
+  ret= OK;
+
+
+error:
+  snprintf(query, sizeof(query) - 1, "DROP USER IF EXISTS foo1@'%s', foo2@'%s'", this_host, this_host);
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+  if (my)
+    mysql_close(my);
+  return ret;
+}
+
 struct my_tests_st my_tests[] = {
 #ifdef WIN32
   {"test_conc760", test_conc760, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
 #endif
+  {"test_conc626", test_conc626, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc589", test_conc589, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_tls_timeout", test_tls_timeout, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_parsec", test_parsec, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},

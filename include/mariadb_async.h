@@ -31,9 +31,5 @@ extern ssize_t my_send_async(MARIADB_PVIO *pvio,
                              int timeout);
 extern my_bool my_io_wait_async(struct mysql_async_context *b,
                                 enum enum_pvio_io_event event, int timeout);
-#ifdef HAVE_TLS
-extern ssize_t ma_tls_read_async(MARIADB_PVIO *pvio, const uchar *buf, size_t size);
-extern ssize_t ma_tls_write_async(MARIADB_PVIO *pvio, const uchar *buf, size_t size);
-#endif
 
 #endif  /* MYSQL_ASYNC_H */

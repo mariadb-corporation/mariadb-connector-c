@@ -13,6 +13,7 @@ static int execute_direct(MYSQL *mysql)
   MYSQL_RES *res= NULL;
 
   stmt= mysql_stmt_init(mysql);
+  check(stmt);
 
   rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS t1", -1);
   check_stmt_rc(rc, stmt);
@@ -39,6 +40,7 @@ static int execute_direct(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
   stmt= mysql_stmt_init(mysql);
+  check(stmt);
   mysql_stmt_attr_set(stmt, STMT_ATTR_PREBIND_PARAMS, &param_count);
 
   rc= mysql_stmt_bind_param(stmt, &bind);
@@ -82,13 +84,14 @@ static int execute_direct_example(MYSQL *mysql)
   int rc;
   const char *strval= "execute_direct_example1";
 
+  check(stmt);
   /* Direct execution without parameters */
   rc= mariadb_stmt_execute_direct(stmt, "DROP TABLE IF EXISTS execute_direct", -1);
   check_stmt_rc(rc, stmt);
   rc= mariadb_stmt_execute_direct(stmt, "CREATE TABLE execute_direct (a int, b varchar(20))", -1);
-  rc= mysql_stmt_close(stmt);
+  mysql_stmt_close(stmt);
   stmt= mysql_stmt_init(mysql);
-  check_stmt_rc(rc, stmt);
+  check(stmt);
   memset(bind, 0, sizeof(MYSQL_BIND) * 2);
   bind[0].buffer_type= MYSQL_TYPE_SHORT;
   bind[0].buffer= &intval;
@@ -128,6 +131,7 @@ static int conc_213(MYSQL *mysql)
   MYSQL_STMT *stmt;
 
   stmt = mysql_stmt_init(mysql);
+  check(stmt);
 
   memset(&bind, '\0', sizeof(bind));
 
@@ -154,6 +158,7 @@ static int conc_212(MYSQL *mysql)
   MYSQL_STMT *stmt= mysql_stmt_init(mysql);
   int rc;
 
+  check(stmt);
   rc= mariadb_stmt_execute_direct(stmt, "SELECT 1, 2", -1);
   check_stmt_rc(rc, stmt);
   mysql_stmt_store_result(stmt);
@@ -180,6 +185,8 @@ static int conc_218(MYSQL *mysql)
   int id=1;
   my_bool is_null= 0, error= 0;
   unsigned int param_count= 1;
+
+  check(stmt);
 
   memset(bind, 0, 2 * sizeof(MYSQL_BIND));
   bind[0].buffer_type = MYSQL_TYPE_LONG;
@@ -212,6 +219,8 @@ static int test_cursor(MYSQL *mysql)
   unsigned long cursor_type= CURSOR_TYPE_READ_ONLY;
 
   stmt= mysql_stmt_init(mysql);
+  check(stmt);
+
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_CURSOR_TYPE, &cursor_type);
   check_stmt_rc(rc, stmt);
   rc= mysql_stmt_attr_set(stmt, STMT_ATTR_PREFETCH_ROWS, &prefetch_rows);

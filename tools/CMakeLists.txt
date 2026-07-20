@@ -1,0 +1,3 @@
+if(LINUX AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+  ADD_SUBDIRECTORY(rpl_fuzzer)
+endif()
