@@ -49,6 +49,10 @@
 #define CLIENT_RESPONSE_LENGTH    (CHALLENGE_SCRAMBLE_LENGTH + ED25519_SIG_LENGTH)
 #define PARSEC_ITER_FACTOR_MAX    20
 
+/* Conservative constant proposed in CONC-838 */
+#define PBKDF2_ROUNDS_PER_MS (262144.0 / 225.0)
+#define SERVER_CONNECT_TIMEOUT_DEFAULT 10
+
 struct Passwd_in_memory
 {
   char algorithm;
@@ -78,6 +82,28 @@ struct Client_signed_response
 
 _Static_assert(sizeof(struct Client_signed_response) == CLIENT_RESPONSE_LENGTH,
               "Client_signed_response should be packed.");
+
+static int get_max_iter_factor(MYSQL *mysql)
+{
+  unsigned int timeout= mysql->options.connect_timeout ?
+                        mysql->options.connect_timeout : SERVER_CONNECT_TIMEOUT_DEFAULT;
+  int max_factor = 0;
+
+  unsigned long long max_rounds= (unsigned long long)(PBKDF2_ROUNDS_PER_MS * (timeout * 1000.0));
+
+  if (max_rounds > 1024.0) {
+    unsigned long long val = max_rounds / 1024;
+    /* use bitshifting to avoid libm dependency */
+    while (val >>= 1) {
+      max_factor++;
+    }
+  }
+
+  if (max_factor > PARSEC_ITER_FACTOR_MAX)
+    max_factor= PARSEC_ITER_FACTOR_MAX;
+
+  return max_factor;
+}
 
 int compute_derived_key(const char* password, size_t pass_len,
                         const struct Passwd_in_memory *params,
@@ -191,6 +217,7 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   int pkt_len;
   uchar priv_key[ED25519_KEY_LENGTH];
   size_t pwlen= strlen(mysql->passwd);
+  unsigned int max_iter_factor; 
 
   pkt_len= vio->read_packet(vio, (uchar**)(&serv_scramble));
   if (pkt_len != CHALLENGE_SCRAMBLE_LENGTH)
@@ -206,7 +233,10 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_SERVER_HANDSHAKE_ERR;
   if (params->algorithm != 'P')
     return CR_AUTH_PLUGIN_ERR;
-  if (params->iterations > PARSEC_ITER_FACTOR_MAX)
+
+  max_iter_factor= get_max_iter_factor(mysql);
+
+  if (params->iterations > max_iter_factor)
     return CR_AUTH_PLUGIN_ERR;
 
   random_bytes(signed_msg.response.client_scramble, CHALLENGE_SCRAMBLE_LENGTH);
