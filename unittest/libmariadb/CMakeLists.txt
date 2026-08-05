@@ -49,7 +49,7 @@ IF(NOT WIN32)
 ENDIF()
 
 #exclude following tests from ctests, since we need to run them manually with different credentials
-SET(MANUAL_TESTS "t_conc173" "conc336")
+SET(MANUAL_TESTS "t_conc173" "conc336" "mfa-t")
 # Get finger print from server certificate
 IF(WITH_SSL)
   IF(CERT_PATH AND NOT DEFINED ENV{TRAVIS})

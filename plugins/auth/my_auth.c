@@ -482,9 +482,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     if (mysql->options.extension->tls_verification_callback(mysql->net.pvio->ctls, verify_flags))
     {
       if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_AUTO ||
+          (mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_HOST) ||
           (mysql->options.ssl_ca || mysql->options.ssl_capath))
-        goto error;
-      if (!password_and_hashing(mysql, mpvio->plugin))
         goto error;
     }
   }
@@ -573,6 +572,11 @@ error:
   return 1;
 }
 
+static inline my_bool is_auth_switch_command(char cmd)
+{
+  return cmd == (char)0xFE || cmd == 0x02;
+}
+
 /**
   vio->read_packet() callback method for client authentication plugins
 
@@ -614,8 +618,8 @@ static int client_mpvio_read_packet(struct st_plugin_vio *mpv, uchar **buf)
   mpvio->last_read_packet_len= pkt_len;
   *buf= mysql->net.read_pos;
 
-  /* was it a request to change plugins ? */
-  if (pkt_len && **buf == 254)
+  /* was it a request to change plugins or start next auth factor? */
+  if (pkt_len && is_auth_switch_command(**buf))
     return (int)packet_error; /* if yes, this plugin shan't continue */
 
   /*
@@ -751,14 +755,20 @@ static void client_mpvio_info(MYSQL_PLUGIN_VIO *vio,
   @retval 1 error
 */
 
-int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
-                    const char *data_plugin, const char *db)
+static int run_plugin_auth_impl(MYSQL *mysql, char *data, uint data_len,
+                                const char *data_plugin, const char *db,
+                                int *current_factor)
 {
   const char    *auth_plugin_name= NULL;
   auth_plugin_t *auth_plugin;
   MCPVIO_EXT    mpvio;
   ulong		      pkt_length;
   int           res;
+  /* First hashing factor establishes server identity for the TLS-trust
+     fingerprint challenge (see the tail of this function). Any later
+     factor may be passwordless (e.g. gssapi) without breaking trust. */
+  auth_plugin_t *trust_plugin= NULL;
+  char          *trust_passwd= NULL;
 
   /* determine the default/initial plugin to use */
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
@@ -817,7 +827,7 @@ retry:
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);
 
   if ((res == CR_ERROR && !mysql->net.buff) ||
-      (res > CR_OK && mysql->net.read_pos[0] != 254))
+      (res > CR_OK && !is_auth_switch_command(mysql->net.read_pos[0])))
   {
     /*
       the plugin returned an error. write it down in mysql,
@@ -850,7 +860,7 @@ retry:
   }
   if (mysql->net.read_pos[0] == 254)
   {
-    /* The server asked to use a different authentication plugin */
+    /* AuthSwitchRequest: correction within the current factor */
     if (pkt_length == 1)
     {
       /* old "use short scramble" packet */
@@ -871,14 +881,41 @@ retry:
                          auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
       auth_plugin= &dummy_fallback_client_plugin;
 
-    /* can we use this plugin with this tls server cert ? */
-    if ((mysql->net.tls_verify_status) &&
-        !password_and_hashing(mysql, auth_plugin))
+    /* No TLS-trust pre-flight here either; validated at the tail. */
+    goto retry;
+  }
+  if (mysql->net.read_pos[0] == 2)
+  {
+    /* AuthNextFactor: transition to the next authentication factor.
+       The current auth_plugin has just successfully completed a factor.
+       Remember it (if hashing) for the TLS-trust fingerprint challenge. */
+    uint len;
+    if (!trust_plugin && hashing(auth_plugin) &&
+        mysql->passwd && mysql->passwd[0])
     {
-      my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                   ER(CR_SSL_CONNECTION_ERROR), "Failed to verify the server certificate");
-      return 1;
+      trust_plugin= auth_plugin;
+      trust_passwd= mysql->passwd;
     }
+
+    auth_plugin_name= (char*)mysql->net.read_pos + 1;
+    len= (uint)strlen(auth_plugin_name);
+    mpvio.cached_server_reply.pkt_len= pkt_length - len - 2;
+    mpvio.cached_server_reply.pkt= mysql->net.read_pos + len + 2;
+
+    if (!(auth_plugin= (auth_plugin_t *) mysql_client_find_plugin(mysql,
+                         auth_plugin_name, MYSQL_CLIENT_AUTHENTICATION_PLUGIN)))
+      return 1;
+
+    /* Advance factor and swap in the per-factor password if explicitly set.
+       If not set, keep the current password (backward compatible). */
+    (*current_factor)++;
+    if (*current_factor >= 2 && *current_factor <= 3 &&
+        mysql->options.extension &&
+        mysql->options.extension->passwd[*current_factor - 2])
+      mysql->passwd= mysql->options.extension->passwd[*current_factor - 2];
+
+    /* No TLS-trust pre-flight here: a later factor may be passwordless
+       (e.g. gssapi) as long as an earlier factor was hashing. */
     goto retry;
   }
   /*
@@ -887,6 +924,13 @@ retry:
   */
   if (mysql->net.read_pos[0] != 0)
     return 1;
+  /* Final factor completed. Capture if we haven't yet. */
+  if (!trust_plugin && hashing(auth_plugin) &&
+      mysql->passwd && mysql->passwd[0])
+  {
+    trust_plugin= auth_plugin;
+    trust_passwd= mysql->passwd;
+  }
   if (ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length))
     return -1;
 
@@ -899,8 +943,6 @@ retry:
   assert(!mysql->options.ssl_capath);
   assert(!mysql->options.extension->tls_fp);
   assert(!mysql->options.extension->tls_fp_list);
-  assert(hashing(auth_plugin));
-  assert(mysql->passwd[0]);
   if (mysql->info && mysql->info[0] == '\1')
   {
     MA_HASH_CTX *ctx = NULL;
@@ -910,11 +952,18 @@ retry:
 
     mysql->info= NULL; /* no need to confuse the client with binary info */
 
+    /* Server sent a fingerprint blob but no factor did password+hashing:
+       we can't verify. */
+    if (!trust_plugin)
+      goto trust_failed;
+
     if (!(fplen= ma_tls_get_finger_print(mysql->net.pvio->ctls, MA_HASH_SHA256,
                                          fp, sizeof(fp))))
       return 1; /* error is already set */
 
-    if (auth_plugin->hash_password_bin(mysql, buf, &buflen) ||
+    /* hash_password_bin reads mysql->passwd; use the trust factor's one */
+    mysql->passwd= trust_passwd;
+    if (trust_plugin->hash_password_bin(mysql, buf, &buflen) ||
         !(ctx= ma_hash_new(MA_HASH_SHA256)))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -932,9 +981,24 @@ retry:
       return 0; /* phew. self-signed certificate is validated! */
   }
 
+trust_failed:
   my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                ER(CR_SSL_CONNECTION_ERROR),
                "Certificate verification failure: The certificate is NOT trusted.");
   return 1;
+}
+
+
+int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
+                    const char *data_plugin, const char *db)
+{
+  char *orig_passwd= mysql->passwd;
+  int current_factor= 1;
+  int res= run_plugin_auth_impl(mysql, data, data_len, data_plugin, db,
+                                &current_factor);
+  /* Restore factor-1 password, so mysql_reconnect/mysql_change_user
+     see the original credential */
+  mysql->passwd= orig_passwd;
+  return res;
 }
 

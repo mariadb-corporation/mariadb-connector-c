@@ -2512,6 +2512,8 @@ static void mysql_close_options(MYSQL *mysql)
       ma_hashtbl_free(&mysql->options.extension->userdata);
     free(mysql->options.extension->restricted_auth);
     free(mysql->options.extension->rpl_host);
+    free(mysql->options.extension->passwd[0]);
+    free(mysql->options.extension->passwd[1]);
   }
   /* clear all pointer */
   free(mysql->options.extension);
@@ -4065,6 +4067,25 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
     break;
   case MYSQL_OPT_ZSTD_COMPRESSION_LEVEL:
     mysql->options.extension->zstd_compression_level = *((unsigned char *)arg1);
+    break;
+  case MYSQL_OPT_USER_PASSWORD:
+    {
+      unsigned int factor= arg1 ? *(const unsigned int *)arg1 : 0;
+      const char *pw= va_arg(ap, const char *);
+      if (factor < 1 || factor > 3)
+      {
+        SET_CLIENT_ERROR(mysql, CR_INVALID_PARAMETER_NO, SQLSTATE_UNKNOWN, 0);
+        goto end;
+      }
+      if (factor == 1)
+      {
+        if (opt_set_value_str((void **)&mysql->passwd, (char *)pw))
+          goto mem_error;
+      }
+      else if (opt_set_value_str((void **)&mysql->options.extension->passwd[factor - 2],
+                                 (char *)pw))
+        goto mem_error;
+    }
     break;
   default:
     va_end(ap);

@@ -181,6 +181,8 @@ enum enum_server_command
 #define MARIADB_CLIENT_CACHE_METADATA (1ULL << 36)
 /* permit sending unit result-set for BULK commands */
 #define MARIADB_CLIENT_BULK_UNIT_RESULTS (1ULL << 37)
+/* client supports AuthNextFactor (0x02) packet for multi-factor auth */
+#define CLIENT_MULTI_FACTOR_AUTHENTICATION (1UL << 28)
 
 #define IS_MARIADB_EXTENDED_SERVER(mysql)\
         (!(mysql->server_capabilities & CLIENT_MYSQL))
@@ -214,7 +216,8 @@ enum enum_server_command
                                  CLIENT_REMEMBER_OPTIONS |\
                                  CLIENT_PLUGIN_AUTH |\
                                  CLIENT_SESSION_TRACKING |\
-                                 CLIENT_CONNECT_ATTRS)
+                                 CLIENT_CONNECT_ATTRS |\
+                                 CLIENT_MULTI_FACTOR_AUTHENTICATION)
 #define CLIENT_ALLOWED_FLAGS     (CLIENT_SUPPORTED_FLAGS |\
                                  CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |\
                                  CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS |\
