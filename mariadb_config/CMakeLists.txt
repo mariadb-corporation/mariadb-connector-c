@@ -44,23 +44,22 @@ IF(UNIX AND NOT APPLE)
   ENDIF()
 ENDIF()
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
-               ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
+IF(NOT CMAKE_SYSTEM_NAME STREQUAL AIX)
+  # AIX used to have a getcompat library but no longer does.
+  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mariadb_config.c.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c @ONLY)
+
+  ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
+
+  INSTALL(TARGETS mariadb_config
+          DESTINATION "${INSTALL_BINDIR}"
+          COMPONENT Development)
+ENDIF()
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libmariadb.pc.in
                ${CMAKE_CURRENT_BINARY_DIR}/libmariadb.pc @ONLY)
 
-ADD_EXECUTABLE(mariadb_config ${CMAKE_CURRENT_BINARY_DIR}/mariadb_config.c)
 
-IF(CMAKE_SYSTEM_NAME MATCHES AIX)
-  TARGET_LINK_LIBRARIES(mariadb_config compat-getopt)
-ENDIF()
-
-# Installation
-#
-INSTALL(TARGETS mariadb_config
-        DESTINATION "${INSTALL_BINDIR}"
-        COMPONENT Development)
 
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/libmariadb.pc
         DESTINATION "${INSTALL_PCDIR}"
