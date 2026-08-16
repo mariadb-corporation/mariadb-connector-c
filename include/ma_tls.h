@@ -1,7 +1,28 @@
+/************************************************************************************
+  Copyright (C) 2014, 2026 MariaDB plc
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Library General Public
+  License as published by the Free Software Foundation; either
+  version 2 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Library General Public License for more details.
+
+  You should have received a copy of the GNU Library General Public
+  License along with this library; if not see <http://www.gnu.org/licenses>
+  or write to the Free Software Foundation, Inc.,
+  51 Franklin St., Fifth Floor, Boston, MA 02110, USA
+
+ *************************************************************************************/
+
 #ifndef _ma_tls_h_
 #define _ma_tls_h_
 
 #include <ma_hash.h>
+#include <time.h>
 
 enum enum_pvio_tls_type {
   SSL_TYPE_DEFAULT=0,
@@ -30,8 +51,15 @@ enum enum_pvio_tls_type {
 extern char tls_library_version[TLS_VERSION_LENGTH];
 extern my_bool ma_is_ip_address(const char *s);
 
+/* The backend session object. On OpenSSL builds this is SSL_SESSION; other
+   backends define the tag as they need it */
+typedef struct ssl_session_st SSL_SESSION;
+
+/* Sessions received on a connection, until they are added to the cache. */
+typedef struct st_ma_tls_received_sessions MA_TLS_RECEIVED_SESSIONS;
+
 typedef struct st_ma_pvio_tls {
-  void *data;
+  MA_TLS_RECEIVED_SESSIONS *received_sessions;
   MARIADB_PVIO *pvio;
   void *ssl;
   MARIADB_X509_INFO cert_info;
@@ -64,10 +92,18 @@ void ma_tls_end(void);
 
    Parameters:
      MYSQL        a mysql structure
+     MARIADB_TLS  MariaDB SSL container, with received_sessions already
+                  set up
    Returns:
      void *       a pointer to internal SSL structure
 */
-void * ma_tls_init(MYSQL *mysql);
+void * ma_tls_init(MYSQL *mysql, MARIADB_TLS *ctls);
+
+/* ma_tls_session_free
+   releases one backend session object received on a connection or taken
+   from the session cache
+*/
+void ma_tls_session_free(SSL_SESSION *session);
 
 /* ma_tls_connect
    performs SSL handshake
@@ -174,5 +210,32 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
 void ma_pvio_tls_set_connection(MYSQL *mysql);
 void ma_pvio_tls_end();
 unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size);
+
+/* TLS session cache.
+
+   A session may only be offered to a connection whose TLS configuration is
+   identical to the one that received it, because a resumed handshake does no
+   certificate verification at all - see ma_tls_session_key().
+
+   ma_tls_session_cache_init/deinit are called once per process from
+   mysql_server_init()/mysql_server_end().
+*/
+void ma_tls_session_cache_init(void);
+void ma_tls_session_cache_deinit(void);
+
+/* The session to offer on this connection, or NULL when nothing suitable is
+   cached - see ma_session_cache.h. Called by the backend from
+   ma_tls_connect(). The reference is handed over to the caller. */
+SSL_SESSION *ma_tls_session_cache_get(MARIADB_TLS *ctls);
+
+/* Saves a session received in the handshake in the ctls. Session
+   is valid until not_after. Returns 0 if the session was accepted. */
+int ma_tls_session_received(MARIADB_TLS *ctls, SSL_SESSION *session,
+                            time_t not_after);
+
+/* Cache sessions received in the handshake. Called after the connection
+   authenticated, sessions for failed connections are never cached. */
+void ma_pvio_cache_tls_session(MYSQL *mysql);
+
 
 #endif /* _ma_tls_h_ */

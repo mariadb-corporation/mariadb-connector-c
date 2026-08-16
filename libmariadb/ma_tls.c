@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2014 MariaDB Corporation AB
+  Copyright (C) 2014, 2026 MariaDB plc
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -42,6 +42,7 @@
 #include <mysql/client_plugin.h>
 #include <mariadb/ma_io.h>
 #include <ma_hash.h>
+#include <ma_crypt.h>
 
 #ifdef HAVE_NONBLOCK
 #include <mariadb_async.h>
@@ -57,6 +58,271 @@ unsigned int mariadb_deinitialize_ssl= 1;
 const char *tls_protocol_version[]=
   {"SSLv3", "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3", "Unknown"};
 
+/*
+  TLS session cache.
+
+  An entry is removed from the cache when it is handed out: a TLS 1.3 ticket
+  is meant to be used once, and a resumed connection is issued a new one, so
+  the cache refills itself. A configuration can have more than one entry -
+  a full handshake yields two sessions, a resumed one a single.
+
+  The cache is therefore not bounded by the number of connections, but by
+  the number of configurations connected to, of which a client has few.
+
+  Unless the sessions are refused: then every connection consumes one entry
+  and publishes the two of a full handshake. A server can do that on
+  purpose, and a load balancer without session affinity does it by itself -
+  its backends do not share ticket keys, and the key cannot tell them
+  apart. Dropping the whole cache once it grows this large is enough,
+  nothing but performance depends on it.
+*/
+
+#define MA_TLS_SESSION_CACHE_MAX 1024
+/* How many sessions of one handshake are kept. Only TLS 1.3 gives more than
+   one, and only in a full handshake, as many as the server's
+   SSL_CTX_set_num_tickets, two by default */
+#define MA_TLS_MAX_RECEIVED_SESSIONS 4
+
+static MA_HASHTBL tls_session_cache;
+static pthread_mutex_t LOCK_tls_session_cache;
+
+/* This struct is stored in the tls_session_cache */
+typedef struct st_ma_tls_session
+{
+  SSL_SESSION *session;      /* one reference owned, NULL once handed out */
+  time_t not_after;
+  uchar key[MA_SHA256_HASH_SIZE];
+} MA_TLS_SESSION;
+
+/*
+  Sessions arrive early during the handshake so they are stored in the
+  MARIADB_TLS and only added to the cache once the connection succeeded.
+*/
+struct st_ma_tls_received_sessions
+{
+  MA_TLS_SESSION *session[MA_TLS_MAX_RECEIVED_SESSIONS];
+  unsigned int session_count;
+  uchar key[MA_SHA256_HASH_SIZE];
+};
+
+static void ma_tls_session_delete(void *record)
+{
+  MA_TLS_SESSION *entry= (MA_TLS_SESSION *)record;
+  /* Handing an entry out clears the session, the reference moved on */
+  if (entry->session)
+    ma_tls_session_free(entry->session);
+  free(entry);
+}
+
+static my_bool ma_tls_session_cache_create(void)
+{
+  return ma_hashtbl_init(&tls_session_cache, 0, offsetof(MA_TLS_SESSION, key),
+                         MA_SHA256_HASH_SIZE, NULL, ma_tls_session_delete, 0);
+}
+
+void ma_tls_session_cache_init(void)
+{
+  if (ma_tls_session_cache_create())
+    return;
+  pthread_mutex_init(&LOCK_tls_session_cache, NULL);
+}
+
+void ma_tls_session_cache_deinit(void)
+{
+  if (!ma_hashtbl_inited(&tls_session_cache))
+    return;
+  ma_hashtbl_free(&tls_session_cache);
+  pthread_mutex_destroy(&LOCK_tls_session_cache);
+}
+
+static void ma_tls_key_int(MA_HASH_CTX *ctx, uint32 value)
+{
+  ma_hash_input(ctx, (const uchar *)&value, sizeof(value));
+}
+
+/* A NULL string must not hash equal to an empty one: ssl_ca=NULL means
+   "use the default verify paths", ssl_ca="" does not */
+static void ma_tls_key_str(MA_HASH_CTX *ctx, const char *str)
+{
+  size_t len= str ? strlen(str) : 0xFFFFFFFF;
+  ma_tls_key_int(ctx, (uint32)len);
+  if (str)
+    ma_hash_input(ctx, (const uchar *)str, len);
+}
+
+/*
+  Build the cache key of a connection.
+
+  A resumed handshake exchanges and verifies no certificate whatsoever, so
+  everything that decides which certificate is acceptable, and as whom we
+  present ourselves, has to be part of the key.
+*/
+static my_bool ma_tls_session_key(MYSQL *mysql, MA_TLS_RECEIVED_SESSIONS *rs)
+{
+  struct st_mysql_options_extension *ext= mysql->options.extension;
+  MA_HASH_CTX *ctx;
+
+  if (!(ctx= ma_hash_new(MA_HASH_SHA256)))
+    return 1;
+
+  ma_tls_key_str(ctx, mysql->host);
+  ma_tls_key_int(ctx, mysql->port);
+  ma_tls_key_str(ctx, mysql->unix_socket);
+  ma_tls_key_int(ctx, mysql->options.protocol);
+  ma_tls_key_str(ctx, mysql->options.ssl_ca);
+  ma_tls_key_str(ctx, mysql->options.ssl_capath);
+  ma_tls_key_str(ctx, mysql->options.ssl_cert);
+  ma_tls_key_str(ctx, mysql->options.ssl_key);
+  ma_tls_key_str(ctx, mysql->options.ssl_cipher);
+  ma_tls_key_str(ctx, ext->ssl_crl);
+  ma_tls_key_str(ctx, ext->ssl_crlpath);
+  ma_tls_key_str(ctx, ext->tls_version);
+  ma_tls_key_str(ctx, ext->tls_fp);
+  ma_tls_key_str(ctx, ext->tls_fp_list);
+  ma_tls_key_int(ctx, ext->tls_cipher_strength);
+  ma_tls_key_int(ctx, ext->tls_allow_invalid_server_cert);
+  ma_hash_input(ctx, (const uchar *)&ext->tls_verification_callback,
+                     sizeof(ext->tls_verification_callback));
+
+  ma_hash_result(ctx, rs->key);
+  ma_hash_free(ctx);
+  return 0;
+}
+
+static MA_TLS_RECEIVED_SESSIONS *ma_tls_received_sessions_new(MYSQL *mysql)
+{
+  MA_TLS_RECEIVED_SESSIONS *rs;
+
+  if (!ma_hashtbl_inited(&tls_session_cache))
+    return NULL;
+
+  if (!(rs= (MA_TLS_RECEIVED_SESSIONS *)
+            calloc(1, sizeof(MA_TLS_RECEIVED_SESSIONS))))
+    return NULL;
+
+  if (ma_tls_session_key(mysql, rs))
+  {
+    free(rs);
+    return NULL;
+  }
+  return rs;
+}
+
+static void ma_tls_received_sessions_free(MARIADB_TLS *ctls)
+{
+  MA_TLS_RECEIVED_SESSIONS *rs= ctls->received_sessions;
+  unsigned int i;
+
+  /* Sessions still here were not cached, so they belong to a handshake
+     that was not accepted */
+  for (i= 0; i < rs->session_count; i++)
+    ma_tls_session_delete(rs->session[i]);
+
+  free(rs);
+  ctls->received_sessions= NULL;
+}
+
+SSL_SESSION *ma_tls_session_cache_get(MARIADB_TLS *ctls)
+{
+  MA_TLS_RECEIVED_SESSIONS *rs= ctls->received_sessions;
+  MA_TLS_SESSION *entry;
+  SSL_SESSION *session= NULL;
+  time_t now;
+
+  assert(rs->session_count == 0);
+  now= time(NULL);
+  pthread_mutex_lock(&LOCK_tls_session_cache);
+
+  while (!session && (entry= ma_hashtbl_search(&tls_session_cache, rs->key,
+                                               MA_SHA256_HASH_SIZE)))
+  {
+    if (entry->not_after > now)
+    {
+      session= entry->session;
+      entry->session= NULL;
+    }
+    ma_hashtbl_delete(&tls_session_cache, (uchar *)entry);
+  }
+  pthread_mutex_unlock(&LOCK_tls_session_cache);
+  return session;
+}
+
+/*
+  Drop every session with a given key. Used when a handshake on
+  one of the sessions fails. Drop all others - they aren't any good either.
+*/
+static void ma_tls_session_cache_purge(MA_TLS_RECEIVED_SESSIONS *rs)
+{
+  MA_TLS_SESSION *entry;
+
+  if (!ma_hashtbl_inited(&tls_session_cache))
+    return;
+
+  pthread_mutex_lock(&LOCK_tls_session_cache);
+  while ((entry= ma_hashtbl_search(&tls_session_cache, rs->key,
+                                   MA_SHA256_HASH_SIZE)))
+    ma_hashtbl_delete(&tls_session_cache, (uchar *)entry);
+  pthread_mutex_unlock(&LOCK_tls_session_cache);
+}
+
+static void ma_tls_session_cache_put(MA_TLS_SESSION *entry)
+{
+  if (!ma_hashtbl_inited(&tls_session_cache))
+  {
+    ma_tls_session_delete(entry);
+    return;
+  }
+
+  pthread_mutex_lock(&LOCK_tls_session_cache);
+
+  /* see the comment above MA_TLS_SESSION_CACHE_MAX */
+  if (tls_session_cache.records >= MA_TLS_SESSION_CACHE_MAX)
+  {
+    ma_hashtbl_free(&tls_session_cache);
+    ma_tls_session_cache_create();
+  }
+
+  if (ma_hashtbl_insert(&tls_session_cache, (uchar *)entry))
+  {
+    pthread_mutex_unlock(&LOCK_tls_session_cache);
+    ma_tls_session_delete(entry);
+    return;
+  }
+  pthread_mutex_unlock(&LOCK_tls_session_cache);
+}
+
+int ma_tls_session_received(MARIADB_TLS *ctls, SSL_SESSION *session,
+                            time_t not_after)
+{
+  MA_TLS_RECEIVED_SESSIONS *rs= ctls->received_sessions;
+  MA_TLS_SESSION *entry;
+
+  if (rs->session_count == MA_TLS_MAX_RECEIVED_SESSIONS)
+    return 1;
+
+  if (!(entry= (MA_TLS_SESSION *)malloc(sizeof(MA_TLS_SESSION))))
+    return 1;
+
+  entry->session= session;
+  entry->not_after= not_after;
+  memcpy(entry->key, rs->key, MA_SHA256_HASH_SIZE);
+
+  rs->session[rs->session_count++]= entry;
+  return 0;
+}
+
+void ma_pvio_cache_tls_session(MYSQL *mysql)
+{
+  MARIADB_TLS *ctls= mysql->net.pvio->ctls;
+  MA_TLS_RECEIVED_SESSIONS *rs= ctls->received_sessions;
+  unsigned int i;
+
+  for (i= 0; i < rs->session_count; i++)
+    ma_tls_session_cache_put(rs->session[i]);
+  rs->session_count= 0;
+}
+
+
 MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 {
   MARIADB_TLS *ctls= NULL;
@@ -71,10 +337,17 @@ MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 
   /* register error routine and methods */
   ctls->pvio= mysql->net.pvio;
-  if (!(ctls->ssl= ma_tls_init(mysql)))
+  if (!(ctls->received_sessions= ma_tls_received_sessions_new(mysql)))
   {
     free(ctls);
-    ctls= NULL;
+    return NULL;
+  }
+
+  if (!(ctls->ssl= ma_tls_init(mysql, ctls)))
+  {
+    ma_tls_received_sessions_free(ctls);
+    free(ctls);
+    return NULL;
   }
   return ctls;
 }
@@ -82,9 +355,13 @@ MARIADB_TLS *ma_pvio_tls_init(MYSQL *mysql)
 my_bool ma_pvio_tls_connect(MARIADB_TLS *ctls)
 {
   my_bool rc;
-  
+
   if ((rc= ma_tls_connect(ctls)))
+  {
+    ma_tls_session_cache_purge(ctls->received_sessions);
     ma_tls_close(ctls);
+    ma_tls_received_sessions_free(ctls);
+  }
   return rc;
 }
 
@@ -100,7 +377,9 @@ ssize_t ma_pvio_tls_write(MARIADB_TLS *ctls, const uchar* buffer, size_t length)
 
 my_bool ma_pvio_tls_close(MARIADB_TLS *ctls)
 {
-  return ma_tls_close(ctls);
+  my_bool rc= ma_tls_close(ctls);
+  ma_tls_received_sessions_free(ctls);
+  return rc;
 }
 
 int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
@@ -192,6 +471,7 @@ const char *ma_pvio_tls_cipher(MARIADB_TLS *ctls)
 
 void ma_pvio_tls_end()
 {
+  ma_tls_session_cache_deinit();
   ma_tls_end();
 }
 

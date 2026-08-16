@@ -1,7 +1,6 @@
 /************************************************************************************
-    Copyright (C) 2000, 2012 MySQL AB & MySQL Finland AB & TCX DataKonsult AB,
-                 Monty Program AB
-                  2013, 2022 MariaDB Corporation AB
+    Copyright (C) 2000, 2012 MySQL AB & MySQL Finland AB & TCX DataKonsult AB, Monty Program AB
+    Copyright (C) 2013, 2026 MariaDB plc
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -2100,6 +2099,12 @@ restart:
 
   /* restore max_packet_size */
   mysql->net.max_packet_size= save_max_allowed_packet;
+
+#ifdef HAVE_TLS
+  /* The connection is authenticated, its sessions may be reused */
+  if (mysql->net.pvio->ctls)
+    ma_pvio_cache_tls_session(mysql);
+#endif
 
   if (mysql->client_flag & CLIENT_COMPRESS ||
       mysql->client_flag & CLIENT_ZSTD_COMPRESSION)
@@ -4609,6 +4614,7 @@ static void mysql_once_init()
     mysql_init_ps_subsystem();
 #ifdef HAVE_TLS
   ma_tls_start(0, 0);
+  ma_tls_session_cache_init();
 #endif
   ignore_sigpipe();
   mysql_client_init = 1;

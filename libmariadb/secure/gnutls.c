@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2014 MariaDB Corporation AB
+  Copyright (C) 2014, 2026 MariaDB plc
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -1131,7 +1131,54 @@ error:
   return ssl_error;
 }
 
-void *ma_tls_init(MYSQL *mysql)
+/****** Session resumption support ******/
+
+struct ssl_session_st
+{
+  gnutls_datum_t data;
+};
+
+void ma_tls_session_free(SSL_SESSION *session)
+{
+  if (session)
+    gnutls_free(session->data.data);
+  free(session);
+}
+
+static void ma_tls_session_keep(MARIADB_TLS *ctls, gnutls_session_t ssl)
+{
+  SSL_SESSION *session;
+
+  if (!(session= (SSL_SESSION *)calloc(1, sizeof(SSL_SESSION))))
+    return;
+
+  /* GnuTLS sessions do not expire, use LONG_MAX */
+  if (gnutls_session_get_data2(ssl, &session->data) < 0 ||
+      ma_tls_session_received(ctls, session, LONG_MAX))
+    ma_tls_session_free(session);
+}
+
+/*
+  A TLS 1.3 ticket arrives after the handshake, so it is taken from a
+  handshake hook rather than after gnutls_handshake() returns. Older
+  protocols are handled in ma_tls_connect().
+*/
+static int ma_tls_new_session_hook(gnutls_session_t ssl,
+                                   unsigned int htype __attribute__((unused)),
+                                   unsigned when __attribute__((unused)),
+                                   unsigned int incoming __attribute__((unused)),
+                                   const gnutls_datum_t *msg __attribute__((unused)))
+{
+  MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
+
+  if (mysql && mysql->net.pvio && mysql->net.pvio->ctls &&
+      gnutls_protocol_get_version(ssl) >= GNUTLS_TLS1_3)
+    ma_tls_session_keep(mysql->net.pvio->ctls, ssl);
+
+  return 0;
+}
+
+void *ma_tls_init(MYSQL *mysql, MARIADB_TLS *ctls __attribute__((unused)))
 {
   gnutls_session_t ssl= NULL;
   gnutls_certificate_credentials_t ctx;
@@ -1149,6 +1196,8 @@ void *ma_tls_init(MYSQL *mysql)
     goto error;
 
   gnutls_session_set_ptr(ssl, (void *)mysql);
+  gnutls_handshake_set_hook_function(ssl, GNUTLS_HANDSHAKE_NEW_SESSION_TICKET,
+                                     GNUTLS_HOOK_POST, ma_tls_new_session_hook);
   /*
   gnutls_certificate_set_retrieve_function2(GNUTLS_xcred, client_cert_callback);
  */
@@ -1213,6 +1262,7 @@ static int ma_tls_pull_timeout(gnutls_transport_ptr_t ptr, unsigned int ms)
 my_bool ma_tls_connect(MARIADB_TLS *ctls)
 {
   gnutls_session_t ssl = (gnutls_session_t)ctls->ssl;
+  SSL_SESSION *session;
   MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
   MARIADB_PVIO *pvio;
   int ret;
@@ -1230,6 +1280,12 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   gnutls_transport_set_pull_function(ssl, ma_tls_pull);
   gnutls_transport_set_pull_timeout_function(ssl, ma_tls_pull_timeout);
   gnutls_handshake_set_timeout(ssl, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
+
+  if ((session= ma_tls_session_cache_get(ctls)))
+  {
+    gnutls_session_set_data(ssl, session->data.data, session->data.size);
+    ma_tls_session_free(session);
+  }
 
   /* The pull/push callbacks block (poll() in sync, fiber yield in async), so
      gnutls_handshake() normally completes without GNUTLS_E_AGAIN. The loop is
@@ -1255,6 +1311,11 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
     ma_tls_close(ctls);
     return 1;
   }
+  /* TLS < 1.3: sessions are ready, cache them.
+     TLS >= 1.3: see ma_tls_new_session_hook() */
+  if (gnutls_protocol_get_version(ssl) < GNUTLS_TLS1_3)
+    ma_tls_session_keep(ctls, ssl);
+
   ctls->ssl= (void *)ssl;
 
   return 0;

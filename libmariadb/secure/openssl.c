@@ -1,5 +1,6 @@
 /************************************************************************************
   Copyright (C) 2012 Monty Program AB
+  Copyright (C) 2014, 2026 MariaDB plc
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -55,6 +56,16 @@
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L || \
     (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x2070000fL)
 #define HAVE_BIO_METH_NEW 1
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x10101000L || defined(LIBRESSL_VERSION_NUMBER)
+/* introduced in OpenSSL 1.1.1. Assuming a session is resumable only costs a
+   handshake we would have done anyway */
+#define SSL_SESSION_is_resumable(S) 1
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x30400000L
+#define SSL_SESSION_get_time_ex(S) SSL_SESSION_get_time(S)
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10000000L
@@ -529,7 +540,48 @@ error:
   return 1;
 }
 
-void *ma_tls_init(MYSQL *mysql)
+/*
+  Keeps a session of this connection, to be cached once the connection is
+  known to be authenticated - see ma_pvio_cache_tls_session().
+
+  Takes over a reference to the session, the object is shared with the
+  connection it came from.
+*/
+static void ma_tls_session_keep(MARIADB_TLS *ctls, SSL_SESSION *session)
+{
+  if (!session)
+    return;
+
+  if (!SSL_SESSION_is_resumable(session) ||
+      ma_tls_session_received(ctls, session,
+                              SSL_SESSION_get_time_ex(session) +
+                              SSL_SESSION_get_timeout(session)))
+    SSL_SESSION_free(session);
+}
+
+/*
+  A session becomes available before server's OK packet, which can verify the
+  certificate - so we don't want to cache before it.
+  Keep the session, but don't cache yet.
+*/
+static int ma_tls_new_session_cb(SSL *ssl, SSL_SESSION *session)
+{
+  MYSQL *mysql= (MYSQL *)SSL_get_app_data(ssl);
+
+  if (!mysql || !mysql->net.pvio || !mysql->net.pvio->ctls)
+    return 0;                       /* OpenSSL drops its reference */
+
+  ma_tls_session_keep(mysql->net.pvio->ctls, session);
+
+  return 1;                         /* the reference is ours now */
+}
+
+void ma_tls_session_free(SSL_SESSION *session)
+{
+  SSL_SESSION_free(session);
+}
+
+void *ma_tls_init(MYSQL *mysql, MARIADB_TLS *ctls)
 {
   SSL *ssl= NULL;
   SSL_CTX *ctx= NULL;
@@ -554,6 +606,10 @@ void *ma_tls_init(MYSQL *mysql)
   {
     goto error;
   }
+
+  SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT |
+                                      SSL_SESS_CACHE_NO_INTERNAL_STORE);
+  SSL_CTX_sess_set_new_cb(ctx, ma_tls_new_session_cb);
 
   if (!(ssl= SSL_new(ctx)))
     goto error;
@@ -654,6 +710,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   my_bool try_connect= 1;
   MYSQL *mysql;
   MARIADB_PVIO *pvio;
+  SSL_SESSION *session;
   int rc;
   BIO *bio;
 
@@ -661,6 +718,9 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   pvio= mysql->net.pvio;
 
   SSL_clear(ssl);
+
+  if ((session= ma_tls_session_cache_get(ctls)))
+    SSL_set_session(ssl, session);
 
   /* Route all TLS I/O through the pvio read/write methods (and thus through
      the always non-blocking socket with poll()/select() based timeouts)
@@ -700,8 +760,20 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   if (rc != 1)
   {
+    SSL_SESSION_free(session);
     ma_tls_set_error(mysql);
     return 1;
+  }
+
+  /* TLS 1.3 sends a new session after handshake to replace the used
+     one (which should not be re-used), and it arrives through the new
+     session callback also for a handshake that resumed. TLS < 1.3 don't do
+     that, the session stays usable and has to be kept here. */
+  if (session)
+  {
+    if (SSL_version(ssl) <= TLS1_2_VERSION && SSL_session_reused(ssl))
+      ma_tls_session_keep(ctls, SSL_get1_session(ssl));
+    SSL_SESSION_free(session);
   }
 
   pvio->ctls->ssl= ctls->ssl= (void *)ssl;

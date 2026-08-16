@@ -1,5 +1,5 @@
 /************************************************************************************
-  Copyright (C) 2014 MariaDB Corporation Ab
+  Copyright (C) 2014, 2026 MariaDB plc
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Library General Public
@@ -244,8 +244,14 @@ static int ma_tls_set_client_certs(MARIADB_TLS *ctls, client_cert_handle *cert_h
 }
 /* }}} */
 
+
+/* TLS session resumption is not implemented for Schannel yet */
+void ma_tls_session_free(MA_SSL_SESSION *session __attribute__((unused)))
+{
+}
+
 /* {{{ void *ma_tls_init(MARIADB_TLS *ctls, MYSQL *mysql) */
-void *ma_tls_init(MYSQL *mysql)
+void *ma_tls_init(MYSQL *mysql, MARIADB_TLS *ctls __attribute__((unused)))
 {
   SC_CTX *sctx = (SC_CTX *)LocalAlloc(LMEM_ZEROINIT, sizeof(SC_CTX));
   if (sctx)
