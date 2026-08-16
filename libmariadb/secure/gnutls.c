@@ -1006,11 +1006,9 @@ void ma_tls_end()
 {
   if (ma_tls_initialized)
   {
-    pthread_mutex_lock(&LOCK_gnutls_config);
     if (mariadb_deinitialize_ssl)
       gnutls_global_deinit();
     ma_tls_initialized= FALSE;
-    pthread_mutex_unlock(&LOCK_gnutls_config);
     pthread_mutex_destroy(&LOCK_gnutls_config);
   }
   return;

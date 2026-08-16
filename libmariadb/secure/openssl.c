@@ -391,7 +391,6 @@ void ma_tls_end()
 {
   if (ma_tls_initialized)
   {
-    pthread_mutex_lock(&LOCK_openssl_config);
 #ifndef HAVE_OPENSSL_1_1_API
     if (LOCK_crypto)
     {
@@ -418,7 +417,6 @@ void ma_tls_end()
     }
     ma_bio_method_deinit();
     ma_tls_initialized= FALSE;
-    pthread_mutex_unlock(&LOCK_openssl_config);
     pthread_mutex_destroy(&LOCK_openssl_config);
   }
   return;

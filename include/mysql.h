@@ -353,8 +353,8 @@ struct st_mysql_options {
     struct st_mysql_options_extension *extension;
 };
 
-  typedef struct st_mysql {
-    NET		net;			/* Communication parameters */
+typedef struct st_mysql {
+    NET         net;                    /* Communication parameters */
     void  *unused_0;
     char *host,*user,*passwd,*unix_socket,*server_version,*host_info;
     char *info,*db;
@@ -362,9 +362,9 @@ struct st_mysql_options {
     MYSQL_FIELD *fields;
     MA_MEM_ROOT field_alloc;
     unsigned long long affected_rows;
-    unsigned long long insert_id;		/* id if insert on table with NEXTNR */
-    unsigned long long extra_info;		/* Used by mysqlshow */
-    unsigned long thread_id;		/* Id for connection in server */
+    unsigned long long insert_id;       /* id if insert on table with autoinc */
+    unsigned long long extra_info;      /* Used by mysqlshow */
+    unsigned long thread_id;            /* Id for connection in server */
     unsigned long packet_length;
     unsigned int port;
     unsigned long client_flag;
@@ -373,13 +373,12 @@ struct st_mysql_options {
     unsigned int field_count;
     unsigned int server_status;
     unsigned int server_language;
-    unsigned int warning_count;          /* warning count, added in 4.1 protocol */
+    unsigned int warning_count;          /* warning count */
     struct st_mysql_options options;
     enum mysql_status status;
-    my_bool	free_me;		/* If free in mysql_close */
-    my_bool	unused_1;
-    char	        scramble_buff[20+ 1];
-    /* madded after 3.23.58 */
+    my_bool     free_me;                /* If free in mysql_close */
+    my_bool     unused_1;
+    char          scramble_buff[20+ 1];
     my_bool       unused_2;
     void          *unused_3, *unused_4, *unused_5, *unused_6;
     LIST          *stmts;

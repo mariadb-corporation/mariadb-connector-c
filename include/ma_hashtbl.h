@@ -48,14 +48,13 @@ typedef struct st_hash {
   uint (*calc_hashnr)(const uchar *key,uint length);
 } MA_HASHTBL;
 
-#define ma_hashtbl_init(A,B,C,D,E,F,G) _ma_hashtbl_init(A,B,C,D,E,F,G CALLER_INFO)
-my_bool _ma_hashtbl_init(MA_HASHTBL *hash,uint default_array_elements, uint key_offset,
+my_bool ma_hashtbl_init(MA_HASHTBL *hash,uint default_array_elements, uint key_offset,
 		  uint key_length, hash_get_key get_key,
 		  void (*free_element)(void*), uint flags CALLER_INFO_PROTO);
 void ma_hashtbl_free(MA_HASHTBL *tree);
 uchar *ma_hashtbl_element(MA_HASHTBL *hash,uint idx);
-void * ma_hashtbl_search(MA_HASHTBL *info,const uchar *key,uint length);
-void * ma_hashtbl_next(MA_HASHTBL *info,const uchar *key,uint length);
+void  *ma_hashtbl_search(MA_HASHTBL *info,const uchar *key,uint length);
+void  *ma_hashtbl_next(MA_HASHTBL *info,const uchar *key,uint length);
 my_bool ma_hashtbl_insert(MA_HASHTBL *info,const uchar *data);
 my_bool ma_hashtbl_delete(MA_HASHTBL *hash,uchar *record);
 my_bool ma_hashtbl_update(MA_HASHTBL *hash,uchar *record,uchar *old_key,uint old_key_length);

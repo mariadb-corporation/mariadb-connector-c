@@ -3872,7 +3872,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
 
       if (!ma_hashtbl_inited(&mysql->options.extension->userdata))
       {
-        if (_ma_hashtbl_init(&mysql->options.extension->userdata,
+        if (ma_hashtbl_init(&mysql->options.extension->userdata,
                        0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -3938,7 +3938,7 @@ mysql_optionsv(MYSQL *mysql,enum mysql_option option, ...)
 
       if (!ma_hashtbl_inited(&mysql->options.extension->connect_attrs))
       {
-        if (_ma_hashtbl_init(&mysql->options.extension->connect_attrs,
+        if (ma_hashtbl_init(&mysql->options.extension->connect_attrs,
                        0, 0, 0, ma_get_hash_keyval, ma_int_hash_free, 0))
         {
           SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -4269,7 +4269,7 @@ mysql_get_optionv(MYSQL *mysql, enum mysql_option option, void *arg, ...)
     *((my_bool *)arg)= mysql->options.extension ? mysql->options.extension->read_only : 0;
     break;
   case MARIADB_OPT_USERDATA:
-    /* nysql_get_optionv(mysql, MARIADB_OPT_USERDATA, key, value) */
+    /* mysql_get_optionv(mysql, MARIADB_OPT_USERDATA, key, value) */
     {
       uchar *p;
       void *data= va_arg(ap, void *);
