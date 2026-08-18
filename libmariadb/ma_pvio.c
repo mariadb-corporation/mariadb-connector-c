@@ -401,7 +401,11 @@ my_bool ma_pvio_has_data(MARIADB_PVIO *pvio, ssize_t *data_len)
 #ifdef HAVE_TLS
 
 /* {{{ my_bool ma_pvio_start_ssl */
-my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
+/*
+  Start TLS handshake, optionally sending TLS 1.3 early data
+*/
+my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio, const uchar *early_data,
+                          size_t early_data_len)
 {
   if (!pvio || !pvio->mysql)
     return 1;
@@ -410,6 +414,8 @@ my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio)
   {
     return 1;
   }
+  pvio->ctls->early_data= early_data;
+  pvio->ctls->early_data_len= early_data_len;
   if (ma_pvio_tls_connect(pvio->ctls))
   {
     free(pvio->ctls);

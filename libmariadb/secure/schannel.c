@@ -250,6 +250,12 @@ void ma_tls_session_free(MA_SSL_SESSION *session __attribute__((unused)))
 {
 }
 
+/* 0-RTT is not implemented for Schannel yet */
+my_bool ma_tls_early_data_accepted(MARIADB_TLS *ctls __attribute__((unused)))
+{
+  return 0;
+}
+
 /* {{{ void *ma_tls_init(MARIADB_TLS *ctls, MYSQL *mysql) */
 void *ma_tls_init(MYSQL *mysql, MARIADB_TLS *ctls __attribute__((unused)))
 {

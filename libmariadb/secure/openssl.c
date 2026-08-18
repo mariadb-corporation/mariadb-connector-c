@@ -721,6 +721,8 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   if ((session= ma_tls_session_cache_get(ctls)))
     SSL_set_session(ssl, session);
+  else
+    ctls->early_data= NULL;   /* nothing to resume, so no early data either */
 
   /* Route all TLS I/O through the pvio read/write methods (and thus through
      the always non-blocking socket with poll()/select() based timeouts)
@@ -735,6 +737,19 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
 
   /* CONC-732: Always set verification callback to avoid OpenSSL output */
   SSL_set_verify(ssl, SSL_VERIFY_PEER, ma_verification_callback);
+
+#ifdef TLS1_3_VERSION
+  if (ctls->early_data)
+  {
+    size_t written;
+    if (SSL_SESSION_get_max_early_data(session) < ctls->early_data_len ||
+        !SSL_write_early_data(ssl, ctls->early_data, ctls->early_data_len,
+                              &written))
+      ctls->early_data= NULL;
+  }
+#else
+  ctls->early_data= NULL;
+#endif
 
   /* The BIO blocks (poll() in sync, fiber yield in async), so SSL_connect()
      normally completes in one shot. The loop is kept defensive: should the
@@ -779,6 +794,17 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   pvio->ctls->ssl= ctls->ssl= (void *)ssl;
 
   return 0;
+}
+
+
+my_bool ma_tls_early_data_accepted(MARIADB_TLS *ctls)
+{
+#ifdef TLS1_3_VERSION
+  return ctls->early_data &&
+         SSL_get_early_data_status((SSL *)ctls->ssl) == SSL_EARLY_DATA_ACCEPTED;
+#else
+  return 0;
+#endif
 }
 
 ssize_t ma_tls_read(MARIADB_TLS *ctls, const uchar* buffer, size_t length)

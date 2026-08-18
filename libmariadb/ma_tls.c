@@ -97,11 +97,14 @@ typedef struct st_ma_tls_session
 /*
   Sessions arrive early during the handshake so they are stored in the
   MARIADB_TLS and only added to the cache once the connection succeeded.
+  Afterwards - with 0-RTT the server sends the session during the normal
+  query traffic - they go straight to the cache.
 */
 struct st_ma_tls_received_sessions
 {
   MA_TLS_SESSION *session[MA_TLS_MAX_RECEIVED_SESSIONS];
   unsigned int session_count;
+  my_bool authenticated;                        /* session can be cached */
   uchar key[MA_SHA256_HASH_SIZE];
 };
 
@@ -308,6 +311,9 @@ int ma_tls_session_received(MARIADB_TLS *ctls, SSL_SESSION *session,
   memcpy(entry->key, rs->key, MA_SHA256_HASH_SIZE);
 
   rs->session[rs->session_count++]= entry;
+
+  if (rs->authenticated)
+    ma_pvio_cache_tls_session(ctls->pvio->mysql);
   return 0;
 }
 
@@ -317,6 +323,7 @@ void ma_pvio_cache_tls_session(MYSQL *mysql)
   MA_TLS_RECEIVED_SESSIONS *rs= ctls->received_sessions;
   unsigned int i;
 
+  rs->authenticated= 1;
   for (i= 0; i < rs->session_count; i++)
     ma_tls_session_cache_put(rs->session[i]);
   rs->session_count= 0;

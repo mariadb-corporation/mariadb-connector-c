@@ -63,6 +63,8 @@ typedef struct st_ma_pvio_tls {
   MARIADB_PVIO *pvio;
   void *ssl;
   MARIADB_X509_INFO cert_info;
+  const uchar *early_data; /* TLS 1.3 early data */
+  size_t early_data_len;
 } MARIADB_TLS;
 
 /* Function prototypes */
@@ -206,7 +208,8 @@ my_bool ma_pvio_tls_close(MARIADB_TLS *ctls);
 int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags);
 const char *ma_pvio_tls_cipher(MARIADB_TLS *ctls);
 my_bool ma_pvio_tls_check_fp(MARIADB_TLS *ctls, const char *fp, const char *fp_list);
-my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio);
+my_bool ma_pvio_start_ssl(MARIADB_PVIO *pvio, const uchar *early_data,
+                          size_t early_data_len);
 void ma_pvio_tls_set_connection(MYSQL *mysql);
 void ma_pvio_tls_end();
 unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size);
@@ -237,5 +240,8 @@ int ma_tls_session_received(MARIADB_TLS *ctls, SSL_SESSION *session,
    authenticated, sessions for failed connections are never cached. */
 void ma_pvio_cache_tls_session(MYSQL *mysql);
 
+/* Whether the early data was sent and accepted. When it was not -
+   the caller must send the packet again the ordinary way. */
+my_bool ma_tls_early_data_accepted(MARIADB_TLS *ctls);
 
 #endif /* _ma_tls_h_ */

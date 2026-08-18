@@ -287,8 +287,9 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 {
   MYSQL *mysql= mpvio->mysql;
   NET *net= &mysql->net;
-  char *buff, *end;
-  size_t conn_attr_len= (mysql->options.extension) ? 
+  char *buff, *end, *pre_ssl_end, *early_data= NULL;
+  size_t early_data_len;
+  size_t conn_attr_len= (mysql->options.extension) ?
                          mysql->options.extension->connect_attrs_len : 0;
   size_t proxy_header_len= 0;
   char *proxy_header=
@@ -415,82 +416,10 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     int3store(buff+2, net->max_packet_size);
     end= buff+5;
   }
-#ifdef HAVE_TLS
-  if (mysql->options.ssl_key ||
-      mysql->options.ssl_cert ||
-      mysql->options.ssl_ca ||
-      mysql->options.ssl_capath ||
-      mysql->options.ssl_cipher
-#ifdef CRL_IMPLEMENTED
-      || (mysql->options.extension &&
-       (mysql->options.extension->ssl_crl ||
-        mysql->options.extension->ssl_crlpath))
-#endif
-      )
-    mysql->options.use_ssl= 1;
-  if (mysql->options.use_ssl &&
-      (mysql->client_flag & CLIENT_SSL))
-  {
-    unsigned int verify_flags= 0;
-    /*
-      Send mysql->client_flag, max_packet_size - unencrypted otherwise
-      the server does not know we want to do SSL
-    */
-    if (proxy_header_len)
-    {
-      ma_net_write_buff(net, proxy_header, proxy_header_len);
-      /* Reset proxy header */
-      proxy_header_len= 0;
-      proxy_header= NULL;
-    }
+  /* The rest of the packet is built before the TLS handshake starts,
+     so that it can be sent as early data in ma_pvio_start_ssl() */
+  pre_ssl_end= end;
 
-    if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
-    {
-      my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
-                          ER(CR_SERVER_LOST_EXTENDED),
-                          "sending connection information to server",
-                          errno);
-      goto error;
-    }
-    mysql->net.tls_verify_status = 0;
-    if (ma_pvio_start_ssl(mysql->net.pvio))
-      goto error;
-
-    verify_flags= MARIADB_TLS_VERIFY_PERIOD;
-
-    /* Don't check for revocation if CRL not provided */
-    if (mysql->options.extension &&
-       (mysql->options.extension->ssl_crl || mysql->options.extension->ssl_crlpath))
-    {
-      verify_flags|= MARIADB_TLS_VERIFY_REVOKED;
-    }
-
-    if (have_fingerprint(mysql))
-    {
-      verify_flags|= MARIADB_TLS_VERIFY_FINGERPRINT;
-    } else {
-      /*
-        Don't check host name on local (non globally resolvable) addresses
-        For local connections, only check CA if CA is given.
-      */
-      if (!is_local_connection(mysql->net.pvio))
-        verify_flags |= MARIADB_TLS_VERIFY_HOST|MARIADB_TLS_VERIFY_TRUST;
-      else if (mysql->options.ssl_ca || mysql->options.ssl_capath)
-        verify_flags |= MARIADB_TLS_VERIFY_TRUST;
-    }
-
-    if (mysql->options.extension->tls_verification_callback(mysql->net.pvio->ctls, verify_flags))
-    {
-      if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_AUTO ||
-          (mysql->options.ssl_ca || mysql->options.ssl_capath))
-        goto error;
-      if (!password_and_hashing(mysql, mpvio->plugin))
-        goto error;
-    }
-  }
-#endif /* HAVE_TLS */
-
-  /* This needs to be changed as it's not useful with big packets */
   if (mysql->user && mysql->user[0])
     ma_strmake(end, mysql->user, USERNAME_LENGTH);
   else
@@ -538,7 +467,7 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
 
   end= ma_send_connect_attr(mysql, (unsigned char *)end);
 
-  /* MySQL 8.0: 
+  /* MySQL 8.0:
      If zstd compresson was specified, the server expects
      1 byte for compression level
   */
@@ -554,16 +483,107 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
     *end++= compression_level;
   }
 
-  if (proxy_header_len)
-    ma_net_write_buff(net, proxy_header, proxy_header_len);
-  /* Write authentication package */
-  if (ma_net_write(net, (unsigned char *)buff, (size_t) (end-buff)) || ma_net_flush(net))
+#ifdef HAVE_TLS
+  if (mysql->options.ssl_key ||
+      mysql->options.ssl_cert ||
+      mysql->options.ssl_ca ||
+      mysql->options.ssl_capath ||
+      mysql->options.ssl_cipher
+#ifdef CRL_IMPLEMENTED
+      || (mysql->options.extension &&
+       (mysql->options.extension->ssl_crl ||
+        mysql->options.extension->ssl_crlpath))
+#endif
+      )
+    mysql->options.use_ssl= 1;
+  if (mysql->options.use_ssl && (mysql->client_flag & CLIENT_SSL))
   {
-    my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
-                        ER(CR_SERVER_LOST_EXTENDED),
-                        "sending authentication information",
-                        errno);
-    goto error;
+    unsigned int verify_flags= 0;
+    /*
+      Send mysql->client_flag, max_packet_size - unencrypted otherwise
+      the server does not know we want to do SSL
+    */
+    if (proxy_header_len)
+    {
+      ma_net_write_buff(net, proxy_header, proxy_header_len);
+      /* Reset proxy header */
+      proxy_header_len= 0;
+      proxy_header= NULL;
+    }
+
+    if (ma_net_write(net, (uchar *)buff, (size_t) (pre_ssl_end - buff))
+        || ma_net_flush(net))
+    {
+      my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                          ER(CR_SERVER_LOST_EXTENDED),
+                          "sending connection information to server",
+                          errno);
+      goto error;
+    }
+    mysql->net.tls_verify_status = 0;
+
+    /* Early data aren't fully protected by TLS, so only used with
+       password_and_hashing() plugins. */
+    if (password_and_hashing(mysql, mpvio->plugin))
+    {
+      early_data= buff;
+      early_data_len= end - buff;
+    }
+
+    if (ma_pvio_start_ssl(mysql->net.pvio, (uchar*)early_data, early_data_len))
+      goto error;
+
+    verify_flags= MARIADB_TLS_VERIFY_PERIOD;
+
+    /* Don't check for revocation if CRL not provided */
+    if (mysql->options.extension &&
+       (mysql->options.extension->ssl_crl || mysql->options.extension->ssl_crlpath))
+    {
+      verify_flags|= MARIADB_TLS_VERIFY_REVOKED;
+    }
+
+    if (have_fingerprint(mysql))
+    {
+      verify_flags|= MARIADB_TLS_VERIFY_FINGERPRINT;
+    } else {
+      /*
+        Don't check host name on local (non globally resolvable) addresses
+        For local connections, only check CA if CA is given.
+      */
+      if (!is_local_connection(mysql->net.pvio))
+        verify_flags |= MARIADB_TLS_VERIFY_HOST|MARIADB_TLS_VERIFY_TRUST;
+      else if (mysql->options.ssl_ca || mysql->options.ssl_capath)
+        verify_flags |= MARIADB_TLS_VERIFY_TRUST;
+    }
+
+    if (mysql->options.extension->tls_verification_callback(mysql->net.pvio->ctls, verify_flags))
+    {
+      if (mysql->net.tls_verify_status > MARIADB_TLS_VERIFY_AUTO ||
+          (mysql->options.ssl_ca || mysql->options.ssl_capath))
+        goto error;
+      if (!password_and_hashing(mysql, mpvio->plugin))
+        goto error;
+    }
+    /* Need to resent if early data wasn't accepted */
+    if (!ma_tls_early_data_accepted(mysql->net.pvio->ctls))
+      early_data= NULL;
+  }
+#endif /* HAVE_TLS */
+
+  if (!early_data)
+  {
+    if (proxy_header_len)
+      ma_net_write_buff(net, proxy_header, proxy_header_len);
+    /* Write authentication package */
+    if (ma_net_write(net, (uchar *)buff, (size_t) (end - buff))
+        || ma_net_flush(net))
+    {
+      my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                          ER(CR_SERVER_LOST_EXTENDED),
+                          "sending authentication information",
+                          errno);
+      goto error;
+    }
   }
   free(buff);
   return 0;

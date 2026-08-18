@@ -1145,6 +1145,13 @@ void ma_tls_session_free(SSL_SESSION *session)
   free(session);
 }
 
+my_bool ma_tls_early_data_accepted(MARIADB_TLS *ctls)
+{
+  return ctls->early_data &&
+         (gnutls_session_get_flags((gnutls_session_t)ctls->ssl) &
+          GNUTLS_SFLAGS_EARLY_DATA) != 0;
+}
+
 static void ma_tls_session_keep(MARIADB_TLS *ctls, gnutls_session_t ssl)
 {
   SSL_SESSION *session;
@@ -1265,6 +1272,7 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   SSL_SESSION *session;
   MYSQL *mysql= (MYSQL *)gnutls_session_get_ptr(ssl);
   MARIADB_PVIO *pvio;
+  size_t no_early_data;
   int ret;
 
   if (!mysql)
@@ -1281,10 +1289,31 @@ my_bool ma_tls_connect(MARIADB_TLS *ctls)
   gnutls_transport_set_pull_timeout_function(ssl, ma_tls_pull_timeout);
   gnutls_handshake_set_timeout(ssl, pvio->timeout[PVIO_CONNECT_TIMEOUT]);
 
+  /*
+    A session starts with GnuTLS' own early data limit and a resumption
+    ticket lowers it to what the server granted - a ticket that grants none
+    leaves the default in place. Remember the default to tell the two apart.
+  */
+  no_early_data= gnutls_record_get_max_early_data_size(ssl);
+
   if ((session= ma_tls_session_cache_get(ctls)))
   {
     gnutls_session_set_data(ssl, session->data.data, session->data.size);
     ma_tls_session_free(session);
+  }
+  else
+    ctls->early_data= NULL;   /* nothing to resume, so no early data either */
+
+  /* Queue the packet as TLS 1.3 early data, it goes out with the
+     ClientHello. Declining it when the server granted exactly the default
+     only costs a round trip, sending it uninvited breaks the connection. */
+  if (ctls->early_data)
+  {
+    size_t allowed= gnutls_record_get_max_early_data_size(ssl);
+    if (allowed == no_early_data || allowed < ctls->early_data_len ||
+        gnutls_record_send_early_data(ssl, ctls->early_data,
+                                      ctls->early_data_len) < 0)
+      ctls->early_data= NULL;
   }
 
   /* The pull/push callbacks block (poll() in sync, fiber yield in async), so
