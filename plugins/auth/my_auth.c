@@ -327,12 +327,12 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
        to unset CLIENT_CONNECT_WITH_DB flag */
     mysql->client_flag&= ~CLIENT_CONNECT_WITH_DB;
 
-  /* CONC-635: For connections via named pipe or shared memory the server
-               indicates the capability for secure connections (TLS), but
-               doesn't support it. */
+  /* CONC-635: Older MariaDB servers indicate TLS capability for connections
+               via named pipe or shared memory, but don't support it. */
   if ((mysql->server_capabilities & CLIENT_SSL) &&
-      (mysql->net.pvio->type == PVIO_TYPE_NAMEDPIPE ||
-       mysql->net.pvio->type == PVIO_TYPE_SHAREDMEM))
+      (mysql->net.pvio->type == PVIO_TYPE_SHAREDMEM ||
+       (mysql->net.pvio->type == PVIO_TYPE_NAMEDPIPE &&
+        (!mariadb_connection(mysql) || mysql_get_server_version(mysql) < 130100))))
   {
     mysql->server_capabilities &= ~(CLIENT_SSL);
     mysql->options.extension->tls_allow_invalid_server_cert= 1;
