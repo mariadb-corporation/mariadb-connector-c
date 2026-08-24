@@ -36,7 +36,6 @@ jobs:
   ci-server:
     name: server ${{ matrix.server.version }} test suite${{ matrix.server.ps && format(' {0}', matrix.server.ps) || '' }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -85,16 +84,32 @@ jobs:
           git add libmariadb
           mkdir bld
           cd bld
-          cmake .. -DWITHOUT_DYNAMIC_PLUGINS=1
+          # WITHOUT_DYNAMIC_PLUGINS drops every plugin that defaults to DYNAMIC,
+          # auth_mysql_sha2 included, so ask for it explicitly: without it the
+          # mysql_sha2 suite below would silently skip instead of running.
+          cmake .. -DWITHOUT_DYNAMIC_PLUGINS=1 -DPLUGIN_AUTH_MYSQL_SHA2=STATIC
           make -j9
+          grep -q auth_mysql_sha2 sql/sql_builtin.cc || \
+            { echo "::error::caching_sha2_password plugin was not built"; exit 1; }
 
+      # the full server suite is too noisy to block a merge on, it stays advisory
       - name: Run test suite
         shell: bash
+        continue-on-error: true
         run: |
-          ls -lrt
           cd ./workdir-server/bld/mysql-test/
-          ls -lrt
           ./mysql-test-run.pl --suite=main,unit ${TEST_OPTION} --parallel=auto --skip-test=session_tracker_last_gtid
+        env:
+          TEST_OPTION: ${{ matrix.server.ps }}
+          MYSQL_TEST_HOST: 127.0.0.1
+
+      # authentication suite: small, stable, and entirely driven by the
+      # connector, so this one does gate the branch
+      - name: Run mysql_sha2 test suite
+        shell: bash
+        run: |
+          cd ./workdir-server/bld/mysql-test/
+          ./mysql-test-run.pl --suite=mysql_sha2 ${TEST_OPTION} --parallel=auto --force
         env:
           TEST_OPTION: ${{ matrix.server.ps }}
           MYSQL_TEST_HOST: 127.0.0.1
@@ -107,6 +122,100 @@ jobs:
           name: log-files-${{ matrix.server.version }}
           path: |
             ${{ github.workspace }}/workdir-server/bld/mysql-test/var/**/log/*.err
+
+  ci-server-windows:
+    name: server ${{ matrix.server.version }} windows test suite
+    runs-on: windows-2025
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        server:
+          - version: '11.4'
+          - version: '11.8'
+    steps:
+      - name: Configure git
+        shell: bash
+        run: |
+          # mtr result files cannot be compared with CRLF line endings
+          git config --global core.autocrlf input
+
+      - name: Install prerequisites
+        shell: pwsh
+        run: |
+          choco install winflexbison3 --no-progress -y
+          if (-not (Test-Path "C:\Strawberry\perl\bin\perl.exe")) {
+            choco install strawberryperl --no-progress -y
+          }
+
+      - name: Retrieve server ${{ matrix.server.version }}
+        shell: bash
+        run: |
+          git clone -b ${server_branch} https://github.com/mariadb/server ./workdir-server --depth=1
+        env:
+          server_branch: ${{ matrix.server.version }}
+
+      - name: Update libmariadb submodule for PR
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          cd ./workdir-server
+          git submodule update --init --remote libmariadb
+          cd libmariadb
+          git fetch origin ${{ github.event.pull_request.head.sha }}
+          git checkout -qf FETCH_HEAD
+
+      - name: Update libmariadb submodule for non-PR
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          cd ./workdir-server
+          git submodule set-branch -b ${{ github.ref_name }} libmariadb
+          git submodule sync
+          git submodule update --init --remote libmariadb
+          cd libmariadb
+          git checkout ${{ github.sha }}
+
+      - name: Make server
+        shell: bash
+        run: |
+          cd ./workdir-server
+          git add libmariadb
+          mkdir bld
+          cd bld
+          # WITH_SSL=bundled on the server side makes the connector build with
+          # SCHANNEL (see cmake/mariadb_connector_c.cmake), which is exactly the
+          # windows-only TLS path we want covered here. It also turns
+          # auth_mysql_sha2 into a static plugin, so it is always available.
+          cmake .. -DWITH_SSL=bundled -DWITH_UNIT_TESTS=OFF \
+            -DPLUGIN_AUTH_MYSQL_SHA2=STATIC \
+            -DPLUGIN_COLUMNSTORE=NO -DPLUGIN_ROCKSDB=NO -DPLUGIN_MROONGA=NO \
+            -DPLUGIN_SPIDER=NO -DPLUGIN_CONNECT=NO -DPLUGIN_OQGRAPH=NO
+          cmake --build . --config RelWithDebInfo -- -m
+          grep -q auth_mysql_sha2 sql/sql_builtin.cc || \
+            { echo "::error::caching_sha2_password plugin was not built"; exit 1; }
+
+      - name: Run mysql_sha2 test suite
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\Strawberry\perl\bin;$env:PATH"
+          # mtr needs a case sensitive directory to run in
+          $tmp = (Get-Item $env:RUNNER_TEMP).FullName -replace '\\','/'
+          $cidir = "$tmp/ci"
+          mkdir $cidir
+          fsutil file setCaseSensitiveInfo $cidir enable
+          cd workdir-server
+          perl bld\mysql-test\mysql-test-run.pl --force --parallel=2 --suite=mysql_sha2 --vardir=$cidir/var
+          perl bld\mysql-test\mysql-test-run.pl --force --parallel=2 --suite=mysql_sha2 --ps-protocol --vardir=$cidir/var-ps
+
+      - name: Archive error logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 5
+          name: log-files-windows-${{ matrix.server.version }}
+          path: |
+            ${{ runner.temp }}/ci/var*/**/log/*.err
 
   ci-clang:
     name: clang build
