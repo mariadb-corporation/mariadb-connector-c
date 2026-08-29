@@ -899,6 +899,7 @@ retry:
                    ER(CR_SSL_CONNECTION_ERROR), "Failed to verify the server certificate");
       return 1;
     }
+    mpvio.mysql_change_user= 0;
     goto retry;
   }
   /*
