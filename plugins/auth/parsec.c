@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2024, MariaDB plc
+  Copyright (c) 2024, 2026, MariaDB plc
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -191,11 +191,17 @@ cleanup:
   return 0;
 }
 
-#ifdef _MSC_VER
-  static __declspec(thread) struct Passwd_in_memory pwd_local;
-#else
-  static __thread struct Passwd_in_memory pwd_local;
-#endif
+/*
+  We cache between sessions: the private and public keys (very
+  expensive to calculate, pbkdf2 with many rounds) and the ext-salt (to
+  avoid re-requesting it)
+*/
+struct Cached_key
+{
+  MA_PLUGIN_DATA header;
+  struct Passwd_in_memory params;
+  uchar priv_key[ED25519_KEY_LENGTH];
+};
 
 static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
@@ -214,8 +220,8 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
                 "signed_msg should be packed.");
 
   struct Passwd_in_memory *params;
+  struct Cached_key *cached= (struct Cached_key *)mysql->plugin_data;
   int pkt_len;
-  uchar priv_key[ED25519_KEY_LENGTH];
   size_t pwlen= strlen(mysql->passwd);
   unsigned int max_iter_factor;
 
@@ -224,32 +230,50 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_SERVER_HANDSHAKE_ERR;
 
   memcpy(signed_msg.server_scramble, serv_scramble, CHALLENGE_SCRAMBLE_LENGTH);
+  random_bytes(signed_msg.response.client_scramble, CHALLENGE_SCRAMBLE_LENGTH);
 
-  if (vio->write_packet(vio, 0, 0) != 0) // Empty packet = "need salt"
+  if (cached)
+  {
+    /* Sign straight away to save a round-trip. */
+    if (ed25519_sign(signed_msg.start, CHALLENGE_SCRAMBLE_LENGTH * 2,
+                     cached->priv_key, signed_msg.response.signature,
+                     cached->params.pub_key))
+      return CR_AUTH_PLUGIN_ERR;
+
+    if (vio->write_packet(vio, signed_msg.response.start,
+                          sizeof signed_msg.response) != 0)
+      return CR_ERROR;
+  }
+  else if (vio->write_packet(vio, 0, 0) != 0) // Request salt
     return CR_ERROR;
 
   pkt_len= vio->read_packet(vio, (uchar**)&params);
-  if (pkt_len != 2 + CHALLENGE_SALT_LENGTH)
-    return CR_SERVER_HANDSHAKE_ERR;
-  if (params->algorithm != 'P')
-    return CR_AUTH_PLUGIN_ERR;
+  if (pkt_len < 0)
+    return CR_ERROR;
+
+  /* if it's not the salt - let the caller read the ok packet or fail */
+  if (pkt_len != 2 + CHALLENGE_SALT_LENGTH || params->algorithm != 'P')
+    return CR_OK_HANDSHAKE_COMPLETE;
 
   max_iter_factor= get_max_iter_factor(mysql);
 
   if (params->iterations > max_iter_factor)
     return CR_AUTH_PLUGIN_ERR;
 
-  random_bytes(signed_msg.response.client_scramble, CHALLENGE_SCRAMBLE_LENGTH);
+  if (!cached && !(cached= (struct Cached_key *)malloc(sizeof(*cached))))
+    return CR_OUT_OF_MEMORY;
+  cached->header.length= sizeof(*cached);
+  mysql->plugin_data= &cached->header;
 
-  if (compute_derived_key(mysql->passwd, pwlen, params, priv_key))
+  if (compute_derived_key(mysql->passwd, pwlen, params, cached->priv_key))
     return CR_AUTH_PLUGIN_ERR;
 
   if (ed25519_sign(signed_msg.start, CHALLENGE_SCRAMBLE_LENGTH * 2,
-                   priv_key, signed_msg.response.signature, params->pub_key))
+                   cached->priv_key, signed_msg.response.signature,
+                   params->pub_key))
     return CR_AUTH_PLUGIN_ERR;
 
-  /* Save for the future hash_password() call */
-  memcpy(&pwd_local, params, sizeof(*params));
+  cached->params= *params;
 
   if (vio->write_packet(vio, signed_msg.response.start,
                         sizeof signed_msg.response) != 0)
@@ -258,15 +282,16 @@ static int auth(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   return CR_OK;
 }
 
-static int hash_password(MYSQL *mysql __attribute__((unused)),
-                         unsigned char *out, size_t *outlen)
+static int hash_password(MYSQL *mysql, unsigned char *out, size_t *outlen)
 {
-  if (*outlen < sizeof(struct Passwd_in_memory))
+  struct Cached_key *cached= (struct Cached_key *)mysql->plugin_data;
+
+  if (*outlen < sizeof(struct Passwd_in_memory) || !cached)
     return 1;
   *outlen= sizeof(struct Passwd_in_memory);
 
-  /* Use cached value */
-  memcpy(out, &pwd_local, sizeof(struct Passwd_in_memory));
+  /* what auth() has just derived, or read out of the cache */
+  memcpy(out, &cached->params, sizeof(struct Passwd_in_memory));
   return 0;
 }
 
