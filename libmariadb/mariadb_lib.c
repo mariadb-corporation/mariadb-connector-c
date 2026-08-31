@@ -71,6 +71,7 @@
 #include <ma_pvio.h>
 #ifdef HAVE_TLS
 #include <ma_tls.h>
+#include <ma_session_cache.h>
 #endif
 #include <mysql/client_plugin.h>
 #ifdef _WIN32
@@ -4614,7 +4615,7 @@ static void mysql_once_init()
     mysql_init_ps_subsystem();
 #ifdef HAVE_TLS
   ma_tls_start(0, 0);
-  ma_tls_session_cache_init();
+  ma_session_cache_init();
 #endif
   ignore_sigpipe();
   mysql_client_init = 1;
@@ -4661,6 +4662,8 @@ void STDCALL mysql_server_end(void)
   if (ma_init_done)
     ma_end(0);
 #ifdef HAVE_TLS
+  /* before the TLS library goes down - the cache owns TLS sessions */
+  ma_session_cache_deinit();
   ma_pvio_tls_end();
 #endif
   mysql_client_init= 0;

@@ -214,18 +214,6 @@ void ma_pvio_tls_set_connection(MYSQL *mysql);
 void ma_pvio_tls_end();
 unsigned int ma_pvio_tls_get_peer_cert_info(MARIADB_TLS *ctls, unsigned int size);
 
-/* TLS session cache.
-
-   A session may only be offered to a connection whose TLS configuration is
-   identical to the one that received it, because a resumed handshake does no
-   certificate verification at all - see ma_tls_session_key().
-
-   ma_tls_session_cache_init/deinit are called once per process from
-   mysql_server_init()/mysql_server_end().
-*/
-void ma_tls_session_cache_init(void);
-void ma_tls_session_cache_deinit(void);
-
 /* The session to offer on this connection, or NULL when nothing suitable is
    cached - see ma_session_cache.h. Called by the backend from
    ma_tls_connect(). The reference is handed over to the caller. */
