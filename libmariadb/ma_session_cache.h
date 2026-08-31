@@ -53,4 +53,15 @@ void ma_tls_session_add(const uchar *key, SSL_SESSION *tls_session,
    rejected one of them - it means that others won't work either. */
 void ma_tls_session_clear(const uchar *key);
 
+/* A copy of what this plugin cached for this connection identity,
+   NULL when there is nothing. The caller owns it and can free it or
+   pass to ma_session_cache_plugin_data_set(). */
+MA_PLUGIN_DATA *ma_session_cache_plugin_data_dup(const uchar *key,
+                                                    const char *plugin);
+
+/* Moves mysql->plugin_data in the cache and sets mysql->plugin_data= NULL,
+   there's no value there anymore. */
+void ma_session_cache_plugin_data_set(const uchar *key, const char *plugin,
+                                      MYSQL *mysql);
+
 #endif /* _ma_session_cache_h_ */

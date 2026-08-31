@@ -5,6 +5,7 @@
 #include <ma_common.h>
 #include <ma_crypt.h>
 #include <mysql/client_plugin.h>
+#include <ma_session_cache.h>
 
 typedef struct st_mysql_client_plugin_AUTHENTICATION auth_plugin_t;
 static int client_mpvio_write_packet(struct st_plugin_vio*, const uchar*, int);
@@ -777,8 +778,10 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   const char    *auth_plugin_name= NULL;
   auth_plugin_t *auth_plugin;
   MCPVIO_EXT    mpvio;
-  ulong		      pkt_length;
+  ulong		pkt_length;
   int           res;
+  uchar         session_key[MA_SHA256_HASH_SIZE];
+  my_bool       no_session_key= ma_session_cache_key(mysql, session_key);
 
   /* determine the default/initial plugin to use */
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
@@ -829,11 +832,21 @@ retry:
         : strstr(disabled_plugins, auth_plugin_name) != NULL)
     {
       my_set_error(mysql, CR_PLUGIN_NOT_ALLOWED, SQLSTATE_UNKNOWN, 0, auth_plugin_name);
-      return 1;
+      goto err;
     }
   }
 
   mysql->net.read_pos[0]= 0;
+
+  /*
+    Hand the plugin what it remembered about this account last time, and take
+    back whatever it wants remembered now. A copy either way, so the plugin
+    never touches what is in the cache and the cache is free to drop it.
+  */
+  free(mysql->plugin_data);
+  mysql->plugin_data= no_session_key ? NULL
+            : ma_session_cache_plugin_data_dup(session_key, auth_plugin->name);
+
   res= auth_plugin->authenticate_user((struct st_plugin_vio *)&mpvio, mysql);
 
   if ((res == CR_ERROR && !mysql->net.buff) ||
@@ -850,7 +863,7 @@ retry:
       if (!mysql->net.last_errno) {
         my_set_error(mysql, CR_UNKNOWN_ERROR, SQLSTATE_UNKNOWN, 0);
       }
-    return 1;
+    goto err;
   }
 
   /* read the OK packet (or use the cached value in mysql->net.read_pos */
@@ -866,7 +879,7 @@ retry:
                           ER(CR_SERVER_LOST_EXTENDED),
                           "reading authorization packet",
                           errno);
-    return 1;
+    goto err;
   }
   if (mysql->net.read_pos[0] == 254)
   {
@@ -897,7 +910,7 @@ retry:
     {
       my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                    ER(CR_SSL_CONNECTION_ERROR), "Failed to verify the server certificate");
-      return 1;
+      goto err;
     }
     mpvio.mysql_change_user= 0;
     goto retry;
@@ -907,12 +920,12 @@ retry:
     the protocol correctly
   */
   if (mysql->net.read_pos[0] != 0)
-    return 1;
+    goto err;
   if (ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length))
-    return -1;
+    goto err;
 
   if (!mysql->net.tls_verify_status)
-    return 0;
+    goto ok;
 
   assert(mysql->options.use_ssl);
   assert(!mysql->options.extension->tls_allow_invalid_server_cert);
@@ -933,13 +946,13 @@ retry:
 
     if (!(fplen= ma_tls_get_finger_print(mysql->net.pvio->ctls, MA_HASH_SHA256,
                                          fp, sizeof(fp))))
-      return 1; /* error is already set */
+      goto err; /* error is already set */
 
     if (auth_plugin->hash_password_bin(mysql, buf, &buflen) ||
         !(ctx= ma_hash_new(MA_HASH_SHA256)))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-      return 1;
+      goto err;
     }
 
     ma_hash_input(ctx, (unsigned char*)buf, buflen);
@@ -950,12 +963,19 @@ retry:
 
     mysql_hex_string(hexdigest, (char*)digest, sizeof(digest));
     if (strcmp(hexdigest, hexsig) == 0)
-      return 0; /* phew. self-signed certificate is validated! */
+      goto ok; /* phew. self-signed certificate is validated! */
   }
 
   my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                ER(CR_SSL_CONNECTION_ERROR),
                "Certificate verification failure: The certificate is NOT trusted.");
+err:
+  free(mysql->plugin_data);
+  mysql->plugin_data= 0;
   return 1;
+ok:
+  if (mysql->plugin_data)
+    ma_session_cache_plugin_data_set(session_key, auth_plugin->name, mysql);
+  return 0;
 }
 

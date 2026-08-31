@@ -1,5 +1,6 @@
 /* Copyright (C) 2000 MySQL AB & MySQL Finland AB & TCX DataKonsult AB
-                 2012 by MontyProgram AB
+   Copyright (C) 2012 MontyProgram AB
+   Copyright (C) 2026 MariaDB plc
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -353,6 +354,25 @@ struct st_mysql_options {
     struct st_mysql_options_extension *extension;
 };
 
+/*
+  Plugin specific data, currently used only by authentication plugins.
+  A plugin can extend this structure with anything it wants and store
+  this structure in MYSQL::plugin_data. This serves two purposes:
+  - a plugin can use it to pass data between authenticate_user and
+    hash_password_bin methods.
+  - if MYSQL::plugin_data is not NULL after the successful authentication,
+    libmariadb will cache its value and on the next connection with the
+    same connection parameters (see ma_session_cache_key()), it will prefill
+    MYSQL::plugin_data with this structure, plugin can use it to save on
+    repeated work, e.g. password derivation.
+  MYSQL::plugin_data value must be allocated with malloc(), libmariadb
+  will free it with free().
+*/
+typedef struct st_ma_plugin_data
+{
+  size_t length;                /* of the whole block, this field included */
+} MA_PLUGIN_DATA;
+
 typedef struct st_mysql {
     NET         net;                    /* Communication parameters */
     void  *unused_0;
@@ -380,7 +400,8 @@ typedef struct st_mysql {
     my_bool     unused_1;
     char          scramble_buff[20+ 1];
     my_bool       unused_2;
-    void          *unused_3, *unused_4, *unused_5, *unused_6;
+    MA_PLUGIN_DATA *plugin_data;
+    void          *unused_4, *unused_5, *unused_6;
     LIST          *stmts;
     const struct  st_mariadb_methods *methods;
     void          *thd;

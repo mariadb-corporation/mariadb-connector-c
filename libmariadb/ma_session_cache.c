@@ -62,6 +62,9 @@ typedef struct st_ma_cache_entry
   MA_TLS_SESSION *tls, **tls_tail;
   unsigned int tls_count;
 
+  char plugin_name[MA_PLUGIN_NAME_LEN];
+  MA_PLUGIN_DATA *plugin_data;
+
   uchar key[MA_SHA256_HASH_SIZE];
 } MA_CACHE_ENTRY;
 
@@ -123,6 +126,7 @@ static void ma_cache_entry_delete(void *record)
 {
   MA_CACHE_ENTRY *entry= (MA_CACHE_ENTRY *)record;
   ma_tls_session_free_list(entry->tls);
+  free(entry->plugin_data);
   free(entry);
 }
 
@@ -231,6 +235,57 @@ void ma_tls_session_clear(const uchar *key)
   pthread_mutex_unlock(&LOCK_session_cache);
 
   ma_tls_session_free_list(freeme);
+}
+
+/*
+  A copy of what this plugin cached for this connection identity, NULL when
+  there is nothing. The caller owns it and can free it or pass to
+  ma_session_cache_plugin_data_set().
+*/
+MA_PLUGIN_DATA *ma_session_cache_plugin_data_dup(const uchar *key,
+                                                 const char *plugin)
+{
+  MA_CACHE_ENTRY *entry;
+  MA_PLUGIN_DATA *pd= NULL;
+
+  if (!ma_hashtbl_inited(&session_cache))
+    return NULL;
+
+  pthread_mutex_lock(&LOCK_session_cache);
+  if ((entry= ma_hashtbl_search(&session_cache, key, MA_SHA256_HASH_SIZE)) &&
+      entry->plugin_data && !strcmp(entry->plugin_name, plugin) &&
+      (pd= (MA_PLUGIN_DATA *)malloc(entry->plugin_data->length)))
+    memcpy(pd, entry->plugin_data, entry->plugin_data->length);
+  pthread_mutex_unlock(&LOCK_session_cache);
+
+  return pd;
+}
+
+/*
+  Moves mysql->plugin_data in the cache and sets mysql->plugin_data= NULL,
+  there's no value there anymore.
+*/
+void ma_session_cache_plugin_data_set(const uchar *key, const char *plugin,
+                                      MYSQL *mysql)
+{
+  MA_CACHE_ENTRY *entry;
+  MA_PLUGIN_DATA *freeme= NULL;
+
+  if (!ma_hashtbl_inited(&session_cache) ||
+      strlen(plugin) >= MA_PLUGIN_NAME_LEN)
+    return;
+
+  pthread_mutex_lock(&LOCK_session_cache);
+  if ((entry= ma_cache_entry_find_or_add(key)))
+  {
+    freeme= entry->plugin_data;     /* whatever it cached before, if any */
+    strcpy(entry->plugin_name, plugin);
+    entry->plugin_data= mysql->plugin_data;
+  }
+  pthread_mutex_unlock(&LOCK_session_cache);
+
+  mysql->plugin_data= NULL;
+  free(freeme);
 }
 
 static void cache_key_add_int(MA_HASH_CTX *ctx, uint32 value)
