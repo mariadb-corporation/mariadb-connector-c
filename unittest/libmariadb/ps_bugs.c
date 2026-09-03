@@ -6039,7 +6039,7 @@ static int test_conc762(MYSQL *mysql)
   mysql_stmt_fetch(stmt);
   FAIL_IF(is_null[0]==0, "Expected NULL value");
   FAIL_IF(is_null[1]==1, "Expected non-NULL value");
-  FAIL_IF(length[0]!=0, "Expected length=0");
+  FAIL_IF(length[0]!=1, "Expected length=1 (unchanged)");
   FAIL_IF(length[1]!=3, "Expected length=3");
 
   mysql_stmt_fetch(stmt);
@@ -6067,7 +6067,8 @@ static int test_conc762(MYSQL *mysql)
   check_stmt_rc(rc, stmt);
 
   mysql_stmt_fetch(stmt);
-  FAIL_IF(length[0]!=0, "Expected length=0");
+  FAIL_IF(length[0]==0, "Expected length>0 (untouched)");
+  FAIL_IF(is_null[0]==0, "Expected null indicator");
 
   mysql_stmt_close(stmt);
   return OK;
@@ -6203,72 +6204,93 @@ static int test_conc821(MYSQL *mysql)
 {
   MYSQL_STMT *stmt;
   int rc;
-  MYSQL_BIND bind[4];
-  ulong lengths[4];
-  my_bool is_null[4];
+  MYSQL_BIND bind[5];
+  ulong lengths[5] = {1000, 1000, 1000, 1000, 1000};
+  my_bool is_null[5];
+  
+  MYSQL_TIME ts, dt;
+  int32_t val_int;
   uint8_t tiny;
   uchar buffer[1000];
-  MYSQL_TIME dt, ts;
 
-  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_conc842");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "CREATE TABLE t1 (a DATETIME, b varchar(100), c timestamp, d tinyint)");
+  rc= mysql_query(mysql, "CREATE TABLE t_conc842 ("
+                         "a TIMESTAMP, "
+                         "b DATETIME, "
+                         "c INT, "
+                         "d TINYINT, "
+                         "e VARCHAR(100))");
   check_mysql_rc(rc, mysql);
 
-  rc= mysql_query(mysql, "INSERT INTO t1 VALUES (NOW(), 'test', NOW(), 1), "
-                         "(NULL, NULL, NULL, NULL), (NOW(), '6chars', NOW(), 2)");
+  rc= mysql_query(mysql, "INSERT INTO t_conc842 VALUES "
+                         "(NOW(), NOW(), 42, 12, 'Hello MariaDB'), "
+                         "(NOW(), NOW(), 100, 1, NULL)");
   check_mysql_rc(rc, mysql);
 
   stmt= mysql_stmt_init(mysql);
   check(stmt);
 
-  rc= mysql_stmt_prepare(stmt, SL("SELECT a, b, c, d FROM t1"));
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a, b, c, d, e FROM t_conc842"));
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_execute(stmt);
   check_stmt_rc(rc, stmt);
 
-  memset(bind, 0, sizeof(MYSQL_BIND) * 4);
-  bind[0].buffer_type = MYSQL_TYPE_DATETIME;
-  bind[1].buffer_type = MYSQL_TYPE_VAR_STRING;
-  bind[2].buffer_type = MYSQL_TYPE_TIMESTAMP;
-  bind[3].buffer_type = MYSQL_TYPE_TINY;
-  bind[0].buffer= &dt;
-  bind[1].buffer= buffer;
-  bind[2].buffer= &ts;
-  bind[3].buffer= &tiny;
-  bind[0].buffer_length= bind[2].buffer_length= sizeof(MYSQL_TIME);
-  bind[1].buffer_length= sizeof(buffer);
-  bind[3].buffer_length= 1;
+  memset(bind, 0, sizeof(MYSQL_BIND) * 5);
 
-  for (uint i= 0; i < 4; i++) {
-    bind[i].is_null= &is_null[i];
-    bind[i].length= &lengths[i];
+  bind[0].buffer_type = MYSQL_TYPE_TIMESTAMP;
+  bind[1].buffer_type = MYSQL_TYPE_DATETIME;
+  bind[2].buffer_type = MYSQL_TYPE_LONG;
+  bind[3].buffer_type = MYSQL_TYPE_TINY;
+  bind[4].buffer_type = MYSQL_TYPE_VAR_STRING;
+
+  bind[0].buffer = &ts;
+  bind[1].buffer = &dt;
+  bind[2].buffer = &val_int;
+  bind[3].buffer = &tiny;
+  bind[4].buffer = buffer;
+
+  bind[0].buffer_length = bind[1].buffer_length = sizeof(MYSQL_TIME);
+  bind[2].buffer_length = sizeof(int32_t);
+  bind[3].buffer_length = sizeof(uint8_t);
+  bind[4].buffer_length = sizeof(buffer);
+
+  for (uint i = 0; i < 5; i++) {
+    bind[i].is_null = &is_null[i];
+    bind[i].length = &lengths[i];
   }
 
   rc= mysql_stmt_bind_result(stmt, bind);
   check_stmt_rc(rc, stmt);
 
-  for (uint i=0; i < 3; i++) {
-    rc= mysql_stmt_fetch(stmt);
-    check_stmt_rc(rc, stmt);
+  /* Check that fixed sized types have correct buffer lengths set,
+     and non-fixed sized type (string) remains unchanged at 1000 */
+  FAIL_IF(lengths[0] != sizeof(MYSQL_TIME), "expected sizeof(MYSQL_TIME) for timestamp");
+  FAIL_IF(lengths[1] != sizeof(MYSQL_TIME), "expected sizeof(MYSQL_TIME) for datetime");
+  FAIL_IF(lengths[2] != sizeof(int32_t), "expected sizeof(int32_t) for int");
+  FAIL_IF(lengths[3] != sizeof(uint8_t), "expected sizeof(uint8_t) for tinyint");
+  FAIL_IF(lengths[4] != 1000, "expected string length to remain unchanged at 1000");
 
-    /* Since 1st row contained values, length values can't be 0 */
-    for (uint j=0; j < 4; j++)
-      FAIL_IF(lengths[j] == 0, "invalid length");
-    /* 2nd row contains NULL values */
-    if (i == 1) {
-      for (uint j=0; j < 4; j++) {
-        if (j != 2) /* ignore 3rd column, depends on explicit_defaults_for_timestamp setting */
-          FAIL_IF(is_null[j] == 0, "invalid null indicator");
-     }
-    } else
-      for (uint j=0; j < 4; j++)
-        FAIL_IF(is_null[j] == 1, "invalid null indicator");
-  }
+  /* Row 1: non-NULL string */
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(is_null[4] != 0, "expected string is_null to be 0 for row 1");
+  FAIL_IF(lengths[4] != strlen("Hello MariaDB"), "post-fetch string length invalid for row 1");
+
+  /* Row 2: NULL string */
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(is_null[4] != 1, "expected string is_null indicator to be set to 1 for NULL value");
+  FAIL_IF(lengths[4] != strlen("Hello MariaDB"), "expected length buffer to remain unchanged on NULL fetch");
 
   mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_conc842");
+  check_mysql_rc(rc, mysql);
+
   return OK;
 }
 

@@ -48,18 +48,42 @@ extern int auth_client(char *principal_name,
 
 static void parse_server_packet(char *packet, size_t packet_len, char *spn, char *mech)
 {
-  size_t spn_len;
-  spn_len = strnlen(packet, packet_len);
-  strncpy(spn, packet, PRINCIPAL_NAME_MAX);
-  if (spn_len == packet_len - 1)
-  {
-    /* Mechanism not included into packet */
-    *mech = 0;
-  }
-  else
-  {
-    strncpy(mech, packet + spn_len + 1, MECH_NAME_MAX);
-  }
+  const char *nul;
+  const char *mech_end;
+  size_t len;
+
+  if (!spn || !mech)
+    return;
+
+  *spn= *mech= '\0';
+
+  if (!packet || packet_len == 0)
+    return;
+
+  /* Find the SPN terminator within the packet. */
+  nul= memchr(packet, '\0', packet_len);
+
+  /* Copy SPN up to NUL or packet end, capped at PRINCIPAL_NAME_MAX. */
+  len= nul ? (size_t)(nul - packet) : packet_len;
+  if (len > PRINCIPAL_NAME_MAX)
+    len= PRINCIPAL_NAME_MAX;
+
+  memcpy(spn, packet, len);
+  spn[len]= '\0';
+
+  /* Stop if there was no NUL, or no remaining bytes after the NUL. */
+  if (!nul || ++nul >= packet + packet_len)
+    return;
+
+  /* Find the mechanism terminator. */
+  mech_end = memchr(nul, '\0', (size_t)(packet + packet_len - nul));
+
+  len= mech_end ? (size_t)(mech_end - nul) : (size_t)(packet + packet_len - nul);
+  if (len > MECH_NAME_MAX)
+    len= MECH_NAME_MAX;
+
+  memcpy(mech, nul, len);
+  mech[len]= '\0';
 }
 
 /**

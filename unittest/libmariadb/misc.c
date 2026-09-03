@@ -1743,8 +1743,131 @@ static int test_comp_level(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+#define PRINCIPAL_NAME_MAX 256
+#define MECH_NAME_MAX 64
+
+/* Static function under test copied directly from plugins/auth/auth_gssapi_client.c */
+static void parse_server_packet(char *packet, size_t packet_len, char *spn, char *mech)
+{
+  const char *nul;
+  const char *mech_end;
+  size_t len;
+
+  if (!spn || !mech)
+    return;
+
+  *spn= *mech= '\0';
+
+  if (!packet || packet_len == 0)
+    return;
+
+  /* Find the SPN terminator within the packet. */
+  nul= memchr(packet, '\0', packet_len);
+
+  /* Copy SPN up to NUL or packet end, capped at PRINCIPAL_NAME_MAX. */
+  len= nul ? (size_t)(nul - packet) : packet_len;
+  if (len > PRINCIPAL_NAME_MAX)
+    len= PRINCIPAL_NAME_MAX;
+
+  memcpy(spn, packet, len);
+  spn[len]= '\0';
+
+  /* Stop if there was no NUL, or no remaining bytes after the NUL. */
+  if (!nul || ++nul >= packet + packet_len)
+    return;
+
+  /* Find the mechanism terminator. */
+  mech_end = memchr(nul, '\0', (size_t)(packet + packet_len - nul));
+
+  len= mech_end ? (size_t)(mech_end - nul) : (size_t)(packet + packet_len - nul);
+  if (len > MECH_NAME_MAX)
+    len= MECH_NAME_MAX;
+
+  memcpy(mech, nul, len);
+  mech[len]= '\0';
+}
+
+
+static int test_conc850(MYSQL *mysql __attribute__((unused)))
+{
+  char spn[PRINCIPAL_NAME_MAX + 1];
+  char mech[MECH_NAME_MAX + 1];
+  char packet[512];
+  const char *test1_spn = "HTTP/localhost@REALM";
+  const char *test1_mech = "kerberos";
+  size_t p1_len;
+
+  /* -------------------------------------------------------------------------
+   * Test 1: Standard valid packet ("HTTP/localhost@REALM\0kerberos\0")
+   * ------------------------------------------------------------------------- */
+  memset(spn, 0xFF, sizeof(spn));
+  memset(mech, 0xFF, sizeof(mech));
+
+  p1_len = sprintf(packet, "%s", test1_spn) + 1; // includes NUL
+  p1_len += sprintf(packet + p1_len, "%s", test1_mech) + 1;
+
+  parse_server_packet(packet, p1_len, spn, mech);
+
+  FAIL_IF(strcmp(spn, test1_spn) != 0, "Test 1: SPN mismatch");
+  FAIL_IF(strcmp(mech, test1_mech) != 0, "Test 1: Mech mismatch");
+
+  /* -------------------------------------------------------------------------
+   * Test 2: Oversized SPN without NUL byte in first 256 bytes (Flaw 1 regression)
+   * ------------------------------------------------------------------------- */
+  memset(spn, 0xFF, sizeof(spn));
+  memset(mech, 0xFF, sizeof(mech));
+  memset(packet, 'A', 300); // 300 bytes of 'A', no NUL
+
+  parse_server_packet(packet, 300, spn, mech);
+
+  FAIL_IF(strlen(spn) != PRINCIPAL_NAME_MAX, "Test 2: SPN length should be capped at 256");
+  FAIL_IF(spn[PRINCIPAL_NAME_MAX] != '\0', "Test 2: SPN must be NUL-terminated");
+  FAIL_IF(mech[0] != '\0', "Test 2: Mech should be empty string when no NUL exists");
+
+  /* -------------------------------------------------------------------------
+   * Test 3: Missing NUL byte anywhere in packet (Flaw 2 regression)
+   * ------------------------------------------------------------------------- */
+  memset(spn, 0xFF, sizeof(spn));
+  memset(mech, 0xFF, sizeof(mech));
+  memset(packet, 'B', 100); // 100 bytes of 'B', no NUL
+
+  parse_server_packet(packet, 100, spn, mech);
+
+  FAIL_IF(strlen(spn) != 100, "Test 3: SPN length should match packet_len");
+  FAIL_IF(spn[100] != '\0', "Test 3: SPN must be NUL-terminated");
+  FAIL_IF(mech[0] != '\0', "Test 3: Mech should be empty string");
+
+  /* -------------------------------------------------------------------------
+   * Test 4: SPN terminated, but packet ends right after SPN NUL byte
+   * ------------------------------------------------------------------------- */
+  memset(spn, 0xFF, sizeof(spn));
+  memset(mech, 0xFF, sizeof(mech));
+  memcpy(packet, "HTTP/server\0", 12);
+
+  parse_server_packet(packet, 12, spn, mech);
+
+  FAIL_IF(strcmp(spn, "HTTP/server") != 0, "Test 4: SPN mismatch");
+  FAIL_IF(mech[0] != '\0', "Test 4: Mech should be empty string when no bytes remain after NUL");
+
+  /* -------------------------------------------------------------------------
+   * Test 5: NULL pointers or zero length
+   * ------------------------------------------------------------------------- */
+  memset(spn, 0xFF, sizeof(spn));
+  memset(mech, 0xFF, sizeof(mech));
+
+  parse_server_packet(NULL, 0, spn, mech);
+  FAIL_IF(spn[0] != '\0' || mech[0] != '\0', "Test 5: Buffers should be empty on NULL packet");
+
+  parse_server_packet(packet, 0, spn, mech);
+  FAIL_IF(spn[0] != '\0' || mech[0] != '\0', "Test 5: Buffers should be empty on zero packet_len");
+
+  printf("All parse_server_packet unit tests passed successfully!\n");
+  return 0;
+}
+
 struct my_tests_st my_tests[] = {
   {"test_disable_tls1_0", test_disable_tls1_0, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
+  {"test_conc850", test_conc850, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_comp_level", test_comp_level, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_ext_field_attr", test_ext_field_attr, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc533", test_conc533, TEST_CONNECTION_NEW, 0, NULL, NULL},
