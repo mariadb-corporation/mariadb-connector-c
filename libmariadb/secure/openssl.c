@@ -810,7 +810,9 @@ static int ma_verification_callback(int preverify_ok __attribute__((unused)), X5
     my_bool verify_status= MARIADB_TLS_VERIFY_OK;
 
     if ((x509_err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT ||
-         x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN))
+         x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN) ||
+         x509_err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY ||
+         x509_err == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE)
       verify_status= MARIADB_TLS_VERIFY_TRUST;
     else if (x509_err == X509_V_ERR_CERT_REVOKED)
       verify_status= MARIADB_TLS_VERIFY_REVOKED;
