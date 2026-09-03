@@ -1491,11 +1491,11 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
                buffer_type == MYSQL_TYPE_DATE ||
                buffer_type == MYSQL_TYPE_DATETIME) {
       *stmt->bind[i].length= stmt->bind[i].length_value= sizeof(MYSQL_TIME);
-    } else
-    /* string, blob, .... */
-    {
-      *stmt->bind[i].length= stmt->bind[i].length_value= 0;
-    }
+    };
+
+    /* CONC-821: We don't initialize length for variable length types to avoid
+                 problems with applications which rebind before storing/copying retrieved
+                 values from bind buffer */
   }
 
   stmt->bind_result_done= 1;
