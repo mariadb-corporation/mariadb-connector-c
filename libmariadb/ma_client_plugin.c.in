@@ -360,6 +360,22 @@ mysql_client_register_plugin(MYSQL *mysql,
 }
 
 
+#ifdef __APPLE__
+/*
+  If the dylib isn't found on linux, then dlerror() returns 'no such file'
+  but on Mac it returns a lot more information.  Our tests expect the
+  'no such file', so detect that error on Mac and replace the text.
+*/
+static const char *normalize_no_such_file_err(const char *errmsg)
+{
+  static const char *fnf= "no such file";
+  if (!strstr(errmsg, fnf))
+    return errmsg;
+  return fnf;
+}
+#endif
+
+
 /* see <mysql/client_plugin.h> for a full description */
 struct st_mysql_client_plugin * STDCALL
 mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
@@ -429,6 +445,9 @@ mysql_load_plugin_v(MYSQL *mysql, const char *name, int type,
    errmsg= errbuf;
 #else
     errmsg= dlerror();
+#ifdef __APPLE__
+    errmsg= normalize_no_such_file_err(errmsg);
+#endif
 #endif
     goto err;
   }
