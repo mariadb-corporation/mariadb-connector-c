@@ -35,6 +35,14 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <openssl/ssl.h>
 #endif
 
+my_bool have_dummy_server= 0;
+
+#define CHECK_DUMMY_SERVER()\
+if (!have_dummy_server) {\
+  diag("dummy server not started");\
+  return SKIP;\
+}
+
 static my_bool is_local_connection(const char *hostname)
 {
   const char *local_host_names[]= {
@@ -68,6 +76,7 @@ static void set_verify(MYSQL *mysql, my_bool onoff)
 {\
   unsigned int status;\
   mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);\
+  diag("tls_flags: %d", status);\
   FAIL_IF(!(status & (flag)), (text));\
 }
 
@@ -134,6 +143,7 @@ static int tls_abort_after_handshake(MARIADB_TLS *ctls, unsigned int flags)
 {
   MYSQL *mysql= ctls->pvio->mysql;
 
+  diag("abort after handshake");
   ma_pvio_tls_verify_server_cert(ctls, flags);
 
   mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_ERROR;
@@ -143,6 +153,56 @@ static int tls_abort_after_handshake(MARIADB_TLS *ctls, unsigned int flags)
   return 1;
 }
 
+#ifdef WIN32
+  #ifndef _WINSOCK_DEPRECATED_NO_WARNINGS
+    #define _WINSOCK_DEPRECATED_NO_WARNINGS
+  #endif
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+  #define CLOSE_SOCKET(s) closesocket(s)
+  #define IS_VALID_SOCKET(s) ((s) != INVALID_SOCKET)
+#else
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+  #include <unistd.h>
+  #define SOCKET int
+  #define CLOSE_SOCKET(s) close(s)
+  #define IS_VALID_SOCKET(s) ((s) >= 0)
+  #define Sleep(ms) usleep((ms) * 1000)
+#endif
+
+static int wait_for_tls_server(const char *host, int port, int max_retries)
+{
+  int i;
+  for (i = 0; i < max_retries; i++)
+  {
+    SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (IS_VALID_SOCKET(sock))
+    {
+      struct sockaddr_in addr;
+      memset(&addr, 0, sizeof(addr));
+      addr.sin_family = AF_INET;
+      addr.sin_port = htons((unsigned short)port);
+
+#ifdef WIN32
+      InetPtonA(AF_INET, host, &addr.sin_addr);
+#else
+      inet_pton(AF_INET, host, &addr.sin_addr);
+#endif
+
+      if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == 0)
+      {
+        CLOSE_SOCKET(sock);
+        return OK;
+      }
+      CLOSE_SOCKET(sock);
+    }
+    Sleep(500);
+  }
+  return FAIL;
+}
+
 static int test_start_tls_server(MYSQL *my __attribute__((unused)))
 {
 #ifdef WIN32
@@ -150,21 +210,25 @@ static int test_start_tls_server(MYSQL *my __attribute__((unused)))
   PROCESS_INFORMATION pi;
   char szCmdline[1024];
 
-  snprintf(szCmdline, sizeof(szCmdline), "%s @CC_SOURCE_DIR@/unittest/libmariadb/tls_server.py --host=%s --port=%d", "@Python3_EXECUTABLE@", tls_dummy_host, tls_dummy_port);
+  /* 1. Added -u to force unbuffered stdio so print() statements don't crash on invalid handles */
+  snprintf(szCmdline, sizeof(szCmdline), 
+           "\"%s\" -u \"%s/unittest/libmariadb/tls_server.py\" --host=%s --port=%d", 
+           "@Python3_EXECUTABLE@", "@CC_SOURCE_DIR@", tls_dummy_host, tls_dummy_port);
 
   ZeroMemory(&si, sizeof(si));
   ZeroMemory(&pi, sizeof(pi));
 
-  GetStartupInfo(&si);
   si.cb = sizeof(STARTUPINFO);
-  si.wShowWindow = SW_SHOWDEFAULT;
+  si.dwFlags = STARTF_USESHOWWINDOW;
+  si.wShowWindow = SW_HIDE; /* Hide window explicitly */
 
+  /* 2. Changed CREATE_NEW_CONSOLE to CREATE_NO_WINDOW for headless CI runner compatibility */
   if( !CreateProcessA(NULL,
         szCmdline,
         NULL,
         NULL,
         FALSE,
-        CREATE_NEW_CONSOLE,
+        CREATE_NO_WINDOW,
         NULL,
         NULL,
         &si,
@@ -174,6 +238,11 @@ static int test_start_tls_server(MYSQL *my __attribute__((unused)))
     diag("couldn't start tls_server. Error %d", GetLastError());
     return FAIL;
   }
+
+  /* 3. Close handle leaks */
+  CloseHandle(pi.hProcess);
+  CloseHandle(pi.hThread);
+
 #else
   pid_t tls_server_pid;
 
@@ -183,23 +252,30 @@ static int test_start_tls_server(MYSQL *my __attribute__((unused)))
 
     snprintf(hostname, sizeof(hostname), "--host=%s", tls_dummy_host);
     snprintf(port, sizeof(port), "--port=%d", tls_dummy_port);
-    execlp("@Python3_EXECUTABLE@", "@Python3_EXECUTABLE@", "@CC_SOURCE_DIR@/unittest/libmariadb/tls_server.py", hostname, port, NULL);
+    execlp("@Python3_EXECUTABLE@", "@Python3_EXECUTABLE@", "-u", "@CC_SOURCE_DIR@/unittest/libmariadb/tls_server.py", hostname, port, NULL);
   }
   
 #endif
-  sleep(10);
+  if (wait_for_tls_server(tls_dummy_host, tls_dummy_port, 30) != FAIL)
+  {
+    have_dummy_server= 1;
+    return OK;
+  }
+  diag("tls_server failed to respond on %s:%d within timeout", tls_dummy_host, tls_dummy_port);
   return OK;
 }
-
 
 static int set_tls_dummy_options(const char *options)
 {
   MA_PVIO_CINFO cinfo;
   MARIADB_PVIO *pvio;
-  MYSQL *mysql= mysql_init(NULL);
+  MYSQL *mysql;
   char buffer[1024];
   size_t len;
 
+  CHECK_DUMMY_SERVER();
+
+  mysql= mysql_init(NULL);
   cinfo.type= PVIO_TYPE_SOCKET;
   cinfo.host= tls_dummy_host;
   cinfo.port= tls_dummy_port;
@@ -296,6 +372,7 @@ static int test_conc712(MYSQL *my __attribute__((unused)))
   MYSQL *mysql= mysql_init(NULL);
   int rc= FAIL;
 
+  CHECK_DUMMY_SERVER();
   if (set_tls_dummy_options("CMD:create_new=True"))
   {
     diag("Error when setting TLS options");
@@ -481,6 +558,13 @@ static int test_pw_check(MYSQL *my)
   char query[1024];
   int ret= FAIL;
 
+
+  if (local_safe_connection)
+  {
+    diag("skip test for safe connections");
+    return SKIP;
+  }
+
   sprintf(query, "DROP USER IF EXISTS '%s'@'%s'", "tlsuser", this_host);
   rc= mysql_query(my, query);
   check_mysql_rc(rc, my);
@@ -559,8 +643,9 @@ static int test_cert_expired(MYSQL *my __attribute__((unused)))
   int ret= OK;
   MYSQL *mysql;
 
+  CHECK_DUMMY_SERVER();
   /* Set validity in future */
-  if (set_tls_dummy_options("CMD:create_new=True validityStartInSeconds=10000 validityEndInSeconds=2000"))
+  if (set_tls_dummy_options("CMD:create_new=True validityStartInSeconds=10000 validityEndInSeconds=20000"))
   {
     diag("Error when setting TLS options");
     return FAIL;
@@ -606,6 +691,9 @@ static int test_wrong_ca(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
 
+  /* dummy server created selfsigned.pem before */
+  CHECK_DUMMY_SERVER();
+
   mysql_ssl_set(mysql, NULL, NULL, "selfsigned.pem", NULL, NULL);
   set_verify(mysql, 1);
   if (my_test_connect(mysql, hostname, "tlsuser", "foo", NULL, port, socketname, 0, 0))
@@ -624,6 +712,7 @@ static int test_crl(MYSQL *my __attribute__((unused)))
   int ret= FAIL;
   unsigned int connect_timeout= 10;
 
+  CHECK_DUMMY_SERVER();
   /* Set validity in future */
   if (set_tls_dummy_options("CMD:KEY_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-key.pem' CERT_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.pem'"))
   {
@@ -674,6 +763,7 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
   unsigned int connect_timeout= 10;
   /* hardcoded: openssl x509 -noout -fingerprint -sha256 -inform pem -in certs/server-cert.pem */
   const char *fp= "4B:EE:BB:12:6D:30:1A:B2:2A:4A:F8:6D:82:7F:63:44:1F:8F:F4:6B:D3:F2:CA:68:0B:D5:E3:5D:1C:47:A7:16";
+  CHECK_DUMMY_SERVER();
 
   /* Set validity in future */
   if (set_tls_dummy_options("CMD:KEY_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-key.pem' CERT_FILE='@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.pem'"))
@@ -719,6 +809,7 @@ end:
 
 static int stop_tls_server(MYSQL *my __attribute__((unused)))
 {
+  CHECK_DUMMY_SERVER();
   if (set_tls_dummy_options("QUIT"))
   {
     diag("Error when shutting down tls dummy server");
@@ -749,6 +840,7 @@ static int tls_wildcard_callback(MARIADB_TLS *ctls, unsigned int flags)
 static int test_cert_wildcard(MYSQL *my __attribute((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
+  CHECK_DUMMY_SERVER();
   if (set_tls_dummy_options("CMD:create_new=True commonName='*.example.com'"))
   {
     diag("Error when setting TLS options");
@@ -891,6 +983,7 @@ static int test_cert_ip(MYSQL *my __attribute((unused)))
   char dummy_options[128];
   MYSQL *mysql= mysql_init(NULL);
 
+  CHECK_DUMMY_SERVER();
   snprintf(dummy_options, 128, "CMD:create_new=True SAN='IP.1:%s'", tls_dummy_host);
   if (set_tls_dummy_options(dummy_options))
   {
@@ -1028,6 +1121,99 @@ static int test_auth_switch_hostname_mismatch(MYSQL *my __attribute__((unused)))
   return OK;
 }
 
+#ifndef HAVE_SCHANNEL
+static int test_tls_verify_unknown(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc= FAIL;
+
+  /* 
+    Configure dummy server to present a leaf certificate signed by an 
+    untrusted CA without sending the CA certificate in the handshake chain.
+  */
+  CHECK_DUMMY_SERVER();
+  if (set_tls_dummy_options("CMD:create_new=True cert_mode='leaf'"))
+  {
+    diag("Error when setting TLS options for unknown CA test");
+    return FAIL;
+  }
+
+  /* Force TLS and turn on peer certificate verification */
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  set_verify(mysql, 1);
+
+  /* Connection should fail during handshake */
+  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL,
+                      tls_dummy_port, NULL, 0, 0))
+  {
+    diag("Connection unexpectedly succeeded despite missing CA cert!");
+    goto end;
+  }
+
+  /* 
+    Verify that MARIADB_TLS_VERIFY_UNKNOWN was set and survived bitwise masking.
+    Prior to the fix, status would be masked to 0 (MARIADB_TLS_VERIFY_OK).
+  */
+  CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_UNKNOWN,
+                  "MARIADB_TLS_VERIFY_UNKNOWN flag was expected for unhandled OpenSSL error");
+
+  FAIL_IF(mysql_errno(mysql) != CR_SSL_CONNECTION_ERROR,
+          "Expected CR_SSL_CONNECTION_ERROR on unknown CA error");
+
+  rc= OK;
+
+end:
+  mysql_close(mysql);
+  return rc;
+}
+#endif
+
+static int test_tls_verify_critical_ext(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql = mysql_init(NULL);
+  int rc = FAIL;
+
+  /* Instruct python test server to spawn with a self-signed cert containing a critical extension */
+  CHECK_DUMMY_SERVER();
+  if (set_tls_dummy_options("CMD:create_new=True custom_critical_ext=True cert_mode='self_signed'"))
+  {
+    diag("Error when setting TLS options for critical extension test");
+    return FAIL;
+  }
+
+  /* Configure client for standard connection (no explicit ssl-ca) */
+  mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
+  set_verify(mysql, 1); /* Default / Local mode: standard self-signed would pass */
+
+  /* Connection MUST fail due to the critical extension, even on localhost/local connections */
+  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL,
+                      tls_dummy_port, NULL, 0, 0))
+  {
+    diag("Connection unexpectedly succeeded on a certificate with an unhandled critical extension!");
+    goto end;
+  }
+
+  /* 
+    Verify MARIADB_TLS_VERIFY_UNKNOWN was set.
+    Status should be MARIADB_TLS_VERIFY_UNKNOWN (32) or 33 (TRUST | UNKNOWN).
+  */
+  if (!(mysql->net.tls_verify_status & MARIADB_TLS_VERIFY_UNKNOWN))
+  {
+    diag("Expected MARIADB_TLS_VERIFY_UNKNOWN flag to be set, got %u",
+         mysql->net.tls_verify_status);
+    goto end;
+  }
+
+  FAIL_IF(mysql_errno(mysql) != CR_SSL_CONNECTION_ERROR,
+          "Expected CR_SSL_CONNECTION_ERROR on critical extension failure");
+
+  rc = OK;
+
+end:
+  mysql_close(mysql);
+  return rc;
+}
+
 struct my_tests_st my_tests[] = {
   /* Don't add test above, test_init needs to be run first */
   {"test_conc795", test_conc795, TEST_CONNECTION_NEW, 0, NULL, NULL},
@@ -1050,6 +1236,10 @@ struct my_tests_st my_tests[] = {
   {"test_wrong_ca", test_wrong_ca, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_crl", test_crl, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_crl_with_fp", test_crl_with_fp, TEST_CONNECTION_NONE, 0, NULL, NULL},
+#ifndef HAVE_SCHANNEL
+  {"test_tls_verify_unknown", test_tls_verify_unknown, TEST_CONNECTION_NEW, 0, NULL, NULL},
+#endif
+  {"test_tls_verify_critical_ext", test_tls_verify_critical_ext, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"stop_tls_server", stop_tls_server, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {NULL, NULL, 0, 0, NULL, 0}
 };

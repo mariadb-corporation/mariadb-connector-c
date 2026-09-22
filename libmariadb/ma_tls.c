@@ -141,7 +141,7 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
     }
 #ifdef HAVE_OPENSSL
     /* verification already happened via callback */
-    if (!(mysql->net.tls_verify_status & flags))
+    if (!(mysql->net.tls_verify_status & (flags | MARIADB_TLS_VERIFY_UNKNOWN)))
     {
       mysql->extension->tls_validation= mysql->net.tls_verify_status;
       mysql->net.tls_verify_status= MARIADB_TLS_VERIFY_OK;
@@ -181,7 +181,10 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
   }
   /* Save original validation */
   mysql->extension->tls_validation= mysql->net.tls_verify_status;
-  mysql->net.tls_verify_status&= flags;
+
+  /* Retain requested flags AND preserve UNKNOWN status if set */
+  mysql->net.tls_verify_status&= (flags | MARIADB_TLS_VERIFY_UNKNOWN);
+
   return rc;
 }
 

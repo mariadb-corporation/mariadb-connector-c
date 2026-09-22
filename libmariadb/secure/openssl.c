@@ -810,7 +810,8 @@ static int ma_verification_callback(int preverify_ok __attribute__((unused)), X5
     my_bool verify_status= MARIADB_TLS_VERIFY_OK;
 
     if ((x509_err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT ||
-         x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN))
+         x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN ||
+         x509_err == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE)) 
       verify_status= MARIADB_TLS_VERIFY_TRUST;
     else if (x509_err == X509_V_ERR_CERT_REVOKED)
       verify_status= MARIADB_TLS_VERIFY_REVOKED;
@@ -818,13 +819,17 @@ static int ma_verification_callback(int preverify_ok __attribute__((unused)), X5
             x509_err == X509_V_ERR_CERT_HAS_EXPIRED)
       verify_status= MARIADB_TLS_VERIFY_PERIOD;
     else if (x509_err != X509_V_OK)
+    {
       verify_status= MARIADB_TLS_VERIFY_UNKNOWN;
+    }
 
     if (verify_status)
     {
       if (mysql->net.tls_verify_status < verify_status)
+      {
         my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
            ER(CR_SSL_CONNECTION_ERROR), X509_verify_cert_error_string(x509_err));
+      }
       mysql->net.tls_verify_status|= verify_status;
     }
   }
