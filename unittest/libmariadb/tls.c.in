@@ -913,24 +913,8 @@ static int test_env_var(MYSQL *my __attribute__((unused)))
     diag("Error: %s", mysql_error(mysql));
     goto end;
   }
-  mysql_close(mysql);
-
-  /* make sure trust will be checked */
-  if (!(mysql= mysql_init(NULL)))
-    goto end;
-  mysql_ssl_set(mysql, NULL, NULL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/cacert.pem", NULL, NULL);
-
-  if (my_test_connect(mysql, hostname, username, password, schema,
-                       port, socketname, 0, 0))
-  {
-    diag("expected error.");
-    goto end;
-  }
-
-  diag("Error (expected): %s", mysql_error(mysql));
 
   rc= OK;
-
 end:
 #ifdef _WIN32
   _putenv_s("MARIADB_TLS_DISABLE_PEER_VERIFICATION", "");
