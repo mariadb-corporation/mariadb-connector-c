@@ -425,10 +425,11 @@ ELSE()
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINKER_LANGUAGE C)
 ENDIF()
 
-# SSL libraries might be present in both SYSTEM_LIBS and CRYPT_LIBS. Deduplicate.
-SET(libs ${SYSTEM_LIBS} ${CRYPT_LIBS})
-IF(APPLE)
-  LIST(REMOVE_DUPLICATES libs)
+# SSL libraries might be present in both SYSTEM_LIBS and CRYPT_LIBS. 
+IF(APPLE AND "${CRYPT_LIBS}" STREQUAL "${SSL_LIBRARIES}")
+  SET(libs ${SYSTEM_LIBS})
+ELSE()
+  SET(libs ${SYSTEM_LIBS} ${CRYPT_LIBS})
 ENDIF()
 TARGET_LINK_LIBRARIES(mariadbclient ${libs})
 
