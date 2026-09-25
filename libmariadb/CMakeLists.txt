@@ -433,7 +433,7 @@ ELSE()
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINKER_LANGUAGE C)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(libmariadb ${client_libs})
+TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${client_libs})
 
 SIGN_TARGET(libmariadb)
 
