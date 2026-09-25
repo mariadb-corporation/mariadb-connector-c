@@ -425,7 +425,10 @@ ELSE()
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINKER_LANGUAGE C)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${SYSTEM_LIBS} ${CRYPT_LIBS})
+# SSL libraries might be present in both SYSTEM_LIBS and CRYPT_LIBS. Deduplicate.
+SET(libs ${SYSTEM_LIBS} ${CRYPT_LIBS})
+LIST(REMOVE_DUPLICATES libs)
+TARGET_LINK_LIBRARIES(mariadbclient ${libs})
 
 SIGN_TARGET(libmariadb)
 
