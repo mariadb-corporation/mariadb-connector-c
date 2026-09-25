@@ -427,7 +427,9 @@ ENDIF()
 
 # SSL libraries might be present in both SYSTEM_LIBS and CRYPT_LIBS. Deduplicate.
 SET(libs ${SYSTEM_LIBS} ${CRYPT_LIBS})
-LIST(REMOVE_DUPLICATES libs)
+IF(APPLE)
+  LIST(REMOVE_DUPLICATES libs)
+ENDIF()
 TARGET_LINK_LIBRARIES(mariadbclient ${libs})
 
 SIGN_TARGET(libmariadb)
