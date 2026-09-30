@@ -132,6 +132,24 @@ my_context_install_suspend_resume_hook(struct mysql_async_context *b,
 uint mysql_port=0;
 my_string mysql_unix_port=0;
 
+/* MDEV-11111: embedded server launcher, see mariadb_set_embedded_hooks() */
+static int (STDCALL *embedded_init_hook)(int, char **, char **);
+static void (STDCALL *embedded_end_hook)(void);
+static const char *(STDCALL *embedded_socket_hook)(void);
+static int embedded_argc;
+static char **embedded_argv, **embedded_groups;
+static int embedded_init_rc;
+
+void STDCALL mariadb_set_embedded_hooks(
+  int (STDCALL *server_init)(int, char **, char **),
+  void (STDCALL *server_end)(void),
+  const char *(STDCALL *socket_name)(void))
+{
+  embedded_init_hook= server_init;
+  embedded_end_hook= server_end;
+  embedded_socket_hook= socket_name;
+}
+
 #define CONNECT_TIMEOUT 0
 
 struct st_mariadb_methods MARIADB_DEFAULT_METHODS;
@@ -1718,6 +1736,7 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   char *host_copy= NULL;
   struct st_host *host_list= NULL;
   int connect_attempts= 0;
+  my_bool use_embedded= 0;
   ulong save_max_allowed_packet= max_allowed_packet;
 
   if (!mysql->methods)
@@ -1825,6 +1844,16 @@ restart:
   if (!unix_socket)
     unix_socket=mysql->options.unix_socket;
 
+  /* MDEV-11111: a local connection goes to the embedded server, if any */
+  if (embedded_socket_hook && !unix_socket &&
+      mysql->options.protocol != MYSQL_PROTOCOL_TCP &&
+      (!host || strcmp(host, LOCAL_HOST) == 0
+#ifdef _WIN32
+       || strcmp(host, LOCAL_HOST_NAMEDPIPE) == 0
+#endif
+      ))
+    use_embedded= (unix_socket= embedded_socket_hook()) != NULL;
+
   mysql->server_status=SERVER_STATUS_AUTOCOMMIT;
 
   /* try to connect via pvio_init */
@@ -1857,7 +1886,7 @@ restart:
     sprintf(host_info=buff,ER(CR_SHARED_MEMORY_CONNECTION), cinfo.host ? cinfo.host : SHM_DEFAULT_NAME);
   }
    /* named pipe */
-  else if (mysql->options.protocol == MYSQL_PROTOCOL_PIPE ||
+  else if (mysql->options.protocol == MYSQL_PROTOCOL_PIPE || use_embedded ||
 	  (host && strcmp(host,LOCAL_HOST_NAMEDPIPE) == 0))
   {
     cinfo.type= PVIO_TYPE_NAMEDPIPE;
@@ -4611,6 +4640,9 @@ static void mysql_once_init()
   ma_tls_start(0, 0);
 #endif
   ignore_sigpipe();
+  embedded_init_rc= embedded_init_hook ?
+                    embedded_init_hook(embedded_argc, embedded_argv,
+                                       embedded_groups) : 0;
   mysql_client_init = 1;
 #ifdef _WIN32
   return 0;
@@ -4631,22 +4663,29 @@ BOOL CALLBACK win_init_once(
 static pthread_once_t init_once = PTHREAD_ONCE_INIT;
 #endif
 
-int STDCALL mysql_server_init(int argc __attribute__((unused)),
-  char **argv __attribute__((unused)),
-  char **groups __attribute__((unused)))
+int STDCALL mysql_server_init(int argc, char **argv, char **groups)
 {
+  int rc;
+  embedded_argc= argc;
+  embedded_argv= argv;
+  embedded_groups= groups;
 #ifdef _WIN32
   BOOL ret = InitOnceExecuteOnce(&init_once, win_init_once, NULL, NULL);
-  return ret? 0: 1;
+  rc= ret ? 0 : 1;
 #else
-  return pthread_once(&init_once, mysql_once_init);
+  rc= pthread_once(&init_once, mysql_once_init);
 #endif
+  return rc ? rc : embedded_init_rc;
 }
 
 void STDCALL mysql_server_end(void)
 {
   if (!mysql_client_init)
     return;
+
+  if (embedded_end_hook)
+    embedded_end_hook();
+  embedded_init_rc= 0;
 
   release_configuration_dirs();
   mysql_client_plugin_deinit();
