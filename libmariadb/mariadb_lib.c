@@ -1844,15 +1844,23 @@ restart:
   if (!unix_socket)
     unix_socket=mysql->options.unix_socket;
 
-  /* MDEV-11111: a local connection goes to the embedded server, if any */
-  if (embedded_socket_hook && !unix_socket &&
+  /*
+    MDEV-11111: a local connection goes to the embedded server, if any. Also
+    when the socket is the embedded server's own, as an application that
+    asked for it gets it (on Windows "localhost" alone would mean TCP).
+  */
+  if (embedded_socket_hook &&
       mysql->options.protocol != MYSQL_PROTOCOL_TCP &&
       (!host || strcmp(host, LOCAL_HOST) == 0
 #ifdef _WIN32
        || strcmp(host, LOCAL_HOST_NAMEDPIPE) == 0
 #endif
       ))
-    use_embedded= (unix_socket= embedded_socket_hook()) != NULL;
+  {
+    const char *emb= embedded_socket_hook();
+    if (emb && (!unix_socket || strcmp(unix_socket, emb) == 0))
+      use_embedded= (unix_socket= emb) != NULL;
+  }
 
   mysql->server_status=SERVER_STATUS_AUTOCOMMIT;
 
