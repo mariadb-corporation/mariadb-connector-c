@@ -1736,7 +1736,9 @@ MYSQL *mthd_my_real_connect(MYSQL *mysql, const char *host, const char *user,
   char *host_copy= NULL;
   struct st_host *host_list= NULL;
   int connect_attempts= 0;
-  my_bool use_embedded= 0;
+#ifdef _WIN32
+  my_bool use_embedded= 0;  /* named pipe, see below */
+#endif
   ulong save_max_allowed_packet= max_allowed_packet;
 
   if (!mysql->methods)
@@ -1859,7 +1861,12 @@ restart:
   {
     const char *emb= embedded_socket_hook();
     if (emb && (!unix_socket || strcmp(unix_socket, emb) == 0))
-      use_embedded= (unix_socket= emb) != NULL;
+    {
+      unix_socket= emb;
+#ifdef _WIN32
+      use_embedded= 1;
+#endif
+    }
   }
 
   mysql->server_status=SERVER_STATUS_AUTOCOMMIT;
