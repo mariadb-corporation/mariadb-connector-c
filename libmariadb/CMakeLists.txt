@@ -15,7 +15,6 @@ SET(MARIADB_LIB_SYMBOLS
  mariadb_cancel
  mariadb_connection
  mariadb_convert_string
- mariadb_set_embedded_hooks
  ma_pvio_register_callback
  mariadb_get_charset_by_name
  mariadb_stmt_execute_direct
@@ -492,4 +491,92 @@ IF(MSVC)
    INSTALL(FILES $<TARGET_PDB_FILE:libmariadb> DESTINATION "${INSTALL_LIBDIR}"
            CONFIGURATIONS Debug RelWithDebInfo
            COMPONENT Development)
+ENDIF()
+
+#
+# MDEV-11111: libmariadbd. The same library as libmariadb, compiled so that
+# mysql_server_init() starts a private mariadbd, mysql_real_connect() to the
+# local host reaches it, and mysql_server_end() stops it.
+#
+IF(WITH_EMBEDDED_SERVER)
+  ADD_LIBRARY(mariadbd_obj OBJECT ${LIBMARIADB_SOURCES} ma_embedded_launcher.c)
+  SET_TARGET_PROPERTIES(mariadbd_obj PROPERTIES
+                        COMPILE_DEFINITIONS MARIADB_EMBEDDED_LAUNCHER)
+  IF(UNIX)
+    SET_TARGET_PROPERTIES(mariadbd_obj PROPERTIES
+                          COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
+  ENDIF()
+
+  # exported by libmariadbd in addition: the socket of the private server,
+  # and the reason it did not start
+  SET(MARIADBD_LIB_SYMBOLS ${MARIADB_LIB_SYMBOLS}
+      mariadb_embedded_socket mariadb_embedded_error)
+  IF(NOT WIN32)
+    CREATE_EXPORT_FILE(WRITE mariadbd.def
+                     "libmysqlclient_18"
+                     "${MYSQL_LIB_SYMBOLS}"
+                     "libmariadbclient_18")
+    CREATE_EXPORT_FILE(APPEND mariadbd.def
+                     "libmariadb_3"
+                     "${MARIADBD_LIB_SYMBOLS}"
+                     "")
+    CREATE_EXPORT_FILE(APPEND mariadbd.def
+                     "libmariadb_3_3_5"
+                     "${MARIADB_LIB_3_3_5_SYMBOLS}"
+                     "")
+  ELSE()
+    CREATE_EXPORT_FILE(WRITE mariadbd.def
+                     "libmariadb_3"
+                     "${MARIADBD_LIB_SYMBOLS};${MYSQL_LIB_SYMBOLS};${MARIADB_LIB_3_3_5_SYMBOLS}"
+                     "")
+  ENDIF()
+
+  ADD_LIBRARY(mariadbd_static STATIC $<TARGET_OBJECTS:mariadbd_obj> ${EMPTY_FILE})
+  TARGET_LINK_LIBRARIES(mariadbd_static ${SYSTEM_LIBS} ${CRYPT_LIBS} ${CMAKE_DL_LIBS})
+
+  IF(UNIX)
+    ADD_LIBRARY(libmariadbd SHARED $<TARGET_OBJECTS:mariadbd_obj> ${EMPTY_FILE})
+    SET_TARGET_PROPERTIES(libmariadbd PROPERTIES
+                          COMPILE_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS}")
+  ELSE()
+    ADD_LIBRARY(libmariadbd SHARED $<TARGET_OBJECTS:mariadbd_obj> mariadbd.def)
+    SET_TARGET_PROPERTIES(libmariadbd PROPERTIES LINKER_LANGUAGE C)
+  ENDIF()
+  TARGET_LINK_LIBRARIES(libmariadbd LINK_PRIVATE ${SYSTEM_LIBS} ${CRYPT_LIBS}
+                        ${CMAKE_DL_LIBS})
+  IF(CMAKE_SYSTEM_NAME MATCHES "Linux" OR
+     CMAKE_SYSTEM_NAME MATCHES "kFreeBSD" OR
+     CMAKE_SYSTEM_NAME MATCHES "GNU")
+    IF (NOT WITH_ASAN AND NOT WITH_TSAN AND NOT WITH_UBSAN AND NOT WITH_MSAN)
+      TARGET_LINK_LIBRARIES(libmariadbd LINK_PRIVATE "-Wl,--no-undefined")
+    ENDIF()
+    SET_TARGET_PROPERTIES(libmariadbd PROPERTIES
+                          LINK_FLAGS "${CC_BINARY_DIR}/libmariadb/mariadbd.def")
+  ENDIF()
+  SET_TARGET_PROPERTIES(libmariadbd PROPERTIES PREFIX ""
+                        VERSION ${CPACK_PACKAGE_VERSION_MAJOR}
+                        SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR})
+  # the name mariadbd belongs to the server, which on Windows also has a .lib
+  IF(WIN32)
+    SET_TARGET_PROPERTIES(mariadbd_static PROPERTIES OUTPUT_NAME "mariadbd_static")
+  ELSE()
+    SET_TARGET_PROPERTIES(mariadbd_static PROPERTIES OUTPUT_NAME "mariadbd")
+  ENDIF()
+  SIGN_TARGET(libmariadbd)
+
+  INSTALL(TARGETS mariadbd_static COMPONENT Development DESTINATION ${INSTALL_LIBDIR})
+  IF(WIN32)
+    INSTALL(TARGETS libmariadbd COMPONENT SharedLibraries
+            DESTINATION ${INSTALL_LIBDIR})
+  ELSE()
+    INSTALL(TARGETS libmariadbd LIBRARY DESTINATION ${INSTALL_LIBDIR}
+            COMPONENT SharedLibraries NAMELINK_COMPONENT Development)
+    # what libmysqld used to be called
+    create_symlink(libmysqld${CMAKE_SHARED_LIBRARY_SUFFIX} libmariadbd ${INSTALL_LIBDIR})
+    create_symlink(libmysqld${CMAKE_STATIC_LIBRARY_SUFFIX} mariadbd_static ${INSTALL_LIBDIR})
+  ENDIF()
+  IF(MSVC)
+    INSTALL(FILES $<TARGET_PDB_FILE:libmariadbd> DESTINATION "${INSTALL_LIBDIR}"
+            CONFIGURATIONS Debug RelWithDebInfo COMPONENT Development)
+  ENDIF()
 ENDIF()

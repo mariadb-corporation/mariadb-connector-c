@@ -132,23 +132,16 @@ my_context_install_suspend_resume_hook(struct mysql_async_context *b,
 uint mysql_port=0;
 my_string mysql_unix_port=0;
 
-/* MDEV-11111: embedded server launcher, see mariadb_set_embedded_hooks() */
-static int (STDCALL *embedded_init_hook)(int, char **, char **);
-static void (STDCALL *embedded_end_hook)(void);
-static const char *(STDCALL *embedded_socket_hook)(void);
+#ifdef MARIADB_EMBEDDED_LAUNCHER
+/*
+  MDEV-11111: libmariadbd. mysql_server_init() starts a private server, local
+  connections go to it, mysql_server_end() stops it.
+*/
+#include <ma_embedded_launcher.h>
 static int embedded_argc;
 static char **embedded_argv, **embedded_groups;
 static int embedded_init_rc;
-
-void STDCALL mariadb_set_embedded_hooks(
-  int (STDCALL *server_init)(int, char **, char **),
-  void (STDCALL *server_end)(void),
-  const char *(STDCALL *socket_name)(void))
-{
-  embedded_init_hook= server_init;
-  embedded_end_hook= server_end;
-  embedded_socket_hook= socket_name;
-}
+#endif
 
 #define CONNECT_TIMEOUT 0
 
@@ -1846,12 +1839,13 @@ restart:
   if (!unix_socket)
     unix_socket=mysql->options.unix_socket;
 
+#ifdef MARIADB_EMBEDDED_LAUNCHER
   /*
     MDEV-11111: a local connection goes to the embedded server, if any. Also
     when the socket is the embedded server's own, as an application that
     asked for it gets it (on Windows "localhost" alone would mean TCP).
   */
-  if (embedded_socket_hook &&
+  if (mariadb_embedded_socket() &&
       mysql->options.protocol != MYSQL_PROTOCOL_TCP &&
       (!host || strcmp(host, LOCAL_HOST) == 0
 #ifdef _WIN32
@@ -1859,8 +1853,8 @@ restart:
 #endif
       ))
   {
-    const char *emb= embedded_socket_hook();
-    if (emb && (!unix_socket || strcmp(unix_socket, emb) == 0))
+    const char *emb= mariadb_embedded_socket();
+    if (!unix_socket || strcmp(unix_socket, emb) == 0)
     {
       unix_socket= emb;
 #ifdef _WIN32
@@ -1868,6 +1862,7 @@ restart:
 #endif
     }
   }
+#endif
 
   mysql->server_status=SERVER_STATUS_AUTOCOMMIT;
 
@@ -4655,9 +4650,13 @@ static void mysql_once_init()
   ma_tls_start(0, 0);
 #endif
   ignore_sigpipe();
-  embedded_init_rc= embedded_init_hook ?
-                    embedded_init_hook(embedded_argc, embedded_argv,
-                                       embedded_groups) : 0;
+#ifdef MARIADB_EMBEDDED_LAUNCHER
+  if (mariadb_embedded_start(embedded_argc, embedded_argv, embedded_groups))
+  {
+    fprintf(stderr, "mysql_server_init: %s\n", mariadb_embedded_error());
+    embedded_init_rc= 1;
+  }
+#endif
   mysql_client_init = 1;
 #ifdef _WIN32
   return 0;
@@ -4681,16 +4680,22 @@ static pthread_once_t init_once = PTHREAD_ONCE_INIT;
 int STDCALL mysql_server_init(int argc, char **argv, char **groups)
 {
   int rc;
+#ifdef MARIADB_EMBEDDED_LAUNCHER
   embedded_argc= argc;
   embedded_argv= argv;
   embedded_groups= groups;
+#endif
 #ifdef _WIN32
   BOOL ret = InitOnceExecuteOnce(&init_once, win_init_once, NULL, NULL);
   rc= ret ? 0 : 1;
 #else
   rc= pthread_once(&init_once, mysql_once_init);
 #endif
-  return rc ? rc : embedded_init_rc;
+#ifdef MARIADB_EMBEDDED_LAUNCHER
+  if (!rc)
+    rc= embedded_init_rc;
+#endif
+  return rc;
 }
 
 void STDCALL mysql_server_end(void)
@@ -4698,9 +4703,10 @@ void STDCALL mysql_server_end(void)
   if (!mysql_client_init)
     return;
 
-  if (embedded_end_hook)
-    embedded_end_hook();
+#ifdef MARIADB_EMBEDDED_LAUNCHER
+  mariadb_embedded_stop();
   embedded_init_rc= 0;
+#endif
 
   release_configuration_dirs();
   mysql_client_plugin_deinit();
