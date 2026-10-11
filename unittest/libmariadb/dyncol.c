@@ -313,6 +313,7 @@ static int test_conc844(MYSQL *mysql __attribute__((unused)))
     0xFF, 0x0F              /* nmpool_size = 4095 bytes (exceeds actual blob length) */
   };
 
+
   memset(&str, 0, sizeof(str));
   str.str = (char *)corrupted_blob;
   str.length = sizeof(corrupted_blob); /* Total buffer length is only 5 bytes */

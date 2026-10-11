@@ -1247,28 +1247,37 @@ static int ma_set_rpl_filename(MARIADB_RPL *rpl, const unsigned char *filename, 
  *      1  header size  uncompressed length in MyISAM format.
  */
 static uint32_t get_compression_info(const unsigned char *buf,
+                                     const unsigned char *buf_end,
                                      uint8_t *algorithm,
                                      uint8_t *header_size)
 {
   uint8_t alg, header;
-  uint32 len= 0;
+  uint32_t len = 0;
 
   if (!algorithm)
-    algorithm= &alg;
+    algorithm = &alg;
   if (!header_size)
-    header_size= &header;
+    header_size = &header;
 
-  *header_size= 0;
-  *algorithm= 0;
+  *header_size = 0;
+  *algorithm = 0;
 
-  if (!buf)
-    return len;
+  /* Check that we have at least 1 byte for the header marker */
+  if (!buf || !buf_end || buf >= buf_end)
+    return 0;
 
   if ((buf[0] & 0xe0) != 0x80)
-    return len;
+    return 0;
 
-  *header_size= buf[0] & 0x07;
+  *header_size = buf[0] & 0x07;
   *algorithm = (buf[0] & 0x07) >> 4;
+
+  /* Verify that the payload contains the full declared header size */
+  if ((size_t)(buf_end - buf) <= (size_t)*header_size)
+  {
+    *header_size = 0;
+    return 0;
+  }
 
   buf++;
 
@@ -1277,19 +1286,19 @@ static uint32_t get_compression_info(const unsigned char *buf,
    */
   switch(*header_size) {
   case 1:
-    len= *buf;
+    len = *buf;
     break;
   case 2:
-    len= myisam_uint2korr(buf);
+    len = myisam_uint2korr(buf);
     break;
   case 3:
-    len= myisam_uint3korr(buf);
+    len = myisam_uint3korr(buf);
     break;
   case 4:
-    len= myisam_uint4korr(buf);
+    len = myisam_uint4korr(buf);
     break;
   default:
-    len= 0;
+    len = 0;
     break;
   }
 
@@ -1874,7 +1883,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
                 algorithm= 0;
         uLongf source_len, dest_len;
 
-        uint32_t uncompressed_len= get_compression_info(ev, &algorithm, &header_size);
+        uint32_t uncompressed_len= get_compression_info(ev, ev_end, &algorithm, &header_size);
 
         if (header_size >= len || len < header_size ||
             uncompressed_len == 0 ||
@@ -2570,7 +2579,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         uint8_t algorithm= 0, header_size= 0;
         uLongf source_len;
         uLong dest_len;
-        uint32_t uncompressed_len= get_compression_info(ev, &algorithm, &header_size);
+        uint32_t uncompressed_len= get_compression_info(ev, ev_end, &algorithm, &header_size);
 
         if (header_size >= (ev_end - ev) ||
             uncompressed_len == 0 ||
