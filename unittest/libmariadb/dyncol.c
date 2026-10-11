@@ -327,7 +327,58 @@ static int test_conc844(MYSQL *mysql __attribute__((unused)))
   return OK;
 }
 
+static int test_int_overflow(MYSQL *mysql __attribute__((unused)))
+{
+  DYNAMIC_COLUMN str;
+  DYNAMIC_COLUMN bad;
+  DYNAMIC_COLUMN_VALUE val, res;
+  uint column_nr= 1;
+  DYNAMIC_COLUMN_TYPE type[2]= {DYN_COL_INT, DYN_COL_UINT};
+  int rc, i;
+
+  for (i=0; i < 2; i++) {
+    val.type= type[i];
+    if (i)
+      val.x.ulong_value= 1;
+    else
+      val.x.long_value= 1;
+
+    rc= mariadb_dyncol_create_many_num(&str, 1, &column_nr, &val, 1);
+    if (rc != ER_DYNCOL_OK) {
+      diag("failed to create_many_num");
+      return FAIL;
+    }
+
+    /* widen the single column's data interval past 8 bytes */
+    bad.length= str.length + 12;
+    bad.max_length= bad.length;
+    bad.alloc_increment= 0;
+    if (!(bad.str= (char *) malloc(bad.length))) {
+      diag("out of memory");
+      mariadb_dyncol_free(&str);
+      return FAIL;
+    }
+    memcpy(bad.str, str.str, str.length);
+    memset(bad.str + str.length, 0, 12);
+
+    rc= mariadb_dyncol_get_num(&bad, column_nr, &res);
+    if (rc != ER_DYNCOL_FORMAT) {
+      free(bad.str);
+      mariadb_dyncol_free(&str);
+      diag("Format error expected");
+      return FAIL;
+    }
+
+    free(bad.str);
+    mariadb_dyncol_free(&str);
+  }
+
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_int_overflow", test_int_overflow, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"test_conc844", test_conc844, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"mdev_x1", mdev_x1, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"mdev_4994", mdev_4994, TEST_CONNECTION_NEW, 0, NULL, NULL}, 

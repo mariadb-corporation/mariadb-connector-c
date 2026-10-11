@@ -789,7 +789,8 @@ dynamic_column_var_uint_get(uchar *data, size_t data_length,
   uint length;
   uchar *end= data + data_length;
 
-  for (length=0; data < end ; data++)
+  /* A 64-bit value needs ceil(64/7) = 10 groups of 7 bits */
+  for (length=0; data < end && length < 10; data++)
   {
     val+= (((ulonglong)((*data) & 0x7f)) << (length * 7));
     length++;
@@ -862,6 +863,10 @@ dynamic_column_uint_read(DYNAMIC_COLUMN_VALUE *store_it_here,
   ulonglong value= 0;
   size_t i;
 
+  /* make sure length fits into 64-bit */
+  if (length > 8)
+    return ER_DYNCOL_FORMAT;
+
   for (i= 0; i < length; i++)
     value+= ((ulonglong)data[i]) << (i*8);
 
@@ -922,8 +927,10 @@ static enum enum_dyncol_func_result
 dynamic_column_sint_read(DYNAMIC_COLUMN_VALUE *store_it_here,
                          uchar *data, size_t length)
 {
+  enum enum_dyncol_func_result rc;
   ulonglong val;
-  dynamic_column_uint_read(store_it_here, data, length);
+  if ((rc= dynamic_column_uint_read(store_it_here, data, length)))
+    return rc;
   val= store_it_here->x.ulong_value;
   if (val & 1)
     val= (val >> 1) ^ 0xffffffffffffffffULL;
