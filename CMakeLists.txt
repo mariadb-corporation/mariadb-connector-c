@@ -2,7 +2,7 @@
 
 # This is the LGPL libmariadb project.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.12.0 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.11 FATAL_ERROR)
 
 INCLUDE(CheckFunctionExists)
 # CMP0077 defaults to NEW since cmake 3.13; can drop when minimum is bumped
