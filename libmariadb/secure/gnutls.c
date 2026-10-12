@@ -33,6 +33,8 @@
 #include <ma_tls.h>
 #include <mariadb_async.h>
 #include <ma_context.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 pthread_mutex_t LOCK_gnutls_config;
 
@@ -1075,6 +1077,36 @@ static int ma_gnutls_set_ciphers(gnutls_session_t ssl,
   return gnutls_priority_set_direct(ssl, prio , &err);
 }
 
+/* GnuTLS has no gnutls_certificate_set_x509_crl_dir(), so load every regular
+   file in the directory as a CRL individually. */
+static int ma_gnutls_set_x509_crl_dir(gnutls_certificate_credentials_t ctx,
+                                      const char *path)
+{
+  DIR *dir;
+  struct dirent *entry;
+  int loaded= 0;
+
+  if (!(dir= opendir(path)))
+    return -1;
+
+  while ((entry= readdir(dir)))
+  {
+    char filename[FN_REFLEN];
+    struct stat st;
+
+    snprintf(filename, sizeof(filename), "%s/%s", path, entry->d_name);
+
+    if (stat(filename, &st) != 0 || !S_ISREG(st.st_mode))
+      continue;
+
+    if (gnutls_certificate_set_x509_crl_file(ctx, filename, GNUTLS_X509_FMT_PEM) >= 0)
+      loaded++;
+  }
+  closedir(dir);
+
+  return loaded > 0 ? loaded : -1;
+}
+
 static int ma_tls_set_certs(MYSQL *mysql,
                             gnutls_certificate_credentials_t ctx)
 {
@@ -1103,6 +1135,14 @@ static int ma_tls_set_certs(MYSQL *mysql,
   {
     ssl_error= gnutls_certificate_set_x509_crl_file(ctx,
                    mysql->options.extension->ssl_crl, GNUTLS_X509_FMT_PEM);
+    if (ssl_error < 0)
+      goto error;
+  }
+
+  if (mysql->options.extension && mysql->options.extension->ssl_crlpath)
+  {
+    ssl_error= ma_gnutls_set_x509_crl_dir(ctx,
+                   mysql->options.extension->ssl_crlpath);
     if (ssl_error < 0)
       goto error;
   }
