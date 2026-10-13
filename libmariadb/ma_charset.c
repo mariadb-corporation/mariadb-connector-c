@@ -968,7 +968,7 @@ typedef struct my_uca1400_collation_definition_st
   with IDs of their closest UCA1400 counterparts, for character sets
   utf8mb3, utf8mb4, ucs2, utf16, utf32.
 */
-static MY_UCA1400_COLLATION_DEFINITION
+static const MY_UCA1400_COLLATION_DEFINITION
 my_uca1400_collation_definitions[MY_UCA1400_COLLATION_DEFINITION_COUNT]=
 {
 #define COLDEF(tl,name,id_utf8mb3,id_utf8mb4,id_ucs2,id_utf16,id_utf32) \
@@ -1041,7 +1041,7 @@ static uint my_uca1400_collation_id_uca400_compat(uint id)
 {
   uint tlid= my_uca1400_collation_id_to_tailoring_id(id);
   my_cs_encoding_t csid= my_uca1400_collation_id_to_charset_id(id);
-  MY_UCA1400_COLLATION_DEFINITION *def;
+  const MY_UCA1400_COLLATION_DEFINITION *def;
   DBUG_ASSERT(my_collation_id_is_uca1400(id));
   if (!(def= &my_uca1400_collation_definitions[tlid])->name)
     return id;
@@ -1242,7 +1242,7 @@ struct st_madb_os_charset {
 #define MADB_CS_EXACT 2
 
 /* Please add new character sets at the end. */
-struct st_madb_os_charset MADB_OS_CHARSET[]=
+const struct st_madb_os_charset MADB_OS_CHARSET[]=
 {
 #ifdef _WIN32
   /* Windows code pages */
