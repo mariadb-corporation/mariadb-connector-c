@@ -414,8 +414,16 @@ IF(WIN32)
                    "FILE_DESCRIPTION:Dynamic lib for client/server communication")
 ENDIF()
 
+# SSL libraries might be present in both SYSTEM_LIBS and CRYPT_LIBS. 
+IF(APPLE AND "${SSL_DEFINES}" MATCHES "WOLFSSL" AND "${CRYPT_LIBS}" STREQUAL "${SSL_LIBRARIES}")
+  SET(client_libs ${SYSTEM_LIBS})
+  LIST(REMOVE_DUPLICATES client_libs)
+ELSE()
+  SET(client_libs ${SYSTEM_LIBS} ${CRYPT_LIBS})
+ENDIF()
+
 ADD_LIBRARY(mariadbclient STATIC  ${MARIADB_OBJECTS} ${EMPTY_FILE})
-TARGET_LINK_LIBRARIES(mariadbclient ${SYSTEM_LIBS} ${CRYPT_LIBS})
+TARGET_LINK_LIBRARIES(mariadbclient ${client_libs})
 
 IF(UNIX)
   ADD_LIBRARY(libmariadb SHARED ${libmariadb_RC} ${MARIADB_OBJECTS} ${EMPTY_FILE})
@@ -425,7 +433,7 @@ ELSE()
   SET_TARGET_PROPERTIES(libmariadb PROPERTIES LINKER_LANGUAGE C)
 ENDIF()
 
-TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${SYSTEM_LIBS} ${CRYPT_LIBS})
+TARGET_LINK_LIBRARIES(libmariadb LINK_PRIVATE ${client_libs})
 
 SIGN_TARGET(libmariadb)
 
