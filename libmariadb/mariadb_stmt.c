@@ -209,6 +209,90 @@ static int stmt_buffered_fetch(MYSQL_STMT *stmt, uchar **row, ulong *length)
   return 0;
 }
 
+static my_bool ma_stmt_update_max_length(MYSQL_STMT *stmt, uchar *p, ulong packet_len)
+{
+  const uchar *end= p + packet_len;
+  size_t bitmap_len= ((size_t)stmt->field_count + 9) / 8;
+  uchar *null_ptr, bit_offset= 4;
+  uchar *cp= p;
+  unsigned int i;
+
+  /* status byte + NULL bitmap */
+  if (packet_len < 1 + bitmap_len)
+    return 1;
+
+  cp++; /* skip first byte */
+  null_ptr= cp;
+  cp+= bitmap_len;
+
+  for (i=0; i < stmt->field_count; i++)
+  {
+    if (!(*null_ptr & bit_offset))
+    {
+      if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len < 0)
+      {
+        ulong len;
+
+        /* NULLs are in the bitmap, 0xFB is invalid here */
+        if (net_field_length_safe(&cp, end, MARIADB_LENENC_FORBID_NULL,
+                                  &len) != MARIADB_LENENC_OK ||
+            len > (size_t)(end - cp))
+          return 1;
+
+        switch(stmt->fields[i].type) {
+        case MYSQL_TYPE_TIME:
+        case MYSQL_TYPE_DATE:
+        case MYSQL_TYPE_DATETIME:
+        case MYSQL_TYPE_TIMESTAMP:
+          stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
+          break;
+        default:
+          if (len > stmt->fields[i].max_length)
+            stmt->fields[i].max_length= len;
+          break;
+        }
+        cp+= len;
+      }
+      else
+      {
+        int pack_len= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
+
+        if ((size_t)pack_len > (size_t)(end - cp))
+          return 1;
+
+        if (stmt->fields[i].flags & ZEROFILL_FLAG)
+        {
+          /* The -1 is because a ZEROFILL:ed field is always unsigned */
+          size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len-1);
+          if (len > stmt->fields[i].max_length)
+            stmt->fields[i].max_length= (unsigned long)len;
+        }
+        else if (!stmt->fields[i].max_length)
+        {
+          stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
+          if (stmt->fields[i].flags & UNSIGNED_FLAG &&
+              stmt->fields[i].type != MYSQL_TYPE_INT24 &&
+              stmt->fields[i].type != MYSQL_TYPE_LONGLONG)
+          {
+            /*
+              Unsigned integers has one character less than signed integers
+              as '-' is counted as part of max_length
+            */
+            stmt->fields[i].max_length--;
+          }
+        }
+        cp+= pack_len;
+      }
+    }
+    if (!((bit_offset <<=1) & 255))
+    {
+      bit_offset= 1; /* To next byte */
+      null_ptr++;
+    }
+  }
+  return 0;
+}
+
 int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
 {
   MYSQL_DATA *result= &stmt->result;
@@ -221,8 +305,13 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
   while ((packet_len = ma_net_safe_read(stmt->mysql)) != packet_error)
   {
     p= stmt->mysql->net.read_pos;
-    if (packet_len > 7 || p[0] != 254)
+    if (packet_len > 7 || !packet_len || p[0] != 254)
     {
+      /* validate the row (and update max_length) before it is linked */
+      if (stmt->update_max_length &&
+          ma_stmt_update_max_length(stmt, p, packet_len))
+        goto malformed;
+
       /* allocate space for rows */
       if (!(current= (MYSQL_ROWS *)ma_alloc_root(&result->alloc, sizeof(MYSQL_ROWS) + packet_len)))
       {
@@ -236,78 +325,18 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
       /* copy binary row, we will encode it during mysql_stmt_fetch */
       memcpy((char *)current->data, (char *)p, packet_len);
 
-      if (stmt->update_max_length)
-      {
-        uchar *null_ptr, bit_offset= 4;
-        uchar *cp= p;
-        unsigned int i;
-
-        cp++; /* skip first byte */
-        null_ptr= cp;
-        cp+= (stmt->field_count + 9) / 8;
-
-        for (i=0; i < stmt->field_count; i++)
-        {
-          if (!(*null_ptr & bit_offset))
-          {
-            if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len < 0)
-            {
-              /* We need to calculate the sizes for date and time types */
-              size_t len= net_field_length(&cp);
-              switch(stmt->fields[i].type) {
-              case MYSQL_TYPE_TIME:
-              case MYSQL_TYPE_DATE:
-              case MYSQL_TYPE_DATETIME:
-              case MYSQL_TYPE_TIMESTAMP:
-                stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
-                break;
-              default:
-                if (len > stmt->fields[i].max_length)
-                  stmt->fields[i].max_length= (ulong)len;
-                break;
-              }
-              cp+= len;
-            }
-            else
-            {
-              if (stmt->fields[i].flags & ZEROFILL_FLAG)
-              {
-                /* The -1 is because a ZEROFILL:ed field is always unsigned */
-                size_t len= MAX(stmt->fields[i].length, mysql_ps_fetch_functions[stmt->fields[i].type].max_len-1);
-                if (len > stmt->fields[i].max_length)
-                  stmt->fields[i].max_length= (unsigned long)len;
-              }
-              else if (!stmt->fields[i].max_length)
-              {
-                stmt->fields[i].max_length= mysql_ps_fetch_functions[stmt->fields[i].type].max_len;
-                if (stmt->fields[i].flags & UNSIGNED_FLAG &&
-                    stmt->fields[i].type != MYSQL_TYPE_INT24 &&
-                    stmt->fields[i].type != MYSQL_TYPE_LONGLONG)
-                {
-                  /*
-                    Unsigned integers has one character less than signed integers
-                    as '-' is counted as part of max_length
-                  */
-                  stmt->fields[i].max_length--;
-                }
-              }
-              cp+= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
-            }
-          }
-          if (!((bit_offset <<=1) & 255))
-          {
-            bit_offset= 1; /* To next byte */
-            null_ptr++;
-          }
-        }
-      }
       current->length= packet_len;
       result->rows++;
     } else  /* end of stream */
     {
       unsigned int last_status= stmt->mysql->server_status;
+
+      /* EOF packet: 0xFE + 2 bytes warnings + 2 bytes status */
+      if (packet_len < 5)
+        goto malformed;
+
       *pprevious= 0;
-      /* sace status info */
+      /* save status info */
       p++;
       stmt->upsert_status.warning_count= stmt->mysql->warning_count= uint2korr(p);
       p+=2;
@@ -320,6 +349,12 @@ int mthd_stmt_read_all_rows(MYSQL_STMT *stmt)
   stmt->result_cursor= 0;
   stmt_set_error(stmt, stmt->mysql->net.last_errno, stmt->mysql->net.sqlstate,
       stmt->mysql->net.last_error);
+  return(1);
+
+malformed:
+  *pprevious= 0;
+  stmt->result_cursor= 0;
+  stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
   return(1);
 }
 
@@ -378,12 +413,21 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
   {
     unsigned int last_status= stmt->mysql->server_status;
     uchar *pos= stmt->mysql->net.read_pos;
+    const uchar *end= pos + packet_len;
+
+    if (!packet_len)                     /* empty packet, nothing to inspect */
+      continue;
 
     if (!in_resultset && *pos == 0) /* OK */
     {
+      unsigned long long v;
+
       pos++;
-      net_field_length(&pos);
-      net_field_length(&pos);
+      /* affected_rows and insert_id are 64 bit, NULL is invalid */
+      if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v) != MARIADB_LENENC_OK ||
+          net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v) != MARIADB_LENENC_OK ||
+          (size_t)(end - pos) < 2)
+        goto malformed;
       stmt->mysql->server_status= uint2korr(pos);
       ma_status_callback(stmt->mysql, last_status);
       goto end;
@@ -392,6 +436,9 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
     {
       if (mariadb_connection(stmt->mysql))
       {
+        /* EOF: 0xFE + 2 bytes warnings + 2 bytes status */
+        if (packet_len < 5)
+          goto malformed;
         stmt->mysql->server_status= uint2korr(pos + 3);
         ma_status_callback(stmt->mysql, last_status);
         if (in_resultset)
@@ -404,25 +451,50 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
   }
 end:
   stmt->state= MYSQL_STMT_FETCH_DONE;
+  return;
+
+malformed:
+  stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
+  stmt->state= MYSQL_STMT_FETCH_DONE;
+}
+
+static my_bool ma_column_len_valid(enum enum_field_types type, ulong data_len)
+{
+  switch (type) {
+  case MYSQL_TYPE_DATE:
+    return data_len == 0 || data_len == 4;
+  case MYSQL_TYPE_TIME:
+    return data_len == 0 || data_len == 8 || data_len == 12;
+  case MYSQL_TYPE_DATETIME:
+  case MYSQL_TYPE_TIMESTAMP:
+    return data_len == 0 || data_len == 4 || data_len == 7 || data_len == 11;
+  default:
+    return 1;
+  }
 }
 
 int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
 {
   uint i;
   size_t truncations= 0;
+  size_t bitmap_len= ((size_t)stmt->field_count + 9) / 8;
   unsigned char *null_ptr,
                 bit_offset= 4,
                 *end= row + length;
 
+  /* Reset row_ptr */
+  for (i=0; i < stmt->field_count; i++)
+    stmt->bind[i].u.row_ptr = NULL;
 
-  if (row + 1 + (stmt->field_count + 9) / 8 > end) {
+  /* status byte + NULL bitmap, compared by length, not by pointer sum */
+  if (length < 1 + bitmap_len) {
     stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
     return MYSQL_DATA_MALFORMED;
   }
 
   row++; /* skip status byte */
   null_ptr= row;
-  row+= (stmt->field_count + 9) / 8;
+  row+= bitmap_len;
 
   for (i=0; i < stmt->field_count; i++)
   {
@@ -457,19 +529,33 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
       ulong data_len;
       size_t packet_left;
       uchar *tmp_row= row;
+      uchar *col_end;
 
-      bind->u.row_ptr= row;
-
+      /* since mysql_ps_fetch_functions don't accept a length/guard parameter we have to
+         calculate field_length twice to avoid possible oob read */
       if (pack_len >= 0)
         data_len= pack_len;
-      else
-        data_len= net_field_length(&tmp_row);
+      else if (net_field_length_safe(&tmp_row, end, MARIADB_LENENC_FORBID_NULL,
+                                     &data_len) != MARIADB_LENENC_OK)
+      {
+        snprintf(errmsg, sizeof(errmsg)-1, "Malformed packet: Column %d has an invalid length prefix", i);
+        stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, errmsg);
+        return MYSQL_DATA_MALFORMED;
+      }
 
-      packet_left= end - tmp_row;
+      packet_left= (size_t)(end - tmp_row);
 
       /* CONC-820: 1. Check sentinel */
       if (data_len > packet_left) {
         snprintf(errmsg, sizeof(errmsg)-1, "Malformed packet: Column %d has length %lu, while remaining space is %zu bytes", i, data_len, packet_left);
+        stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, errmsg);
+        return MYSQL_DATA_MALFORMED;
+      }
+      col_end= tmp_row + data_len;      /* the column boundary is owned by C/C */
+
+      /* temporal types only allow a few lengths */
+      if (!ma_column_len_valid(field->type, data_len)) {
+        snprintf(errmsg, sizeof(errmsg) - 1, "Malformed packet: invalid length %lu for column %d", data_len, i);
         stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, errmsg);
         return MYSQL_DATA_MALFORMED;
       }
@@ -500,25 +586,23 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
           break;
       }
 
+      bind->u.row_ptr= row;
+
       if (!stmt->bind_result_done ||
           bind->flags & MADB_BIND_DUMMY)
       {
-        unsigned long length;
-
         if (stmt->result_callback)
+        {
           stmt->result_callback(stmt->user_data, i, &row);
-        else {
+          row= col_end;                 /* a callback cannot desync later columns */
+        } else {
           if (!bind->is_null)
             bind->is_null= &bind->is_null_value;
           *bind->is_null= 0;
-          if (mysql_ps_fetch_functions[stmt->fields[i].type].pack_len >= 0)
-            length= mysql_ps_fetch_functions[stmt->fields[i].type].pack_len;
-          else
-            length= net_field_length(&row);
-          row+= length;
+          row= col_end;
           if (!bind->length)
             bind->length= &bind->length_value;
-          *bind->length= bind->length_value= length;
+          *bind->length= bind->length_value= data_len;
         }
       }
       else
@@ -529,6 +613,7 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
           bind->is_null= &bind->is_null_value;
         *bind->is_null= 0;
         ps_fetch_func->func(bind, field, &row);
+        row= col_end;                   /* resync after the conversion function */
         if (stmt->mysql->options.report_data_truncation)
           truncations+= *bind->error;
       }

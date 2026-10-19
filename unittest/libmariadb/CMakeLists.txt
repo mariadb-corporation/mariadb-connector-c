@@ -30,7 +30,7 @@ IF($ENV{TRAVIS})
   ADD_DEFINITIONS("-DHAVE_TRAVIS=1")
 ENDIF()
 
-SET(API_TESTS "conc336" "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2" "rpl_api")
+SET(API_TESTS "conc336" "bulk1" "performance" "basic-t" "fetch" "charset" "logs" "cursor" "errors" "view" "ps" "ps_bugs" "sp" "result" "connection" "misc" "ps_new" "thread" "features-10_2" "rpl_api" "internal")
 IF(WITH_DYNCOL)
   SET(API_TESTS ${API_TESTS} "dyncol")
 ENDIF()
