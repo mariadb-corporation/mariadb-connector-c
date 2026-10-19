@@ -2005,8 +2005,10 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
 
       if (len > 0)
       {
-        rpl_parse_opt_metadata(rpl_event, ev, len);
+        if (rpl_parse_opt_metadata(rpl_event, ev, len))
+          goto malformed_packet;
         ev+= len;
+        (void)ev;
       }
 
       break;
@@ -2617,6 +2619,7 @@ MARIADB_RPL_EVENT * STDCALL mariadb_rpl_fetch(MARIADB_RPL *rpl, MARIADB_RPL_EVEN
         rpl_event->event.rows.row_data_size= dest_len;
         RPL_CHECK_POS(ev, ev_end, header_size + len);
         ev+= header_size + source_len;
+        (void)ev;
       } else {
         RPL_CALC_SAFE_LEN(ev, ev_end, rpl->use_checksum, rpl_event->event.rows.row_data_size, malformed_packet);
 
