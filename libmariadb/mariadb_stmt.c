@@ -59,6 +59,10 @@
 #include "ma_priv.h"
 #include <assert.h>
 
+#define MA_CB_NONE 0
+#define MA_CB_RESULT 1
+#define MA_CB_RESULT_EX 2
+
 
 #define UPDATE_STMT_ERROR(stmt)\
 stmt_set_error((stmt), (stmt)->mysql->net.last_errno, (stmt)->mysql->net.sqlstate, (stmt)->mysql->net.last_error)
@@ -513,16 +517,29 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
     /* save row position for fetching values in pieces */
     if (*null_ptr & bit_offset)
     {
-      if (stmt->result_callback)
-        stmt->result_callback(stmt->user_data, i, NULL);
-      else
-      {
-        if (!bind->is_null)
-          bind->is_null= &bind->is_null_value;
-        *stmt->bind[i].is_null= 1;
-        stmt->bind[i].u.row_ptr= NULL;
-        if (!stmt->bind[i].length)
-          stmt->bind[i].length= &stmt->bind[i].length_value;
+      switch (stmt->result_callback_type) {
+        case MA_CB_RESULT:
+          stmt->u.result_callback(stmt->user_data, i, NULL);
+          break;
+        case MA_CB_RESULT_EX:
+        {
+          int rc= stmt->u.result_callback_ex(stmt->user_data, i, NULL, end);
+
+          if (rc) {
+            stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN,
+                           "Result callback reported an error");
+            return MYSQL_DATA_MALFORMED;
+          }
+          break;
+        }
+        default:
+          if (!bind->is_null)
+            bind->is_null= &bind->is_null_value;
+          *stmt->bind[i].is_null= 1;
+          stmt->bind[i].u.row_ptr= NULL;
+          if (!stmt->bind[i].length)
+            stmt->bind[i].length= &stmt->bind[i].length_value;
+          break;
       }
     } else
     {
@@ -591,18 +608,31 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
       if (!stmt->bind_result_done ||
           bind->flags & MADB_BIND_DUMMY)
       {
-        if (stmt->result_callback)
-        {
-          stmt->result_callback(stmt->user_data, i, &row);
-          row= col_end;                 /* a callback cannot desync later columns */
-        } else {
-          if (!bind->is_null)
-            bind->is_null= &bind->is_null_value;
-          *bind->is_null= 0;
-          row= col_end;
-          if (!bind->length)
-            bind->length= &bind->length_value;
-          *bind->length= bind->length_value= data_len;
+        switch(stmt->result_callback_type) {
+          case MA_CB_RESULT:
+            stmt->u.result_callback(stmt->user_data, i, &row);
+            row= col_end;
+            break;
+          case MA_CB_RESULT_EX:
+          {
+            int rc= stmt->u.result_callback_ex(stmt->user_data, i, &row, col_end);
+            if (rc || row != col_end) {
+              stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN,
+                             rc ? "Result callback reported an error"
+                                : "Result callback did not consume the column data");
+              return MYSQL_DATA_MALFORMED;
+            }
+            break;
+          }
+          default:
+            if (!bind->is_null)
+              bind->is_null= &bind->is_null_value;
+            *bind->is_null= 0;
+            row= col_end;
+            if (!bind->length)
+              bind->length= &bind->length_value;
+            *bind->length= bind->length_value= data_len;
+            break;
         }
       }
       else
@@ -1346,6 +1376,18 @@ my_bool STDCALL mysql_stmt_attr_get(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     case STMT_ATTR_CB_USER_DATA:
       *((void **)value) = stmt->user_data;
       break;
+    case STMT_ATTR_CB_RESULT:
+      /* the union holds one pointer, so only return it if it is of this type */
+      *(ps_result_callback *)value=
+        (stmt->result_callback_type == MA_CB_RESULT) ? stmt->u.result_callback : NULL;
+      break;
+    case STMT_ATTR_CB_RESULT_EX:
+      *(ps_result_callback_ex *)value=
+        (stmt->result_callback_type == MA_CB_RESULT_EX) ? stmt->u.result_callback_ex : NULL;
+      break;
+    case STMT_ATTR_CB_PARAM:
+      *(ps_param_callback *)value= stmt->param_callback;
+      break;
     default:
       return(1);
   }
@@ -1389,7 +1431,12 @@ my_bool STDCALL mysql_stmt_attr_set(MYSQL_STMT *stmt, enum enum_stmt_attr_type a
     stmt->row_size= *(size_t *)value;
     break;
   case STMT_ATTR_CB_RESULT:
-    stmt->result_callback= (ps_result_callback)value;
+    stmt->u.result_callback= (ps_result_callback)value;
+    stmt->result_callback_type = (value) ? MA_CB_RESULT : MA_CB_NONE;
+    break;
+  case STMT_ATTR_CB_RESULT_EX:
+    stmt->u.result_callback_ex= (ps_result_callback_ex)value;
+    stmt->result_callback_type = (value) ? MA_CB_RESULT_EX : MA_CB_NONE;
     break;
   case STMT_ATTR_CB_PARAM:
     stmt->param_callback= (ps_param_callback)value;
