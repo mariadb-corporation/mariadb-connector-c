@@ -2062,7 +2062,8 @@ static my_bool read_name(DYN_HEADER *hdr, uchar *entry, LEX_STRING *name)
   else
   {
     size_t next_nmoffset= uint2korr(next_entry);
-    if (next_nmoffset > hdr->nmpool_size)
+    if (next_nmoffset < nmoffset ||
+        next_nmoffset > hdr->nmpool_size)
       return 1;
     name->length= next_nmoffset - nmoffset;
   }
