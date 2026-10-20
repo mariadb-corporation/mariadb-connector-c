@@ -377,8 +377,68 @@ static int test_int_overflow(MYSQL *mysql __attribute__((unused)))
   return OK;
 }
 
+static int test_conc864(MYSQL *mysql __attribute__((unused)))
+{
+  DYNAMIC_COLUMN dc, bad;
+  MYSQL_LEX_STRING keys[2]= {{(char *)"a", 1}, {(char *)"bb", 2}};
+  DYNAMIC_COLUMN_VALUE vals[2];
+  MYSQL_LEX_STRING *names= NULL;
+  unsigned char *blob;
+  uint count= 0;
+  size_t len;
+  int rc, result= FAIL;
+
+  vals[0].type= DYN_COL_INT;
+  vals[0].x.long_value= 1;
+  vals[1].type= DYN_COL_INT;
+  vals[1].x.long_value= 2;
+
+  mariadb_dyncol_init(&dc);
+  FAIL_IF(mariadb_dyncol_create_many_named(&dc, 2, keys, vals, 1) != ER_DYNCOL_OK,
+          "could not create the dynamic column");
+
+  len= dc.length;
+  blob= (unsigned char *)malloc(len);
+  FAIL_IF(!blob, "malloc failed");
+  memcpy(blob, dc.str, len);
+  mariadb_dyncol_free(&dc);
+
+  if (!(blob[0] & 0x04) || blob[5] != 0 || blob[6] != 0)
+  {
+    diag("unexpected layout of the dynamic column, update the test");
+    goto end;
+  }
+
+  blob[5]= 0xFF;                    /* entry 0: name offset 0xFFFF */
+  blob[6]= 0xFF;
+
+  memset(&bad, 0, sizeof(bad));
+  bad.str= (char *)blob;
+  bad.length= len;
+  bad.max_length= len;
+
+  rc= mariadb_dyncol_list_named(&bad, &count, &names);
+  if (rc != ER_DYNCOL_FORMAT)
+  {
+    diag("list_named returned %d, expected ER_DYNCOL_FORMAT", rc);
+    free(names);
+    goto end;
+  }
+  if (names != NULL || count != 0)
+  {
+    diag("list_named left names=%p count=%u after an error", (void *)names, count);
+    free(names);                    /* do not leak it from the test */
+    goto end;
+  }
+  result= OK;
+
+end:
+  free(blob);
+  return result;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_conc864", test_conc864, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_int_overflow", test_int_overflow, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"test_conc844", test_conc844, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"mdev_x1", mdev_x1, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
