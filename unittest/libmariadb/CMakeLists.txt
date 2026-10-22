@@ -64,10 +64,10 @@ ENDIF()
 ADD_LIBRARY(ma_getopt ma_getopt.c)
 
 IF(${Python3_FOUND})
-  execute_process(COMMAND ${Python3_EXECUTABLE} -m pip show cryptography
-                  RESULT_VARIABLE EXIT_CODE
-                  OUTPUT_QUIET)
-  if (${EXIT_CODE} EQUAL 0)
+  execute_process(COMMAND ${Python3_EXECUTABLE} -c "import cryptography"
+                  RESULT_VARIABLE CRYPTOGRAPHY_RC
+                  OUTPUT_QUIET ERROR_QUIET)
+  if(CRYPTOGRAPHY_RC EQUAL 0)
     SET(RUN_TLS 1)
   endif()
 ENDIF()

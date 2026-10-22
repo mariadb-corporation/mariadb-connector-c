@@ -1458,13 +1458,47 @@ static void set_verification_error(MYSQL *mysql, int status)
   gnutls_free(out.data);
 }
 
-static my_bool ma_gnutls_is_self_signed(gnutls_x509_crt_t cert)
+static my_bool ma_gnutls_chain_self_signed(MARIADB_TLS *ctls)
 {
-  if (!cert)
+  const gnutls_datum_t *list;
+  unsigned int n, i;
+  gnutls_x509_crt_t prev= NULL, cur= NULL;
+  my_bool res= FALSE;
+
+  if (!ctls || !ctls->ssl ||
+      !(list= gnutls_certificate_get_peers(ctls->ssl, &n)) || !n)
     return FALSE;
 
-  /* Returns 1 if cert was issued by cert (self-issued) */
-  return (gnutls_x509_crt_check_issuer(cert, cert) == 1);
+  for (i= 0; i < n; i++)
+  {
+    if (gnutls_x509_crt_init(&cur))
+      goto end;
+    if (gnutls_x509_crt_import(cur, &list[i], GNUTLS_X509_FMT_DER))
+    {
+      gnutls_x509_crt_deinit(cur);
+      goto end;
+    }
+    /* each certificate must have been issued by the next one */
+    if (prev)
+    {
+      my_bool linked= (gnutls_x509_crt_check_issuer(prev, cur) == 1);
+      gnutls_x509_crt_deinit(prev);
+      prev= NULL;
+      if (!linked)
+      {
+        gnutls_x509_crt_deinit(cur);
+        goto end;
+      }
+    }
+    prev= cur;
+  }
+  /* prev is now the last certificate */
+  res= (gnutls_x509_crt_check_issuer(prev, prev) == 1);
+
+end:
+  if (prev)
+    gnutls_x509_crt_deinit(prev);
+  return res;
 }
 
 int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
@@ -1497,13 +1531,9 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
 
     if (status & GNUTLS_CERT_SIGNER_NOT_FOUND)
     {
-      gnutls_x509_crt_t cert = ma_get_cert(ctls);
-      my_bool self_signed = ma_gnutls_is_self_signed(cert);
-      if (cert)
-        gnutls_x509_crt_deinit(cert);
-
-      if (self_signed)
-        mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_TRUST;
+      if (ma_gnutls_chain_self_signed(ctls) ||
+         (!mysql->options.ssl_ca && !mysql->options.ssl_capath))
+          mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_TRUST;
       else
         mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_UNKNOWN;
     }
