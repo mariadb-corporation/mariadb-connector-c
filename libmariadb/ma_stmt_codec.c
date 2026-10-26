@@ -568,6 +568,7 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
     case MYSQL_TYPE_TIMESTAMP:
     {
       MYSQL_TIME *tm= (MYSQL_TIME *)r_param->buffer;
+      *r_param->error= 0; /* historically inconsistent with other types */
       str_to_TIME(buffer, len, tm);
       break;
     }
@@ -596,6 +597,8 @@ static void convert_froma_string(MYSQL_BIND *r_param, char *buffer, size_t len)
         *r_param->error= (copylen > r_param->buffer_length);
 
       }
+      else
+        *r_param->error= 0;
       *r_param->length= (ulong)len;
     }
     break;
@@ -882,6 +885,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
     {
       double dval= (double)val;
       memcpy(buf, &dval, sizeof(double));
+      *r_param->error= 0;
       r_param->buffer_length= 8;
     }
     break;
@@ -1029,6 +1033,7 @@ void ps_fetch_double(MYSQL_BIND *r_param, const MYSQL_FIELD * field , unsigned c
     {
       double *value= (double *)r_param->buffer;
       float8get(*value, *row);
+      *r_param->error= 0;
       r_param->buffer_length= 8;
     }
     break;
@@ -1071,54 +1076,65 @@ void ps_fetch_float(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned cha
 }
 /* }}} */
 
-static void convert_to_datetime(MYSQL_TIME *t, unsigned char **row, uint len, enum enum_field_types type)
+static void convert_to_datetime(MYSQL_BIND *r_param, MYSQL_TIME *t,
+                                unsigned char **row, uint len,
+                                enum enum_field_types type)
 {
+  unsigned char *to= *row;
+  int has_date= 0;
+  uint min_len= 7;
+
   memset(t, 0, sizeof(MYSQL_TIME));
+  *r_param->error= 0;
 
-  /* binary protocol for datetime:
-     4-bytes:  DATE
-     7-bytes:  DATE + TIME
-     >7 bytes: DATE + TIME with second_part
+  /* binary protocol temporal payload lengths:
+     TIME:       0, 8, 12
+     DATE:       0, 4
+     DATETIME:   0, 4, 7, 11
+     A length too short for the fields it would decode is an error.
   */
-  if (len)
+  if (!len)
+    return;
+
+  if (type == MYSQL_TYPE_TIME)
   {
-    unsigned char *to= *row;
-    int has_date= 0;
-    uint offset= 7;
-
-    if (type == MYSQL_TYPE_TIME)
-    {
-      t->neg= to[0];
-      t->day= (ulong) sint4korr(to + 1);
-      t->time_type= MYSQL_TIMESTAMP_TIME;
-      offset= 8;
-      to++;
-    } else
-    {
-      t->year= (uint) sint2korr(to);
-      t->month= (uint) to[2];
-      t->day= (uint) to[3];
-      t->time_type= MYSQL_TIMESTAMP_DATE;
-      if (type == MYSQL_TYPE_DATE)
-        return;
-      has_date= 1;
-    }
-
-    if (len > 4)
-    {
-      t->hour= (uint) to[4];
-      if (type == MYSQL_TYPE_TIME)
-        t->hour+= t->day * 24;
-      t->minute= (uint) to[5];
-      t->second= (uint) to[6];
-      if (has_date)
-        t->time_type= MYSQL_TIMESTAMP_DATETIME;
-    }
-    if (len > offset)
-    {
-      t->second_part= (ulong)sint4korr(to+7);
-    }
+    if (len < 8)
+      goto corrupted;
+    t->neg= to[0];
+    t->day= (ulong) sint4korr(to + 1);
+    t->time_type= MYSQL_TIMESTAMP_TIME;
+    min_len= 8;
+    to++;
+  } else
+  {
+    if (len < 4)
+      goto corrupted;
+    t->year= (uint) sint2korr(to);
+    t->month= (uint) to[2];
+    t->day= (uint) to[3];
+    t->time_type= MYSQL_TIMESTAMP_DATE;
+    if (type == MYSQL_TYPE_DATE)
+      return;
+    has_date= 1;
   }
+
+  if (len >= min_len)
+  {
+    t->hour= (uint) to[4];
+    if (type == MYSQL_TYPE_TIME)
+      t->hour+= t->day * 24;
+    t->minute= (uint) to[5];
+    t->second= (uint) to[6];
+    if (has_date)
+      t->time_type= MYSQL_TIMESTAMP_DATETIME;
+
+    if (len >= min_len + 4)
+      t->second_part= (ulong)sint4korr(to+7);
+  }
+  return;
+
+corrupted:
+  *r_param->error= 1;
 }
 
 static const uint32_t sec_part_digits[]= {1000000, 100000, 10000, 1000, 100, 10, 1};
@@ -1134,19 +1150,19 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
   switch (r_param->buffer_type) {
     case MYSQL_TYPE_DATETIME:
     case MYSQL_TYPE_TIMESTAMP:
-      convert_to_datetime(t, row, len, field->type);
+      convert_to_datetime(r_param, t, row, len, field->type);
       break;
     case MYSQL_TYPE_DATE:
-      convert_to_datetime(t, row, len, field->type);
+      convert_to_datetime(r_param, t, row, len, field->type);
       break;
     case MYSQL_TYPE_TIME:
-      convert_to_datetime(t, row, len, field->type);
+      convert_to_datetime(r_param, t, row, len, field->type);
       t->year= t->day= t->month= 0;
       break;
     case MYSQL_TYPE_YEAR:
     {
       MYSQL_TIME tm;
-      convert_to_datetime(&tm, row, len, field->type);
+      convert_to_datetime(r_param, &tm, row, len, field->type);
       shortstore(r_param->buffer, tm.year);
       break;
     }
@@ -1155,7 +1171,7 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
       char dtbuffer[60];
       MYSQL_TIME tm;
       size_t length;
-      convert_to_datetime(&tm, row, len, field->type);
+      convert_to_datetime(r_param, &tm, row, len, field->type);
 
       switch(field->type) {
       case MYSQL_TYPE_DATE:
