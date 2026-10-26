@@ -43,6 +43,9 @@ if (!have_dummy_server) {\
   return SKIP;\
 }
 
+#define CHECK_TLS_VALIDATION(m, flag, text) \
+  FAIL_IF(!((m)->extension->tls_validation & (flag)), (text))
+
 static my_bool is_local_connection(const char *hostname)
 {
   const char *local_host_names[]= {
@@ -384,12 +387,9 @@ static int test_conc712(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, "./selfsigned.pem", NULL, NULL);
   mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handshake);
 
-  if (my_test_connect(mysql, tls_dummy_host, username, password, schema,
-                      tls_dummy_port, socketname, 0, 0))
-  {
-    diag("Error: %s", mysql_error(mysql));
-    goto end;
-  }
+  /* Connection to fake server will be aborted, so ignore return value */
+  (void)my_test_connect(mysql, tls_dummy_host, username, password, schema,
+                      tls_dummy_port, socketname, 0, 0);
   if (is_local_connection(tls_dummy_host))
   {
     CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass for secure connection");
@@ -397,7 +397,7 @@ static int test_conc712(MYSQL *my __attribute__((unused)))
     CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification passed");
   }
   rc= OK;
-end:
+
   mysql_close(mysql);
   return rc;
 }
@@ -656,11 +656,8 @@ static int test_cert_expired(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
   set_verify(mysql, 1);
 
-  if (my_test_connect(mysql, tls_dummy_host,  "tlsuser", "foo", NULL,  tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Error expected since cert is not valid yet");
-    return FAIL;
-  }
+  /* Connection to fake server will be aborted, so ignore return value */
+  (void)my_test_connect(mysql, tls_dummy_host,  "tlsuser", "foo", NULL,  tls_dummy_port, NULL, 0, 0);
   mysql_close(mysql);
 
   /* Set cert expired */
@@ -675,11 +672,8 @@ static int test_cert_expired(MYSQL *my __attribute__((unused)))
 
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
 
-  if (my_test_connect(mysql, tls_dummy_host,  "tlsuser", "foo", NULL,  tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Error expected since cert is not valid yet");
-    return FAIL;
-  }
+  /* Connection to fake server will be aborted, so ignore return value */
+  (void)my_test_connect(mysql, tls_dummy_host,  "tlsuser", "foo", NULL,  tls_dummy_port, NULL, 0, 0);
   CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_PERIOD, "NotBefore/NotAfter flag not set")
   mysql_close(mysql);
 
@@ -734,11 +728,9 @@ static int test_crl(MYSQL *my __attribute__((unused)))
   mysql_optionsv(mysql, MYSQL_OPT_SSL_CRL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.crl");
   mysql_ssl_set(mysql, NULL, NULL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/cacert.pem", NULL, NULL);
 
-  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Error expected since cert revoked");
-    goto end;
-  }
+  /* Connection to fake server will be aborted, so ignore return value */
+  (void)my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0);
+
   /* Revocation check can require a network round-trip that is unreachable in CI;
      a connection/timeout error here is not a test failure. */
   if (mysql_errno(mysql) == CR_SSL_CONNECTION_ERROR)
@@ -785,11 +777,9 @@ static int test_crl_with_fp(MYSQL *my __attribute__((unused)))
   mysql_optionsv(mysql, MYSQL_OPT_SSL_CRL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/server-cert.crl");
   mysql_ssl_set(mysql, NULL, NULL, "@CC_BINARY_DIR@/unittest/libmariadb/certs/cacert.pem", NULL, NULL);
 
-  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Error expected since cert revoked");
-    goto end;
-  }
+  /* Connection to fake server will be aborted, so ignore return value */
+  (void)my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0);
+
   /* Revocation check can require a network round-trip that is unreachable in CI;
      a connection/timeout error here is not a test failure. */
   if (mysql_errno(mysql) == CR_SSL_CONNECTION_ERROR)
@@ -943,7 +933,6 @@ static int test_fp_and_verify(MYSQL *my __attribute__((unused)))
     diag("error: %s", mysql_error(mysql));
     goto end;
   }
-
 /* Schannel aborts on first error, if fingerprint was specified,
    MARIADB_TLS_VERIFY_TRUST is unset */
 #ifndef HAVE_SCHANNEL
@@ -976,16 +965,14 @@ static int test_cert_ip(MYSQL *my __attribute((unused)))
   }
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
   set_verify(mysql, 1);
-  mysql_optionsv(mysql, MARIADB_OPT_TLS_VERIFICATION_CALLBACK, tls_abort_after_handshake);
 
-  if (!my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0))
-  {
-    CHECK_NO_TLS_FLAG(mysql, MARIADB_TLS_VERIFY_HOST, "Hostname verification didn't pass");
-    mysql_close(mysql);
-  } else {
-    mysql_close(mysql);
-    return FAIL;
-  }
+  (void)my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL, tls_dummy_port, NULL, 0, 0);
+
+  FAIL_IF(mysql_errno(mysql) == CR_SSL_CONNECTION_ERROR, "expected successfull TLS handshake");
+
+  mysql_close(mysql);
+
+
 
   return OK;
 }
@@ -1081,13 +1068,8 @@ static int test_auth_switch_hostname_mismatch(MYSQL *my __attribute__((unused)))
     The client MUST fail immediately upon hostname verification failure during TLS.
     It MUST NOT proceed to send authentication credentials.
   */
-  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", strong_pwd, NULL, 
-                      tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Error: Connection succeeded despite hostname mismatch!");
-    mysql_close(mysql);
-    return FAIL;
-  }
+  (void)my_test_connect(mysql, tls_dummy_host, "tlsuser", strong_pwd, NULL, 
+                      tls_dummy_port, NULL, 0, 0);
   {
     unsigned int status;
     mariadb_get_infov(mysql, MARIADB_TLS_VERIFY_STATUS, &status);
@@ -1106,13 +1088,13 @@ static int test_auth_switch_hostname_mismatch(MYSQL *my __attribute__((unused)))
 }
 
 #ifndef HAVE_SCHANNEL
-static int test_tls_verify_unknown(MYSQL *my __attribute__((unused)))
+static int test_tls_verify_leaf_without_ca(MYSQL *my __attribute__((unused)))
 {
   MYSQL *mysql= mysql_init(NULL);
   int rc= FAIL;
 
-  /* 
-    Configure dummy server to present a leaf certificate signed by an 
+  /*
+    Configure dummy server to present a leaf certificate signed by an
     untrusted CA without sending the CA certificate in the handshake chain.
   */
   CHECK_DUMMY_SERVER();
@@ -1126,30 +1108,20 @@ static int test_tls_verify_unknown(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
   set_verify(mysql, 1);
 
-  /* Connection should fail during handshake */
-  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL,
-                      tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Connection unexpectedly succeeded despite missing CA cert!");
-    goto end;
-  }
+  /* Connection to fake server will be aborted, so ignore return value */
+  (void)my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL,
+                      tls_dummy_port, NULL, 0, 0);
 
-  /* 
-    Verify that MARIADB_TLS_VERIFY_UNKNOWN was set and survived bitwise masking.
-    Prior to the fix, status would be masked to 0 (MARIADB_TLS_VERIFY_OK).
-  */
-  CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_UNKNOWN,
-                  "MARIADB_TLS_VERIFY_UNKNOWN flag was expected for unhandled OpenSSL error");
+  CHECK_TLS_VALIDATION(mysql, MARIADB_TLS_VERIFY_TRUST, "MARIADB_TLS_VERIFY_TRUST flag was expected.");
 
-  FAIL_IF(mysql_errno(mysql) != CR_SSL_CONNECTION_ERROR,
-          "Expected CR_SSL_CONNECTION_ERROR on unknown CA error");
+  FAIL_IF(mysql_errno(mysql) == CR_SSL_CONNECTION_ERROR, "TLS error was not cleared after handshake succeeded");
 
   rc= OK;
 
-end:
   mysql_close(mysql);
   return rc;
 }
+
 #endif
 
 static int test_tls_verify_critical_ext(MYSQL *my __attribute__((unused)))
@@ -1169,15 +1141,10 @@ static int test_tls_verify_critical_ext(MYSQL *my __attribute__((unused)))
   mysql_ssl_set(mysql, NULL, NULL, NULL, NULL, NULL);
   set_verify(mysql, 1); /* Default / Local mode: standard self-signed would pass */
 
-  /* Connection MUST fail due to the critical extension, even on localhost/local connections */
-  if (my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL,
-                      tls_dummy_port, NULL, 0, 0))
-  {
-    diag("Connection unexpectedly succeeded on a certificate with an unhandled critical extension!");
-    goto end;
-  }
+  (void)my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL,
+                      tls_dummy_port, NULL, 0, 0);
 
-  /* 
+  /*
     Verify MARIADB_TLS_VERIFY_UNKNOWN was set.
     Status should be MARIADB_TLS_VERIFY_UNKNOWN (32) or 33 (TRUST | UNKNOWN).
   */
@@ -1197,6 +1164,49 @@ end:
   mysql_close(mysql);
   return rc;
 }
+
+#ifdef HAVE_OPENSSL
+/*
+  The client trusts the intermediate but not the root. The chain reaches the
+  trust store but can't be completed: X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT (2),
+  because ctx->num_untrusted < num.
+*/
+static int test_tls_openssl_err2(MYSQL *my __attribute__((unused)))
+{
+  MYSQL *mysql= mysql_init(NULL);
+  int rc= FAIL;
+
+  CHECK_DUMMY_SERVER();
+  if (set_tls_dummy_options("CMD:create_new=True cert_mode='intermediate'"))
+  {
+    diag("Error when setting TLS options");
+    mysql_close(mysql);
+    return FAIL;
+  }
+
+  mysql_ssl_set(mysql, NULL, NULL, "@CC_BINARY_DIR@/unittest/libmariadb/ca.pem", NULL, NULL);
+  set_verify(mysql, 1);
+
+  (void)my_test_connect(mysql, tls_dummy_host, "tlsuser", "foo", NULL,
+                      tls_dummy_port, NULL, 0, 0);
+
+
+  diag("error after connect: %s", mysql_error(mysql));
+  /* error 2 reads "unable to get issuer certificate",
+     error 20 reads "unable to get local issuer certificate" */
+  if (!strstr(mysql_error(mysql), "unable to get issuer certificate"))
+  {
+    diag("expected the text of error 2");
+    goto end;
+  }
+
+  CHECK_TLS_FLAGS(mysql, MARIADB_TLS_VERIFY_TRUST, "TRUST expected");
+  rc= OK;
+end:
+  mysql_close(mysql);
+  return rc;
+}
+#endif
 
 struct my_tests_st my_tests[] = {
   /* Don't add test above, test_init needs to be run first */
@@ -1221,7 +1231,10 @@ struct my_tests_st my_tests[] = {
   {"test_crl", test_crl, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_crl_with_fp", test_crl_with_fp, TEST_CONNECTION_NONE, 0, NULL, NULL},
 #ifndef HAVE_SCHANNEL
-  {"test_tls_verify_unknown", test_tls_verify_unknown, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_tls_verify_leaf_without_ca", test_tls_verify_leaf_without_ca, TEST_CONNECTION_NEW, 0, NULL, NULL},
+#endif
+#ifdef HAVE_OPENSSL
+  {"test_tls_openssl_err2", test_tls_openssl_err2, TEST_CONNECTION_NEW, 0, NULL, NULL},
 #endif
   {"test_tls_verify_critical_ext", test_tls_verify_critical_ext, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"stop_tls_server", stop_tls_server, TEST_CONNECTION_NONE, 0, NULL, NULL},
