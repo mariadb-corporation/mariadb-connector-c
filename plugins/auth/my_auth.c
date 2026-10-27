@@ -487,6 +487,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       if (!password_and_hashing(mysql, mpvio->plugin))
         goto error;
     }
+    /* verification passed or was deferred to the password based proof */
+    CLEAR_CLIENT_ERROR(mysql);
   }
 #endif /* HAVE_TLS */
 

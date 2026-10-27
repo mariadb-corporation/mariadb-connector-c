@@ -154,6 +154,52 @@ class TlsServer():
                         ))
                     return 1
 
+                if cert_mode == "intermediate":
+                    root_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+                    root_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test root")])
+                    int_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+                    int_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test intermediate")])
+
+                    int_builder = (
+                        x509.CertificateBuilder()
+                        .subject_name(int_name)
+                        .issuer_name(root_name)
+                        .public_key(int_key.public_key())
+                        .serial_number(2)
+                        .add_extension(x509.BasicConstraints(ca=True, path_length=None),
+                                       critical=True)
+                    )
+                    int_builder._not_valid_before = not_before
+                    int_builder._not_valid_after = not_after
+                    int_cert = int_builder.sign(root_key, hashes.SHA256())
+
+                    leaf_builder = (
+                        x509.CertificateBuilder()
+                        .subject_name(x509.Name([
+                            x509.NameAttribute(NameOID.COMMON_NAME, commonName)]))
+                        .issuer_name(int_name)
+                        .public_key(k.public_key())
+                        .serial_number(serialNumber)
+                        .add_extension(san_ext, critical=False)
+                    )
+                    leaf_builder._not_valid_before = not_before
+                    leaf_builder._not_valid_after = not_after
+                    leaf_cert = leaf_builder.sign(int_key, hashes.SHA256())
+
+                    # client trust file: intermediate only, the root is deliberately missing
+                    with open(CA_FILE, "wb") as f:
+                        f.write(int_cert.public_bytes(serialization.Encoding.PEM))
+                    # server sends leaf only
+                    with open(CERT_FILE, "wb") as f:
+                        f.write(leaf_cert.public_bytes(serialization.Encoding.PEM))
+                    with open(KEY_FILE, "wb") as f:
+                        f.write(k.private_bytes(
+                            encoding=serialization.Encoding.PEM,
+                            format=serialization.PrivateFormat.TraditionalOpenSSL,
+                            encryption_algorithm=serialization.NoEncryption()))
+                    return 1
+
+
                 # Branch B: CA-Signed Leaf Certificate
                 ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
                 ca_subject = x509.Name([

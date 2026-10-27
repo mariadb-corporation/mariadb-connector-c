@@ -1268,7 +1268,7 @@ static gnutls_x509_crt_t ma_get_cert(MARIADB_TLS *ctls)
   const gnutls_datum_t *cert_list;
   unsigned int cert_list_size;
   gnutls_x509_crt_t cert;
-    
+
   if (!ctls || !ctls->ssl)
     return 0;
 
@@ -1278,16 +1278,18 @@ static gnutls_x509_crt_t ma_get_cert(MARIADB_TLS *ctls)
   if (cert_list == NULL)
   {
     my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                        ER(CR_SSL_CONNECTION_ERROR), 
+                        ER(CR_SSL_CONNECTION_ERROR),
                         "Unable to get server certificate");
     return NULL;
   }
 
-  /* Check expiration */
-  gnutls_x509_crt_init(&cert);
+  if (gnutls_x509_crt_init(&cert))
+    return NULL;
 
   if (!gnutls_x509_crt_import(cert, &cert_list[0], GNUTLS_X509_FMT_DER))
     return cert;
+
+  gnutls_x509_crt_deinit(cert);
 
   return NULL;
 }
@@ -1458,15 +1460,6 @@ static void set_verification_error(MYSQL *mysql, int status)
   gnutls_free(out.data);
 }
 
-static my_bool ma_gnutls_is_self_signed(gnutls_x509_crt_t cert)
-{
-  if (!cert)
-    return FALSE;
-
-  /* Returns 1 if cert was issued by cert (self-issued) */
-  return (gnutls_x509_crt_check_issuer(cert, cert) == 1);
-}
-
 int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
 {
   unsigned int status= 0;
@@ -1497,15 +1490,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
 
     if (status & GNUTLS_CERT_SIGNER_NOT_FOUND)
     {
-      gnutls_x509_crt_t cert = ma_get_cert(ctls);
-      my_bool self_signed = ma_gnutls_is_self_signed(cert);
-      if (cert)
-        gnutls_x509_crt_deinit(cert);
-
-      if (self_signed)
-        mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_TRUST;
-      else
-        mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_UNKNOWN;
+      mysql->net.tls_verify_status |= MARIADB_TLS_VERIFY_TRUST;
     }
 
     /* Fallback for unhandled GnuTLS bits (e.g. INSECURE_ALGORITHM, SIGNATURE_FAILURE) */
@@ -1531,7 +1516,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
     if (!cert)
     {
       my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
-                   ER(CR_SSL_CONNECTION_ERROR), 
+                   ER(CR_SSL_CONNECTION_ERROR),
                    "Can't access peer certificate");
       mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
       goto end;

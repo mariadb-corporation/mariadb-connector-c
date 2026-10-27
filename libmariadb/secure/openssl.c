@@ -811,7 +811,9 @@ static int ma_verification_callback(int preverify_ok __attribute__((unused)), X5
 
     if ((x509_err == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT ||
          x509_err == X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN ||
-         x509_err == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE)) 
+         x509_err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT ||
+         x509_err == X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY ||
+         x509_err == X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE))
       verify_status= MARIADB_TLS_VERIFY_TRUST;
     else if (x509_err == X509_V_ERR_CERT_REVOKED)
       verify_status= MARIADB_TLS_VERIFY_REVOKED;
@@ -819,9 +821,7 @@ static int ma_verification_callback(int preverify_ok __attribute__((unused)), X5
             x509_err == X509_V_ERR_CERT_HAS_EXPIRED)
       verify_status= MARIADB_TLS_VERIFY_PERIOD;
     else if (x509_err != X509_V_OK)
-    {
       verify_status= MARIADB_TLS_VERIFY_UNKNOWN;
-    }
 
     if (verify_status)
     {

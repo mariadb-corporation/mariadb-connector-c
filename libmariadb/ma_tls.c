@@ -178,8 +178,14 @@ int ma_pvio_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int flags)
   /* Save original validation */
   mysql->extension->tls_validation= mysql->net.tls_verify_status;
 
-  /* Retain requested flags AND preserve UNKNOWN status if set */
-  mysql->net.tls_verify_status&= (flags | MARIADB_TLS_VERIFY_UNKNOWN);
+#define MA_TLS_SOFT_FLAGS (MARIADB_TLS_VERIFY_TRUST | \
+                           MARIADB_TLS_VERIFY_HOST | \
+                           MARIADB_TLS_VERIFY_FINGERPRINT)
+
+  /* Drop only the soft findings the caller didn't ask for */
+  mysql->net.tls_verify_status&= ~(MA_TLS_SOFT_FLAGS & ~flags);
+
+#undef MA_TLS_SOFT_FLAGS
 
   return rc;
 }
