@@ -37,6 +37,8 @@ ADD_OPTION(WITH_TOOLS
            "Build tools"
            OFF)
 
+ADD_OPTION(RUN_UNSTABLE_TESTS "Run unstable tests" OFF)
+
 IF(WITH_BOOST_CONTEXT)
   PROJECT(mariadb-connector-c LANGUAGES C CXX)
 ELSE()

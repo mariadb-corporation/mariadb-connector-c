@@ -1165,11 +1165,15 @@ end:
   return rc;
 }
 
-#ifdef HAVE_OPENSSL
+#if defined(RUN_UNSTABLE_TESTS) && defined(HAVE_OPENSSL)
 /*
   The client trusts the intermediate but not the root. The chain reaches the
   trust store but can't be completed: X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT (2),
   because ctx->num_untrusted < num.
+
+  Please note that this test frequently fails on github.actions with timeout
+  error. To run this test please specify -DRUN_UNSTABLE_TESTS=ON when running
+  cmake
 */
 static int test_tls_openssl_err2(MYSQL *my __attribute__((unused)))
 {
@@ -1233,7 +1237,7 @@ struct my_tests_st my_tests[] = {
 #ifndef HAVE_SCHANNEL
   {"test_tls_verify_leaf_without_ca", test_tls_verify_leaf_without_ca, TEST_CONNECTION_NEW, 0, NULL, NULL},
 #endif
-#ifdef HAVE_OPENSSL
+#if defined(RUN_UNSTABLE_TESTS) && defined(HAVE_OPENSSL)
   {"test_tls_openssl_err2", test_tls_openssl_err2, TEST_CONNECTION_NEW, 0, NULL, NULL},
 #endif
   {"test_tls_verify_critical_ext", test_tls_verify_critical_ext, TEST_CONNECTION_NEW, 0, NULL, NULL},
