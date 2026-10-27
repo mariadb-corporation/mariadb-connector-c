@@ -972,7 +972,66 @@ static int test_conc281(MYSQL *mysql)
 
 }
 
+/*
+  Fetching a string value into a temporal bind must set the per-column
+  error flag: cleared when the value parses, set when it does not.  The
+  flag has no implicit per-row reset, so a converter that leaves it
+  untouched reports a stale truncation from an earlier row.
+*/
+static int test_str_to_temporal_error(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  int         rc;
+  MYSQL_TIME  tm;
+  my_bool     error;
+  MYSQL_BIND  my_bind[1];
+  const char *query= "SELECT v FROM test_str_temporal ORDER BY id";
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS test_str_temporal");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE test_str_temporal(id int, v varchar(32))");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO test_str_temporal VALUES "
+                         "(1,'2020-01-02 10:11:12'),(2,'not a datetime')");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  FAIL_IF(!stmt, mysql_error(mysql));
+  rc= mysql_stmt_prepare(stmt, SL(query));
+  check_stmt_rc(rc, stmt);
+
+  memset(my_bind, 0, sizeof(my_bind));
+  my_bind[0].buffer_type= MYSQL_TYPE_DATETIME;
+  my_bind[0].buffer= &tm;
+  my_bind[0].buffer_length= sizeof(tm);
+  my_bind[0].error= &error;
+
+  rc= mysql_stmt_bind_result(stmt, my_bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  error= 1;
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+  FAIL_UNLESS(tm.year == 2020 && tm.month == 1 && tm.day == 2 &&
+              tm.hour == 10 && tm.minute == 11 && tm.second == 12,
+              "wrong datetime");
+  FAIL_IF(error, "valid string->datetime, but error is set");
+
+  error= 0;
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc == MYSQL_NO_DATA, "second row missing");
+
+  mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE test_str_temporal");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_str_to_temporal_error", test_str_to_temporal_error, 1, 0, NULL, NULL},
   {"test_conc281", test_conc281, 1, 0, NULL, NULL},
   {"test_fetch_seek", test_fetch_seek, 1, 0, NULL , NULL},
   {"test_fetch_offset", test_fetch_offset, 1, 0, NULL , NULL},

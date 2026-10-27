@@ -377,8 +377,257 @@ static int test_int_overflow(MYSQL *mysql __attribute__((unused)))
   return OK;
 }
 
+static int test_conc864(MYSQL *mysql __attribute__((unused)))
+{
+  DYNAMIC_COLUMN dc, bad;
+  MYSQL_LEX_STRING keys[2]= {{(char *)"a", 1}, {(char *)"bb", 2}};
+  DYNAMIC_COLUMN_VALUE vals[2];
+  MYSQL_LEX_STRING *names= NULL;
+  unsigned char *blob;
+  uint count= 0;
+  size_t len;
+  int rc, result= FAIL;
+
+  vals[0].type= DYN_COL_INT;
+  vals[0].x.long_value= 1;
+  vals[1].type= DYN_COL_INT;
+  vals[1].x.long_value= 2;
+
+  mariadb_dyncol_init(&dc);
+  FAIL_IF(mariadb_dyncol_create_many_named(&dc, 2, keys, vals, 1) != ER_DYNCOL_OK,
+          "could not create the dynamic column");
+
+  len= dc.length;
+  blob= (unsigned char *)malloc(len);
+  FAIL_IF(!blob, "malloc failed");
+  memcpy(blob, dc.str, len);
+  mariadb_dyncol_free(&dc);
+
+  if (!(blob[0] & 0x04) || blob[5] != 0 || blob[6] != 0)
+  {
+    diag("unexpected layout of the dynamic column, update the test");
+    goto end;
+  }
+
+  blob[5]= 0xFF;                    /* entry 0: name offset 0xFFFF */
+  blob[6]= 0xFF;
+
+  memset(&bad, 0, sizeof(bad));
+  bad.str= (char *)blob;
+  bad.length= len;
+  bad.max_length= len;
+
+  rc= mariadb_dyncol_list_named(&bad, &count, &names);
+  if (rc != ER_DYNCOL_FORMAT)
+  {
+    diag("list_named returned %d, expected ER_DYNCOL_FORMAT", rc);
+    free(names);
+    goto end;
+  }
+  if (names != NULL || count != 0)
+  {
+    diag("list_named left names=%p count=%u after an error", (void *)names, count);
+    free(names);                    /* do not leak it from the test */
+    goto end;
+  }
+  result= OK;
+
+end:
+  free(blob);
+  return result;
+}
+
+/* Paste above "struct my_tests_st my_tests[]" in unittest/libmariadb/dyncol.c
+   (test_dyncol_name_offsets_decreasing is already there). */
+
+/*
+  Layout of the packed column {a: 1, bb: 2, ccc: 3} (named format):
+    bytes 0..4    flags (0x04 = named), column count, name pool size (6)
+    bytes 5..16   3 entries of 4 bytes: name offset (2) + data offset/type (2)
+                  name offsets: 0, 1, 3  (at bytes 5, 9 and 13)
+    bytes 17..22  name pool "abbccc"
+    then the data
+*/
+
+/* returns an exactly sized heap copy of a packed named column, or NULL */
+static unsigned char *dc_named_blob(uint n, MYSQL_LEX_STRING *keys,
+                                    DYNAMIC_COLUMN_VALUE *vals, size_t *len)
+{
+  DYNAMIC_COLUMN dc;
+  unsigned char *blob;
+
+  mariadb_dyncol_init(&dc);
+  if (mariadb_dyncol_create_many_named(&dc, n, keys, vals, 1) != ER_DYNCOL_OK)
+    return NULL;
+  *len= dc.length;
+  blob= (unsigned char *)malloc(dc.length);
+  if (blob)
+    memcpy(blob, dc.str, dc.length);
+  mariadb_dyncol_free(&dc);
+  return blob;
+}
+
+static void dc_abc_setup(MYSQL_LEX_STRING *keys, DYNAMIC_COLUMN_VALUE *vals)
+{
+  uint i;
+
+  keys[0].str= (char *)"a";   keys[0].length= 1;
+  keys[1].str= (char *)"bb";  keys[1].length= 2;
+  keys[2].str= (char *)"ccc"; keys[2].length= 3;
+  for (i= 0; i < 3; i++)
+  {
+    vals[i].type= DYN_COL_INT;
+    vals[i].x.long_value= i + 1;
+  }
+}
+
+static int dc_layout_ok(const unsigned char *b, size_t len)
+{
+  return len >= 23 && (b[0] & 0x04) &&
+         b[3] == 6 && b[4] == 0 &&                      /* pool size 6 */
+         b[5] == 0 && b[6] == 0 &&                      /* entry 0: offset 0 */
+         b[9] == 1 && b[10] == 0 &&                     /* entry 1: offset 1 */
+         b[13] == 3 && b[14] == 0;                      /* entry 2: offset 3 */
+}
+
+/*
+  The name offset of entry 1 is set behind the offset of entry 2, so that
+  the decrease is not at the first pair of entries. The blob must be rejected
+  by list_named and unpack, without reading or writing out of bounds.
+*/
+static int test_conc863_1(MYSQL *mysql __attribute__((unused)))
+{
+  MYSQL_LEX_STRING keys[3];
+  DYNAMIC_COLUMN_VALUE vals[3];
+  MYSQL_LEX_STRING *names= NULL;
+  DYNAMIC_COLUMN_VALUE *uvals= NULL;
+  DYNAMIC_COLUMN bad;
+  unsigned char *blob;
+  uint count= 0;
+  size_t len= 0;
+  int rc, result= FAIL;
+
+  dc_abc_setup(keys, vals);
+  blob= dc_named_blob(3, keys, vals, &len);
+  FAIL_IF(!blob, "could not create the dynamic column");
+  if (!dc_layout_ok(blob, len))
+  {
+    diag("unexpected layout of the dynamic column, update the test");
+    goto end;
+  }
+
+  blob[9]= 4;                       /* entry 1: offset 4, entry 2: offset 3 */
+
+  memset(&bad, 0, sizeof(bad));
+  bad.str= (char *)blob;
+  bad.length= len;
+  bad.max_length= len;
+
+  rc= mariadb_dyncol_list_named(&bad, &count, &names);
+  free(names);
+  names= NULL;
+  if (rc != ER_DYNCOL_FORMAT)
+  {
+    diag("list_named returned %d, expected ER_DYNCOL_FORMAT", rc);
+    goto end;
+  }
+
+  rc= mariadb_dyncol_unpack(&bad, &count, &names, &uvals);
+  free(names);
+  free(uvals);
+  if (rc != ER_DYNCOL_FORMAT)
+  {
+    diag("unpack returned %d, expected ER_DYNCOL_FORMAT", rc);
+    goto end;
+  }
+  result= OK;
+
+end:
+  free(blob);
+  return result;
+}
+
+/* The check must not reject valid data: names of different lengths. */
+static int test_conc863_2(MYSQL *mysql __attribute__((unused)))
+{
+  MYSQL_LEX_STRING keys[3];
+  DYNAMIC_COLUMN_VALUE vals[3];
+  MYSQL_LEX_STRING *names= NULL;
+  DYNAMIC_COLUMN_VALUE *uvals= NULL;
+  DYNAMIC_COLUMN dc;
+  unsigned char *blob;
+  uint i, count= 0;
+  size_t len= 0;
+  int rc, result= FAIL;
+
+  dc_abc_setup(keys, vals);
+  blob= dc_named_blob(3, keys, vals, &len);
+  FAIL_IF(!blob, "could not create the dynamic column");
+
+  memset(&dc, 0, sizeof(dc));
+  dc.str= (char *)blob;
+  dc.length= len;
+  dc.max_length= len;
+
+  rc= mariadb_dyncol_list_named(&dc, &count, &names);
+  if (rc != ER_DYNCOL_OK || count != 3)
+  {
+    diag("list_named: rc=%d count=%u", rc, count);
+    free(names);
+    goto end;
+  }
+  for (i= 0; i < 3; i++)
+  {
+    if (names[i].length != keys[i].length ||
+        memcmp(names[i].str, keys[i].str, keys[i].length))
+    {
+      diag("list_named: wrong name at position %u", i);
+      free(names);
+      goto end;
+    }
+  }
+  free(names);
+  names= NULL;
+
+  rc= mariadb_dyncol_unpack(&dc, &count, &names, &uvals);
+  if (rc != ER_DYNCOL_OK || count != 3)
+  {
+    diag("unpack: rc=%d count=%u", rc, count);
+    free(names);
+    free(uvals);
+    goto end;
+  }
+  for (i= 0; i < 3; i++)
+  {
+    if (names[i].length != keys[i].length ||
+        memcmp(names[i].str, keys[i].str, keys[i].length) ||
+        uvals[i].type != DYN_COL_INT || uvals[i].x.long_value != (longlong)(i + 1))
+    {
+      diag("unpack: wrong name or value at position %u", i);
+      free(names);
+      free(uvals);
+      goto end;
+    }
+  }
+  free(names);
+  free(uvals);
+
+  if (mariadb_dyncol_check(&dc) != ER_DYNCOL_OK)
+  {
+    diag("check rejected a valid column");
+    goto end;
+  }
+  result= OK;
+
+end:
+  free(blob);
+  return result;
+}
 
 struct my_tests_st my_tests[] = {
+  {"test_conc863_1", test_conc863_1, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_conc863_2", test_conc863_2, TEST_CONNECTION_NEW, 0, NULL, NULL},
+  {"test_conc864", test_conc864, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_int_overflow", test_int_overflow, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"test_conc844", test_conc844, TEST_CONNECTION_NEW, 0, NULL, NULL}, 
   {"mdev_x1", mdev_x1, TEST_CONNECTION_NEW, 0, NULL, NULL}, 

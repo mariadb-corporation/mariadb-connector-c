@@ -2062,7 +2062,8 @@ static my_bool read_name(DYN_HEADER *hdr, uchar *entry, LEX_STRING *name)
   else
   {
     size_t next_nmoffset= uint2korr(next_entry);
-    if (next_nmoffset > hdr->nmpool_size)
+    if (next_nmoffset < nmoffset ||
+        next_nmoffset > hdr->nmpool_size)
       return 1;
     name->length= next_nmoffset - nmoffset;
   }
@@ -2574,7 +2575,11 @@ mariadb_dyncol_list_named(DYNAMIC_COLUMN *str, uint *count, LEX_STRING **names)
     {
       LEX_STRING tmp;
       if (read_name(&header, read, &tmp))
+      {
+        free(*names);
+        *names= NULL;
         return ER_DYNCOL_FORMAT;
+      }
       (*names)[i].length= tmp.length;
       (*names)[i].str= pool;
       pool+= tmp.length + 1;

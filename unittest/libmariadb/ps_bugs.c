@@ -1121,7 +1121,7 @@ static int test_bug20152(MYSQL *mysql)
 
 
   memset(my_bind, '\0', sizeof(my_bind));
-  my_bind[0].buffer_type= MYSQL_TYPE_DATE;
+  my_bind[0].buffer_type= MYSQL_TYPE_DATETIME;
   my_bind[0].buffer= (void*)&tm;
 
   memset(&tm, 0, sizeof(MYSQL_TIME));

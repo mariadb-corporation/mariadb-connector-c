@@ -461,6 +461,13 @@ typedef struct st_mysql_time
 #define MARIADB_TLS_VERIFY_UNKNOWN            32
 #define MARIADB_TLS_VERIFY_ERROR             128  /* last */
 
+/* Length encoding return values, returned by mariadb_net_field_length */
+#define MARIADB_LENENC_OK    0
+#define MARIADB_LENENC_NULL  1 /* only returned if flag MARIADB_LENENC_FORBID_NULL was not set */
+#define MARIADB_LENENC_ERROR 2
+
+/* Flags for mariadb_net_field_length */
+#define MARIADB_LENENC_FORBID_NULL 1
 
 typedef struct character_set
 {
@@ -659,6 +666,8 @@ int STDCALL mariadb_cancel(MYSQL *mysql);
 void STDCALL mysql_debug(const char *debug);
 unsigned long STDCALL mysql_net_read_packet(MYSQL *mysql);
 unsigned long STDCALL mysql_net_field_length(unsigned char **packet);
+int STDCALL mariadb_net_field_length(unsigned char **packet, const unsigned char *end, unsigned int flags,
+                                     unsigned long *length);
 my_bool STDCALL mysql_embedded(void);
 MYSQL_PARAMETERS *STDCALL mysql_get_parameters(void);
 
