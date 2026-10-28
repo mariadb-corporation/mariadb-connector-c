@@ -909,7 +909,19 @@ int store_param(MYSQL_STMT *stmt, int column, unsigned char **p, unsigned long r
     to = mysql_net_store_length(*p, len);
 
     if (len)
-      memcpy(to, buf, len);
+    {
+      if (stmt->params[column].buffer_type == MYSQL_TYPE_VECTOR)
+      {
+       while (len)
+       {
+         float4store(to, (*(float *)buf));
+         to += 4; len -= 4;
+	 buf= (unsigned char *)buf + 4;
+       }
+      }
+      else
+        memcpy(to, buf, len);
+    }
     (*p) = to + len;
     break;
   }
