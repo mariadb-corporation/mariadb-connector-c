@@ -36,7 +36,7 @@ my_bool ma_init_done=0;
 
 
 
-/* Init ma_sys functions and ma_sys variabels */
+/* Init ma_sys functions and ma_sys variables */
 
 void ma_init(void)
 {
