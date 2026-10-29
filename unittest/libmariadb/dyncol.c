@@ -675,7 +675,163 @@ static int test_dyncol_uca1400_charset(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static const unsigned char dyncol_oob_case_a_uint[] = {
+  0x01,                   /* flags: offset_size=2, numeric format */
+  0x02, 0x00,             /* column_count = 2 */
+  0x00, 0x00, 0x01, 0x00, /* entry0: col#0, offset=0, type=DYN_COL_UINT   */
+  0x01, 0x00, 0x41, 0x00, /* entry1: col#1, offset=8, type=DYN_COL_UINT   */
+  0xAA, 0xBB              /* 2-byte data pool -- real end of the blob    */
+};
+
+static const unsigned char dyncol_oob_case_b_double[] = {
+  0x01,                   /* flags: offset_size=2, numeric format */
+  0x02, 0x00,             /* column_count = 2 */
+  0x00, 0x00, 0x02, 0x00, /* entry0: col#0, offset=0, type=DYN_COL_DOUBLE */
+  0x01, 0x00, 0x41, 0x00, /* entry1: col#1, offset=8, type=DYN_COL_UINT   */
+  0xAA, 0xBB              /* 2-byte data pool -- real end of the blob    */
+};
+
+static DYNAMIC_COLUMN dyncol_oob_make(const unsigned char *bytes, size_t n)
+{
+  DYNAMIC_COLUMN dc;
+  memset(&dc, 0, sizeof(dc));
+  dc.str= (char *)malloc(n);
+  memcpy(dc.str, bytes, n);
+  dc.length= n;
+  dc.max_length= n;
+  return dc;
+}
+
+static int test_dyncol_oob_uint_read(MYSQL *unused __attribute__((unused)))
+{
+  DYNAMIC_COLUMN dc;
+  uint count= 0;
+  MYSQL_LEX_STRING *names= NULL;
+  DYNAMIC_COLUMN_VALUE *vals= NULL;
+  enum enum_dyncol_func_result rc;
+  DYNAMIC_STRING json;
+  int ret= OK;
+
+  /* mariadb_dyncol_unpack() path */
+  dc= dyncol_oob_make(dyncol_oob_case_a_uint, sizeof(dyncol_oob_case_a_uint));
+  rc= mariadb_dyncol_unpack(&dc, &count, &names, &vals);
+  if (vals) free(vals);
+  if (names) free(names);
+  free(dc.str);
+  FAIL_IF(rc != ER_DYNCOL_FORMAT,
+          "mariadb_dyncol_unpack() did not reject truncated UINT value "
+          "as ER_DYNCOL_FORMAT -- dynamic_column_uint_read() likely read "
+          "past the end of the blob");
+
+  /* mariadb_dyncol_json() path -- same root cause, independent call site */
+  dc= dyncol_oob_make(dyncol_oob_case_a_uint, sizeof(dyncol_oob_case_a_uint));
+  memset(&json, 0, sizeof(json));
+  rc= mariadb_dyncol_json(&dc, &json);
+  if (json.str) free(json.str);
+  free(dc.str);
+  FAIL_IF(rc != ER_DYNCOL_FORMAT,
+          "mariadb_dyncol_json() did not reject truncated UINT value "
+          "as ER_DYNCOL_FORMAT -- dynamic_column_uint_read() likely read "
+          "past the end of the blob");
+
+  return ret;
+}
+
+static int test_dyncol_oob_double_read(MYSQL *unused __attribute__((unused)))
+{
+  DYNAMIC_COLUMN dc;
+  uint count= 0;
+  MYSQL_LEX_STRING *names= NULL;
+  DYNAMIC_COLUMN_VALUE *vals= NULL;
+  enum enum_dyncol_func_result rc;
+  DYNAMIC_STRING json;
+  int ret= OK;
+
+  /* mariadb_dyncol_unpack() path */
+  dc= dyncol_oob_make(dyncol_oob_case_b_double, sizeof(dyncol_oob_case_b_double));
+  rc= mariadb_dyncol_unpack(&dc, &count, &names, &vals);
+  if (vals) free(vals);
+  if (names) free(names);
+  free(dc.str);
+  FAIL_IF(rc != ER_DYNCOL_FORMAT,
+          "mariadb_dyncol_unpack() did not reject truncated DOUBLE value "
+          "as ER_DYNCOL_FORMAT -- dynamic_column_double_read() likely read "
+          "past the end of the blob");
+
+  /* mariadb_dyncol_json() path -- same root cause, independent call site */
+  dc= dyncol_oob_make(dyncol_oob_case_b_double, sizeof(dyncol_oob_case_b_double));
+  memset(&json, 0, sizeof(json));
+  rc= mariadb_dyncol_json(&dc, &json);
+  if (json.str) free(json.str);
+  free(dc.str);
+  FAIL_IF(rc != ER_DYNCOL_FORMAT,
+          "mariadb_dyncol_json() did not reject truncated DOUBLE value "
+          "as ER_DYNCOL_FORMAT -- dynamic_column_double_read() likely read "
+          "past the end of the blob");
+
+  return ret;
+}
+
+static const unsigned char dyncol_oob_case_c_string[] = {
+  0x01,                   /* flags: offset_size=2, numeric format */
+  0x02, 0x00,             /* column_count = 2 */
+  0x00, 0x00, 0x03, 0x00, /* entry0: col#0, offset=0, type=DYN_COL_STRING */
+  0x01, 0x00, 0x19, 0x00, /* entry1: col#1, offset=3, type=DYN_COL_UINT   */
+  0x21                    /* 1-byte data pool: charset varint = 33 (utf8_general_ci) */
+};
+ 
+static int test_dyncol_oob_string_quoted(MYSQL *unused __attribute__((unused)))
+{
+  DYNAMIC_COLUMN dc;
+  uint count= 0;
+  MYSQL_LEX_STRING *names= NULL;
+  DYNAMIC_COLUMN_VALUE *vals= NULL;
+  enum enum_dyncol_func_result rc;
+  DYNAMIC_STRING json;
+ 
+  /*
+    mariadb_dyncol_unpack() path.
+ 
+    Pre-fix this does NOT crash -- dynamic_column_string_read() hands
+    back a dangling pointer/length that unpack() only stores, never
+    dereferences. The regression signal here is the *return code*
+    (silently ER_DYNCOL_OK with bad data pre-fix), not a sanitizer abort,
+    so this assertion matters even on non-ASan builds.
+  */
+  dc= dyncol_oob_make(dyncol_oob_case_c_string, sizeof(dyncol_oob_case_c_string));
+  rc= mariadb_dyncol_unpack(&dc, &count, &names, &vals);
+  if (vals) free(vals);
+  if (names) free(names);
+  free(dc.str);
+  FAIL_IF(rc != ER_DYNCOL_FORMAT,
+          "mariadb_dyncol_unpack() did not reject a STRING value whose "
+          "interval runs past the blob as ER_DYNCOL_FORMAT -- it silently "
+          "returned a dangling pointer/length instead.");
+ 
+  /*
+    mariadb_dyncol_json() path -- this is the one that actually
+    dereferences the dangling pointer, via mariadb_dyncol_val_str() ->
+    ma_dynstr_append_quoted(). Pre-fix this crashes under ASan with
+    heap-buffer-overflow READ at ma_string.c:108.
+  */
+  dc= dyncol_oob_make(dyncol_oob_case_c_string, sizeof(dyncol_oob_case_c_string));
+  memset(&json, 0, sizeof(json));
+  rc= mariadb_dyncol_json(&dc, &json);
+  if (json.str) free(json.str);
+  free(dc.str);
+  FAIL_IF(rc != ER_DYNCOL_FORMAT,
+          "mariadb_dyncol_json() did not reject a STRING value whose "
+          "interval runs past the blob as ER_DYNCOL_FORMAT -- "
+          "ma_dynstr_append_quoted() likely read past the end of the blob");
+
+  return OK;
+}
+
+
 struct my_tests_st my_tests[] = {
+  {"test_dyncol_oob_string_quoted", test_dyncol_oob_string_quoted,   TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_dyncol_oob_uint_read", test_dyncol_oob_uint_read,   TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_dyncol_oob_double_read", test_dyncol_oob_double_read, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_dyncol_uca1400_charset", test_dyncol_uca1400_charset, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc863_1", test_conc863_1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc863_2", test_conc863_2, TEST_CONNECTION_NEW, 0, NULL, NULL},
