@@ -99,12 +99,6 @@ do { \
         goto malformed_packet; \
 } while(0)
 
-#define RPL_CHECK_FIELD_LENGTH(position, end)\
-{\
-  RPL_CHECK_POS((position), (end), 1);\
-  RPL_CHECK_POS((position), (end), net_field_size((position)));\
-}
-
 #define RPL_READ_FIELD_LENGTH(position, end, len)                          \
 do {                                                                       \
   uchar *_p= (uchar *)(position);                                          \
@@ -218,17 +212,6 @@ static inline uint64_t uintNkorr(uint8_t len, u_char *p)
     default:
       return 0;
   }
-}
-
-static inline int net_field_size(uchar *p)
-{
-  if (*p <= 251)
-    return 1;
-  if (*p == 252)
-    return 3;
-  if (*p == 253)
-    return 4;
-  return 9;
 }
 
 static inline int rpl_bit_size(uint32_t x)
