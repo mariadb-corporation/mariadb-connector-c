@@ -1,4 +1,5 @@
 #include "my_test.h"
+#include "ma_string.h"
 
 #define SENTINEL 0x5A5A5A5AUL   /* *len must keep this value on error */
 
@@ -221,7 +222,110 @@ static int test_uca1400_valid_ids(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+static int test_ma_fcvt_bounded(MYSQL *unused __attribute__((unused)))
+{
+  char *buf;
+  size_t len;
+  my_bool error;
+
+  /*
+    Main scenario: the exact value/precision combination the original
+    report used to compute a 341-byte requirement (1e308, precision=30),
+    against a buffer the same size as the real call site's (300 bytes).
+    Pre-fix this overflows by 41 bytes under ASan. Post-fix it must
+    truncate cleanly: no overflow, and the reported length must not
+    claim to have written more than the buffer actually holds.
+  */
+  buf= (char *) malloc(300);
+  len= ma_fcvt(1e308, 30, buf, 300, &error);
+  FAIL_IF(len > 300 - 1,
+          "ma_fcvt() reported a length that does not fit in the "
+          "requested to_size -- caller could not trust this return "
+          "value even if the write itself happened to be bounded");
+  FAIL_IF(buf[len] != '\0',
+          "ma_fcvt() did not null-terminate within the reported length");
+  free(buf);
+
+  /*
+    Same value, deliberately undersized buffers, to probe the boundary
+    itself rather than just one buffer size that happens to work.
+  */
+  {
+    size_t sizes[]= { 1, 2, 3, 10, 50 };
+    size_t i;
+    for (i= 0; i < sizeof(sizes)/sizeof(sizes[0]); i++)
+    {
+      size_t sz= sizes[i];
+      buf= (char *) malloc(sz);
+      len= ma_fcvt(1e308, 30, buf, sz, &error);
+      FAIL_IF(len > sz - 1,
+              "ma_fcvt() overran a deliberately undersized buffer "
+              "(to_size too small to hold the real result)");
+      FAIL_IF(buf[len] != '\0',
+              "ma_fcvt() missing null terminator within bounds "
+              "(undersized buffer case)");
+      free(buf);
+    }
+  }
+
+  /*
+    decpt <= 0 branch: any |x| < 1 takes this path, which had two
+    unconditional writes ('0', '.') in an early draft of the fix,
+    unguarded by dst < dend. to_size=1 means even the FIRST of those
+    writes is already one byte too many.
+  */
+  buf= (char *) malloc(1);
+  len= ma_fcvt(0.0001, 2, buf, 1, &error);
+  FAIL_IF(len > 1 - 1,
+          "ma_fcvt() overran a 1-byte buffer in the decpt<=0 branch "
+          "(the unconditional '0'/'.' writes at the top of that branch)");
+  free(buf);
+
+  buf= (char *) malloc(2);
+  len= ma_fcvt(0.0001, 2, buf, 2, &error);
+  FAIL_IF(len > 2 - 1,
+          "ma_fcvt() overran a 2-byte buffer in the decpt<=0 branch");
+  free(buf);
+
+  /*
+    DTOA_OVERFLOW path (inf/nan): writes '0' + '\0' unconditionally in
+    the original code. to_size=1 means even that is one byte too many.
+  */
+  {
+    double inf= 1.0 / 0.0; /* or use INFINITY from <math.h> if preferred */
+    buf= (char *) malloc(1);
+    len= ma_fcvt(inf, 2, buf, 1, &error);
+    FAIL_IF(len > 1 - 1,
+            "ma_fcvt() overran a 1-byte buffer on the inf/nan "
+            "(DTOA_OVERFLOW) path");
+    FAIL_IF(!error, "expected *error == TRUE for an infinite input");
+    free(buf);
+
+    buf= (char *) malloc(2);
+    len= ma_fcvt(inf, 2, buf, 2, &error);
+    FAIL_IF(len > 2 - 1,
+            "ma_fcvt() overran a 2-byte buffer on the DTOA_OVERFLOW path");
+    free(buf);
+  }
+
+  /*
+    Regression control: a small, ordinary value with ample buffer should
+    still produce the exact expected output, unchanged by the bounds
+    checks (i.e. the fix must not alter behavior for the common case).
+  */
+  buf= (char *) malloc(16);
+  len= ma_fcvt(1.5, 2, buf, 16, &error);
+  FAIL_IF(strcmp(buf, "1.50") != 0,
+          "ma_fcvt(1.5, 2, ...) changed output for an ordinary, "
+          "non-overflowing case -- expected \"1.50\"");
+  FAIL_IF(len != 4, "ma_fcvt(1.5, 2, ...) returned wrong length for \"1.50\"");
+  free(buf);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[]= {
+  {"test_ma_fcvt_bounded", test_ma_fcvt_bounded, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_lenenc_cases",      test_lenenc_cases,      TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_lenenc_first_byte", test_lenenc_first_byte, TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_uca1400_tailoring_bounds", test_uca1400_tailoring_bounds, TEST_CONNECTION_NONE, 0, NULL, NULL},

@@ -902,7 +902,7 @@ static void convert_from_float(MYSQL_BIND *r_param, const MYSQL_FIELD *field, fl
       }
       else
       {
-        length= ma_fcvt(val, field->decimals, buff, NULL);
+        length= ma_fcvt(val, field->decimals, buff, sizeof(buff), NULL);
       }
 
       /* check if ZEROFILL flag is active */
@@ -1002,7 +1002,7 @@ static void convert_from_double(MYSQL_BIND *r_param, const MYSQL_FIELD *field, d
      }
      else
      {
-       length= ma_fcvt(val, field->decimals, buff, NULL);
+       length= ma_fcvt(val, field->decimals, buff, sizeof(buff), NULL);
      }
 
      /* check if ZEROFILL flag is active */
