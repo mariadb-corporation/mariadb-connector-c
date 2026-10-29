@@ -624,7 +624,59 @@ end:
   return result;
 }
 
+/* Charset number is a varint directly in front of the string bytes */
+static int test_dyncol_uca1400_charset(MYSQL *unused __attribute__((unused)))
+{
+  static const char needle[]= "xyzzy";
+  unsigned int tl;
+
+  /* loop: undefined tailorings */
+  for (tl= 26; tl <= 31; tl++)
+  {
+    DYNAMIC_COLUMN blob;
+    DYNAMIC_COLUMN_VALUE val, out;
+    uint colnr= 1;
+    char *p;
+    unsigned int bad_id= 2048 + tl * 8; /* 2256..2296, all two-byte varints */
+    int rc;
+
+    mariadb_dyncol_init(&blob);
+    memset(&val, 0, sizeof(val));
+    val.type= DYN_COL_STRING;
+    val.x.string.value.str= (char *) needle;
+    val.x.string.value.length= sizeof(needle) - 1;
+    val.x.string.charset= mariadb_get_charset_by_nr(192);
+    FAIL_IF(!val.x.string.charset, "charset 192 missing");
+
+    rc= mariadb_dyncol_create_many_num(&blob, 1, &colnr, &val, 0);
+    FAIL_IF(rc != ER_DYNCOL_OK, "create failed");
+
+    /* control: the unpatched blob must read back fine */
+    rc= mariadb_dyncol_get_num(&blob, colnr, &out);
+    FAIL_IF(rc != ER_DYNCOL_OK, "control read failed");
+
+    /* find the string; the 2-byte charset varint (C0 01) precedes it */
+    p= (char *) memmem(blob.str, blob.length, needle, sizeof(needle) - 1);
+    FAIL_IF(!p || p - blob.str < 2, "string not found in blob");
+    FAIL_IF((uchar) p[-2] != 0xC0 || p[-1] != 0x01,
+            "unexpected charset encoding, adjust the patch");
+
+    p[-2]= (char) ((bad_id & 0x7F) | 0x80);
+    p[-1]= (char) (bad_id >> 7);
+
+    rc= mariadb_dyncol_get_num(&blob, colnr, &out);
+    if (rc != ER_DYNCOL_UNKNOWN_CHARSET)
+      diag("tailoring %u (id %u): got rc=%d", tl, bad_id, rc);
+    FAIL_IF(rc != ER_DYNCOL_UNKNOWN_CHARSET,
+            "undefined UCA1400 charset must be rejected");
+
+    mariadb_dyncol_free(&blob);
+  }
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_dyncol_uca1400_charset", test_dyncol_uca1400_charset, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc863_1", test_conc863_1, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc863_2", test_conc863_2, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc864", test_conc864, TEST_CONNECTION_NEW, 0, NULL, NULL},

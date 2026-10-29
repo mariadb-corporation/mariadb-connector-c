@@ -1012,6 +1012,16 @@ my_uca1400_collation_definitions[MY_UCA1400_COLLATION_DEFINITION_COUNT]=
 #define MY_UCA1400_COLLATION_ID_POSSIBLE_MIN 2048
 #define MY_UCA1400_COLLATION_ID_POSSIBLE_MAX 4095
 
+/* The tailoring id is a 5-bit field of the collation id */
+#define MY_UCA1400_TAILORING_ID_BITS 5
+#define MY_UCA1400_TAILORING_ID_MASK ((1U << MY_UCA1400_TAILORING_ID_BITS) - 1)
+
+/* The table must not outgrow what the id field can address */
+typedef char my_uca1400_count_fits_mask
+  [(MY_UCA1400_COLLATION_DEFINITION_COUNT <=
+    MY_UCA1400_TAILORING_ID_MASK + 1) ? 1 : -1];
+
+
 static inline my_bool
 my_collation_id_is_uca1400(uint id)
 {
@@ -1023,7 +1033,7 @@ my_collation_id_is_uca1400(uint id)
 static inline uint
 my_uca1400_collation_id_to_tailoring_id(uint id)
 {
-  return (id >> 3) & 0x1F;
+  return (id >> 3) & MY_UCA1400_TAILORING_ID_MASK;
 }
 
 
@@ -1033,21 +1043,35 @@ my_uca1400_collation_id_to_charset_id(uint id)
   return (my_cs_encoding_t) ((id >> 8) & 0x07);
 }
 
+/*
+  The id field can hold more tailoring ids than the table has entries
+  (0..31 vs 0..25), so every access to the table must go through here.
+  Returns NULL for an undefined tailoring.
+*/
+static inline const MY_UCA1400_COLLATION_DEFINITION *
+my_uca1400_collation_definition(uint tlid)
+{
+  if (tlid >= MY_UCA1400_COLLATION_DEFINITION_COUNT)
+    return NULL;
+  return &my_uca1400_collation_definitions[tlid];
+}
 
 static uint my_uca1400_collation_id_uca400_compat(uint id)
 {
-  uint tlid= my_uca1400_collation_id_to_tailoring_id(id);
   my_cs_encoding_t csid= my_uca1400_collation_id_to_charset_id(id);
-  MY_UCA1400_COLLATION_DEFINITION *def;
+  const MY_UCA1400_COLLATION_DEFINITION *def;
+
   DBUG_ASSERT(my_collation_id_is_uca1400(id));
-  if (!(def= &my_uca1400_collation_definitions[tlid])->name)
+  def= my_uca1400_collation_definition(
+         my_uca1400_collation_id_to_tailoring_id(id));
+  if (!def || !def->name)
     return id;
   switch (csid) {
-  case MY_CS_ENCODING_UTF8MB3: return def->id_utf8mb3;
-  case MY_CS_ENCODING_UTF8MB4: return def->id_utf8mb4;
-  case MY_CS_ENCODING_UCS2:    return def->id_ucs2;
-  case MY_CS_ENCODING_UTF16:   return def->id_utf16;
-  case MY_CS_ENCODING_UTF32:   return def->id_utf32;
+    case MY_CS_ENCODING_UTF8MB3: return def->id_utf8mb3;
+    case MY_CS_ENCODING_UTF8MB4: return def->id_utf8mb4;
+    case MY_CS_ENCODING_UCS2:    return def->id_ucs2;
+    case MY_CS_ENCODING_UTF16:   return def->id_utf16;
+    case MY_CS_ENCODING_UTF32:   return def->id_utf32;
   }
   return id;
 }

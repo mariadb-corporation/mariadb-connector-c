@@ -170,9 +170,63 @@ static int test_lenenc_first_byte(MYSQL *unused __attribute__((unused)))
   return OK;
 }
 
+#define UCA1400_MIN 2048U
+#define UCA1400_MAX 4095U
+#define UCA1400_TAILORING_COUNT 26U
+
+static int test_uca1400_tailoring_bounds(MYSQL *unused __attribute__((unused)))
+{
+  unsigned int id;
+
+  for (id= UCA1400_MIN; id <= UCA1400_MAX; id++)
+  {
+    unsigned int tl= (id >> 3) & 0x1F;
+    const MARIADB_CHARSET_INFO *cs= mariadb_get_charset_by_nr(id);
+
+    /* Tailorings that don't exist must never resolve to a charset */
+    if (tl >= UCA1400_TAILORING_COUNT)
+    {
+      if (cs)
+        diag("id %u (tailoring %u) resolved to %s, expected NULL",
+             id, tl, cs->name);
+      FAIL_IF(cs != NULL, "undefined tailoring resolved to a charset");
+    }
+  }
+  return OK;
+}
+
+/* Regression guard: the fix must not change legitimate mappings */
+static int test_uca1400_valid_ids(MYSQL *unused __attribute__((unused)))
+{
+  static const struct { unsigned int uca1400_id, expected_nr; } t[]=
+  {
+    {2048 +   0*8,         192},  /* tailoring 0 (default), utf8mb3   */
+    {2048 +   1*8,         193},  /* icelandic, utf8mb3               */
+    {2048 + 256 + 0*8,     224},  /* default, utf8mb4                 */
+    {2048 + 256 + 1*8,     225},  /* icelandic, utf8mb4               */
+    {2048 + 24*8,          576},  /* croatian, utf8mb3 (block N2)     */
+  };
+  unsigned int i;
+
+  for (i= 0; i < sizeof(t)/sizeof(t[0]); i++)
+  {
+    const MARIADB_CHARSET_INFO *cs= mariadb_get_charset_by_nr(t[i].uca1400_id);
+    FAIL_IF(!cs, "valid UCA1400 id not resolved");
+    FAIL_IF(cs->nr != t[i].expected_nr, "UCA1400 id mapped to wrong collation");
+  }
+
+  /* placeholder tailorings (NULL name) are deliberately unmapped */
+  FAIL_IF(mariadb_get_charset_by_nr(2048 + 21*8) != NULL,
+          "croatian_mysql561 placeholder should not resolve");
+  return OK;
+}
+
 struct my_tests_st my_tests[]= {
   {"test_lenenc_cases",      test_lenenc_cases,      TEST_CONNECTION_NONE, 0, NULL, NULL},
   {"test_lenenc_first_byte", test_lenenc_first_byte, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_uca1400_tailoring_bounds", test_uca1400_tailoring_bounds, TEST_CONNECTION_NONE, 0, NULL, NULL},
+  {"test_uca1400_valid_ids", test_uca1400_valid_ids, TEST_CONNECTION_NONE, 0, NULL, NULL},
+
   {NULL, NULL, 0, 0, NULL, NULL}
 };
 
