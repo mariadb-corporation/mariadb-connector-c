@@ -18,6 +18,30 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_test.h"
 #include "mariadb_dyncol.h"
 
+static void *ma_memmem(const void *haystack, size_t haystacklen,
+                       const void *needle, size_t needlelen) {
+  const unsigned char *h;
+  const unsigned char *n;
+  const unsigned char *end;
+
+  if (needlelen == 0)
+    return (void *)haystack;
+  if (haystacklen < needlelen)
+    return NULL;
+  h = (const unsigned char *)haystack;
+  n = (const unsigned char *)needle;
+  end = h + haystacklen - needlelen + 1;
+
+  while ((h = (const unsigned char *)memchr(h, n[0], (size_t)(end - h))) != NULL) {
+    if (memcmp(h, n, needlelen) == 0) {
+      return (void *)h;
+    }
+    h++;
+  }
+
+  return NULL;
+}
+
 static int create_dyncol_named(MYSQL *mysql)
 {
   DYNAMIC_COLUMN dyncol;
@@ -656,7 +680,7 @@ static int test_dyncol_uca1400_charset(MYSQL *unused __attribute__((unused)))
     FAIL_IF(rc != ER_DYNCOL_OK, "control read failed");
 
     /* find the string; the 2-byte charset varint (C0 01) precedes it */
-    p= (char *) memmem(blob.str, blob.length, needle, sizeof(needle) - 1);
+    p= (char *) ma_memmem(blob.str, blob.length, needle, sizeof(needle) - 1);
     FAIL_IF(!p || p - blob.str < 2, "string not found in blob");
     FAIL_IF((uchar) p[-2] != 0xC0 || p[-1] != 0x01,
             "unexpected charset encoding, adjust the patch");
