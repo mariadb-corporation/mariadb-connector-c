@@ -5400,6 +5400,14 @@ static int test_vector(MYSQL *mysql)
 
   mysql_stmt_close(stmt);
 
+#ifdef HAVE_BIGENDIAN
+  if (bind.buffer_type != MYSQL_TYPE_VECTOR)
+  {
+    float *f= f2;
+    for (int i= 0; i < 4; i++, f++)
+      float4get(f2[i], ((uchar *)f));
+  }
+#endif
   if (memcmp(f1, f2, sizeof(float) * 4))
   {
     diag("Error: f1 != f2");
