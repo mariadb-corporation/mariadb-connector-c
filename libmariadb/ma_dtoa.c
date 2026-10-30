@@ -88,54 +88,62 @@ static void dtoa_free(char *, char *, size_t);
    @return            number of written characters (excluding terminating '\0')
 */
 
-size_t ma_fcvt(double x, int precision, char *to, my_bool *error)
+size_t ma_fcvt(double x, int precision, char *to, size_t to_size, my_bool *error)
 {
   int decpt, sign, len, i;
   char *res, *src, *end, *dst= to;
+  char *dend;
   char buf[DTOA_BUFF_SIZE];
-  DBUG_ASSERT(precision >= 0 && precision < NOT_FIXED_DEC && to != NULL);
+  DBUG_ASSERT(precision >= 0 && precision < NOT_FIXED_DEC && to != NULL && to_size > 0);
 
   res= dtoa(x, 5, precision, &decpt, &sign, &end, buf, sizeof(buf));
+  dend = to + to_size - 1;
 
   if (decpt == DTOA_OVERFLOW)
   {
     dtoa_free(res, buf, sizeof(buf));
-    *to++= '0';
-    *to= '\0';
+    if (to_size >= 2) {
+      *to++= '0';
+      *to= '\0';
+    }
+    if (to_size == 1)
+      *to= '\0';
     if (error != NULL)
       *error= TRUE;
-    return 1;
+    return (to_size >= 2) ? 1 : 0;
   }
 
   src= res;
   len= (int)(end - src);
 
-  if (sign)
+  if (sign && dst < dend)
     *dst++= '-';
 
   if (decpt <= 0)
   {
-    *dst++= '0';
-    *dst++= '.';
-    for (i= decpt; i < 0; i++)
+    if (dst < dend)
+      *dst++= '0';
+    if (dst < dend)
+      *dst++= '.';
+    for (i= decpt; i < 0 && dst < dend; i++)
       *dst++= '0';
   }
 
-  for (i= 1; i <= len; i++)
+  for (i= 1; i <= len && dst < dend; i++)
   {
     *dst++= *src++;
-    if (i == decpt && i < len)
+    if (i == decpt && i < len && dst < dend)
       *dst++= '.';
   }
-  while (i++ <= decpt)
+  while (i++ <= decpt && dst < dend)
     *dst++= '0';
 
   if (precision > 0)
   {
-    if (len <= decpt)
+    if (len <= decpt && dst < dend)
       *dst++= '.';
     
-    for (i= precision - MAX(0, (len - decpt)); i > 0; i--)
+    for (i= precision - MAX(0, (len - decpt)); i > 0 && dst < dend; i--)
       *dst++= '0';
   }
   
