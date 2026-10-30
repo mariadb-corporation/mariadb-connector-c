@@ -585,7 +585,7 @@ unsigned int ma_tls_get_peer_cert_info(MARIADB_TLS *ctls, uint hash_size)
   X509 *cert;
   unsigned int hash_alg;
   SSL *ssl;
-  char fp[129];
+  char fp[129] = {0};
 
   switch (hash_size) {
     case 0:
@@ -945,7 +945,7 @@ unsigned int ma_tls_get_finger_print(MARIADB_TLS *ctls, uint hash_type, char *fp
 {
   X509 *cert= NULL;
   MYSQL *mysql;
-  unsigned int fp_len;
+  unsigned int fp_len= 0;
   const EVP_MD *hash_alg;
   unsigned int max_len= EVP_MAX_MD_SIZE;
 

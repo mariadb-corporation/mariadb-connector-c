@@ -234,7 +234,7 @@ static my_bool ma_pvio_tls_compare_fp(MARIADB_TLS *ctls,
                                      const char *cert_fp,
                                      unsigned int cert_fp_len)
 {
-  char fp[EVP_MAX_MD_SIZE];
+  char fp[EVP_MAX_MD_SIZE]= {0};
   unsigned int fp_len= EVP_MAX_MD_SIZE;
   unsigned int hash_type;
 

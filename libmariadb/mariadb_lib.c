@@ -1621,7 +1621,7 @@ char *ma_send_connect_attr(MYSQL *mysql, unsigned char *buffer)
 static my_bool
 ma_set_connect_attrs(MYSQL *mysql, const char *host)
 {
-  char buffer[255];
+  char buffer[255]= {0};
   int rc= 0;
 
   rc= mysql_options(mysql, MYSQL_OPT_CONNECT_ATTR_DELETE, "_client_name") +

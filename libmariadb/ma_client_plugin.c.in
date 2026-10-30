@@ -172,7 +172,7 @@ add_plugin(MYSQL *mysql, struct st_mysql_client_plugin *plugin, void *dlhandle,
 {
   const char *errmsg;
   struct st_client_plugin_int plugin_int, *p;
-  char errbuf[1024];
+  char errbuf[1024] = {0};
   int plugin_nr;
 
   DBUG_ASSERT(initialized);
