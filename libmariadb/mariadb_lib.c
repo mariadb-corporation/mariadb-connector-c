@@ -370,39 +370,6 @@ net_field_length(uchar **packet)
   return (ulong) uint4korr(pos+1);
 }
 
-/* Same as above, but returns ulonglong values */
-
-static unsigned long long
-net_field_length_ll(uchar **packet)
-{
-  reg1 uchar *pos= *packet;
-  if (*pos < 251)
-  {
-    (*packet)++;
-    return (unsigned long long) *pos;
-  }
-  if (*pos == 251)
-  {
-    (*packet)++;
-    return (unsigned long long) NULL_LENGTH;
-  }
-  if (*pos == 252)
-  {
-    (*packet)+=3;
-    return (unsigned long long) uint2korr(pos+1);
-  }
-  if (*pos == 253)
-  {
-    (*packet)+=4;
-    return (unsigned long long) uint3korr(pos+1);
-  }
-  (*packet)+=9;					/* Must be 254 when here */
-#ifdef NO_CLIENT_LONGLONG
-  return (unsigned long long) uint4korr(pos+1);
-#else
-  return (unsigned long long) uint8korr(pos+1);
-#endif
-}
 
 /*
   Internal 64-bit decoder, used for affected_rows and insert_id in OK
@@ -1348,7 +1315,8 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
   MYSQL_ROWS **prev_ptr, *cur;
   NET *net = &mysql->net;
 
-  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
+  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error ||
+       pkt_len == 0)
     return(0);
   if (!(result=(MYSQL_DATA*) calloc(1, sizeof(MYSQL_DATA))))
   {
@@ -1369,7 +1337,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
                                 sizeof(MYSQL_ROWS))) ||
           !(cur->data= ((MYSQL_ROW)
               ma_alloc_root(&result->alloc,
-                     (fields+1)*sizeof(char *)+fields+pkt_len))))
+                     (size_t)((fields+1)*sizeof(char *)+fields+pkt_len)))))
     {
       free_rows(result);
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
@@ -1384,27 +1352,30 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
 
     for (field=0 ; field < fields ; field++)
     {
+      int rc;
+
       if (cp >= end_cp) {
           cur->data[field]= 0;
           continue;
       }
 
-      if ((len=(ulong) net_field_length(&cp)) == NULL_LENGTH)
+      rc= net_field_length_safe(&cp, end_cp, 0, &len);
+      if (rc == MARIADB_LENENC_ERROR)
+        goto malformed;
+
+      if (rc == MARIADB_LENENC_NULL)
       {                        /* null field */
         cur->data[field] = 0;
+        continue;
       }
       else
       {
         cur->data[field] = to;
-        if (len > (ulong)(end_to - to) ||
-            to > end_to ||
-            cp > end_cp ||
-            len > (ulong)(end_cp - cp))
-        {
-          free_rows(result);
-          SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
-          return(0);
-        }
+
+        if (len > (ulong)(end_cp - cp) ||
+            len > (ulong)(end_to - to))
+          goto malformed;
+
         memcpy(to, (char*) cp, len); to[len]=0;
         to+=len+1;
         cp+=len;
@@ -1421,6 +1392,8 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
       free_rows(result);
       return(0);
     }
+    if (pkt_len == 0)
+      goto malformed;
   }
   *prev_ptr=0;                    /* last pointer is null */
 
@@ -1434,9 +1407,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
 
     if (cp + 5 > end_cp)
     {
-      free_rows(result);
-      SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
-      return(0);
+      goto malformed;
     }
 
     cp++;
@@ -1446,6 +1417,11 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
     ma_status_callback(mysql, last_status);
   }
   return(result);
+
+malformed:
+  free_rows(result);
+  SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
+  return(0);
 }
 
 /*
@@ -2860,36 +2836,55 @@ mem_error:
   return;
 }
 
+/* Decode a length-encoded integer, NULL not allowed. Returns 1 on failure. */
+static my_bool ma_read_lenenc(uchar **pos, const uchar *end, ulong *out)
+{
+  return net_field_length_safe(pos, end, MARIADB_LENENC_FORBID_NULL, out)
+         != MARIADB_LENENC_OK;
+}
+
+/* Decode a length and verify that many payload bytes remain before `end`. */
+static my_bool ma_read_lenenc_str(uchar **pos, const uchar *end, ulong *len)
+{
+  return ma_read_lenenc(pos, end, len) || *len > (size_t)(end - *pos);
+}
+
 int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
 {
-  uchar *end= mysql->net.read_pos+length;
-  size_t item_len;
+  uchar *end= mysql->net.read_pos + length;
+  ulong item_len;                      /* was size_t: must match ulong * */
+  unsigned long long v;
   unsigned int last_status= mysql->server_status;
-  mysql->affected_rows= net_field_length_ll(&pos);
-  mysql->insert_id=	  net_field_length_ll(&pos);
 
-  if (ma_check_buffer_boundaries(mysql, pos, length, 2))
+  if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v)
+      != MARIADB_LENENC_OK)
     goto corrupted;
-  mysql->server_status=uint2korr(pos);
+  mysql->affected_rows= v;
 
+  if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v)
+      != MARIADB_LENENC_OK)
+    goto corrupted;
+  mysql->insert_id= v;
+
+  /* server_status + warning_count: 4 bytes, checked once up front */
+  if ((size_t)(end - pos) < 4)
+    goto corrupted;
+
+  mysql->server_status= uint2korr(pos);
   /* clear error */
-  mysql->net.last_error[0]= mysql->net.last_errno= mysql->net.extension->extended_errno= 0;
-
-  /* callback */
+  mysql->net.last_error[0]= mysql->net.last_errno=
+    mysql->net.extension->extended_errno= 0;
   ma_status_callback(mysql, last_status);
-  pos+=2;
-  if (ma_check_buffer_boundaries(mysql, pos, length, 2))
-    goto corrupted;
-  mysql->warning_count=uint2korr(pos);
-  pos+=2;
-  if (pos > end)
-    goto corrupted;
+  mysql->warning_count= uint2korr(pos + 2);
+  pos+= 4;
+
   if (pos < end)
   {
-    if ((item_len= net_field_length(&pos)))
-      mysql->info=(char*) pos;
-    if (ma_check_buffer_boundaries(mysql, pos, length, item_len))
+    if (ma_read_lenenc_str(&pos, end, &item_len))
       goto corrupted;
+
+    if (item_len)
+      mysql->info= (char*) pos;
 
     /* check if server supports session tracking */
     if (mysql->server_capabilities & CLIENT_SESSION_TRACKING)
@@ -2905,10 +2900,9 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
           enum enum_session_state_type si_type;
           uchar *old_pos= pos;
 
-          item_len= net_field_length(&pos);  /* length for all items */
-          if (ma_check_buffer_boundaries(mysql, pos, length, item_len))
+          if (ma_read_lenenc_str(&pos, end, &item_len))
             goto corrupted;
-          end= pos + item_len;
+          end= pos + item_len;         /* narrow to the session-state block */
 
           /* length was already set, so make sure that info will be zero terminated */
           if (mysql->info)
@@ -2916,11 +2910,14 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
 
           while (pos < end)
           {
-            size_t plen;
+            ulong plen, tmp;
             MARIADB_CONST_STRING data1, data2;
-            si_type= (enum enum_session_state_type)net_field_length(&pos);
 
-            switch(si_type) {
+            if (ma_read_lenenc(&pos, end, &tmp))
+              goto corrupted;
+            si_type= (enum enum_session_state_type) tmp;
+
+            switch (si_type) {
             case SESSION_TRACK_SCHEMA:
             case SESSION_TRACK_STATE_CHANGE:
             case SESSION_TRACK_TRANSACTION_CHARACTERISTICS:
@@ -2929,77 +2926,80 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
             case SESSION_TRACK_GTIDS:
               if (si_type != SESSION_TRACK_STATE_CHANGE)
               {
-                net_field_length(&pos); /* ignore total length, item length will follow next */
+                /* ignore total length, item length will follow next */
+                if (ma_read_lenenc(&pos, end, &tmp))
+                  goto corrupted;
               }
               if (si_type == SESSION_TRACK_GTIDS)
               {
                 /* skip encoding */
-                net_field_length(&pos);
+                if (ma_read_lenenc(&pos, end, &tmp))
+                  goto corrupted;
               }
-              plen= net_field_length(&pos);
-              if (ma_check_buffer_boundaries(mysql, pos, length, plen))
+              if (ma_read_lenenc_str(&pos, end, &plen))
                 goto corrupted;
 
-              data1.str= (char *)pos;
+              data1.str= (char *) pos;
               data1.length= plen;
               if (si_type != SESSION_TRACK_SYSTEM_VARIABLES)
               {
-                 mysql->options.extension->status_callback(mysql->options.extension->status_data,
-                                                           SESSION_TRACK_TYPE, si_type,
-                                                           &data1);
-                 if (mysql->net.last_errno)
-                   goto oom;
+                mysql->options.extension->status_callback(
+                    mysql->options.extension->status_data,
+                    SESSION_TRACK_TYPE, si_type, &data1);
+                if (mysql->net.last_errno)
+                  goto oom;
               }
               pos+= plen;
+
               /* in case schema has changed, we have to update mysql->db */
               if (si_type == SESSION_TRACK_SCHEMA)
               {
+                char *db;
                 /* covers utf8mb3 and utf8mb4 */
                 if (plen > 256)
                   goto corrupted;
+                if (!(db= malloc(plen + 1)))
+                  goto oom;
+                memcpy(db, data1.str, plen);
+                db[plen]= 0;
                 free(mysql->db);
-                mysql->db= malloc(plen + 1);
-                memcpy(mysql->db, data1.str, data1.length);
-                mysql->db[data1.length]= 0;
+                mysql->db= db;
               }
               else if (si_type == SESSION_TRACK_SYSTEM_VARIABLES)
               {
-                my_bool set_charset= 0;
-                /* make sure that we update charset in case it has changed */
-                if (!strncmp(data1.str, "character_set_client", plen))
-                  set_charset= 1;
-                plen= net_field_length(&pos);
+                static const char csc[]= "character_set_client";
+                my_bool set_charset=
+                  (plen == sizeof(csc) - 1 && !memcmp(data1.str, csc, plen));
 
-                /* check boundaries before executing callback function */
-                if (ma_check_buffer_boundaries(mysql, pos, length, plen) ||
-                   (set_charset && plen >= CHARSET_NAME_LEN))
+                if (ma_read_lenenc_str(&pos, end, &plen) ||
+                    (set_charset && plen >= CHARSET_NAME_LEN))
                   goto corrupted;
-                data2.str= (char *)pos;
+                data2.str= (char *) pos;
                 data2.length= plen;
 
-                mysql->options.extension->status_callback(mysql->options.extension->status_data,
-                                                          SESSION_TRACK_TYPE, si_type,
-                                                          &data1, &data2);
-                 if (mysql->net.last_errno)
-                   goto oom;
+                mysql->options.extension->status_callback(
+                    mysql->options.extension->status_data,
+                    SESSION_TRACK_TYPE, si_type, &data1, &data2);
+                if (mysql->net.last_errno)
+                  goto oom;
 
                 pos+= plen;
                 if (set_charset &&
-                    strncmp(mysql->charset->csname, data2.str, data2.length) != 0)
+                    (strlen(mysql->charset->csname) != data2.length ||
+                     memcmp(mysql->charset->csname, data2.str, data2.length)))
                 {
                   char cs_name[CHARSET_NAME_LEN];
                   const MARIADB_CHARSET_INFO *cs_info;
-                  memcpy(cs_name, data2.str, data2.length);
+                  memcpy(cs_name, data2.str, plen);
                   cs_name[plen]= 0;
-                  if ((cs_info = mysql_find_charset_name(cs_name)))
+                  if ((cs_info= mysql_find_charset_name(cs_name)))
                     mysql->charset= cs_info;
                 }
               }
               break;
             default:
               /* not supported yet */
-              plen= net_field_length(&pos);
-              if (ma_check_buffer_boundaries(mysql, pos, length, plen))
+              if (ma_read_lenenc_str(&pos, end, &plen))
                 goto corrupted;
               pos+= plen;
               break;
@@ -3008,8 +3008,10 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
         }
         for (i= SESSION_TRACK_BEGIN; i <= SESSION_TRACK_END; i++)
         {
-          mysql->extension->session_state[i].list= list_reverse(mysql->extension->session_state[i].list);
-          mysql->extension->session_state[i].current= mysql->extension->session_state[i].list;
+          mysql->extension->session_state[i].list=
+            list_reverse(mysql->extension->session_state[i].list);
+          mysql->extension->session_state[i].current=
+            mysql->extension->session_state[i].list;
         }
       }
     }
@@ -3029,7 +3031,6 @@ corrupted:
   SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
   return -1;
 }
-
 
 static int ma_deep_copy_field(const MYSQL_FIELD *src, MYSQL_FIELD *dst,
                               MA_MEM_ROOT *r)
