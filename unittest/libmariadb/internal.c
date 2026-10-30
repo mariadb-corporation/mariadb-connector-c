@@ -1,5 +1,6 @@
 #include "my_test.h"
 #include "ma_string.h"
+#include <math.h>
 
 #define SENTINEL 0x5A5A5A5AUL   /* *len must keep this value on error */
 
@@ -292,7 +293,7 @@ static int test_ma_fcvt_bounded(MYSQL *unused __attribute__((unused)))
     the original code. to_size=1 means even that is one byte too many.
   */
   {
-    double inf= 1.0 / 0.0; /* or use INFINITY from <math.h> if preferred */
+    double inf= HUGE_VAL;
     buf= (char *) malloc(1);
     len= ma_fcvt(inf, 2, buf, 1, &error);
     FAIL_IF(len > 1 - 1,
