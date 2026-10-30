@@ -2114,10 +2114,10 @@ static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
   if (!mysql->field_count)
     return 0;
 
-  stmt->field_count= mysql->field_count;
   if (mysql->fields)
   {
     /* Column info was sent by server */
+    stmt->field_count= mysql->field_count;
     ma_free_root(fields_ma_alloc_root, MYF(0));
     if (!(stmt->fields= ma_duplicate_resultset_metadata(
               mysql->fields, mysql->field_count,
@@ -2130,6 +2130,13 @@ static int madb_alloc_stmt_fields(MYSQL_STMT *stmt)
         fields_ma_alloc_root, stmt->field_count * sizeof(MYSQL_BIND))))
     {
       stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+      return (1);
+    }
+  } else {
+    if (!ma_supports_cache_metadata(mysql) ||
+        !stmt->bind || mysql->field_count != stmt->field_count)
+    {
+      stmt_set_error(stmt, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
       return (1);
     }
   }
