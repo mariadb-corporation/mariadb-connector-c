@@ -6294,7 +6294,288 @@ static int test_conc821(MYSQL *mysql)
   return OK;
 }
 
+/*
+  Columns fetched into a buffer of the same type take a direct path in
+  mysql_stmt_fetch(); it must give the same result as the generic
+  conversion, which mysql_stmt_fetch_column() still uses. Check values,
+  lengths, truncation flags and NUL termination for every such pair,
+  including truncated strings, an unsigned/signed mismatch, a binary
+  and a text blob, and a NULL in the middle.
+*/
+static int test_fetch_direct(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[15], cbind;
+  MYSQL_RES *meta;
+  MYSQL_FIELD *fields;
+  int rc, row, i;
+  signed char v_tiny;
+  short v_short, v_year;
+  int v_int24, v_long;
+  long long v_bigint;
+  float v_float;
+  double v_double;
+  char v_varchar[8], v_text[64], v_blob[64], v_dec[16], v_varbin[8], v_bin[8], v_tblob[8];
+  unsigned long len[15], clen;
+  my_bool is_null[15], err[15], cnull, cerr;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_fetch_direct");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t_fetch_direct ("
+                         "c_tiny TINYINT, c_short SMALLINT UNSIGNED, c_year YEAR, "
+                         "c_int24 MEDIUMINT, c_long INT, c_bigint BIGINT, "
+                         "c_float FLOAT, c_double DOUBLE, c_varchar VARCHAR(10), "
+                         "c_text TEXT, c_blob BLOB, c_dec DECIMAL(10,3), "
+                         "c_varbin VARBINARY(10), c_bin BINARY(3), c_tblob TINYBLOB)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t_fetch_direct VALUES "
+                         "(-5, 40000, 2024, -100000, -2000000000, -9000000000000000000, "
+                         "1.5, 2.25, 'abcde', 'some text', x'0001FF', 123.456, "
+                         "x'00FF', x'410042', x'FF00'), "
+                         "(127, 65535, 1999, 8388607, 2147483647, 9223372036854775807, "
+                         "-3.75, -1e100, 'abcdefghij', NULL, '', -0.001, "
+                         "x'00010203040506070809', NULL, '')");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT * FROM t_fetch_direct ORDER BY c_tiny"));
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  /* the binary string columns must be reported with the binary charset,
+     the others not: that is what selects the binary copy */
+  meta= mysql_stmt_result_metadata(stmt);
+  FAIL_IF(!meta, "no metadata");
+  fields= mysql_fetch_fields(meta);
+  FAIL_IF(fields[8].charsetnr == 63 || fields[9].charsetnr == 63, "text columns reported as binary");
+  FAIL_IF(fields[10].charsetnr != 63 || fields[12].charsetnr != 63 ||
+          fields[13].charsetnr != 63 || fields[14].charsetnr != 63, "binary columns not reported as binary");
+  FAIL_IF(fields[10].type != MYSQL_TYPE_BLOB || fields[12].type != MYSQL_TYPE_VAR_STRING ||
+          fields[13].type != MYSQL_TYPE_STRING || fields[14].type != MYSQL_TYPE_BLOB, "unexpected column types");
+  mysql_free_result(meta);
+
+  memset(bind, 0, sizeof(bind));
+  bind[0].buffer_type= MYSQL_TYPE_TINY;     bind[0].buffer= &v_tiny;
+  bind[1].buffer_type= MYSQL_TYPE_SHORT;    bind[1].buffer= &v_short;  /* signed buffer, unsigned column */
+  bind[2].buffer_type= MYSQL_TYPE_YEAR;     bind[2].buffer= &v_year;
+  bind[3].buffer_type= MYSQL_TYPE_INT24;    bind[3].buffer= &v_int24;
+  bind[4].buffer_type= MYSQL_TYPE_LONG;     bind[4].buffer= &v_long;
+  bind[5].buffer_type= MYSQL_TYPE_LONGLONG; bind[5].buffer= &v_bigint;
+  bind[6].buffer_type= MYSQL_TYPE_FLOAT;    bind[6].buffer= &v_float;
+  bind[7].buffer_type= MYSQL_TYPE_DOUBLE;   bind[7].buffer= &v_double;
+  bind[8].buffer_type= MYSQL_TYPE_STRING;   bind[8].buffer= v_varchar; bind[8].buffer_length= sizeof(v_varchar);
+  bind[9].buffer_type= MYSQL_TYPE_STRING;   bind[9].buffer= v_text;    bind[9].buffer_length= sizeof(v_text);
+  bind[10].buffer_type= MYSQL_TYPE_BLOB;    bind[10].buffer= v_blob;   bind[10].buffer_length= sizeof(v_blob);
+  bind[11].buffer_type= MYSQL_TYPE_NEWDECIMAL; bind[11].buffer= v_dec; bind[11].buffer_length= sizeof(v_dec);
+  bind[12].buffer_type= MYSQL_TYPE_BLOB;    bind[12].buffer= v_varbin; bind[12].buffer_length= sizeof(v_varbin);
+  bind[13].buffer_type= MYSQL_TYPE_STRING;  bind[13].buffer= v_bin;    bind[13].buffer_length= sizeof(v_bin);
+  bind[14].buffer_type= MYSQL_TYPE_STRING;  bind[14].buffer= v_tblob;  bind[14].buffer_length= sizeof(v_tblob);
+  for (i= 0; i < 15; i++)
+  {
+    bind[i].length= &len[i];
+    bind[i].is_null= &is_null[i];
+    bind[i].error= &err[i];
+  }
+  rc= mysql_stmt_bind_result(stmt, bind);
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_store_result(stmt);
+  check_stmt_rc(rc, stmt);
+
+  for (row= 0; row < 2; row++)
+  {
+    memset(v_varchar, 'x', sizeof(v_varchar));
+    memset(v_blob, 'x', sizeof(v_blob));
+    memset(v_varbin, 'x', sizeof(v_varbin));
+    memset(v_bin, 'x', sizeof(v_bin));
+    memset(v_tblob, 'x', sizeof(v_tblob));
+    rc= mysql_stmt_fetch(stmt);
+    /* the unsigned smallint does not fit its signed buffer in either row */
+    FAIL_IF(rc != MYSQL_DATA_TRUNCATED, "expected MYSQL_DATA_TRUNCATED");
+
+    FAIL_IF(v_tiny != (row ? 127 : -5), "wrong tiny value");
+    FAIL_IF(len[0] != 1, "wrong tiny length");
+    FAIL_IF(err[0], "unexpected tiny error");
+    /* unsigned column into a signed buffer: flagged when the value does not fit */
+    FAIL_IF((unsigned short)v_short != (row ? 65535 : 40000), "wrong short value");
+    FAIL_IF(!err[1], "unsigned smallint into signed short not flagged");
+    FAIL_IF(v_year != (row ? 1999 : 2024), "wrong year value");
+    FAIL_IF(len[2] != 2 || err[2], "wrong year length or error");
+    FAIL_IF(v_int24 != (row ? 8388607 : -100000), "wrong mediumint value");
+    FAIL_IF(len[3] != 4 || err[3], "wrong mediumint length or error");
+    FAIL_IF(v_long != (row ? 2147483647 : -2000000000), "wrong int value");
+    FAIL_IF(len[4] != 4 || err[4], "wrong int length or error");
+    FAIL_IF(v_bigint != (row ? 9223372036854775807LL : -9000000000000000000LL), "wrong bigint value");
+    FAIL_IF(len[5] != 8 || err[5], "wrong bigint length or error");
+    FAIL_IF(v_float != (row ? -3.75f : 1.5f), "wrong float value");
+    FAIL_IF(len[6] != 4 || err[6], "wrong float length or error");
+    FAIL_IF(v_double != (row ? -1e100 : 2.25), "wrong double value");
+    FAIL_IF(len[7] != 8 || err[7], "wrong double length or error");
+
+    /* varchar: 5 chars fit in 8, 10 chars are truncated to 8 without NUL */
+    FAIL_IF(len[8] != strlen(row ? "abcdefghij" : "abcde"), "wrong varchar length");
+    FAIL_IF(err[8] != (row ? 1 : 0), "wrong varchar truncation flag");
+    FAIL_IF(memcmp(v_varchar, row ? "abcdefgh" : "abcde", row ? 8 : 6), "wrong varchar value");
+    FAIL_IF(!row && v_varchar[6] != 'x', "varchar wrote beyond the terminator");
+
+    /* text (blob type, text charset) into a string buffer, NULL in row 1 */
+    FAIL_IF(is_null[9] != (row ? 1 : 0), "wrong text is_null");
+    if (!row)
+      FAIL_IF(len[9] != 9 || err[9] || strcmp(v_text, "some text"), "wrong text value");
+
+    /* binary blob: no NUL added for a BLOB buffer, length as sent */
+    FAIL_IF(len[10] != (row ? 0 : 3) || err[10], "wrong blob length or error");
+    FAIL_IF(!row && memcmp(v_blob, "\0\1\xff", 3), "wrong blob value");
+    FAIL_IF(v_blob[row ? 0 : 3] != 'x', "blob buffer written beyond the value");
+
+    FAIL_IF(is_null[11] || err[11], "unexpected decimal NULL or error");
+    FAIL_IF(strcmp(v_dec, row ? "-0.001" : "123.456"), "wrong decimal value");
+    FAIL_IF(len[11] != strlen(v_dec), "wrong decimal length");
+
+    /* VARBINARY is a VAR_STRING column: copied like a string whatever the
+       buffer type, so it is NUL terminated when there is room, and
+       truncated (10 bytes into 8, no NUL) in row 1 */
+    FAIL_IF(len[12] != (row ? 10 : 2), "wrong varbinary length");
+    FAIL_IF(err[12] != (row ? 1 : 0), "wrong varbinary truncation flag");
+    FAIL_IF(memcmp(v_varbin, row ? "\0\1\2\3\4\5\6\7" : "\0\xff\0", row ? 8 : 3), "wrong varbinary value");
+    /* BINARY(3): STRING column with the binary charset, NULL in row 1 */
+    FAIL_IF(is_null[13] != (row ? 1 : 0), "wrong binary is_null");
+    if (!row)
+      FAIL_IF(len[13] != 3 || err[13] || memcmp(v_bin, "A\0B\0", 4), "wrong binary value");
+    /* TINYBLOB with the binary charset into a STRING buffer: binary copy,
+       NUL terminated because the buffer type is STRING */
+    FAIL_IF(len[14] != (row ? 0 : 2) || err[14], "wrong tinyblob length or error");
+    FAIL_IF(memcmp(v_tblob, row ? "\0x" : "\xff\0\0x", row ? 2 : 4), "wrong tinyblob value");
+
+    /* the generic conversion, used by mysql_stmt_fetch_column(), must agree
+       with the direct path for every column, with an offset for strings */
+    for (i= 0; i < 15; i++)
+    {
+      char cbuf[64];
+      unsigned long offset= (i == 8 && row) ? 2 : 0;
+
+      memset(&cbind, 0, sizeof(cbind));
+      cbind.buffer_type= bind[i].buffer_type;
+      cbind.buffer= cbuf;
+      cbind.buffer_length= bind[i].buffer_length;
+      cbind.length= &clen;
+      cbind.is_null= &cnull;
+      cbind.error= &cerr;
+      memset(cbuf, 'x', sizeof(cbuf));
+      rc= mysql_stmt_fetch_column(stmt, &cbind, i, offset);
+      check_stmt_rc(rc, stmt);
+      FAIL_IF(cnull != is_null[i], "fetch_column is_null differs");
+      if (is_null[i])
+        continue;
+      FAIL_IF(clen != len[i], "fetch_column length differs");
+      if (!offset)
+      {
+        size_t cmp_len= bind[i].buffer_length ? MIN(len[i], bind[i].buffer_length)
+                                              : len[i];
+        FAIL_IF(cerr != err[i], "fetch_column error flag differs");
+        FAIL_IF(memcmp(cbuf, bind[i].buffer, cmp_len), "fetch_column value differs");
+      }
+      else
+      {
+        /* "abcdefghij" from offset 2: 8 bytes fit exactly, no truncation */
+        FAIL_IF(cerr || memcmp(cbuf, "cdefghij", 8), "fetch_column with offset differs");
+      }
+    }
+  }
+  rc= mysql_stmt_fetch(stmt);
+  FAIL_IF(rc != MYSQL_NO_DATA, "expected end of data");
+  mysql_stmt_close(stmt);
+
+  /* temporal columns into MYSQL_TIME buffers: every payload length
+     (0, 4, 7, 11 for datetime, 0, 8, 12 for time), negative time with
+     days, and a DATE into a DATETIME buffer */
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_fetch_direct");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t_fetch_direct (id INT, c_time TIME(6), c_date DATE, "
+                         "c_dt DATETIME(3), c_ts TIMESTAMP(6) NULL)");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t_fetch_direct VALUES "
+                         "(1, '-838:59:59.000001', '2024-02-29', '2024-02-29 13:14:15.678', '2001-01-01 00:00:00.5'), "
+                         "(2, '00:00:00', '0000-00-00', '2024-02-29 00:00:00', '2001-01-01 00:00:00'), "
+                         "(3, '25:30:00', NULL, '2024-02-29', NULL)");
+  check_mysql_rc(rc, mysql);
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, SL("SELECT c_time, c_date, c_dt, c_ts, c_date FROM t_fetch_direct ORDER BY id"));
+  check_stmt_rc(rc, stmt);
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+  {
+    MYSQL_TIME tm[5], ctm;
+    MYSQL_BIND tbind[5];
+    enum enum_field_types types[5]= {MYSQL_TYPE_TIME, MYSQL_TYPE_DATE, MYSQL_TYPE_DATETIME,
+                                     MYSQL_TYPE_TIMESTAMP, MYSQL_TYPE_DATETIME};
+
+    memset(tbind, 0, sizeof(tbind));
+    for (i= 0; i < 5; i++)
+    {
+      tbind[i].buffer_type= types[i];
+      tbind[i].buffer= &tm[i];
+      tbind[i].length= &len[i];
+      tbind[i].is_null= &is_null[i];
+      tbind[i].error= &err[i];
+    }
+    rc= mysql_stmt_bind_result(stmt, tbind);
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_store_result(stmt);
+    check_stmt_rc(rc, stmt);
+
+    for (row= 0; row < 3; row++)
+    {
+      rc= mysql_stmt_fetch(stmt);
+      check_stmt_rc(rc, stmt);
+
+      /* a few direct checks, then the full comparison with fetch_column */
+      if (row == 0)
+      {
+        FAIL_IF(!tm[0].neg || tm[0].hour != 838 || tm[0].minute != 59 || tm[0].second != 59 ||
+                tm[0].second_part != 1 || tm[0].year || tm[0].month || tm[0].day, "wrong time value");
+        FAIL_IF(tm[1].year != 2024 || tm[1].month != 2 || tm[1].day != 29 ||
+                tm[1].time_type != MYSQL_TIMESTAMP_DATE, "wrong date value");
+        FAIL_IF(tm[2].hour != 13 || tm[2].second != 15 || tm[2].second_part != 678000 ||
+                tm[2].time_type != MYSQL_TIMESTAMP_DATETIME, "wrong datetime value");
+        FAIL_IF(tm[3].year != 2001 || tm[3].second_part != 500000, "wrong timestamp value");
+        FAIL_IF(tm[4].year != 2024 || tm[4].hour || tm[4].time_type != MYSQL_TIMESTAMP_DATE,
+                "wrong date into datetime buffer");
+      }
+      if (row == 2)
+        FAIL_IF(tm[0].hour != 25 || tm[0].minute != 30 || tm[0].neg, "wrong time with days");
+
+      for (i= 0; i < 5; i++)
+      {
+        FAIL_IF(len[i] != sizeof(MYSQL_TIME), "wrong temporal length");
+        memset(&cbind, 0, sizeof(cbind));
+        cbind.buffer_type= types[i];
+        cbind.buffer= &ctm;
+        cbind.length= &clen;
+        cbind.is_null= &cnull;
+        cbind.error= &cerr;
+        memset(&ctm, 0xAA, sizeof(ctm));
+        rc= mysql_stmt_fetch_column(stmt, &cbind, i, 0);
+        check_stmt_rc(rc, stmt);
+        FAIL_IF(cnull != is_null[i], "temporal fetch_column is_null differs");
+        if (is_null[i])
+          continue;
+        FAIL_IF(cerr != err[i], "temporal fetch_column error differs");
+        FAIL_IF(memcmp(&ctm, &tm[i], sizeof(MYSQL_TIME)), "temporal fetch_column value differs");
+      }
+    }
+    rc= mysql_stmt_fetch(stmt);
+    FAIL_IF(rc != MYSQL_NO_DATA, "expected end of data");
+  }
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "DROP TABLE t_fetch_direct");
+  check_mysql_rc(rc, mysql);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_fetch_direct", test_fetch_direct, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc683", test_conc683, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc667", test_conc667, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc821", test_conc821, TEST_CONNECTION_NEW, 0, NULL, NULL},
