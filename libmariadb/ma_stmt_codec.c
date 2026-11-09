@@ -101,7 +101,7 @@ void ma_bmove_upp(register char *dst, register const char *src, register size_t 
 }
 
 /* {{{ ps_fetch_from_1_to_8_bytes */
-void ps_fetch_from_1_to_8_bytes(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
+static inline void ps_fetch_from_1_to_8_bytes(MYSQL_BIND *r_param, const MYSQL_FIELD * const field,
                 unsigned char **row, unsigned int byte_count)
 {
   my_bool is_unsigned= test(field->flags & UNSIGNED_FLAG);
@@ -1144,36 +1144,32 @@ static
 void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
                        unsigned char **row)
 {
-  MYSQL_TIME *t= (MYSQL_TIME *)r_param->buffer;
+  MYSQL_TIME tm, *t= &tm;
   unsigned int len= net_field_length(row);
 
   switch (r_param->buffer_type) {
     case MYSQL_TYPE_DATETIME:
     case MYSQL_TYPE_TIMESTAMP:
-      convert_to_datetime(r_param, t, row, len, field->type);
-      break;
     case MYSQL_TYPE_DATE:
-      convert_to_datetime(r_param, t, row, len, field->type);
-      break;
     case MYSQL_TYPE_TIME:
-      convert_to_datetime(r_param, t, row, len, field->type);
-      t->year= t->day= t->month= 0;
+      t= (MYSQL_TIME *)r_param->buffer;  /* decoded in place */
       break;
-    case MYSQL_TYPE_YEAR:
-    {
-      MYSQL_TIME tm;
-      convert_to_datetime(r_param, &tm, row, len, field->type);
-      shortstore(r_param->buffer, tm.year);
+    default:                             /* converted from a temporary */
       break;
-    }
-    default:
-    {
-      char dtbuffer[60];
-      MYSQL_TIME tm;
-      size_t length;
-      convert_to_datetime(r_param, &tm, row, len, field->type);
+  }
+  convert_to_datetime(r_param, t, row, len, field->type);
 
-      switch(field->type) {
+  if (r_param->buffer_type == MYSQL_TYPE_TIME)
+    t->year= t->day= t->month= 0;
+  else if (r_param->buffer_type == MYSQL_TYPE_YEAR)
+    shortstore(r_param->buffer, tm.year);
+  else if (t == &tm)
+  {
+    /* any other buffer type: convert from the string representation */
+    char dtbuffer[60];
+    size_t length;
+
+    switch(field->type) {
       case MYSQL_TYPE_DATE:
         length= sprintf(dtbuffer, "%04u-%02u-%02u", tm.year, tm.month, tm.day);
         break;
@@ -1202,10 +1198,8 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
         dtbuffer[0]= 0;
         length= 0;
         break;
-      }
-      convert_froma_string(r_param, dtbuffer, length);
-      break;
     }
+    convert_froma_string(r_param, dtbuffer, length);
   }
   (*row) += len;
 }
