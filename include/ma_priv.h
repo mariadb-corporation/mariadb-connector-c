@@ -59,9 +59,114 @@ MA_FIELD_EXTENSION *ma_field_extension_deep_dup(MA_MEM_ROOT *memroot,
 MYSQL_FIELD *ma_duplicate_resultset_metadata(MYSQL_FIELD *fields, size_t count,
                                              MA_MEM_ROOT *memroot);
 
-int net_field_length_ll_safe(uchar **pos, const uchar *end,
-                             unsigned long long *len);
-int net_field_length_safe(uchar **pos, const uchar *end, ulong *len);
+static inline int net_field_length_ll_safe(uchar **pos, const uchar *end,
+                                           unsigned long long *len)
+{
+  uchar *p= *pos;
+  size_t avail;
+
+  if (p >= end)
+    return MARIADB_LENENC_ERROR;
+
+  /* 0..250: the byte is the value, by far the most common case */
+  if (*p < 251)
+  {
+    *len= (unsigned long long)*p;
+    *pos= p + 1;
+    return MARIADB_LENENC_OK;
+  }
+
+  avail= (size_t)(end - p);       /* >= 1, includes the marker byte */
+
+  if (*p == 251)
+  {
+    *len= 0;
+    *pos= p + 1;
+    return MARIADB_LENENC_NULL;
+  }
+  if (*p == 252)
+  {
+    if (avail < 3)
+      return MARIADB_LENENC_ERROR;
+    *len= (unsigned long long)uint2korr(p + 1);
+    *pos= p + 3;
+    return MARIADB_LENENC_OK;
+  }
+  if (*p == 253)
+  {
+    if (avail < 4)
+      return MARIADB_LENENC_ERROR;
+    *len= (unsigned long long)uint3korr(p + 1);
+    *pos= p + 4;
+    return MARIADB_LENENC_OK;
+  }
+  if (*p == 254)
+  {
+    if (avail < 9)
+      return MARIADB_LENENC_ERROR;
+    *len= (unsigned long long)uint8korr(p + 1);
+    *pos= p + 9;
+    return MARIADB_LENENC_OK;
+  }
+  return MARIADB_LENENC_ERROR;    /* 255: never a valid length marker */
+}
+
+static inline int net_field_length_safe(uchar **pos, const uchar *end, ulong *len)
+{
+  uchar *p= *pos;
+  size_t avail;
+
+  if (p >= end)
+    return MARIADB_LENENC_ERROR;
+
+  /* 0..250: the byte is the value, by far the most common case */
+  if (*p < 251)
+  {
+    *len= (ulong)*p;
+    *pos= p + 1;
+    return MARIADB_LENENC_OK;
+  }
+
+  avail= (size_t)(end - p);       /* >= 1, includes the marker byte */
+
+  if (*p == 251)
+  {
+    *len= 0;
+    *pos= p + 1;
+    return MARIADB_LENENC_NULL;
+  }
+  if (*p == 252)
+  {
+    if (avail < 3)
+      return MARIADB_LENENC_ERROR;
+    *len= (ulong)uint2korr(p + 1);
+    *pos= p + 3;
+    return MARIADB_LENENC_OK;
+  }
+  if (*p == 253)
+  {
+    if (avail < 4)
+      return MARIADB_LENENC_ERROR;
+    *len= (ulong)uint3korr(p + 1);
+    *pos= p + 4;
+    return MARIADB_LENENC_OK;
+  }
+  if (*p == 254)
+  {
+    unsigned long long v;
+
+    if (avail < 9)
+      return MARIADB_LENENC_ERROR;
+    v= (unsigned long long)uint8korr(p + 1);
+    if (v > 0xFFFFFFFFULL)
+      return MARIADB_LENENC_ERROR;
+    *len= (ulong)v;
+    *pos= p + 9;
+    return MARIADB_LENENC_OK;
+  }
+  return MARIADB_LENENC_ERROR;    /* 255: never a valid length marker */
+}
+
 
 extern void ma_save_session_track_info(void *ptr, enum enum_mariadb_status_info type, ...);
 
