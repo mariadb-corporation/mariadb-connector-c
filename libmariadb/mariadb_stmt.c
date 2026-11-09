@@ -262,7 +262,7 @@ static my_bool ma_stmt_update_max_length(MYSQL_STMT *stmt, uchar *p, ulong packe
         ulong len;
 
         /* NULLs are in the bitmap, 0xFB is invalid here */
-        if (net_field_length_safe(&cp, end, MARIADB_LENENC_FORBID_NULL,
+        if (net_field_length_safe(&cp, end,
                                   &len) != MARIADB_LENENC_OK ||
             len > (size_t)(end - cp))
           return 1;
@@ -452,8 +452,8 @@ void mthd_stmt_flush_unbuffered(MYSQL_STMT *stmt)
 
       pos++;
       /* affected_rows and insert_id are 64 bit, NULL is invalid */
-      if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v) != MARIADB_LENENC_OK ||
-          net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v) != MARIADB_LENENC_OK ||
+      if (net_field_length_ll_safe(&pos, end, &v) != MARIADB_LENENC_OK ||
+          net_field_length_ll_safe(&pos, end, &v) != MARIADB_LENENC_OK ||
           (size_t)(end - pos) < 2)
         goto malformed;
       stmt->mysql->server_status= uint2korr(pos);
@@ -577,7 +577,7 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
          calculate field_length twice to avoid possible oob read */
       if (pack_len >= 0)
         data_len= pack_len;
-      else if (net_field_length_safe(&tmp_row, end, MARIADB_LENENC_FORBID_NULL,
+      else if (net_field_length_safe(&tmp_row, end,
                                      &data_len) != MARIADB_LENENC_OK)
       {
         snprintf(errmsg, sizeof(errmsg)-1, "Malformed packet: Column %d has an invalid length prefix", i);
