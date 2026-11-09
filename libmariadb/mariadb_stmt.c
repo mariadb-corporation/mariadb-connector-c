@@ -501,6 +501,185 @@ static my_bool ma_column_len_valid(enum enum_field_types type, ulong data_len)
   }
 }
 
+enum ma_fetch_kind {
+  MA_FETCH_GENERIC= 0,            /* mysql_ps_fetch_functions[] */
+  MA_FETCH_INT8,
+  MA_FETCH_INT16,
+  MA_FETCH_INT32,
+  MA_FETCH_INT64,
+  MA_FETCH_FLOAT,
+  MA_FETCH_DOUBLE,
+  MA_FETCH_STRING,                /* character string into a string buffer */
+  MA_FETCH_BINARY,                /* binary string (charsetnr 63), any buffer */
+  MA_FETCH_TEMPORAL               /* TIME/DATE/DATETIME/TIMESTAMP into MYSQL_TIME */
+};
+
+#define MA_FETCH_KIND_MASK  0x0F
+#define MA_FETCH_STR_COLUMN 0x10    /* column converted by ps_fetch_string() */
+#define MA_FETCH_BIN_COLUMN 0x20    /* column converted by ps_fetch_bin() */
+#define MA_FETCH_STR_BUFFER 0x40    /* buffer type copied by convert_froma_string() */
+#define MA_FETCH_TEMPORAL_T 0x80    /* temporal column type, or MYSQL_TIME buffer type */
+
+static uchar ma_fetch_class[256];
+
+void ma_stmt_fetch_init(void)
+{
+  memset(ma_fetch_class, 0, sizeof(ma_fetch_class));
+  ma_fetch_class[MYSQL_TYPE_TINY]= MA_FETCH_INT8;
+  ma_fetch_class[MYSQL_TYPE_SHORT]= MA_FETCH_INT16;
+  ma_fetch_class[MYSQL_TYPE_YEAR]= MA_FETCH_INT16;
+  ma_fetch_class[MYSQL_TYPE_INT24]= MA_FETCH_INT32;
+  ma_fetch_class[MYSQL_TYPE_LONG]= MA_FETCH_INT32;
+  ma_fetch_class[MYSQL_TYPE_LONGLONG]= MA_FETCH_INT64;
+  ma_fetch_class[MYSQL_TYPE_FLOAT]= MA_FETCH_FLOAT;
+  ma_fetch_class[MYSQL_TYPE_DOUBLE]= MA_FETCH_DOUBLE;
+  ma_fetch_class[MYSQL_TYPE_STRING]= MA_FETCH_STR_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_VAR_STRING]= MA_FETCH_STR_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_VARCHAR]= MA_FETCH_STR_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_JSON]= MA_FETCH_STR_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_DECIMAL]= MA_FETCH_STR_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_NEWDECIMAL]= MA_FETCH_STR_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_ENUM]= MA_FETCH_STR_COLUMN;
+  ma_fetch_class[MYSQL_TYPE_SET]= MA_FETCH_STR_COLUMN;
+  ma_fetch_class[MYSQL_TYPE_GEOMETRY]= MA_FETCH_STR_COLUMN;
+  ma_fetch_class[MYSQL_TYPE_NEWDATE]= MA_FETCH_STR_COLUMN;
+  ma_fetch_class[MYSQL_TYPE_TINY_BLOB]= MA_FETCH_BIN_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_MEDIUM_BLOB]= MA_FETCH_BIN_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_LONG_BLOB]= MA_FETCH_BIN_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_BLOB]= MA_FETCH_BIN_COLUMN | MA_FETCH_STR_BUFFER;
+  ma_fetch_class[MYSQL_TYPE_BIT]= MA_FETCH_BIN_COLUMN;
+  ma_fetch_class[MYSQL_TYPE_VECTOR]= MA_FETCH_BIN_COLUMN;
+  ma_fetch_class[MYSQL_TYPE_TIME]= MA_FETCH_TEMPORAL_T;
+  ma_fetch_class[MYSQL_TYPE_DATE]= MA_FETCH_TEMPORAL_T;
+  ma_fetch_class[MYSQL_TYPE_DATETIME]= MA_FETCH_TEMPORAL_T;
+  ma_fetch_class[MYSQL_TYPE_TIMESTAMP]= MA_FETCH_TEMPORAL_T;
+}
+
+static void ma_stmt_resolve_fetch(MYSQL_BIND *bind, const MYSQL_FIELD *field)
+{
+  uchar kind= MA_FETCH_GENERIC;
+
+  if (field)
+  {
+    uchar fc= ma_fetch_class[(uchar)field->type];
+    uchar bc= ma_fetch_class[(uchar)bind->buffer_type];
+
+    if (fc & MA_FETCH_KIND_MASK)
+      kind= (fc == bc) ? fc : MA_FETCH_GENERIC;
+    else if (fc & MA_FETCH_STR_COLUMN)
+      kind= (bc & MA_FETCH_STR_BUFFER) ? MA_FETCH_STRING : MA_FETCH_GENERIC;
+    else if (fc & MA_FETCH_BIN_COLUMN)
+      kind= field->charsetnr == 63 ? MA_FETCH_BINARY :
+            (bc & MA_FETCH_STR_BUFFER) ? MA_FETCH_STRING : MA_FETCH_GENERIC;
+    else if (fc & MA_FETCH_TEMPORAL_T)
+      kind= (bc & MA_FETCH_TEMPORAL_T) ? MA_FETCH_TEMPORAL : MA_FETCH_GENERIC;
+  }
+  bind->pack_length= kind;
+}
+
+static inline void ma_stmt_fetch_convert(MYSQL_BIND *bind, MYSQL_FIELD *field,
+                                         const MYSQL_PS_CONVERSION *generic,
+                                         uchar *data, ulong data_len,
+                                         uchar *row)
+{
+  switch (bind->pack_length) {
+  case MA_FETCH_INT8:
+  {
+    uchar val= *data;
+    *(uchar *)bind->buffer= val;
+    bind->buffer_length= 1;
+    *bind->error= test(field->flags & UNSIGNED_FLAG) != bind->is_unsigned &&
+                  val > INT_MAX8;
+    break;
+  }
+  case MA_FETCH_INT16:
+  {
+    ushort val= (ushort)sint2korr(data);
+    shortstore(bind->buffer, val);
+    bind->buffer_length= 2;
+    *bind->error= test(field->flags & UNSIGNED_FLAG) != bind->is_unsigned &&
+                  val > INT_MAX16;
+    break;
+  }
+  case MA_FETCH_INT32:
+  {
+    uint32 val= (uint32)sint4korr(data);
+    longstore(bind->buffer, val);
+    bind->buffer_length= 4;
+    *bind->error= test(field->flags & UNSIGNED_FLAG) != bind->is_unsigned &&
+                  val > INT_MAX32;
+    break;
+  }
+  case MA_FETCH_INT64:
+  {
+    ulonglong val= (ulonglong)sint8korr(data);
+    longlongstore(bind->buffer, val);
+    bind->buffer_length= 8;
+    *bind->error= test(field->flags & UNSIGNED_FLAG) != bind->is_unsigned &&
+                  val > LONGLONG_MAX;
+    break;
+  }
+  case MA_FETCH_FLOAT:
+    float4get(*(float *)bind->buffer, data);
+    bind->buffer_length= 4;
+    *bind->error= 0;
+    break;
+  case MA_FETCH_DOUBLE:
+    float8get(*(double *)bind->buffer, data);
+    bind->buffer_length= 8;
+    *bind->error= 0;
+    break;
+  case MA_FETCH_STRING:               /* default branch of convert_froma_string() */
+    if (data_len >= bind->offset)     /* mysql_stmt_fetch_column() sets offset */
+    {
+      size_t copylen= data_len - bind->offset;
+
+      if (copylen && bind->buffer_length)
+        memcpy(bind->buffer, data + bind->offset, MIN(copylen, bind->buffer_length));
+      if (copylen < bind->buffer_length)
+        ((char *)bind->buffer)[copylen]= 0;
+      *bind->error= (copylen > bind->buffer_length);
+    }
+    else
+      *bind->error= 0;
+    *bind->length= data_len;
+    break;
+  case MA_FETCH_BINARY:               /* first branch of ps_fetch_bin() */
+  {
+    size_t copylen= 0;
+
+    if (bind->offset < data_len)
+    {
+      copylen= data_len - bind->offset;
+      if (bind->buffer_length)
+        memcpy(bind->buffer, data + bind->offset, MIN(copylen, bind->buffer_length));
+    }
+    if (copylen < bind->buffer_length &&
+        (bind->buffer_type == MYSQL_TYPE_STRING ||
+         bind->buffer_type == MYSQL_TYPE_JSON))
+      ((char *)bind->buffer)[copylen]= 0;
+    *bind->error= copylen > bind->buffer_length;
+    *bind->length= data_len;
+    break;
+  }
+  case MA_FETCH_TEMPORAL:             /* ps_fetch_datetime() for MYSQL_TIME buffers */
+  {
+    MYSQL_TIME *t= (MYSQL_TIME *)bind->buffer;
+
+    convert_to_datetime(bind, t, &data, (uint)data_len, field->type);
+    if (bind->buffer_type == MYSQL_TYPE_TIME)
+      t->year= t->day= t->month= 0;
+    break;
+  }
+  default:
+  {
+    uchar *pos= row;
+    generic->func(bind, field, &pos);
+    break;
+  }
+  }
+}
+
 int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
 {
   uint i= 0;
@@ -664,14 +843,12 @@ int mthd_stmt_fetch_to_bind(MYSQL_STMT *stmt, unsigned char *row, ulong length)
       }
       else
       {
-        uchar *pos= row;
-
         if (!bind->length)
           bind->length= &bind->length_value;
         if (!bind->is_null)
           bind->is_null= &bind->is_null_value;
         *bind->is_null= 0;
-        ps_fetch_func->func(bind, field, &pos);
+        ma_stmt_fetch_convert(bind, field, ps_fetch_func, tmp_row, data_len, row);
         if (report_truncation)
           truncations+= *bind->error;
       }
@@ -1678,6 +1855,9 @@ my_bool STDCALL mysql_stmt_bind_result(MYSQL_STMT *stmt, MYSQL_BIND *bind)
     if (!stmt->bind[i].error)
       stmt->bind[i].error= &stmt->bind[i].error_value;
 
+    /* how the column is converted into this buffer type */
+    ma_stmt_resolve_fetch(&stmt->bind[i], stmt->fields ? &stmt->fields[i] : NULL);
+
     /* numerical types with fixed length */
     if (mysql_ps_fetch_functions[buffer_type].pack_len >= 0)
     {
@@ -2391,6 +2571,9 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
         stmt->fields[i].decimals= mysql->fields[i].decimals;
         stmt->fields[i].charsetnr= mysql->fields[i].charsetnr;
         stmt->fields[i].max_length= mysql->fields[i].max_length;
+        /* the conversion of a bound column depends on type and charset */
+        if (stmt->bind_result_done)
+          ma_stmt_resolve_fetch(&stmt->bind[i], &stmt->fields[i]);
       }
     } else
     {
