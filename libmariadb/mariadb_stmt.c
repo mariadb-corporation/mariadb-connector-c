@@ -1819,8 +1819,10 @@ int STDCALL mysql_stmt_fetch(MYSQL_STMT *stmt)
 
   stmt->state= MYSQL_STMT_USER_FETCHING;
   if (rc != MYSQL_DATA_MALFORMED) {
-    CLEAR_CLIENT_ERROR(stmt->mysql);
-    CLEAR_CLIENT_STMT_ERROR(stmt);
+    if (stmt->mysql->net.last_errno)
+      CLEAR_CLIENT_ERROR(stmt->mysql);
+    if (stmt->last_errno)
+      CLEAR_CLIENT_STMT_ERROR(stmt);
   }
   return(rc);
 }
