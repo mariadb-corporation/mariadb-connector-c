@@ -60,9 +60,8 @@ MYSQL_FIELD *ma_duplicate_resultset_metadata(MYSQL_FIELD *fields, size_t count,
                                              MA_MEM_ROOT *memroot);
 
 int net_field_length_ll_safe(uchar **pos, const uchar *end,
-                             unsigned int flags, unsigned long long *len);
-int net_field_length_safe(uchar **pos, const uchar *end,
-                          unsigned int flags, ulong *len);
+                             unsigned long long *len);
+int net_field_length_safe(uchar **pos, const uchar *end, ulong *len);
 
 extern void ma_save_session_track_info(void *ptr, enum enum_mariadb_status_info type, ...);
 

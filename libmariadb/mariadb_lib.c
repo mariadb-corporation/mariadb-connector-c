@@ -329,7 +329,7 @@ static int cli_report_progress(MYSQL *mysql, uchar *packet, uint length)
   progress= uint3korr(packet)/1000.0;
   packet+= 3;
 
-  if (net_field_length_safe(&packet, end, MARIADB_LENENC_FORBID_NULL, &proc_length) != MARIADB_LENENC_OK)
+  if (net_field_length_safe(&packet, end, &proc_length) != MARIADB_LENENC_OK)
     return 1; /* Wrong packet */
 
   if (proc_length > (size_t)(end - packet))
@@ -378,18 +378,17 @@ net_field_length(uchar **packet)
   pos    in/out: advanced past the prefix on MARIADB_LENENC_OK and
          MARIADB_LENENC_NULL, unchanged on error.
   end    first byte after the valid buffer (never read).
-  flags  0: 0xFB is a NULL marker. MARIADB_LENENC_FORBID_NULL: 0xFB is an
-         error. Unknown flag bits are an error.
   len    out: decoded value, 0 for MARIADB_LENENC_NULL, unchanged on error.
+
+  A 0xFB byte is reported as MARIADB_LENENC_NULL. Callers which do not
+  accept a NULL marker must test the result against MARIADB_LENENC_OK,
+  not against MARIADB_LENENC_ERROR.
 */
 int net_field_length_ll_safe(uchar **pos, const uchar *end,
-                             unsigned int flags, unsigned long long *len)
+                             unsigned long long *len)
 {
   uchar *p= *pos;
   size_t avail;
-
-  if (flags & ~(unsigned int)MARIADB_LENENC_FORBID_NULL)
-    return MARIADB_LENENC_ERROR;
 
   if (p >= end)
     return MARIADB_LENENC_ERROR;
@@ -406,8 +405,6 @@ int net_field_length_ll_safe(uchar **pos, const uchar *end,
 
   if (*p == 251)
   {
-    if (flags & MARIADB_LENENC_FORBID_NULL)
-      return MARIADB_LENENC_ERROR;
     *len= 0;
     *pos= p + 1;
     return MARIADB_LENENC_NULL;
@@ -442,16 +439,13 @@ int net_field_length_ll_safe(uchar **pos, const uchar *end,
 /*
   32-bit variant for field lengths. A 0xFE prefix with a value of 2^32 or
   more is rejected instead of being truncated, so a malformed prefix can
-  never be decoded as a small length.
+  never be decoded as a small length. Same contract as
+  net_field_length_ll_safe().
 */
-int net_field_length_safe(uchar **pos, const uchar *end,
-                          unsigned int flags, ulong *len)
+int net_field_length_safe(uchar **pos, const uchar *end, ulong *len)
 {
   uchar *p= *pos;
   size_t avail;
-
-  if (flags & ~(unsigned int)MARIADB_LENENC_FORBID_NULL)
-    return MARIADB_LENENC_ERROR;
 
   if (p >= end)
     return MARIADB_LENENC_ERROR;
@@ -468,8 +462,6 @@ int net_field_length_safe(uchar **pos, const uchar *end,
 
   if (*p == 251)
   {
-    if (flags & MARIADB_LENENC_FORBID_NULL)
-      return MARIADB_LENENC_ERROR;
     *len= 0;
     *pos= p + 1;
     return MARIADB_LENENC_NULL;
@@ -1258,7 +1250,7 @@ int ma_unpack_field(MA_MEM_ROOT *alloc, uchar *pos, ulong pkt_len,
   for (i= 0; i < field_count; i++)
   {
     /* NULL is not allowed here, see CONC-709 */
-    if (net_field_length_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &len) !=
+    if (net_field_length_safe(&pos, end, &len) !=
         MARIADB_LENENC_OK || len > (ulong)(end - pos))
       return 1;
     *(char **)(((char *)field) + rset_field_offsets[i*2])= to;
@@ -1272,7 +1264,7 @@ int ma_unpack_field(MA_MEM_ROOT *alloc, uchar *pos, ulong pkt_len,
   field->extension= NULL;
   if (ext_info)
   {
-    if (net_field_length_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &len) !=
+    if (net_field_length_safe(&pos, end, &len) !=
         MARIADB_LENENC_OK || len > (ulong)(end - pos))
       return 1;
     if (len)
@@ -1286,7 +1278,7 @@ int ma_unpack_field(MA_MEM_ROOT *alloc, uchar *pos, ulong pkt_len,
 
   /* fixed length part (always 0x0c): charset (2), length (4), type (1),
      flags (2), decimals (1) and 2 bytes filler, which are not read */
-  if (net_field_length_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &len) !=
+  if (net_field_length_safe(&pos, end, &len) !=
       MARIADB_LENENC_OK || len > (ulong)(end - pos) || len < 10)
     return 1;
 
@@ -1310,7 +1302,7 @@ int ma_unpack_field(MA_MEM_ROOT *alloc, uchar *pos, ulong pkt_len,
   field->def= 0;
   if (default_value && pos < end)
   {
-    int rc= net_field_length_safe(&pos, end, 0, &len);
+    int rc= net_field_length_safe(&pos, end, &len);
     if (rc == MARIADB_LENENC_ERROR || len > (ulong)(end - pos))
       return 1;
     if (rc == MARIADB_LENENC_OK)
@@ -1501,7 +1493,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
           continue;
       }
 
-      rc= net_field_length_safe(&cp, end_cp, 0, &len);
+      rc= net_field_length_safe(&cp, end_cp, &len);
       if (rc == MARIADB_LENENC_ERROR)
         goto malformed;
 
@@ -1593,7 +1585,7 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
   end_pos= pos + pkt_len;
   for (field=0 ; field < fields ; field++)
   {
-    int rc= net_field_length_safe(&pos, end_pos, 0, &len);
+    int rc= net_field_length_safe(&pos, end_pos, &len);
 
     if (rc == MARIADB_LENENC_ERROR)
       goto malformed;
@@ -2977,7 +2969,7 @@ mem_error:
 /* Decode a length-encoded integer, NULL not allowed. Returns 1 on failure. */
 static my_bool ma_read_lenenc(uchar **pos, const uchar *end, ulong *out)
 {
-  return net_field_length_safe(pos, end, MARIADB_LENENC_FORBID_NULL, out)
+  return net_field_length_safe(pos, end, out)
          != MARIADB_LENENC_OK;
 }
 
@@ -2994,12 +2986,12 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
   unsigned long long v;
   unsigned int last_status= mysql->server_status;
 
-  if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v)
+  if (net_field_length_ll_safe(&pos, end, &v)
       != MARIADB_LENENC_OK)
     goto corrupted;
   mysql->affected_rows= v;
 
-  if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v)
+  if (net_field_length_ll_safe(&pos, end, &v)
       != MARIADB_LENENC_OK)
     goto corrupted;
   mysql->insert_id= v;
@@ -3261,7 +3253,7 @@ get_info:
   pos=(uchar*) mysql->net.read_pos;
   end= pos + length;
 
-  rc= net_field_length_safe(&pos, end, 0, &field_count);
+  rc= net_field_length_safe(&pos, end, &field_count);
   if (rc == MARIADB_LENENC_ERROR) {
     SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
     return (-1);
@@ -3715,7 +3707,7 @@ mysql_list_processes(MYSQL *mysql)
   pos= (uchar*)mysql->net.read_pos;
   end= pos + mysql->packet_length;
 
-  if ((net_field_length_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &field_count) != MARIADB_LENENC_OK) ||
+  if ((net_field_length_safe(&pos, end, &field_count) != MARIADB_LENENC_OK) ||
       !field_count)
   {
     SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
@@ -5294,7 +5286,21 @@ ulong STDCALL mysql_net_field_length(uchar **packet)
 int STDCALL mariadb_net_field_length(unsigned char **packet, const unsigned char *end, unsigned int flags,
                                      unsigned long *length)
 {
-  return net_field_length_safe(packet, end, flags, length);
+  uchar *p= *packet;
+  unsigned long len;
+  int rc;
+
+  if (flags & ~(unsigned int)MARIADB_LENENC_FORBID_NULL)
+    return MARIADB_LENENC_ERROR;    /* unknown flag */
+
+  rc= net_field_length_safe(&p, end, &len);
+  if (rc == MARIADB_LENENC_ERROR ||
+      (rc == MARIADB_LENENC_NULL && (flags & MARIADB_LENENC_FORBID_NULL)))
+    return MARIADB_LENENC_ERROR;    /* *packet and *length unchanged */
+
+  *length= len;
+  *packet= p;
+  return rc;
 }
 
 my_bool STDCALL mysql_embedded(void)
