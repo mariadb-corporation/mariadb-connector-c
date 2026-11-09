@@ -4849,7 +4849,10 @@ static void mysql_once_init()
       mysql_unix_port = env;
   }
   if (!mysql_ps_subsystem_initialized)
+  {
     mysql_init_ps_subsystem();
+    ma_stmt_fetch_init();
+  }
 #ifdef HAVE_TLS
   ma_tls_start(0, 0);
 #endif
