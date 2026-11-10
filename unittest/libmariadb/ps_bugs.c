@@ -6294,7 +6294,98 @@ static int test_conc821(MYSQL *mysql)
   return OK;
 }
 
+/* Re-execution of a prepared statement: the server may omit the column
+   definitions (MARIADB_CLIENT_CACHE_METADATA). The statement has to keep
+   using its own metadata, and must pick up changed metadata as soon as
+   the server sends it again. */
+static int test_reexec_metadata(MYSQL *mysql)
+{
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[2];
+  MYSQL_RES *res;
+  MYSQL_FIELD *fields;
+  int rc, i;
+  int val_a;
+  char val_b[32];
+  unsigned long len_b;
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_reexec_md");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t_reexec_md (a INT NOT NULL, b VARCHAR(20))");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "INSERT INTO t_reexec_md VALUES (42, 'foo')");
+  check_mysql_rc(rc, mysql);
+
+  stmt= mysql_stmt_init(mysql);
+  FAIL_IF(!stmt, "mysql_stmt_init failed");
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT a, b FROM t_reexec_md"));
+  check_stmt_rc(rc, stmt);
+
+  for (i= 0; i < 4; i++)
+  {
+    /* last round: change the type of column a, so the server has to
+       send new metadata */
+    if (i == 3)
+    {
+      rc= mysql_query(mysql, "ALTER TABLE t_reexec_md MODIFY a BIGINT NOT NULL");
+      check_mysql_rc(rc, mysql);
+    }
+
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+
+    FAIL_IF(mysql_stmt_field_count(stmt) != 2, "expected 2 fields");
+    res= mysql_stmt_result_metadata(stmt);
+    FAIL_IF(!res, "expected result set metadata");
+    fields= mysql_fetch_fields(res);
+    FAIL_IF(strcmp(fields[0].name, "a") || strcmp(fields[1].name, "b"),
+            "wrong column name");
+    FAIL_IF(strcmp(fields[0].org_table, "t_reexec_md"), "wrong table name");
+    FAIL_IF(fields[0].type != (i == 3 ? MYSQL_TYPE_LONGLONG : MYSQL_TYPE_LONG),
+            "wrong type for column a");
+    FAIL_IF(fields[1].type != MYSQL_TYPE_VAR_STRING, "wrong type for column b");
+    mysql_free_result(res);
+
+    memset(bind, 0, sizeof(bind));
+    val_a= 0;
+    len_b= 0;
+    memset(val_b, 0, sizeof(val_b));
+    bind[0].buffer_type= MYSQL_TYPE_LONG;
+    bind[0].buffer= &val_a;
+    bind[1].buffer_type= MYSQL_TYPE_STRING;
+    bind[1].buffer= val_b;
+    bind[1].buffer_length= sizeof(val_b);
+    bind[1].length= &len_b;
+
+    rc= mysql_stmt_bind_result(stmt, bind);
+    check_stmt_rc(rc, stmt);
+
+    /* buffered and unbuffered */
+    if (i % 2)
+    {
+      rc= mysql_stmt_store_result(stmt);
+      check_stmt_rc(rc, stmt);
+    }
+
+    rc= mysql_stmt_fetch(stmt);
+    check_stmt_rc(rc, stmt);
+    FAIL_IF(val_a != 42, "expected a=42");
+    FAIL_IF(len_b != 3 || strncmp(val_b, "foo", 3), "expected b='foo'");
+
+    rc= mysql_stmt_fetch(stmt);
+    FAIL_IF(rc != MYSQL_NO_DATA, "expected MYSQL_NO_DATA");
+  }
+
+  mysql_stmt_close(stmt);
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_reexec_md");
+  check_mysql_rc(rc, mysql);
+
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_reexec_metadata", test_reexec_metadata, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc683", test_conc683, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc667", test_conc667, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc821", test_conc821, TEST_CONNECTION_NEW, 0, NULL, NULL},
