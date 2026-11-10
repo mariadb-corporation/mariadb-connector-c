@@ -44,9 +44,12 @@
 
 #define CLEAR_CLIENT_STMT_ERROR(a) \
 do { \
-  (a)->last_errno= 0;\
-  strcpy((a)->sqlstate, "00000");\
-  (a)->last_error[0]= 0;\
+  if ((a)->last_errno || (a)->last_error[0]) \
+  { \
+    (a)->last_errno= 0;\
+    strcpy((a)->sqlstate, "00000");\
+    (a)->last_error[0]= 0;\
+  } \
 } while (0)
 
 #define MYSQL_PS_SKIP_RESULT_W_LEN  -1
