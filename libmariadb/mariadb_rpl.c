@@ -103,7 +103,7 @@ do { \
 do {                                                                       \
   uchar *_p= (uchar *)(position);                                          \
   ulong _l;                                                                \
-  if (net_field_length_safe(&_p, (end), MARIADB_LENENC_FORBID_NULL, &_l)   \
+  if (net_field_length_safe(&_p, (end), &_l)   \
       != MARIADB_LENENC_OK || _l > (size_t)((end) - _p))                   \
     goto malformed_packet;                                                 \
   (position)= _p;                                                          \

@@ -1525,12 +1525,18 @@ static int test_sslenforce(MYSQL *unused __attribute__((unused)))
 static int test_conc457(MYSQL *mysql)
 {
   MYSQL_RES *result;
+  MYSQL_FIELD *field;
 
   SKIP_MYSQL(mysql);
 
   result= mysql_list_processes(mysql);
+  FAIL_IF(!result, "mysql_list_processes failed");
 
   FAIL_IF(mysql_field_count(mysql) != 9, "expected 9 columns");
+  /* column definition of User must be decoded completely */
+  field= mysql_fetch_field_direct(result, 1);
+  FAIL_IF(field->type != MYSQL_TYPE_VAR_STRING || !field->length,
+          "wrong metadata for column User");
   mysql_free_result(result);
   return OK;
 }
