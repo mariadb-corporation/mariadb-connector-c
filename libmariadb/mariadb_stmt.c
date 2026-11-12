@@ -2182,16 +2182,49 @@ my_bool mthd_stmt_read_prepare_response(MYSQL_STMT *stmt)
   return(0);
 }
 
+/*
+  Parameter definitions of a COM_STMT_PREPARE response. The library does not
+  expose them, so the param_count packets are read and dropped, without
+  building a row set for them. The EOF packet that follows is handled like
+  the end of a row set in mthd_my_read_rows(): warning count and server
+  status are stored.
+*/
 my_bool mthd_stmt_get_param_metadata(MYSQL_STMT *stmt)
 {
-  MYSQL_DATA *result;
+  MYSQL *mysql= stmt->mysql;
+  NET *net= &mysql->net;
+  ulong pkt_len;
+  uint i;
 
-  if (!(result= stmt->mysql->methods->db_read_rows(stmt->mysql, (MYSQL_FIELD *)0,
-                                                   7 + ma_extended_type_info_rows(stmt->mysql))))
+  for (i= 0; i < stmt->param_count; i++)
+  {
+    if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
+      return(1);
+    /* a column definition is never empty, nor an EOF packet */
+    if (pkt_len == 0 || (net->read_pos[0] == 254 && pkt_len < 8))
+      goto malformed;
+  }
+
+  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
     return(1);
+  if (pkt_len == 0 || net->read_pos[0] != 254 || pkt_len >= 8)
+    goto malformed;
 
-  free_rows(result);
+  if (pkt_len > 1)
+  {
+    unsigned int last_status= mysql->server_status;
+
+    if (pkt_len < 5)
+      goto malformed;
+    mysql->warning_count= uint2korr(net->read_pos + 1);
+    mysql->server_status= uint2korr(net->read_pos + 3);
+    ma_status_callback(mysql, last_status);
+  }
   return(0);
+
+malformed:
+  SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
+  return(1);
 }
 
 my_bool mthd_stmt_get_result_metadata(MYSQL_STMT *stmt)
