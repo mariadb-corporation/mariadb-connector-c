@@ -5423,6 +5423,34 @@ static int test_vector(MYSQL *mysql)
             "fetch_column at unaligned offset returned wrong bytes");
   }
 
+  rc= mysql_stmt_prepare(stmt, SL("SELECT /*M! vec_fromtext*/"
+                                  "/*!90000 STRING_TO_VECTOR*/"
+                                  "('[1.0,1.1,1.2,1.3]')"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(f2, 0, sizeof(f2));
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer= &f2;
+  bind.buffer_type= MYSQL_TYPE_VECTOR;
+  bind.buffer_length= sizeof(float) * 4;
+  bind.length= &length;
+  rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(length != sizeof(float) * 4, "Expected length 16 from expression");
+  if (memcmp(f1, f2, sizeof(float) * 4))
+  {
+    diag("Error: expression f1 != f2 (%f %f %f %f)", f2[0], f2[1], f2[2], f2[3]);
+    mysql_stmt_close(stmt);
+    return FAIL;
+  }
+
   mysql_stmt_close(stmt);
 
   rc= mysql_query(mysql, "DROP TABLE my_vector");
