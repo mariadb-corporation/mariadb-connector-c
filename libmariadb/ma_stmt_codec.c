@@ -1211,18 +1211,87 @@ void ps_fetch_datetime(MYSQL_BIND *r_param, const MYSQL_FIELD * field,
 }
 /* }}} */
 
+/* {{{ ma_field_is_vector
+   A vector column is identified either by MySQL's MYSQL_TYPE_VECTOR
+   type, or by MariaDB's extended metadata data type name "vector"
+   (MDEV-41860), where the column is otherwise sent as a binary
+   VAR_STRING. In both cases the payload is a sequence of 4 byte
+   little endian IEEE 754 floats.
+*/
+static my_bool ma_field_is_vector(const MYSQL_FIELD *field)
+{
+  MARIADB_CONST_STRING name;
+
+  if (field->type == MYSQL_TYPE_VECTOR)
+    return 1;
+  if (field->charsetnr != 63 ||
+      mariadb_field_attr(&name, field, MARIADB_FIELD_ATTR_DATA_TYPE_NAME))
+    return 0;
+  return name.length == 6 && !memcmp(name.str, "vector", 6);
+}
+/* }}} */
+
+/* {{{ ps_fetch_vector
+   Unpack a vector column into a float array in host byte order.
+   Each element is decoded with float4get, which is a plain copy on
+   little endian hosts and a byte swap on big endian hosts, so the
+   same code path is exercised on every platform.
+   Honours r_param->offset (mysql_stmt_fetch_column), which need not
+   be a multiple of sizeof(float).
+*/
+static
+void ps_fetch_vector(MYSQL_BIND *r_param, unsigned char **row)
+{
+  ulong field_length= *r_param->length= net_field_length(row);
+  const uchar *data= *row;
+  uchar *to= (uchar *)r_param->buffer;
+  size_t pos= r_param->offset, copylen= 0, want;
+
+  if (pos < field_length)
+    copylen= field_length - pos;
+  want= MIN(copylen, r_param->buffer_length);
+
+  while (want)
+  {
+    size_t elem= pos & ~(size_t)3,  /* start of the element pos is in */
+           skip= pos - elem,
+           n= MIN(sizeof(float) - skip, want);
+
+    if (elem + sizeof(float) <= field_length)
+    {
+      float val;
+      float4get(val, data + elem);
+      memcpy(to, ((uchar *)&val) + skip, n);
+    }
+    else  /* malformed trailing bytes: pass through unchanged */
+      memcpy(to, data + pos, n);
+
+    to+= n; pos+= n; want-= n;
+  }
+  *r_param->error= copylen > r_param->buffer_length;
+  (*row)+= field_length;
+}
+/* }}} */
+
 /* {{{ ps_fetch_string */
 static
 void ps_fetch_string(MYSQL_BIND *r_param,
-                     const MYSQL_FIELD *field __attribute__((unused)),
+                     const MYSQL_FIELD *field,
                      unsigned char **row)
 {
   /* C-API differs from PHP. While PHP just converts string to string,
      C-API needs to convert the string to the defined type with in
      the result bind buffer.
    */
-  ulong field_length= net_field_length(row);
+  ulong field_length;
 
+  if (r_param->buffer_type == MYSQL_TYPE_VECTOR && ma_field_is_vector(field))
+  {
+    ps_fetch_vector(r_param, row);
+    return;
+  }
+
+  field_length= net_field_length(row);
   convert_froma_string(r_param, (char *)*row, field_length);
   (*row) += field_length;
 }
@@ -1234,7 +1303,9 @@ void ps_fetch_bin(MYSQL_BIND *r_param,
              const MYSQL_FIELD *field,
              unsigned char **row)
 {
-  if (field->charsetnr == 63)
+  if (r_param->buffer_type == MYSQL_TYPE_VECTOR && ma_field_is_vector(field))
+    ps_fetch_vector(r_param, row);
+  else if (field->charsetnr == 63)
   {
     ulong field_length= *r_param->length= net_field_length(row);
     uchar *current_pos= (*row) + r_param->offset,
