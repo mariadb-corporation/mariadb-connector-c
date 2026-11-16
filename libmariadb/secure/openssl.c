@@ -41,6 +41,7 @@
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(LIBRESSL_VERSION_NUMBER)
 #include <openssl/x509v3.h>
+#include <openssl/x509_vfy.h>
 #define HAVE_OPENSSL_CHECK_HOST 1
 #endif
 
@@ -838,6 +839,65 @@ static int ma_verification_callback(int preverify_ok __attribute__((unused)), X5
   return 1;
 }
 
+#ifdef HAVE_OPENSSL_CHECK_HOST
+#if OPENSSL_VERSION_NUMBER >= 0x40100000L
+/* Fail only on a reference identity mismatch: the certificate chain was
+   already verified during the handshake by ma_verification_callback() */
+static int ma_check_id_callback(int preverify_ok __attribute__((unused)), X509_STORE_CTX *ctx)
+{
+  int x509_err= X509_STORE_CTX_get_error(ctx);
+
+  return x509_err != X509_V_ERR_HOSTNAME_MISMATCH &&
+         x509_err != X509_V_ERR_IP_ADDRESS_MISMATCH;
+}
+
+/* Match cert against host as a DNS name, or as an IP address if ip is set.
+   OpenSSL 4.1 deprecated X509_check_host() and X509_check_ip_asc() in favour
+   of setting the reference identity in the verify parameters, which
+   X509_verify_cert() then matches with the same rules and flags. */
+static my_bool ma_check_id(X509 *cert, const char *host, my_bool ip)
+{
+  X509_STORE *store;
+  X509_STORE_CTX *ctx= NULL;
+  X509_VERIFY_PARAM *param;
+  my_bool rc= 0;
+
+  if (!(store= X509_STORE_new()) ||
+      !X509_STORE_add_cert(store, cert) ||
+      !(ctx= X509_STORE_CTX_new()) ||
+      !X509_STORE_CTX_init(ctx, store, cert, NULL))
+    goto end;
+
+  param= X509_STORE_CTX_get0_param(ctx);
+  /* The certificate is its own trust anchor, only its identity is checked */
+  X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN |
+                                     X509_V_FLAG_NO_CHECK_TIME);
+  if (ip ? !X509_VERIFY_PARAM_set1_ip_asc(param, host)
+         : !X509_VERIFY_PARAM_set1_host(param, host, strlen(host)))
+    goto end;
+
+  X509_STORE_CTX_set_verify_cb(ctx, ma_check_id_callback);
+  rc= X509_verify_cert(ctx) == 1;
+end:
+  X509_STORE_CTX_free(ctx);
+  X509_STORE_free(store);
+  return rc;
+}
+#endif
+
+/* Match the host the client connected to, either as a DNS name or as an
+   IP address, against the server certificate */
+static my_bool ma_tls_check_host(X509 *cert, const char *host)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x40100000L
+  return ma_check_id(cert, host, 0) || ma_check_id(cert, host, 1);
+#else
+  return X509_check_host(cert, host, strlen(host), 0, 0) == 1 ||
+         X509_check_ip_asc(cert, host, 0) == 1;
+#endif
+}
+#endif
+
 int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
 {
   X509 *cert= NULL;
@@ -883,8 +943,7 @@ int ma_tls_verify_server_cert(MARIADB_TLS *ctls, unsigned int verify_flags)
     }
 
   #ifdef HAVE_OPENSSL_CHECK_HOST
-    if (X509_check_host(cert, mysql->host, strlen(mysql->host), 0, 0) != 1
-       && X509_check_ip_asc(cert, mysql->host, 0) != 1)
+    if (!ma_tls_check_host(cert, mysql->host))
     {
       mysql->net.tls_verify_status|= MARIADB_TLS_VERIFY_HOST;
       goto error;
