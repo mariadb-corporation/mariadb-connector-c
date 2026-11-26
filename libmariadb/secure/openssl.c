@@ -17,6 +17,15 @@
   51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 
  *************************************************************************************/
+
+/*
+  Fix build with OpenSSL 4.1.0, which deprecates X509_check_host() and
+  X509_check_ip_asc(): keep the API level at 1.1.0 to avoid -Werror failures.
+*/
+#ifndef OPENSSL_API_COMPAT
+#define OPENSSL_API_COMPAT 0x10100000L
+#endif
+
 #include <ma_global.h>
 #include <ma_sys.h>
 #include <ma_common.h>
