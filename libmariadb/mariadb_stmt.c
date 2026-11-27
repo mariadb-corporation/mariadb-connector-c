@@ -2218,6 +2218,7 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
 {
   MYSQL *mysql= stmt->mysql;
   int ret;
+  my_bool need_copy= 0;
   unsigned int last_status= mysql->server_status;
 
   if (!mysql)
@@ -2233,8 +2234,9 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
   if (!ret && mysql->field_count && !mysql->fields)
   {
       /*
-        Column info was not sent by server, copy
-        from stmt->fields
+        Column info was not sent by server (metadata caching, see
+        has_metadata in mthd_my_read_query_result()): the definitions
+        in stmt->fields are still valid.
       */
       assert(stmt->fields);
       /*
@@ -2242,15 +2244,21 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
          before reading SP output variables result sets.
       */
       if(!stmt->field_count)
+      {
         stmt->field_count = mysql->field_count;
+        need_copy= 1;
+      }
       else
         assert(mysql->field_count == stmt->field_count);
-      mysql->fields= ma_duplicate_resultset_metadata(
-          stmt->fields, stmt->field_count, &mysql->field_alloc);
-      if (!mysql->fields)
+      if (need_copy || (mysql->server_status & SERVER_MORE_RESULTS_EXIST))
       {
-        stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
-        return (1);
+        mysql->fields= ma_duplicate_resultset_metadata(
+            stmt->fields, stmt->field_count, &mysql->field_alloc);
+        if (!mysql->fields)
+        {
+          stmt_set_error(stmt, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+          return (1);
+        }
       }
   }
 
@@ -2372,7 +2380,8 @@ int mthd_stmt_read_execute_response(MYSQL_STMT *stmt)
     if (mysql->field_count == stmt->field_count)
     {
       uint i;
-      for (i=0; i < stmt->field_count; i++)
+      /* without mysql->fields the server didn't send (changed) metadata */
+      for (i=0; mysql->fields && i < stmt->field_count; i++)
       {
         stmt->fields[i].type= mysql->fields[i].type;
         stmt->fields[i].length= mysql->fields[i].length;
