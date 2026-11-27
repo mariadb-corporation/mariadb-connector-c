@@ -431,6 +431,43 @@ end:
   return(len);
 }
 
+/*
+  Fast path for ma_net_read(): if a complete packet (header and payload) is
+  already in the read ahead cache, which is the usual case when reading the
+  packets of a result set, decode the header in place and copy the payload
+  once, instead of fetching header and payload with two generic cache reads.
+
+  Returns the length of the packet, or packet_error if the packet has to be
+  read by ma_real_read(): not completely in the cache, part of a multi
+  packet, or the buffer needs to be extended.
+*/
+static ulong ma_net_read_cached(NET *net)
+{
+  MARIADB_PVIO *pvio= net->pvio;
+  const uchar *header, *cache_end;
+  size_t len;
+
+  if (!pvio || !pvio->cache)
+    return packet_error;
+
+  header= pvio->cache_pos;
+  cache_end= pvio->cache + pvio->cache_size;
+  if (header >= cache_end || (size_t)(cache_end - header) < NET_HEADER_SIZE)
+    return packet_error;
+
+  /* a cached packet is always smaller than MAX_PACKET_LENGTH */
+  len= uint3korr(header);
+  if (len > (size_t)(cache_end - header) - NET_HEADER_SIZE ||
+      len + net->where_b >= net->max_packet)
+    return packet_error;
+
+  net->pkt_nr= header[3];
+  net->compress_pkt_nr= ++net->pkt_nr;
+  memcpy(net->buff + net->where_b, header + NET_HEADER_SIZE, len);
+  pvio->cache_pos+= NET_HEADER_SIZE + len;
+  return (ulong)len;
+}
+
 ulong ma_net_read(NET *net)
 {
   size_t len,complen;
@@ -439,6 +476,12 @@ ulong ma_net_read(NET *net)
   if (!net->compress)
   {
 #endif
+    if ((len= ma_net_read_cached(net)) != packet_error)
+    {
+      net->read_pos= net->buff + net->where_b;
+      net->read_pos[len]= 0;		/* Safeguard for mysql_use_result */
+      return (ulong)len;
+    }
     len = ma_real_read (net,(size_t *)&complen);
     if (len == MAX_PACKET_LENGTH)
     {

@@ -926,7 +926,194 @@ static int test_maxcolumns(MYSQL *mysql)
   return OK;
 }
 
+/* Result rows of many different sizes: packets which are completely in
+   the read ahead cache, packets which have to be read from the socket in
+   one or more steps, and packets of the maximum packet length (followed by
+   an empty packet). */
+
+#define PACKET_SIZES_MAX 100000UL
+#define PACKET_SIZES_BIG 16777212UL /* row packet: 4 bytes length + value */
+
+static int packet_sizes_check_row(const char *ref, unsigned long expected_id,
+                                  long id, long n, const char *val,
+                                  unsigned long val_len, const char *tail,
+                                  unsigned long tail_len)
+{
+  if (id != (long)expected_id || n < 0 || val_len != (unsigned long)n ||
+      memcmp(val, ref, val_len) || tail_len != 3 || memcmp(tail, "end", 3))
+  {
+    diag("row %lu: id=%ld n=%ld length=%lu tail length=%lu", expected_id, id,
+         n, val_len, tail_len);
+    return FAIL;
+  }
+  return OK;
+}
+
+static int test_packet_sizes(MYSQL *mysql)
+{
+  static const unsigned long sizes[]= {0, 1, 2, 250, 251, 252, 1000, 4096,
+                                       8191, 20000, 32768, 65535, 65536,
+                                       PACKET_SIZES_MAX};
+  char query[4096], *p= query, *ref, *buffer;
+  unsigned long rows= 0, i, n, max_packet;
+  int rc, mode, pass;
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+  MYSQL_STMT *stmt;
+
+  if (!(ref= (char *)malloc(PACKET_SIZES_BIG + 1)) ||
+      !(buffer= (char *)malloc(PACKET_SIZES_MAX + 1)))
+  {
+    free(ref);
+    FAIL_IF(1, "Out of memory");
+  }
+  memset(ref, 'a', PACKET_SIZES_BIG);
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_packet_sizes");
+  check_mysql_rc(rc, mysql);
+  rc= mysql_query(mysql, "CREATE TABLE t_packet_sizes (id INT NOT NULL "
+                         "AUTO_INCREMENT PRIMARY KEY, n INT NOT NULL)");
+  check_mysql_rc(rc, mysql);
+
+  /* all sizes ascending, then descending: the same size ends up at
+     different positions of the stream */
+  p+= sprintf(p, "INSERT INTO t_packet_sizes (n) VALUES ");
+  for (pass= 0; pass < 2; pass++)
+  {
+    /* around minimum size for direct reads and around read ahead cache size */
+    for (n= 2030; n <= 2052; n++, rows++)
+      p+= sprintf(p, "%s(%lu)", rows ? "," : "", pass ? 4082 - n : n);
+    for (n= 16366; n <= 16392; n++, rows++)
+      p+= sprintf(p, ",(%lu)", pass ? 32758 - n : n);
+    for (i= 0; i < sizeof(sizes) / sizeof(sizes[0]); i++, rows++)
+      p+= sprintf(p, ",(%lu)",
+                  sizes[pass ? sizeof(sizes) / sizeof(sizes[0]) - 1 - i : i]);
+  }
+  rc= mysql_query(mysql, query);
+  check_mysql_rc(rc, mysql);
+
+#define PACKET_SIZES_QUERY \
+  "SELECT id, n, REPEAT('a', n), 'end' FROM t_packet_sizes ORDER BY id"
+
+  /* text protocol: buffered and unbuffered */
+  for (mode= 0; mode < 2; mode++)
+  {
+    rc= mysql_query(mysql, PACKET_SIZES_QUERY);
+    check_mysql_rc(rc, mysql);
+    res= mode ? mysql_use_result(mysql) : mysql_store_result(mysql);
+    FAIL_IF(!res, "Invalid result set");
+    for (i= 1; (row= mysql_fetch_row(res)); i++)
+    {
+      unsigned long *lengths= mysql_fetch_lengths(res);
+      if (packet_sizes_check_row(ref, i, atol(row[0]), atol(row[1]), row[2],
+                                 lengths[2], row[3], lengths[3]) != OK)
+      {
+        mysql_free_result(res);
+        FAIL_IF(1, "unexpected row content (text protocol)");
+      }
+    }
+    FAIL_IF(mysql_errno(mysql), "error while fetching rows");
+    mysql_free_result(res);
+    FAIL_IF(i - 1 != rows, "wrong number of rows (text protocol)");
+  }
+
+  /* binary protocol: buffered and unbuffered */
+  for (mode= 0; mode < 2; mode++)
+  {
+    MYSQL_BIND bind[4];
+    int id, size;
+    char tail[8];
+    unsigned long val_len= 0, tail_len= 0;
+
+    stmt= mysql_stmt_init(mysql);
+    FAIL_IF(!stmt, "mysql_stmt_init failed");
+    rc= mysql_stmt_prepare(stmt, SL(PACKET_SIZES_QUERY));
+    check_stmt_rc(rc, stmt);
+    rc= mysql_stmt_execute(stmt);
+    check_stmt_rc(rc, stmt);
+
+    memset(bind, 0, sizeof(bind));
+    bind[0].buffer_type= MYSQL_TYPE_LONG;
+    bind[0].buffer= &id;
+    bind[1].buffer_type= MYSQL_TYPE_LONG;
+    bind[1].buffer= &size;
+    bind[2].buffer_type= MYSQL_TYPE_STRING;
+    bind[2].buffer= buffer;
+    bind[2].buffer_length= PACKET_SIZES_MAX + 1;
+    bind[2].length= &val_len;
+    bind[3].buffer_type= MYSQL_TYPE_STRING;
+    bind[3].buffer= tail;
+    bind[3].buffer_length= sizeof(tail);
+    bind[3].length= &tail_len;
+    rc= mysql_stmt_bind_result(stmt, bind);
+    check_stmt_rc(rc, stmt);
+
+    if (mode)
+    {
+      rc= mysql_stmt_store_result(stmt);
+      check_stmt_rc(rc, stmt);
+    }
+    for (i= 1; !(rc= mysql_stmt_fetch(stmt)); i++)
+    {
+      if (packet_sizes_check_row(ref, i, id, size, buffer, val_len, tail,
+                                 tail_len) != OK)
+      {
+        mysql_stmt_close(stmt);
+        FAIL_IF(1, "unexpected row content (binary protocol)");
+      }
+    }
+    FAIL_IF(rc != MYSQL_NO_DATA, "error while fetching rows");
+    mysql_stmt_close(stmt);
+    FAIL_IF(i - 1 != rows, "wrong number of rows (binary protocol)");
+  }
+
+  /* row packets shorter than, equal to and longer than the maximum packet
+     length */
+  rc= mysql_query(mysql, "SELECT @@max_allowed_packet");
+  check_mysql_rc(rc, mysql);
+  res= mysql_store_result(mysql);
+  FAIL_IF(!res, "Invalid result set");
+  row= mysql_fetch_row(res);
+  max_packet= strtoul(row[0], NULL, 10);
+  mysql_free_result(res);
+
+  if (max_packet < PACKET_SIZES_BIG)
+    diag("max_allowed_packet=%lu: skipping maximum packet length", max_packet);
+  else
+  {
+    for (n= PACKET_SIZES_BIG - 2; n <= PACKET_SIZES_BIG; n++)
+    {
+      unsigned long *lengths;
+
+      sprintf(query, "SELECT REPEAT('a', %lu), 'end'", n);
+      rc= mysql_query(mysql, query);
+      check_mysql_rc(rc, mysql);
+      res= mysql_store_result(mysql);
+      FAIL_IF(!res, "Invalid result set");
+      row= mysql_fetch_row(res);
+      FAIL_IF(!row || !row[0], "expected a row");
+      lengths= mysql_fetch_lengths(res);
+      if (lengths[0] != n || memcmp(row[0], ref, n) ||
+          lengths[1] != 3 || memcmp(row[1], "end", 3))
+      {
+        diag("value of %lu bytes: length=%lu", n, lengths[0]);
+        mysql_free_result(res);
+        FAIL_IF(1, "unexpected row content (maximum packet length)");
+      }
+      FAIL_IF(mysql_fetch_row(res) != NULL, "expected one row only");
+      mysql_free_result(res);
+    }
+  }
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t_packet_sizes");
+  check_mysql_rc(rc, mysql);
+  free(ref);
+  free(buffer);
+  return OK;
+}
+
 struct my_tests_st my_tests[] = {
+  {"test_packet_sizes", test_packet_sizes, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_maxcolumns", test_maxcolumns, TEST_CONNECTION_NEW, 0, NULL, NULL},
   {"test_conc624", test_conc624, TEST_CONNECTION_DEFAULT, 0, NULL, NULL},
   {"test_conc75", test_conc75, TEST_CONNECTION_DEFAULT, 0,  NULL,  NULL},
