@@ -927,6 +927,14 @@ static void ma_tls_set_error(MYSQL *mysql, void *ssl, int ssl_errno)
     return;
   }
 
+  /* A failed send means the peer closed the connection, as with OpenSSL */
+  if (ssl_errno == GNUTLS_E_PUSH_ERROR)
+  {
+    pvio->set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                    ER(CR_SERVER_LOST_EXTENDED), "sending TLS data", save_errno);
+    return;
+  }
+
   if (ssl_errno && (ssl_error_reason= gnutls_strerror(ssl_errno)))
   {
     pvio->set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN, 0,
