@@ -5357,6 +5357,7 @@ static int test_vector(MYSQL *mysql)
   MYSQL_BIND bind;
   float f1[4] = {1.0f, 1.1f, 1.2f, 1.3f};
   float f2[4] = {0.0};
+  unsigned long length= 0;
 
   rc= mysql_query(mysql, "DROP TABLE IF EXISTS my_vector");
   check_mysql_rc(rc, mysql);
@@ -5391,28 +5392,66 @@ static int test_vector(MYSQL *mysql)
 
   memset(&bind, 0, sizeof(MYSQL_BIND));
   bind.buffer= &f2;
+  bind.buffer_type= MYSQL_TYPE_VECTOR;
   bind.buffer_length= sizeof(float) * 4;
+  bind.length= &length;
   rc= mysql_stmt_bind_result(stmt, &bind);
   check_stmt_rc(rc, stmt);
 
   rc= mysql_stmt_fetch(stmt);
   check_stmt_rc(rc, stmt);
 
-  mysql_stmt_close(stmt);
-
-#ifdef HAVE_BIGENDIAN
-  if (bind.buffer_type != MYSQL_TYPE_VECTOR)
-  {
-    float *f= f2;
-    for (int i= 0; i < 4; i++, f++)
-      float4get(f2[i], ((uchar *)f));
-  }
-#endif
+  FAIL_IF(length != sizeof(float) * 4, "Expected length 16");
   if (memcmp(f1, f2, sizeof(float) * 4))
   {
-    diag("Error: f1 != f2");
+    diag("Error: f1 != f2 (%f %f %f %f)", f2[0], f2[1], f2[2], f2[3]);
+    mysql_stmt_close(stmt);
     return FAIL;
   }
+
+  /* partial fetch starting mid-element: bytes 6..13 of f1 */
+  {
+    uchar part[8];
+    memset(&bind, 0, sizeof(MYSQL_BIND));
+    bind.buffer= part;
+    bind.buffer_type= MYSQL_TYPE_VECTOR;
+    bind.buffer_length= sizeof(part);
+    bind.length= &length;
+    rc= mysql_stmt_fetch_column(stmt, &bind, 0, 6);
+    check_stmt_rc(rc, stmt);
+    FAIL_IF(memcmp(part, (uchar *)f1 + 6, sizeof(part)),
+            "fetch_column at unaligned offset returned wrong bytes");
+  }
+
+  rc= mysql_stmt_prepare(stmt, SL("SELECT /*M! vec_fromtext*/"
+                                  "/*!90000 STRING_TO_VECTOR*/"
+                                  "('[1.0,1.1,1.2,1.3]')"));
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_execute(stmt);
+  check_stmt_rc(rc, stmt);
+
+  memset(f2, 0, sizeof(f2));
+  memset(&bind, 0, sizeof(MYSQL_BIND));
+  bind.buffer= &f2;
+  bind.buffer_type= MYSQL_TYPE_VECTOR;
+  bind.buffer_length= sizeof(float) * 4;
+  bind.length= &length;
+  rc= mysql_stmt_bind_result(stmt, &bind);
+  check_stmt_rc(rc, stmt);
+
+  rc= mysql_stmt_fetch(stmt);
+  check_stmt_rc(rc, stmt);
+
+  FAIL_IF(length != sizeof(float) * 4, "Expected length 16 from expression");
+  if (memcmp(f1, f2, sizeof(float) * 4))
+  {
+    diag("Error: expression f1 != f2 (%f %f %f %f)", f2[0], f2[1], f2[2], f2[3]);
+    mysql_stmt_close(stmt);
+    return FAIL;
+  }
+
+  mysql_stmt_close(stmt);
 
   rc= mysql_query(mysql, "DROP TABLE my_vector");
   check_mysql_rc(rc, mysql);
