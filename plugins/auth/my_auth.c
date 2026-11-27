@@ -403,6 +403,8 @@ static int send_client_reply_packet(MCPVIO_EXT *mpvio,
       ulonglong client_extended_flag = CLIENT_DEFAULT_EXTENDED_FLAGS;
       if (mysql->options.extension && mysql->options.extension->bulk_unit_results)
         client_extended_flag|= MARIADB_CLIENT_BULK_UNIT_RESULTS;
+      if (mysql->client_flag & CLIENT_SSL)
+        client_extended_flag|= MARIADB_CLIENT_SSL_INFO_CLIENT;
       mysql->extension->mariadb_client_flag=
           server_extended_cap & (long)(client_extended_flag >> 32);
       int4store(buff + 28, mysql->extension->mariadb_client_flag);
@@ -737,6 +739,35 @@ static void client_mpvio_info(MYSQL_PLUGIN_VIO *vio,
 }
 
 /**
+  sha2(prefix, password hash, scramble, binding) of ssl_info and
+  ssl_info_client
+
+  @retval 0 ok
+  @retval 1 error
+*/
+static int ssl_info_digest(MYSQL *mysql, const char *prefix, size_t prefix_len,
+                           const unsigned char *pwhash, size_t pwhash_len,
+                           const char *binding, size_t binding_len,
+                           unsigned char *digest)
+{
+  MA_HASH_CTX *ctx= ma_hash_new(MA_HASH_SHA256);
+
+  if (!ctx)
+  {
+    SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
+    return 1;
+  }
+  if (prefix_len)
+    ma_hash_input(ctx, (unsigned char*)prefix, prefix_len);
+  ma_hash_input(ctx, pwhash, pwhash_len);
+  ma_hash_input(ctx, (unsigned char*)mysql->scramble_buff, SCRAMBLE_LENGTH);
+  ma_hash_input(ctx, (unsigned char*)binding, binding_len);
+  ma_hash_result(ctx, digest);
+  ma_hash_free(ctx);
+  return 0;
+}
+
+/**
   Client side of the plugin driver authentication.
 
   @note this is used by both the mysql_real_connect and mysql_change_user
@@ -759,8 +790,13 @@ int run_plugin_auth(MYSQL *mysql, char *data, uint data_len,
   const char    *auth_plugin_name= NULL;
   auth_plugin_t *auth_plugin;
   MCPVIO_EXT    mpvio;
-  ulong		      pkt_length;
-  int           res;
+  unsigned char ssl_info_client_pkt[2 + MA_SHA256_HASH_SIZE];
+  size_t        ssl_info_client_len= 2;
+  char          *ssl_info= NULL;
+  unsigned char *ssl_info_client= NULL;
+  my_bool        verified;
+  ulong          pkt_length;
+  int            res;
 
   /* determine the default/initial plugin to use */
   if (mysql->server_capabilities & CLIENT_PLUGIN_AUTH)
@@ -892,48 +928,135 @@ retry:
   if (ma_read_ok_packet(mysql, mysql->net.read_pos + 1, pkt_length))
     return -1;
 
-  if (!mysql->net.tls_verify_status)
+  if (!mpvio.mysql_change_user && IS_MARIADB_EXTENDED_SERVER(mysql) &&
+      (mysql->extension->mariadb_client_flag & (MARIADB_CLIENT_SSL_INFO_CLIENT >> 32)))
+    ssl_info_client= ssl_info_client_pkt;
+
+  /*
+    tls_verify_status is 0 and the server's ssl_info is not needed when
+    * there is no TLS (then there is no ssl_info_client either)
+    * the TLS layer has verified the server certificate (CA and host name,
+      or the fingerprint)
+    * the client does not verify the server certificate
+    * the connection is local (127.0.0.1, ::1) and no CA is given,
+      the server can see that too
+    ssl_info_client is still sent if negotiated, because the server might
+    require it, even if the client doesn't.
+  */
+  if (!mysql->net.tls_verify_status && !ssl_info_client)
     return 0;
 
-  assert(mysql->options.use_ssl);
-  assert(!mysql->options.extension->tls_allow_invalid_server_cert);
-  assert(!mysql->options.ssl_ca);
-  assert(!mysql->options.ssl_capath);
-  assert(!mysql->options.extension->tls_fp);
-  assert(!mysql->options.extension->tls_fp_list);
-  assert(hashing(auth_plugin));
-  assert(mysql->passwd[0]);
-  if (mysql->info && mysql->info[0] == '\1')
+  /* the TLS layer has verified the server certificate */
+  verified= !mysql->net.tls_verify_status &&
+            (!mysql->options.extension->tls_allow_invalid_server_cert ||
+             mysql->options.extension->tls_fp ||
+             mysql->options.extension->tls_fp_list);
+
+  if (mysql->net.tls_verify_status)
   {
-    MA_HASH_CTX *ctx = NULL;
-    unsigned char buf[1024], digest[MA_SHA256_HASH_SIZE];
-    char fp[128], hexdigest[sizeof(digest)*2+1], *hexsig= mysql->info + 1;
-    size_t buflen= sizeof(buf) - 1, fplen;
-
+    assert(mysql->options.use_ssl);
+    assert(!mysql->options.extension->tls_allow_invalid_server_cert);
+    assert(!mysql->options.ssl_ca);
+    assert(!mysql->options.ssl_capath);
+    assert(!mysql->options.extension->tls_fp);
+    assert(!mysql->options.extension->tls_fp_list);
+    assert(hashing(auth_plugin));
+    assert(mysql->passwd[0]);
+    if (!mysql->info || mysql->info[0] != '\1')
+      goto not_trusted;
+    ssl_info= mysql->info + 1;
     mysql->info= NULL; /* no need to confuse the client with binary info */
+  }
 
-    if (!(fplen= ma_tls_get_finger_print(mysql->net.pvio->ctls, MA_HASH_SHA256,
-                                         fp, sizeof(fp))))
+  if (password_and_hashing(mysql, auth_plugin))
+  {
+    static const char client[]= "client";
+    static const char ca[]= "CA";
+    unsigned char pwhash[1024];
+    char binding[128];
+    size_t pwhash_len= sizeof(pwhash) - 1, binding_len;
+
+    if (verified)
+    {
+      binding_len= sizeof(ca) - 1;
+      memcpy(binding, ca, binding_len);
+    }
+    else if (!(binding_len= ma_tls_get_finger_print(mysql->net.pvio->ctls,
+                                                    MA_HASH_SHA256, binding,
+                                                    sizeof(binding))))
       return 1; /* error is already set */
 
-    if (auth_plugin->hash_password_bin(mysql, buf, &buflen) ||
-        !(ctx= ma_hash_new(MA_HASH_SHA256)))
+    if (auth_plugin->hash_password_bin(mysql, pwhash, &pwhash_len))
     {
       SET_CLIENT_ERROR(mysql, CR_OUT_OF_MEMORY, SQLSTATE_UNKNOWN, 0);
       return 1;
     }
 
-    ma_hash_input(ctx, (unsigned char*)buf, buflen);
-    ma_hash_input(ctx, (unsigned char*)mysql->scramble_buff, SCRAMBLE_LENGTH);
-    ma_hash_input(ctx, (unsigned char*)fp, fplen);
-    ma_hash_result(ctx, digest);
-    ma_hash_free(ctx);
+    if (ssl_info)
+    {
+      unsigned char digest[MA_SHA256_HASH_SIZE];
+      char hexdigest[sizeof(digest)*2+1];
 
-    mysql_hex_string(hexdigest, (char*)digest, sizeof(digest));
-    if (strcmp(hexdigest, hexsig) == 0)
-      return 0; /* phew. self-signed certificate is validated! */
+      if (ssl_info_digest(mysql, NULL, 0, pwhash, pwhash_len,
+                          binding, binding_len, digest))
+        return 1;
+      mysql_hex_string(hexdigest, (char*)digest, sizeof(digest));
+      if (strcmp(hexdigest, ssl_info))
+        goto not_trusted;
+      /* phew. self-signed certificate is validated! */
+      ssl_info= NULL;
+    }
+
+    /*
+      Just as ssl_info proves to the client that it uses the correct
+      certificate (no MitM), ssl_info_client proves to the server that the
+      client uses the correct certificate. Without it, MitM can hijack the
+      connection after authentication.
+
+      The certificate fingerprint is replaced with "CA" if the client
+      has verified the certificate already (e.g. --ssl-fp or --ssl-ca).
+    */
+    if (ssl_info_client)
+    {
+      if (ssl_info_digest(mysql, client, sizeof(client) - 1, pwhash, pwhash_len,
+                          binding, binding_len, ssl_info_client + 2))
+        return 1;
+      ssl_info_client_len+= MA_SHA256_HASH_SIZE;
+    }
+  }
+  else if (!verified)
+  {
+    /*
+      Without a password hash the client can only vouch for the certificate:
+      ssl_info_client is COM_QUIT and the version if the client has verified
+      the certificate, and COM_QUIT alone if it has not.
+    */
+    ssl_info_client_len= 1;
   }
 
+  if (ssl_info)
+    goto not_trusted;
+
+  if (ssl_info_client)
+  {
+    ssl_info_client[0]= COM_QUIT; /* a server that doesn't expect it quits */
+    ssl_info_client[1]= 1;        /* version 1 */
+    /* it starts a new exchange, like a command */
+    mysql->net.pkt_nr= mysql->net.compress_pkt_nr= 0;
+    if (ma_net_write(&mysql->net, ssl_info_client, ssl_info_client_len) ||
+        ma_net_flush(&mysql->net))
+    {
+      my_set_error(mysql, CR_SERVER_LOST, SQLSTATE_UNKNOWN,
+                   ER(CR_SERVER_LOST_EXTENDED), "sending ssl_info_client",
+                   errno);
+      return 1;
+    }
+    /* The server does not reply to ssl_info_client */
+  }
+
+  return 0;
+
+not_trusted:
   my_set_error(mysql, CR_SSL_CONNECTION_ERROR, SQLSTATE_UNKNOWN,
                ER(CR_SSL_CONNECTION_ERROR),
                "Certificate verification failure: The certificate is NOT trusted.");

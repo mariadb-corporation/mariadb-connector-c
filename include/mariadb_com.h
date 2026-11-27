@@ -181,6 +181,11 @@ enum enum_server_command
 #define MARIADB_CLIENT_CACHE_METADATA (1ULL << 36)
 /* permit sending unit result-set for BULK commands */
 #define MARIADB_CLIENT_BULK_UNIT_RESULTS (1ULL << 37)
+/*
+  Server: may require ssl_info_client (require_secure_transport over TCP).
+  Client: sends ssl_info_client right after the authentication OK packet.
+*/
+#define MARIADB_CLIENT_SSL_INFO_CLIENT (1ULL << 38)
 
 #define IS_MARIADB_EXTENDED_SERVER(mysql)\
         (!(mysql->server_capabilities & CLIENT_MYSQL))
@@ -189,7 +194,8 @@ enum enum_server_command
                                        MARIADB_CLIENT_STMT_BULK_OPERATIONS|\
                                        MARIADB_CLIENT_EXTENDED_METADATA|\
                                        MARIADB_CLIENT_CACHE_METADATA|\
-                                       MARIADB_CLIENT_BULK_UNIT_RESULTS)
+                                       MARIADB_CLIENT_BULK_UNIT_RESULTS|\
+                                       MARIADB_CLIENT_SSL_INFO_CLIENT)
 
 #define CLIENT_SUPPORTED_FLAGS  (CLIENT_MYSQL |\
                                  CLIENT_FOUND_ROWS |\
@@ -237,7 +243,8 @@ enum enum_server_command
                                                       & ~CLIENT_SSL)
 
 #define CLIENT_DEFAULT_EXTENDED_FLAGS (MARIADB_CLIENT_SUPPORTED_FLAGS &\
-                                 ~MARIADB_CLIENT_BULK_UNIT_RESULTS)
+                                 ~MARIADB_CLIENT_BULK_UNIT_RESULTS &\
+                                 ~MARIADB_CLIENT_SSL_INFO_CLIENT)
 
 #define SERVER_STATUS_IN_TRANS               1	/* Transaction has started */
 #define SERVER_STATUS_AUTOCOMMIT             2	/* Server in auto_commit mode */
