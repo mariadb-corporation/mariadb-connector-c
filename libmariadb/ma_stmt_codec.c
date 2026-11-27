@@ -1076,9 +1076,9 @@ void ps_fetch_float(MYSQL_BIND *r_param, const MYSQL_FIELD * field, unsigned cha
 }
 /* }}} */
 
-static void convert_to_datetime(MYSQL_BIND *r_param, MYSQL_TIME *t,
-                                unsigned char **row, uint len,
-                                enum enum_field_types type)
+void convert_to_datetime(MYSQL_BIND *r_param, MYSQL_TIME *t,
+                         unsigned char **row, uint len,
+                         enum enum_field_types type)
 {
   unsigned char *to= *row;
   int has_date= 0;

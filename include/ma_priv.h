@@ -62,6 +62,11 @@ int net_field_length_ll_safe(uchar **pos, const uchar *end,
 int net_field_length_safe(uchar **pos, const uchar *end,
                           unsigned int flags, ulong *len);
 
+void ma_stmt_fetch_init(void);
+void convert_to_datetime(MYSQL_BIND *r_param, MYSQL_TIME *t,
+                         unsigned char **row, uint len,
+                         enum enum_field_types type);
+
 extern void ma_save_session_track_info(void *ptr, enum enum_mariadb_status_info type, ...);
 
 #define ma_status_callback(mysql, last_status)\
