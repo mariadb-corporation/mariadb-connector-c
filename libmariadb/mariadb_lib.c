@@ -329,7 +329,7 @@ static int cli_report_progress(MYSQL *mysql, uchar *packet, uint length)
   progress= uint3korr(packet)/1000.0;
   packet+= 3;
 
-  if (net_field_length_safe(&packet, end, MARIADB_LENENC_FORBID_NULL, &proc_length) != MARIADB_LENENC_OK)
+  if (net_field_length_safe(&packet, end, &proc_length) != MARIADB_LENENC_OK)
     return 1; /* Wrong packet */
 
   if (proc_length > (size_t)(end - packet))
@@ -368,87 +368,6 @@ net_field_length(uchar **packet)
   }
   (*packet)+=9;					/* Must be 254 when here */
   return (ulong) uint4korr(pos+1);
-}
-
-
-/*
-  Internal 64-bit decoder, used for affected_rows and insert_id in OK
-  packets, and as the core of net_field_length_safe().
-
-  pos    in/out: advanced past the prefix on MARIADB_LENENC_OK and
-         MARIADB_LENENC_NULL, unchanged on error.
-  end    first byte after the valid buffer (never read).
-  flags  0: 0xFB is a NULL marker. MARIADB_LENENC_FORBID_NULL: 0xFB is an
-         error. Unknown flag bits are an error.
-  len    out: decoded value, 0 for MARIADB_LENENC_NULL, unchanged on error.
-*/
-int net_field_length_ll_safe(uchar **pos, const uchar *end,
-                             unsigned int flags, unsigned long long *len)
-{
-  uchar *p;
-  size_t avail;
-
-  if (flags & ~(unsigned int)MARIADB_LENENC_FORBID_NULL)
-    return MARIADB_LENENC_ERROR;
-
-  p= *pos;
-  if (p >= end)
-    return MARIADB_LENENC_ERROR;
-
-  avail= (size_t)(end - p);       /* >= 1, includes the marker byte */
-
-  switch (*p) {
-  case 251:
-    if (flags & MARIADB_LENENC_FORBID_NULL)
-      return MARIADB_LENENC_ERROR;
-    *len= 0;
-    *pos= p + 1;
-    return MARIADB_LENENC_NULL;
-  case 252:
-    if (avail < 3)
-      return MARIADB_LENENC_ERROR;
-    *len= (unsigned long long)uint2korr(p + 1);
-    *pos= p + 3;
-    return MARIADB_LENENC_OK;
-  case 253:
-    if (avail < 4)
-      return MARIADB_LENENC_ERROR;
-    *len= (unsigned long long)uint3korr(p + 1);
-    *pos= p + 4;
-    return MARIADB_LENENC_OK;
-  case 254:
-    if (avail < 9)
-      return MARIADB_LENENC_ERROR;
-    *len= (unsigned long long)uint8korr(p + 1);
-    *pos= p + 9;
-    return MARIADB_LENENC_OK;
-  case 255:                       /* never a valid length marker */
-    return MARIADB_LENENC_ERROR;
-  default:                        /* 0..250: the byte is the value */
-    *len= (unsigned long long)*p;
-    *pos= p + 1;
-    return MARIADB_LENENC_OK;
-  }
-}
-
-/*
-  32-bit variant for field lengths. A 0xFE prefix with a value of 2^32 or
-  more is rejected instead of being truncated, so a malformed prefix can
-  never be decoded as a small length.
-*/
-int net_field_length_safe(uchar **pos, const uchar *end,
-                          unsigned int flags, ulong *len)
-{
-  uchar *p= *pos;
-  unsigned long long v= 0;
-  int rc= net_field_length_ll_safe(&p, end, flags, &v);
-
-  if (rc == MARIADB_LENENC_ERROR || v > 0xFFFFFFFFULL)
-    return MARIADB_LENENC_ERROR;
-
-  *len= (ulong)v;
-  *pos= p;
-  return rc;                      /* MARIADB_LENENC_OK or _NULL */
 }
 
 void free_rows(MYSQL_DATA *cur)
@@ -1119,11 +1038,11 @@ static void ma_field_extension_init_type_info(MA_MEM_ROOT *memroot,
                                               const char *ptr, size_t length)
 {
   const char *end= ptr + length;
-  for ( ;  ptr < end; )
+  for ( ;  end - ptr >= 2; )
   {
     uint itype= (uchar) *ptr++;
     uint len= (uchar) *ptr++;
-    if (ptr + len > end  || len > 127)
+    if (len > (size_t)(end - ptr) || len > 127)
       break; /*Badly encoded data*/
     if (itype <= 127 && itype <= MARIADB_FIELD_ATTR_LAST)
       ext->metadata[itype]= ma_const_string_copy_root(memroot, ptr, len);
@@ -1154,7 +1073,7 @@ MA_FIELD_EXTENSION *ma_field_extension_deep_dup(MA_MEM_ROOT *memroot,
 }
 
 /***************************************************************************
-** Change field rows to field structs
+** Convert column definition packets to field structs
 ***************************************************************************/
 #if defined(offsetof)
 #undef OFFSET
@@ -1176,131 +1095,219 @@ static size_t rset_field_offsets[]= {
   OFFSET(MYSQL_FIELD, org_name_length)
 };
 
-/* calculate lengths for field metadata:
-   returns zero on success, 1 if null_length was
-   detected */
-static my_bool ma_get_rset_field_lengths(MYSQL_ROW row, unsigned int field_count,
-                               unsigned long *lengths)
-{
-  unsigned long *last_length= 0;
-  char *pos= 0;
-  MYSQL_ROW end= row + field_count + 1;
-  my_bool rc= 0;
+/*
+  Decode one column definition packet straight from the network buffer
+  into a MYSQL_FIELD. All strings of the column are stored in one single
+  memroot chunk.
 
-  if (!lengths)
+  returns 0 on success, 1 on malformed packet, 2 on out of memory
+*/
+int ma_unpack_field(MA_MEM_ROOT *alloc, uchar *pos, ulong pkt_len,
+                    MYSQL_FIELD *field, my_bool ext_info,
+                    my_bool default_value)
+{
+  const uchar *end= pos + pkt_len;
+  unsigned int i;
+  const unsigned int field_count= sizeof(rset_field_offsets)/sizeof(size_t)/2;
+  ulong len;
+  char *to;
+  uchar *p;
+
+  /* Every string is stored with a terminating zero, but without its
+     length prefix (at least one byte), so all strings of a column
+     definition never need more space than the packet itself */
+  if (!(to= (char *)ma_alloc_root(alloc, pkt_len + 1)))
+    return 2;
+
+  for (i= 0; i < field_count; i++)
+  {
+    /* NULL is not allowed here, see CONC-709 */
+    if (net_field_length_safe(&pos, end, &len) !=
+        MARIADB_LENENC_OK || len > (ulong)(end - pos))
+      return 1;
+    *(char **)(((char *)field) + rset_field_offsets[i*2])= to;
+    *(unsigned int *)(((char *)field) + rset_field_offsets[i*2+1])= (unsigned int)len;
+    memcpy(to, pos, len);
+    to[len]= 0;
+    to+= len + 1;
+    pos+= len;
+  }
+
+  field->extension= NULL;
+  if (ext_info)
+  {
+    if (net_field_length_safe(&pos, end, &len) !=
+        MARIADB_LENENC_OK || len > (ulong)(end - pos))
+      return 1;
+    if (len)
+    {
+      MA_FIELD_EXTENSION *ext= new_ma_field_extension(alloc);
+      if ((field->extension= ext))
+        ma_field_extension_init_type_info(alloc, ext, (char *)pos, len);
+    }
+    pos+= len;
+  }
+
+  /* fixed length part (always 0x0c): charset (2), length (4), type (1),
+     flags (2), decimals (1) and 2 bytes filler, which are not read */
+  if (net_field_length_safe(&pos, end, &len) !=
+      MARIADB_LENENC_OK || len > (ulong)(end - pos) || len < 10)
     return 1;
 
-  while (row != end)
+  p= pos;
+  field->charsetnr= uint2korr(p);
+  p+= 2;
+  field->length= (uint) uint4korr(p);
+  p+= 4;
+  field->type=   (enum enum_field_types)uint1korr(p);
+  p++;
+  field->flags= uint2korr(p);
+  p+= 2;
+  field->decimals= (uint) p[0];
+  pos+= len;
+
+  if (INTERNAL_NUM_FIELD(field))
+    field->flags|= NUM_FLAG;
+
+  /* This is used by deprecated function mysql_list_fields only,
+     however the reported length is not correct, so we always zero it */
+  field->def= 0;
+  if (default_value && pos < end)
   {
-    if (*row)
+    int rc= net_field_length_safe(&pos, end, &len);
+    if (rc == MARIADB_LENENC_ERROR || len > (ulong)(end - pos))
+      return 1;
+    if (rc == MARIADB_LENENC_OK)
     {
-      if (pos)
-        *last_length= (ulong)(*row - pos - 1);
-      pos= *row;
-    } else {
-      /* NULL_LENGTH (see also CONC-709) */
-      rc= 1;
-      if (last_length)
-        *last_length= 0;
+      memcpy(to, pos, len);
+      to[len]= 0;
+      field->def= to;
     }
-    last_length= lengths++;
-    row++;
   }
-  return rc;
+  field->def_length= 0;
+  field->max_length= 0;
+  return 0;
 }
 
-MYSQL_FIELD *
-unpack_fields(const MYSQL *mysql,
-              MYSQL_DATA *data, MA_MEM_ROOT *alloc, uint fields,
-              my_bool default_value)
+/*
+  Read the column definitions of a result set and convert them to
+  MYSQL_FIELD in a single pass, without building an intermediate
+  MYSQL_DATA row set.
+
+  field_count   in:  expected number of columns, or 0 if the number is not
+                     known in advance (COM_FIELD_LIST)
+                out: number of columns read
+*/
+MYSQL_FIELD *ma_read_fields(MYSQL *mysql, MA_MEM_ROOT *alloc,
+                            uint *field_count, my_bool default_value)
 {
-  MYSQL_ROWS	*row;
-  MYSQL_FIELD	*field,*result;
-  char    *p;
-  unsigned int i, field_count= sizeof(rset_field_offsets)/sizeof(size_t)/2;
+  NET *net= &mysql->net;
+  MYSQL_FIELD *result= NULL, *tmp= NULL;
+  ulong pkt_len;
+  uchar *cp;
+  const uint expected= *field_count;
+  uint capacity= expected, count= 0;
+  int error= 0;
+  my_bool ext_info= ma_has_extended_type_info(mysql);
 
-  field=result=(MYSQL_FIELD*) ma_alloc_root(alloc,sizeof(MYSQL_FIELD)*fields);
-  if (!result)
-    return(0);
+  if ((pkt_len= ma_net_safe_read(mysql)) == packet_error || pkt_len == 0)
+    return NULL;
 
-  for (row=data->data; row ; row = row->next,field++)
+  if (expected)
   {
-    unsigned long lengths[9]= {0};
-
-    if (field >= result + fields)
-      goto error;
-
-    if (ma_get_rset_field_lengths(row->data, field_count, lengths))
-      goto error;
-
-    for (i=0; i < field_count; i++)
-    {
-      *(char **)(((char *)field) + rset_field_offsets[i*2])=
-        ma_strdup_root(alloc, (char *)row->data[i]);
-      *(unsigned int *)(((char *)field) + rset_field_offsets[i*2+1])= lengths[i];
-    }
-
-    field->extension= NULL;
-    if (ma_has_extended_type_info(mysql))
-    {
-      if (row->data[i+1] - row->data[i] > 1)
-      {
-        size_t len= row->data[i+1] - row->data[i] - 1;
-        MA_FIELD_EXTENSION *ext= new_ma_field_extension(alloc);
-        if ((field->extension= ext))
-          ma_field_extension_init_type_info(alloc, ext, row->data[i], len);
-      }
-      i++;
-    }
-
-    /* Ensure row->data pointers for the binary metadata field exist */
-    if (!row->data[i] || (size_t)(row->data[i] - row->data[0]) + 12 > row->length)
-    {
-      SET_CLIENT_ERROR((MYSQL *)mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
-      goto error;
-    }
-
-    p= (char *)row->data[i];
-    /* filler */
-    field->charsetnr= uint2korr(p);
-    p+= 2;
-    field->length= (uint) uint4korr(p);
-    p+= 4;
-    field->type=   (enum enum_field_types)uint1korr(p);
-    p++;
-    field->flags= uint2korr(p);
-    p+= 2;
-    field->decimals= (uint) p[0];
-    p++;
-
-    /* 2 bytes filler */
-    p+= 2;
-    (void)p; /* keep infer happy */
-
-    if (INTERNAL_NUM_FIELD(field))
-      field->flags|= NUM_FLAG;
-
-    i++;
-    /* This is used by deprecated function mysql_list_fields only,
-       however the reported length is not correct, so we always zero it */
-    if (default_value && row->data[i])
-      field->def=ma_strdup_root(alloc,(char*) row->data[i]);
-    else
-      field->def=0;
-    field->def_length= 0;
-
-    field->max_length= 0;
+    size_t size= sizeof(MYSQL_FIELD) * (size_t)expected;
+    if (size / sizeof(MYSQL_FIELD) != expected ||
+        !(result= (MYSQL_FIELD *)ma_alloc_root(alloc, size)))
+      error= 2;
   }
-  if (field < result + fields)
-    goto error;
-  free_rows(data);				/* Free old data */
-  return(result);
-error:
-  free_rows(data);
-  ma_free_root(alloc, MYF(0));
-  return(0);
-}
 
+  while (*(cp= net->read_pos) != 254 || pkt_len >= 8)
+  {
+    /* in case of an error we still have to read all pending packets */
+    if (!error && count >= capacity)
+    {
+      if (expected)
+        error= 1;                    /* more columns than announced */
+      else
+      {
+        /* Number of columns is not known in advance: collect them in a
+           growing buffer and move them to the memroot at the end */
+        uint new_capacity= capacity ? capacity * 2 : 32;
+        size_t size= sizeof(MYSQL_FIELD) * (size_t)new_capacity;
+        MYSQL_FIELD *new_tmp;
+
+        if (new_capacity <= capacity ||
+            size / sizeof(MYSQL_FIELD) != new_capacity ||
+            !(new_tmp= (MYSQL_FIELD *)realloc(tmp, size)))
+          error= 2;
+        else
+        {
+          tmp= new_tmp;
+          capacity= new_capacity;
+        }
+      }
+    }
+    if (!error &&
+        !(error= ma_unpack_field(alloc, cp, pkt_len,
+                                 (expected ? result : tmp) + count,
+                                 ext_info, default_value)))
+      count++;
+
+    if ((pkt_len= ma_net_safe_read(mysql)) == packet_error)
+    {
+      free(tmp);
+      ma_free_root(alloc, MYF(0));
+      return NULL;
+    }
+    if (pkt_len == 0)
+    {
+      error= 1;
+      break;
+    }
+  }
+
+  /* save status */
+  if (!error && pkt_len > 1)
+  {
+    unsigned int last_status= mysql->server_status;
+
+    if (pkt_len < 5)
+      error= 1;
+    else
+    {
+      cp= net->read_pos + 1;
+      mysql->warning_count= uint2korr(cp);
+      cp+= 2;
+      mysql->server_status= uint2korr(cp);
+      ma_status_callback(mysql, last_status);
+    }
+  }
+
+  if (!error)
+  {
+    if (expected)
+    {
+      if (count != expected)
+        error= 1;                    /* less columns than announced */
+    }
+    else if (!(result= (MYSQL_FIELD *)ma_alloc_root(alloc,
+                           sizeof(MYSQL_FIELD) * (count ? count : 1))))
+      error= 2;
+    else if (count)
+      memcpy(result, tmp, sizeof(MYSQL_FIELD) * count);
+  }
+  free(tmp);
+
+  if (error)
+  {
+    ma_free_root(alloc, MYF(0));
+    SET_CLIENT_ERROR(mysql, error == 2 ? CR_OUT_OF_MEMORY : CR_MALFORMED_PACKET,
+                     SQLSTATE_UNKNOWN, 0);
+    return NULL;
+  }
+  *field_count= count;
+  return result;
+}
 
 /* Read all rows (fields or data) from server */
 MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
@@ -1359,7 +1366,7 @@ MYSQL_DATA *mthd_my_read_rows(MYSQL *mysql, MYSQL_FIELD *mysql_fields,
           continue;
       }
 
-      rc= net_field_length_safe(&cp, end_cp, 0, &len);
+      rc= net_field_length_safe(&cp, end_cp, &len);
       if (rc == MARIADB_LENENC_ERROR)
         goto malformed;
 
@@ -1455,7 +1462,7 @@ int mthd_my_read_one_row(MYSQL *mysql,uint fields,MYSQL_ROW row, ulong *lengths)
   end_pos= pos + pkt_len;
   for (field=0 ; field < fields ; field++)
   {
-    int rc= net_field_length_safe(&pos, end_pos, 0, &len);
+    int rc= net_field_length_safe(&pos, end_pos, &len);
 
     if (rc == MARIADB_LENENC_ERROR)
       goto malformed;
@@ -2839,7 +2846,7 @@ mem_error:
 /* Decode a length-encoded integer, NULL not allowed. Returns 1 on failure. */
 static my_bool ma_read_lenenc(uchar **pos, const uchar *end, ulong *out)
 {
-  return net_field_length_safe(pos, end, MARIADB_LENENC_FORBID_NULL, out)
+  return net_field_length_safe(pos, end, out)
          != MARIADB_LENENC_OK;
 }
 
@@ -2856,12 +2863,12 @@ int ma_read_ok_packet(MYSQL *mysql, uchar *pos, ulong length)
   unsigned long long v;
   unsigned int last_status= mysql->server_status;
 
-  if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v)
+  if (net_field_length_ll_safe(&pos, end, &v)
       != MARIADB_LENENC_OK)
     goto corrupted;
   mysql->affected_rows= v;
 
-  if (net_field_length_ll_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &v)
+  if (net_field_length_ll_safe(&pos, end, &v)
       != MARIADB_LENENC_OK)
     goto corrupted;
   mysql->insert_id= v;
@@ -3104,7 +3111,6 @@ int mthd_my_read_query_result(MYSQL *mysql)
 {
   uchar *pos;
   ulong field_count;
-  MYSQL_DATA *fields;
   ulong length;
   const uchar *end;
   uchar has_metadata;
@@ -3124,7 +3130,7 @@ get_info:
   pos=(uchar*) mysql->net.read_pos;
   end= pos + length;
 
-  rc= net_field_length_safe(&pos, end, 0, &field_count);
+  rc= net_field_length_safe(&pos, end, &field_count);
   if (rc == MARIADB_LENENC_ERROR) {
     SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
     return (-1);
@@ -3164,11 +3170,9 @@ get_info:
 
   if (has_metadata)
   {
-    if (!(fields= mysql->methods->db_read_rows(mysql, (MYSQL_FIELD *) 0,
-                                               ma_result_set_rows(mysql))))
-      return (-1);
-    if (!(mysql->fields= unpack_fields(mysql, fields, &mysql->field_alloc,
-                                       (uint) field_count, 1)))
+    uint count= (uint) field_count;
+    if (!(mysql->fields= ma_read_fields(mysql, &mysql->field_alloc,
+                                        &count, 1)))
       return (-1);
   }
   else
@@ -3529,36 +3533,32 @@ MYSQL_RES * STDCALL
 mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
 {
   MYSQL_RES *result;
-  MYSQL_DATA *query;
+  MYSQL_FIELD *fields;
+  MA_MEM_ROOT field_alloc;
+  uint field_count= 0;          /* number of columns isn't known in advance */
   char buff[255];
   int length= 0;
 
-  LINT_INIT(query);
-
   length= snprintf(buff, 128, "%s%c%s", table, '\0', wild ? wild : "");
 
-  if (ma_simple_command(mysql, COM_FIELD_LIST,buff,length,1,0) ||
-      !(query = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,
-                                             ma_result_set_rows(mysql))))
+  if (ma_simple_command(mysql, COM_FIELD_LIST,buff,length,1,0))
+    return(NULL);
+
+  ma_init_alloc_root(&field_alloc, 8192, 0);
+  if (!(fields= ma_read_fields(mysql, &field_alloc, &field_count, 1)))
     return(NULL);
 
   free_old_query(mysql);
   if (!(result = (MYSQL_RES *) calloc(1, sizeof(MYSQL_RES))))
   {
-    free_rows(query);
+    ma_free_root(&field_alloc, MYF(0));
     return(NULL);
   }
-  result->field_alloc=mysql->field_alloc;
-  mysql->fields=0;
+  result->field_alloc= field_alloc;
   result->eof=1;
-  result->field_count = (uint) query->rows;
-  result->fields= unpack_fields(mysql, query, &result->field_alloc,
-				result->field_count, 1);
-  if (result->fields)
-    return(result);
-
-  free(result);
-  return(NULL);
+  result->field_count= field_count;
+  result->fields= fields;
+  return(result);
 }
 
 /********************************************************
@@ -3572,12 +3572,10 @@ mysql_list_fields(MYSQL *mysql, const char *table, const char *wild)
 MYSQL_RES * STDCALL
 mysql_list_processes(MYSQL *mysql)
 {
-  MYSQL_DATA *fields;
   ulong field_count;
+  uint count;
   uchar *pos;
   const uchar *end;
-
-  LINT_INIT(fields);
 
   if (ma_simple_command(mysql, COM_PROCESS_INFO,0,0,0,0))
     return(NULL);
@@ -3586,20 +3584,18 @@ mysql_list_processes(MYSQL *mysql)
   pos= (uchar*)mysql->net.read_pos;
   end= pos + mysql->packet_length;
 
-  if ((net_field_length_safe(&pos, end, MARIADB_LENENC_FORBID_NULL, &field_count) != MARIADB_LENENC_OK) ||
+  if ((net_field_length_safe(&pos, end, &field_count) != MARIADB_LENENC_OK) ||
       !field_count)
   {
     SET_CLIENT_ERROR(mysql, CR_MALFORMED_PACKET, SQLSTATE_UNKNOWN, 0);
     return NULL;
   }
 
-  if (!(fields = mysql->methods->db_read_rows(mysql,(MYSQL_FIELD*) 0,7)))
-    return(NULL);
-  if (!(mysql->fields= unpack_fields(mysql, fields, &mysql->field_alloc,
-                                     (uint)field_count, 0)))
+  count= (uint)field_count;
+  if (!(mysql->fields= ma_read_fields(mysql, &mysql->field_alloc, &count, 0)))
     return(NULL);
   mysql->status=MYSQL_STATUS_GET_RESULT;
-  mysql->field_count= (uint)field_count;
+  mysql->field_count= count;
   return(mysql_store_result(mysql));
 }
 
@@ -5167,7 +5163,21 @@ ulong STDCALL mysql_net_field_length(uchar **packet)
 int STDCALL mariadb_net_field_length(unsigned char **packet, const unsigned char *end, unsigned int flags,
                                      unsigned long *length)
 {
-  return net_field_length_safe(packet, end, flags, length);
+  uchar *p= *packet;
+  unsigned long len;
+  int rc;
+
+  if (flags & ~(unsigned int)MARIADB_LENENC_FORBID_NULL)
+    return MARIADB_LENENC_ERROR;    /* unknown flag */
+
+  rc= net_field_length_safe(&p, end, &len);
+  if (rc == MARIADB_LENENC_ERROR ||
+      (rc == MARIADB_LENENC_NULL && (flags & MARIADB_LENENC_FORBID_NULL)))
+    return MARIADB_LENENC_ERROR;    /* *packet and *length unchanged */
+
+  *length= len;
+  *packet= p;
+  return rc;
 }
 
 my_bool STDCALL mysql_embedded(void)
